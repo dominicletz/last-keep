@@ -9,6 +9,15 @@ defmodule LastKeepWeb.PageControllerTest do
     :ok
   end
 
+  test "a digested favicon name is served", %{conn: conn} do
+    path = Path.join(:code.priv_dir(:last_keep), "static/favicon-digesttest.ico")
+    File.write!(path, "ico")
+    on_exit(fn -> File.rm(path) end)
+
+    conn = get(conn, "/favicon-digesttest.ico")
+    assert response(conn, 200) == "ico"
+  end
+
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
     body = html_response(conn, 200)

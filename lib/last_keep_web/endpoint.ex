@@ -23,6 +23,8 @@ defmodule LastKeepWeb.Endpoint do
     from: :last_keep,
     gzip: not code_reloading?,
     only: LastKeepWeb.static_paths(),
+    # phx.digest renames favicon.ico to favicon-<hash>.ico, which `only` does not match.
+    only_matching: ~w(favicon),
     raise_on_missing_only: code_reloading?
 
   # Code reloading can be explicitly enabled under the
