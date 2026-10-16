@@ -8,6 +8,8 @@ pstack is the workflow for this repo. The skills are installed under `.agents/sk
 
 Before you say a change is done, run `.agents/skills/verify-last-keep/SKILL.md`. That skill is the definition of done. It drives two real browsers against the running game. A green `mix test` is not a substitute.
 
+Every change ships with tests. A simulation change needs an ExUnit test. A browser change needs a scenario in `e2e/scenarios.js` and the spec that calls it. The verification skill points at that file. Do not describe a check only in prose.
+
 ## Layout
 
 - `lib/last_keep/game/sim.ex` is the pure tick. A `State` struct is the whole world. `phase` is `{:build, ticks}`, `{:wave, ticks}`, or `:over`.
@@ -45,7 +47,7 @@ npx playwright test
 
 `mix test` covers room membership, reconnect, combat, wave plans, the HTTP API, a channel with three clients, and a warrior who clears wave 1. Tests that touch the room supervisor are `async: false` because the registry is a single process.
 
-`npx playwright test` is the browser proof. It uses a 1280 by 800 viewport, places a wall, starts the night from the host button, and fights wave 1 with clicks and keys until a goblin dies on screen. Set `BASE_URL` to point it at a deployed site. CI and the deploy workflow both run it.
+`npx playwright test` is the browser proof. The scenarios are `e2e/scenarios.js`, called from `e2e/coop.spec.js`. The run uses a 1280 by 800 viewport. It joins two players, ignores the click that only focuses the window, refuses an illegal wall without spending wood, places a legal wall, and fights wave 1 until a goblin dies on screen with a damage number. Set `BASE_URL` to point it at a deployed site. Unset `BASE_URL` for a local run. CI and the deploy workflow both run it.
 
 ## Deploy
 

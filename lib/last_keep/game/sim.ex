@@ -15,10 +15,11 @@ defmodule LastKeep.Game.Sim do
     e: false,
     r: false,
     f: false,
+    place: false,
     build: nil
   }
 
-  @empty_pressed %{attack: false, q: false, e: false, r: false, f: false}
+  @empty_pressed %{attack: false, q: false, e: false, r: false, f: false, place: false}
 
   def new(code, opts \\ []) do
     seed = Keyword.get(opts, :seed, System.unique_integer([:positive]))
@@ -89,7 +90,8 @@ defmodule LastKeep.Game.Sim do
           q: player.pressed.q or rise(player.input.q, next.q),
           e: player.pressed.e or rise(player.input.e, next.e),
           r: player.pressed.r or rise(player.input.r, next.r),
-          f: player.pressed.f or rise(player.input.f, next.f)
+          f: player.pressed.f or rise(player.input.f, next.f),
+          place: player.pressed.place or rise(player.input.place, next.place)
         }
 
         put_player(state, %{player | input: next, pressed: pressed})
@@ -143,7 +145,8 @@ defmodule LastKeep.Game.Sim do
       slow: 0,
       marked: 0,
       elite: elite,
-      enraged: false
+      enraged: false,
+      special: 0
     }
 
     insert(state, monster)
@@ -369,13 +372,17 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp maybe_attack(state, player, hero) do
-    build = player.input.build
     clicked = edged?(player, :attack)
-    on_monster = aimed_monster(state, player) != nil
 
     cond do
-      build && clicked && not on_monster ->
-        try_place(state, hero, build, player.input.ax, player.input.ay)
+      edged?(player, :place) ->
+        case player.input.build do
+          nil ->
+            refuse(state, player.input.ax, player.input.ay, "Choose a building")
+
+          kind ->
+            try_place(state, hero, kind, player.input.ax, player.input.ay)
+        end
 
       (player.input.attack or clicked) && hero.cooldowns.attack <= 0 ->
         cast(state, player, hero, :attack, Rules.kit(hero.hero).attack)
@@ -421,10 +428,7 @@ defmodule LastKeep.Game.Sim do
     end)
     |> Enum.reduce(state, fn monster, state ->
       damage = scaled_damage(ability.damage, state, hero.hero, monster)
-
-      state
-      |> hurt_monster(monster.id, damage, Rules.kill_bonus(hero.hero))
-      |> event(%{type: "hit", x: monster.x, y: monster.y, amount: damage})
+      hurt_monster(state, monster.id, damage, Rules.kill_bonus(hero.hero))
     end)
     |> repair_near(hero, Map.get(ability, :repair, 0))
   end
@@ -449,7 +453,8 @@ defmodule LastKeep.Game.Sim do
       r: ability.radius * 1.0,
       life: ability.life,
       aoe: 0.0,
-      hero: hero.hero
+      hero: hero.hero,
+      fresh: true
     })
   end
 
@@ -471,7 +476,8 @@ defmodule LastKeep.Game.Sim do
       r: ability.radius * 1.0,
       life: ability.life,
       aoe: ability.aoe * 1.0,
-      hero: hero.hero
+      hero: hero.hero,
+      fresh: true
     })
   end
 
@@ -492,7 +498,8 @@ defmodule LastKeep.Game.Sim do
       r: 12.0,
       life: ability.life,
       aoe: ability.aoe * 1.0,
-      hero: hero.hero
+      hero: hero.hero,
+      fresh: true
     })
   end
 
@@ -521,7 +528,8 @@ defmodule LastKeep.Game.Sim do
         r: 6.0,
         life: ability.life,
         aoe: 0.0,
-        hero: hero.hero
+        hero: hero.hero,
+        fresh: true
       })
     end)
   end
@@ -668,7 +676,7 @@ defmodule LastKeep.Game.Sim do
         try_place(state, hero, :wall, cx + px * i * 36, cy + py * i * 36, %{wood: 0, gold: 0})
       end)
     else
-      event(state, %{type: "deny", x: player.input.ax, y: player.input.ay})
+      refuse(state, player.input.ax, player.input.ay, "Not enough wood")
     end
   end
 
@@ -684,19 +692,22 @@ defmodule LastKeep.Game.Sim do
 
     cond do
       have >= limit ->
-        event(state, %{type: "deny", x: x, y: y})
+        refuse(state, x, y, "Too many")
 
       dist > Rules.kit(hero.hero).range ->
-        event(state, %{type: "deny", x: x, y: y})
+        refuse(state, x, y, "Too far")
 
       hypot(x, y) < state.keep.r + 28 ->
-        event(state, %{type: "deny", x: x, y: y})
+        refuse(state, x, y, "Too close to the keep")
 
       overlap?(state, x, y, Rules.building(kind).r) ->
-        event(state, %{type: "deny", x: x, y: y})
+        refuse(state, x, y, "Blocked")
 
-      not afford?(state, cost) ->
-        event(state, %{type: "deny", x: x, y: y})
+      state.resources.wood < Map.get(cost, :wood, 0) ->
+        refuse(state, x, y, "Not enough wood")
+
+      state.resources.gold < Map.get(cost, :gold, 0) ->
+        refuse(state, x, y, "Not enough gold")
 
       true ->
         state
@@ -724,6 +735,10 @@ defmodule LastKeep.Game.Sim do
     end)
   end
 
+  defp step_projectile(state, %{fresh: true} = projectile) do
+    put_entity(state, %{projectile | fresh: false})
+  end
+
   defp step_projectile(state, %{kind: :meteor, life: life} = projectile) when life <= 1 do
     explode(state, projectile)
   end
@@ -749,17 +764,12 @@ defmodule LastKeep.Game.Sim do
         end
 
       monster ->
-        state = put_entity(state, projectile)
-
-        state =
-          hurt_monster(state, monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
-
         if projectile.aoe > 0 do
           explode(state, projectile)
         else
           state
+          |> hurt_monster(monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
           |> drop(projectile.id)
-          |> event(%{type: "hit", x: monster.x, y: monster.y, amount: projectile.damage})
         end
     end
   end
@@ -772,9 +782,7 @@ defmodule LastKeep.Game.Sim do
       hypot(monster.x - projectile.x, monster.y - projectile.y) <= projectile.aoe + monster.r
     end)
     |> Enum.reduce(state, fn monster, state ->
-      state
-      |> hurt_monster(monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
-      |> event(%{type: "hit", x: monster.x, y: monster.y, amount: projectile.damage})
+      hurt_monster(state, monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
     end)
     |> event(%{type: "boom", x: projectile.x, y: projectile.y})
   end
@@ -813,7 +821,8 @@ defmodule LastKeep.Game.Sim do
                 r: 6.0,
                 life: 30,
                 aoe: 0.0,
-                hero: :tower
+                hero: :tower,
+                fresh: true
               })
           end
       end
@@ -870,6 +879,18 @@ defmodule LastKeep.Game.Sim do
     |> closest(fn hero -> hypot(hero.x - monster.x, hero.y - monster.y) end)
   end
 
+  defp strike(state, %{kind: :boss} = monster, :keep, _hero) do
+    damage = round(monster_damage(monster) * 1.8)
+    keep = state.keep
+    hp = max(keep.hp - damage, 0)
+
+    state
+    |> Map.put(:keep, %{keep | hp: hp})
+    |> put_entity(%{monster | attack_cd: bite_cd(monster)})
+    |> event(%{type: "slam", x: monster.x, y: monster.y, amount: damage})
+    |> event(%{type: "hit", x: 0.0, y: 0.0, amount: damage})
+  end
+
   defp strike(state, monster, :keep, _hero) do
     damage = monster_damage(monster)
     keep = state.keep
@@ -877,8 +898,8 @@ defmodule LastKeep.Game.Sim do
 
     state
     |> Map.put(:keep, %{keep | hp: hp})
-    |> put_entity(%{monster | attack_cd: 20})
-    |> event(%{type: "hit", x: 0.0, y: 0.0})
+    |> put_entity(%{monster | attack_cd: bite_cd(monster)})
+    |> event(%{type: "hit", x: 0.0, y: 0.0, amount: damage})
   end
 
   defp strike(state, monster, :hero, hero) do
@@ -897,8 +918,8 @@ defmodule LastKeep.Game.Sim do
 
         state
         |> put_entity(current)
-        |> put_entity(%{monster | attack_cd: 20})
-        |> event(%{type: "hit", x: current.x, y: current.y})
+        |> put_entity(%{monster | attack_cd: bite_cd(monster)})
+        |> event(%{type: "hit", x: current.x, y: current.y, amount: damage})
 
       _ ->
         chase(state, monster, 0.0, 0.0)
@@ -906,6 +927,7 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp chase(state, monster, tx, ty) do
+    monster = dash_elite(monster, tx, ty)
     {dx, dy} = norm(tx - monster.x, ty - monster.y)
     speed = monster.speed * slow_mult(monster) * elite_speed(monster)
     step = speed * 0.05
@@ -1114,9 +1136,18 @@ defmodule LastKeep.Game.Sim do
           |> add_resource(:gold, gold)
           |> drop(id)
           |> maybe_relic(monster)
-          |> event(%{type: "death", kind: monster.kind, x: monster.x, y: monster.y})
+          |> event(%{type: "hit", x: monster.x, y: monster.y, amount: amount})
+          |> event(%{
+            type: "death",
+            kind: monster.kind,
+            x: monster.x,
+            y: monster.y,
+            amount: amount
+          })
         else
-          put_entity(state, %{monster | hp: left})
+          state
+          |> put_entity(%{monster | hp: left})
+          |> event(%{type: "hit", x: monster.x, y: monster.y, amount: amount})
         end
 
       _ ->
@@ -1193,7 +1224,8 @@ defmodule LastKeep.Game.Sim do
   defp slow_mult(%{slow: n}) when n > 0, do: 0.5
   defp slow_mult(_), do: 1.0
 
-  defp elite_speed(%{elite: :fast}), do: 1.35
+  defp elite_speed(%{elite: :fast}), do: 1.55
+  defp elite_speed(%{elite: :armored}), do: 0.75
   defp elite_speed(%{enraged: true}), do: 1.2
   defp elite_speed(%{elite: :enraged}), do: 1.2
   defp elite_speed(_), do: 1.0
@@ -1320,8 +1352,19 @@ defmodule LastKeep.Game.Sim do
     wrapped - :math.pi()
   end
 
-  defp aimed_monster(state, player) do
-    nearest(monsters(state), player.input.ax, player.input.ay, 28)
+  defp refuse(state, x, y, reason), do: event(state, %{type: "deny", x: x, y: y, reason: reason})
+
+  defp bite_cd(%{elite: :enraged}), do: 12
+  defp bite_cd(%{kind: :boss}), do: 28
+  defp bite_cd(_monster), do: 20
+
+  defp dash_elite(%{elite: :fast, special: cd} = monster, tx, ty) when cd <= 0 do
+    {dx, dy} = norm(tx - monster.x, ty - monster.y)
+    %{monster | x: monster.x + dx * 30, y: monster.y + dy * 30, special: 20}
+  end
+
+  defp dash_elite(monster, _tx, _ty) do
+    %{monster | special: max(Map.get(monster, :special, 0) - 1, 0)}
   end
 
   defp rising?(player, key), do: Map.get(player.input, key) && not Map.get(player.prev, key)
@@ -1363,6 +1406,7 @@ defmodule LastKeep.Game.Sim do
       e: truthy(field(payload, :e)),
       r: truthy(field(payload, :r)),
       f: truthy(field(payload, :f)),
+      place: truthy(field(payload, :place)),
       build: parse_build(field(payload, :build))
     }
   end

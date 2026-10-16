@@ -1,5 +1,7 @@
 import * as THREE from "three"
 import { present } from "./present"
+import { eliteLook } from "./elite"
+import { lerp } from "./motion"
 
 const HERO_COLOR = {
   warrior: 0x8e99a6,
@@ -101,6 +103,9 @@ export function createView(stage) {
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   const focus = new THREE.Vector3()
   let liveMonsters = []
+  const tracks = new Map()
+  const bursts = []
+  let lastTick = -1
 
   function forest() {
     const cone = new THREE.ConeGeometry(18, 46, 5)
@@ -161,7 +166,9 @@ export function createView(stage) {
         meshes.set(key, mesh)
         scene.add(mesh)
       }
-      mesh.position.set(row.x, 0, row.y)
+      remember(key, row.x, row.y)
+      const pose = smoothed(key)
+      mesh.position.set(pose.x, mesh.userData.lift || 0, pose.z)
       if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
       if (mesh.userData.hp) {
         const ratio = row.max ? row.hp / row.max : 1
@@ -172,6 +179,7 @@ export function createView(stage) {
       if (key.startsWith(`${kind}:`) && !seen.has(key)) {
         scene.remove(mesh)
         meshes.delete(key)
+        tracks.delete(key)
       }
     }
   }
@@ -210,7 +218,7 @@ export function createView(stage) {
           nearest = monster
         }
       }
-      if (nearest) return { x: nearest.x, y: nearest.y }
+      if (nearest) return { x: nearest.x, y: nearest.y, monster: true }
       const ndc = new THREE.Vector2(
         ((clientX - rect.left) / rect.width) * 2 - 1,
         -((clientY - rect.top) / rect.height) * 2 + 1
@@ -218,7 +226,7 @@ export function createView(stage) {
       raycaster.setFromCamera(ndc, camera)
       const hit = new THREE.Vector3()
       if (!raycaster.ray.intersectPlane(plane, hit)) return null
-      return { x: hit.x, y: hit.z }
+      return { x: hit.x, y: hit.z, monster: false }
     },
     project(x, z) {
       const point = new THREE.Vector3(x, 8, z).project(camera)
@@ -251,14 +259,7 @@ export function createView(stage) {
 
       liveMonsters = snap.monsters || []
 
-      sync("monster", drawn.monsters, (row) => {
-        const scale = row.kind === "boss" ? 2.6 : row.kind === "troll" ? 2.1 : row.kind === "wolf" ? 1.7 : 2.2
-        const emissive = row.kind === "goblin" || row.kind === "boss" ? 0x6a1408 : 0x000000
-        const mesh = figure(MONSTER_COLOR[row.kind] || 0xff3a22, scale, null, emissive)
-        if (row.kind === "wolf") mesh.scale.z = 1.6
-        mesh.userData.role = "monster"
-        return mesh
-      })
+      sync("monster", drawn.monsters, (row) => monsterMesh(row))
 
       sync("building", drawn.buildings, (row) => {
         const group = new THREE.Group()
@@ -291,17 +292,30 @@ export function createView(stage) {
       })
 
       sync("shot", snap.projectiles || [], (row) => {
-        const color = row.kind === "fireball" || row.kind === "meteor" ? 0xff7a2a : 0xf2e2b0
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 12, 12), mat(color, color))
-        mesh.position.y = row.kind === "meteor" ? 30 : 10
+        const fire = row.kind === "fireball" || row.kind === "meteor"
+        const color = fire ? 0xff7a2a : 0xf2e2b0
+        const size = row.kind === "fireball" ? 11 : row.kind === "meteor" ? 14 : 6
+        const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 6, 5), mat(color, color))
+        mesh.userData.lift = row.kind === "meteor" ? 28 : row.kind === "fireball" ? 18 : 12
+        mesh.userData.role = "shot"
         return mesh
       })
 
+      if (snap.tick !== lastTick) {
+        lastTick = snap.tick
+        for (const ev of snap.events || []) {
+          if (ev.type === "boom") addBurst(ev.x, ev.y, 0xff7a2a)
+          if (ev.type === "death") addBurst(ev.x, ev.y, 0xffe08a)
+          if (ev.type === "slam") addBurst(ev.x, ev.y, 0xc45cff)
+        }
+      }
+
       renderer.render(scene, camera)
-      const counts = { heroes: 0, monsters: 0 }
+      const counts = { heroes: 0, monsters: 0, shots: 0 }
       scene.traverse((object) => {
         if (object.userData?.role === "hero") counts.heroes += 1
         if (object.userData?.role === "monster") counts.monsters += 1
+        if (object.userData?.role === "shot") counts.shots += 1
       })
       const monsters = (snap.monsters || []).map((monster) => {
         const point = new THREE.Vector3(monster.x, 16, monster.y).project(camera)
@@ -321,9 +335,27 @@ export function createView(stage) {
         keep: snap.keep,
         wood: snap.resources?.wood,
         kills: snap.kills,
-        self: me ? { x: me.x, y: me.y, name: me.name, hero: me.hero, host: me.host, range: me.range } : null,
+        self: me
+          ? {
+              x: me.x,
+              y: me.y,
+              name: me.name,
+              hero: me.hero,
+              host: me.host,
+              range: me.range,
+              attackCd: me.cds?.attack || 0
+            }
+          : null,
+        attackCd: me?.cds?.attack || 0,
+        cds: me?.cds || null,
         monsters,
         buildings: (snap.buildings || []).length,
+        projectiles: snap.projectiles || [],
+        relics: snap.relics || [],
+        forge: !!snap.forge,
+        mageTower: !!snap.mage_tower,
+        shownWave: snap.shown_wave,
+        smoothing: true,
         toClient,
         redNear
       }
@@ -368,6 +400,105 @@ export function createView(stage) {
     }
     return count
   }
+
+  function remember(key, x, z) {
+    const prev = tracks.get(key)
+    tracks.set(key, {
+      fromX: prev ? prev.toX : x,
+      fromZ: prev ? prev.toZ : z,
+      toX: x,
+      toZ: z,
+      at: performance.now()
+    })
+  }
+
+  function smoothed(key) {
+    const row = tracks.get(key)
+    if (!row) return { x: 0, z: 0 }
+    const t = (performance.now() - row.at) / 45
+    return { x: lerp(row.fromX, row.toX, t), z: lerp(row.fromZ, row.toZ, t) }
+  }
+
+  function addBurst(x, z, color) {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(8, 6, 5),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
+    )
+    mesh.position.set(x, 18, z)
+    scene.add(mesh)
+    bursts.push({ mesh, at: performance.now() })
+  }
+
+  function monsterMesh(row) {
+    let mesh
+    const look = eliteLook(row)
+    if (look === "horned") mesh = bossMesh()
+    else if (look === "plated") mesh = platedMesh()
+    else if (look === "lean") mesh = leanMesh()
+    else if (look === "spiked") mesh = spikedMesh()
+    else {
+      const scale = row.kind === "troll" ? 2.1 : row.kind === "wolf" ? 1.7 : 2.2
+      const emissive = row.kind === "goblin" ? 0x6a1408 : 0x000000
+      mesh = figure(MONSTER_COLOR[row.kind] || 0xff3a22, scale, null, emissive)
+      if (row.kind === "wolf") mesh.scale.z = 1.6
+    }
+    mesh.userData.role = "monster"
+    return mesh
+  }
+
+  function bossMesh() {
+    const group = figure(0x4a2068, 2.8, null, 0x2a0840)
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(3, 16, 4), mat(0xf2e2b0))
+    horn.position.set(-7, 46, 0)
+    const other = horn.clone()
+    other.position.x = 7
+    group.add(horn, other)
+    return group
+  }
+
+  function platedMesh() {
+    const group = figure(0x8a9098, 2.2, null, 0x222428)
+    group.add(boxMesh(8, 18, 4, 0xd5d8de, 10))
+    return group
+  }
+
+  function leanMesh() {
+    const group = figure(0xffb15a, 1.7, null, 0x6a3a08)
+    group.scale.z = 0.65
+    return group
+  }
+
+  function spikedMesh() {
+    const group = figure(0xff3a22, 2.3, null, 0x6a1408)
+    const spike = new THREE.Mesh(new THREE.ConeGeometry(2, 12, 4), mat(0xffe08a, 0xff7a2a))
+    spike.position.set(0, 36, 0)
+    group.add(spike)
+    return group
+  }
+
+  function frame() {
+    const now = performance.now()
+    for (const [key, mesh] of meshes) {
+      const pose = smoothed(key)
+      mesh.position.x = pose.x
+      mesh.position.z = pose.z
+    }
+    for (let i = bursts.length - 1; i >= 0; i -= 1) {
+      const burst = bursts[i]
+      const age = (now - burst.at) / 520
+      if (age >= 1) {
+        scene.remove(burst.mesh)
+        bursts.splice(i, 1)
+      } else {
+        burst.mesh.scale.setScalar(1 + age * 3.2)
+        burst.mesh.material.opacity = 1 - age
+      }
+    }
+    renderer.render(scene, camera)
+    requestAnimationFrame(frame)
+  }
+
+  requestAnimationFrame(frame)
 }
 
 function boxMesh(w, h, d, color, y) {

@@ -16,7 +16,8 @@ export function present(snap) {
       y: row.y,
       facing: Number.isFinite(row.facing) ? row.facing : Math.atan2(row.x, row.y),
       hp: row.hp,
-      max: row.max
+      max: row.max,
+      elite: row.elite || null
     })),
     buildings: list(snap?.buildings, (row) => ({
       id: row.id,

@@ -2,6 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, seatFromQuery } from "./input"
+import { bonusCopy, ignoreFocusClick, placementReason, waveLabel } from "./hud"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const BUILD_LABEL = {
@@ -97,6 +98,7 @@ function start(code, seat, ui) {
     ax: 0,
     ay: 0,
     attack: false,
+    place: false,
     q: false,
     e: false,
     r: false,
@@ -110,6 +112,16 @@ function start(code, seat, ui) {
   let joined = false
   let aim = { x: 0, y: 0 }
   const fx = []
+  const seen = { kinds: [], labels: [], log: [] }
+  let focused = document.hasFocus()
+  window.__lastKeepTest = {
+    blur() {
+      focused = false
+    }
+  }
+  window.addEventListener("blur", () => {
+    focused = false
+  })
 
   ui.overlay.addEventListener("click", (event) => {
     if (event.target.closest("[data-restart]")) {
@@ -146,12 +158,17 @@ function start(code, seat, ui) {
   }
   ui.view.canvas.addEventListener("pointermove", look)
   ui.view.canvas.addEventListener("pointerdown", (event) => {
+    const focusing = ignoreFocusClick(focused)
+    focused = true
+    if (focusing || event.button !== 0) return
     look(event)
-    if (event.button === 0) input.attack = true
+    if (build && !aim.monster) input.place = true
+    else input.attack = true
     send()
   })
   window.addEventListener("pointerup", () => {
     input.attack = false
+    input.place = false
     send()
   })
 
@@ -209,13 +226,18 @@ function start(code, seat, ui) {
 
   window.setInterval(send, 50)
 
-  function paint(ui, snap, selfId, build) {
+  function paint(ui, snap, selfId, armed) {
     ui.view.draw(snap, selfId)
     const me = (snap.players || []).find((player) => player.id === selfId)
     const wave = ui.hud.querySelector("[data-wave]")
     const clock = ui.hud.querySelector("[data-clock]")
     const stock = ui.hud.querySelector("[data-stock]")
-    wave.textContent = snap.phase === "build" ? `Next wave ${snap.wave + 1}` : `Wave ${snap.wave}`
+    const label = waveLabel(snap.shown_wave)
+    if (seen.labels[seen.labels.length - 1] !== label) seen.labels.push(label)
+    for (const shot of snap.projectiles || []) {
+      if (!seen.kinds.includes(shot.kind)) seen.kinds.push(shot.kind)
+    }
+    wave.textContent = label
     clock.textContent = snap.phase === "over" ? "Fallen" : clockText(snap)
     stock.textContent = `Wood ${snap.resources.wood}  Food ${snap.resources.food}  Gold ${snap.resources.gold}`
     const heart = ui.hud.querySelector("[data-heart]")
@@ -238,16 +260,31 @@ function start(code, seat, ui) {
     start.hidden = !snap.hold
     start.disabled = !me?.host
     start.textContent = me?.host ? "Start the night" : "Waiting for the host"
+    if ((snap.events || []).some((ev) => ev.type === "place")) {
+      build = null
+      armed = null
+    }
     ui.hud.querySelectorAll("[data-build]").forEach((button) => {
       const kind = button.dataset.build
       const cost = me?.costs?.[kind]
       const gold = cost?.gold ? ` ${cost.gold} gold` : ""
       const wood = cost ? `${cost.wood} wood${gold}` : ""
       button.innerHTML = `${BUILD_LABEL[kind]}<small>${wood}</small>`
-      button.classList.toggle("on", kind === build)
+      button.classList.toggle("on", kind === armed)
     })
-    const legal = !!me && Math.hypot(aim.x - me.x, aim.y - me.y) <= (me.range || 160) && Math.hypot(aim.x, aim.y) > 90
-    ui.view.ghost(build, aim.x, aim.y, legal)
+    const cost = armed && me?.costs ? me.costs[armed] : null
+    const reason = armed ? placementReason({ ...me, cost }, aim, snap.resources) : ""
+    const reasonNode = ui.hud.querySelector("[data-build-reason]")
+    reasonNode.hidden = !armed
+    reasonNode.textContent = armed ? reason || `Placing ${armed}. Esc cancels.` : ""
+    const legal = !!me && !reason
+    ui.view.ghost(armed, aim.x, aim.y, legal)
+    const copy = bonusCopy(snap)
+    ui.hud.querySelector("[data-forge]").textContent = copy.forge
+    ui.hud.querySelector("[data-spire]").textContent = copy.spire
+    ui.hud.querySelector("[data-relics]").textContent = copy.relics.length
+      ? copy.relics.join(" ")
+      : "A boss drops one relic."
     const roster = ui.hud.querySelector("[data-roster]")
     roster.innerHTML = (snap.players || [])
       .map((player) => {
@@ -256,7 +293,12 @@ function start(code, seat, ui) {
       })
       .join("")
     drawHints(ui, snap)
-    drawFx(ui, snap, fx)
+    drawFx(ui, snap, fx, seen)
+    if (window.__lastKeep) {
+      window.__lastKeep.log = seen.log
+      window.__lastKeep.labels = seen.labels
+      window.__lastKeep.kinds = seen.kinds
+    }
     if (snap.phase === "over") showOver(ui, snap)
     else ui.overlay.hidden = true
   }
@@ -281,8 +323,9 @@ function hudMarkup() {
   const builds = BUILD.map((kind) => `<button type="button" class="build" data-build="${kind}">${BUILD_LABEL[kind]}</button>`).join("")
   return `
     <div class="hud-top">
-      <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-next></div></div>
+      <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-next></div><div data-build-reason hidden></div></div>
       <button type="button" data-start hidden>Start the night</button>
+      <div class="chip bonuses" data-bonuses><div data-forge></div><div data-spire></div><div data-relics></div></div>
       <div class="chip" data-stock></div>
       <button type="button" data-copy>Copy invite</button>
     </div>
@@ -321,11 +364,32 @@ function drawHints(ui, snap) {
   if (keep) keep.textContent = `${snap.keep.hp}/${snap.keep.max}`
 }
 
-function drawFx(ui, snap, fx) {
+function drawFx(ui, snap, fx, seen) {
   const now = performance.now()
   for (const ev of snap.events || []) {
-    if (ev.type === "hit" || ev.type === "swing" || ev.type === "shot" || ev.type === "deny") {
-      fx.push({ ...ev, until: now + (ev.type === "hit" ? 700 : 280) })
+    if (ev.type === "hit" || ev.type === "death" || ev.type === "boom" || ev.type === "slam" || ev.type === "deny") {
+      const text =
+        ev.type === "death"
+          ? "Slain"
+          : ev.type === "boom"
+            ? "Boom"
+            : ev.type === "deny"
+              ? ev.reason || "Can't"
+              : ev.amount == null
+                ? ""
+                : String(ev.amount)
+      if (!text) continue
+      const row = {
+        type: ev.type,
+        amount: ev.amount || 0,
+        text,
+        x: ev.x,
+        y: ev.y,
+        until: now + (ev.type === "death" ? 2500 : ev.type === "hit" ? 1200 : 900)
+      }
+      fx.push(row)
+      seen.log.push({ type: ev.type, amount: ev.amount || 0, text })
+      if (seen.log.length > 40) seen.log.shift()
     }
   }
   const live = fx.filter((item) => item.until > now)
@@ -337,9 +401,8 @@ function drawFx(ui, snap, fx) {
       const point = ui.view.project(item.x, item.y)
       const left = (point.x * 0.5 + 0.5) * 100
       const top = (-point.y * 0.5 + 0.5) * 100
-      if (item.type === "hit") return `<div class="floater" style="left:${left}%;top:${top}%">${item.amount || ""}</div>`
-      if (item.type === "deny") return `<div class="floater deny" style="left:${left}%;top:${top}%">can't</div>`
-      return `<div class="slash" style="left:${left}%;top:${top}%"></div>`
+      const kind = item.type === "death" ? "death" : item.type === "deny" ? "deny" : item.type === "boom" ? "boom" : ""
+      return `<div class="floater ${kind}" style="left:${left}%;top:${top}%">${item.text}</div>`
     })
     .join("")
 }

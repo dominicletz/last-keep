@@ -13,6 +13,7 @@ defmodule LastKeep.Game.Snapshot do
       enraged: state.enraged,
       hold: state.hold,
       wave: state.wave,
+      shown_wave: shown_wave(state),
       keep: %{hp: state.keep.hp, max: state.keep.max_hp, r: state.keep.r},
       resources: state.resources,
       kills: state.kills,
@@ -149,6 +150,10 @@ defmodule LastKeep.Game.Snapshot do
 
   defp elite(nil), do: nil
   defp elite(value), do: Atom.to_string(value)
+
+  defp shown_wave(%State{phase: {:wave, _}, wave: wave}), do: max(wave, 1)
+  defp shown_wave(%State{phase: :over, wave: wave}), do: max(wave, 1)
+  defp shown_wave(%State{wave: wave}), do: wave + 1
 
   defp phase_name({:build, _}), do: "build"
   defp phase_name({:wave, _}), do: "wave"
