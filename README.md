@@ -6,7 +6,7 @@ The design notes live in [CONCEPT.md](CONCEPT.md).
 
 ## Play
 
-Open the site, enter a name, pick a hero, and create a game. Send the invite link to friends. They join from that link. No account is required. Closing the tab and opening the same link puts you back on your hero.
+Open the site, enter a name, pick a hero, and create a game. Send the invite link to friends. A link with `?name=` and `?hero=` drops that friend straight into the room. A bare link asks for a name first. No account is required. Closing the tab and opening the same link puts you back on your hero.
 
 - WASD moves.
 - The mouse aims.
@@ -36,7 +36,7 @@ The game is at http://127.0.0.1:4000.
 mix test
 ```
 
-CI runs `mix format --check-formatted`, `mix compile --warnings-as-errors`, an asset build, and `mix test`.
+CI runs `mix format --check-formatted`, `mix compile --warnings-as-errors`, an asset build, `mix test`, the client unit tests, and a two-browser Playwright pass. The deploy workflow runs that same browser pass against the live site.
 
 ## Production
 

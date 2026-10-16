@@ -8,7 +8,7 @@ defmodule LastKeep.Game.Rules do
   def tick_ms, do: @tick_ms
   def max_players, do: @max_players
   def heroes, do: @heroes
-  def first_build_ticks, do: 800
+  def first_build_ticks, do: 400
   def wave_ticks, do: 1_200
 
   def build_ticks(cleared_wave) when cleared_wave <= 1, do: 700
@@ -81,7 +81,7 @@ defmodule LastKeep.Game.Rules do
     }
   end
 
-  def monster(:goblin), do: %{hp: 30, speed: 82, damage: 8, r: 12, aggro: 160}
+  def monster(:goblin), do: %{hp: 28, speed: 68, damage: 6, r: 14, aggro: 220}
   def monster(:skeleton), do: %{hp: 46, speed: 64, damage: 10, r: 13, aggro: 140}
   def monster(:wolf), do: %{hp: 34, speed: 118, damage: 9, r: 13, aggro: 240}
   def monster(:troll), do: %{hp: 180, speed: 50, damage: 20, r: 22, aggro: 100}

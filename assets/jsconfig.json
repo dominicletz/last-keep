@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "module": "nodenext",
+    "target": "es2022",
+    "moduleResolution": "nodenext",
+    "strict": false
+  },
+  "include": ["js/input.js", "js/present.js"]
+}

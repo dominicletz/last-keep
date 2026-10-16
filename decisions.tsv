@@ -8,3 +8,4 @@ ts	phase	decision	why	evidence	result
 2026-10-16T18:21:05Z	verify	The game-over overlay was painting over the match because display:grid beat the hidden attribute	Clicks missed the join form and the canvas read as black	priv/static/css/game.css	fixed, two browsers joined
 2026-10-16T18:21:05Z	client	Dusk lighting stays readable after the Lambert 1/pi shade, and trees sit inside the first camera view	A black frame is not a playable keep	assets/js/render.js	screenshot avg about 100
 2026-10-16T18:21:05Z	client	Build highlight updates from the key and click that change it	A 100ms repaint was only there to refresh that highlight	assets/js/play.js	comment-sicko
+2026-10-16T19:10:00Z	playable	Wave-1 goblins render on the yard, and an invite with name and hero joins at once	A missing facing made the mesh rotation NaN, spawn sat outside the camera, and the join page ignored the query	e2e/coop.spec.js	browser proof green
