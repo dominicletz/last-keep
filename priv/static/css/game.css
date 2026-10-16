@@ -177,21 +177,24 @@ input[type="text"], input:not([type="radio"]) {
 
 .chip b { color: var(--gold); }
 .roster { flex-direction: column; align-self: start; min-width: 11rem; }
-.roster .who { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 0.78rem; }
+.roster .who { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 0.95rem; text-transform: none; }
+.roster .who span:first-child { text-transform: none; font-weight: 700; }
 .roster .who.off { opacity: 0.45; }
 .meter { height: 6px; background: #3a2018; margin-top: 0.15rem; }
 .meter span { display: block; height: 100%; background: var(--blood); }
 
 .skills, .builds { display: flex; gap: 0.35rem; }
 .skill, .build {
-  width: 4.4rem;
-  height: 3.4rem;
+  width: 5.4rem;
+  height: 3.8rem;
   position: relative;
   overflow: hidden;
   text-align: left;
   padding: 0.3rem;
   font-size: 0.72rem;
 }
+.skill b, .skill small, .build small { position: relative; z-index: 1; }
+.skill small, .build small { display: block; color: var(--gold); font-size: 0.68rem; }
 .build.on, .skill.on { border-color: var(--gold); }
 .cool {
   position: absolute;
@@ -209,6 +212,21 @@ input[type="text"], input:not([type="radio"]) {
   color: #ffb15a;
   font-size: 0.8rem;
   text-shadow: 2px 2px 0 #000;
+}
+.floater, .slash {
+  position: absolute;
+  color: #fff4d2;
+  font-weight: 700;
+  font-size: 1rem;
+  text-shadow: 2px 2px 0 #000;
+  transform: translate(-50%, -50%);
+}
+.floater.deny { color: #ffb15a; }
+.slash {
+  width: 28px;
+  height: 8px;
+  background: #fff1c7;
+  box-shadow: 0 0 0 3px #c84b3a;
 }
 
 .join-panel {

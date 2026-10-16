@@ -8,7 +8,7 @@ defmodule LastKeep.Game.Rules do
   def tick_ms, do: @tick_ms
   def max_players, do: @max_players
   def heroes, do: @heroes
-  def first_build_ticks, do: 400
+  def first_build_ticks, do: 200
   def wave_ticks, do: 1_200
 
   def build_ticks(cleared_wave) when cleared_wave <= 1, do: 700
@@ -22,7 +22,7 @@ defmodule LastKeep.Game.Rules do
       speed: 155,
       range: 165,
       chop: 12,
-      attack: %{kind: :melee, range: 54, arc: 1.3, damage: 26, cd: 8},
+      attack: %{kind: :melee, range: 70, arc: 2.4, damage: 26, cd: 8},
       q: %{kind: :dash, dist: 150, damage: 22, radius: 40, cd: 110},
       e: %{kind: :guard, ticks: 70, cd: 200},
       r: %{kind: :nova, radius: 96, damage: 48, cd: 340}
@@ -81,7 +81,7 @@ defmodule LastKeep.Game.Rules do
     }
   end
 
-  def monster(:goblin), do: %{hp: 28, speed: 68, damage: 6, r: 14, aggro: 220}
+  def monster(:goblin), do: %{hp: 22, speed: 46, damage: 4, r: 16, aggro: 260}
   def monster(:skeleton), do: %{hp: 46, speed: 64, damage: 10, r: 13, aggro: 140}
   def monster(:wolf), do: %{hp: 34, speed: 118, damage: 9, r: 13, aggro: 240}
   def monster(:troll), do: %{hp: 180, speed: 50, damage: 20, r: 22, aggro: 100}

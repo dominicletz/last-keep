@@ -124,7 +124,7 @@ defmodule LastKeep.Game.SimTest do
   end
 
   test "the build timer opens a wave from the revealed directions" do
-    state = Sim.new("KEEP01", seed: 4, build_ticks: 1)
+    state = Sim.new("KEEP01", seed: 4, build_ticks: 1, hold: false)
     hints = state.hints
     state = Sim.tick(state)
 
@@ -223,7 +223,7 @@ defmodule LastKeep.Game.SimTest do
   end
 
   test "wave 1 goblins spawn on the visible field" do
-    state = Sim.new("KEEP01", seed: 1, build_ticks: 1)
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
     state = Sim.tick(state)
 
     assert state.wave == 1
@@ -231,13 +231,13 @@ defmodule LastKeep.Game.SimTest do
 
     for monster <- Sim.monsters(state) do
       dist = :math.sqrt(monster.x * monster.x + monster.y * monster.y)
-      assert dist > 160
-      assert dist < 240
+      assert dist > 100
+      assert dist < 140
     end
   end
 
   test "a warrior who chases the nearest goblin survives wave 1" do
-    state = Sim.new("KEEP01", seed: 1, build_ticks: 1)
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
     {:ok, state} = Sim.join(state, player("ada", :warrior))
     state = Sim.tick(state)
 
@@ -253,6 +253,59 @@ defmodule LastKeep.Game.SimTest do
     assert {:build, _} = state.phase
     assert state.keep.hp > 0
     assert state.kills >= 3
+  end
+
+  test "the night waits until the host starts" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    {:ok, state} = Sim.join(state, player("bo", :mage))
+    state = Enum.reduce(1..40, state, fn _, state -> Sim.tick(state) end)
+
+    assert state.hold
+    assert {:build, _} = state.phase
+    assert Sim.monsters(state) == []
+
+    state = Sim.release(state, "bo")
+    assert state.hold
+
+    state = Sim.release(state, "ada")
+    refute state.hold
+    state = Enum.reduce(1..199, state, fn _, state -> Sim.tick(state) end)
+    assert {:build, _} = state.phase
+    state = Sim.tick(state)
+    assert {:wave, _} = state.phase
+  end
+
+  test "a click that ends before the tick still places a wall" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    ax = ada.x + 40
+    ay = ada.y
+
+    state =
+      state
+      |> Sim.input("ada", %{"build" => "wall", "attack" => true, "ax" => ax, "ay" => ay})
+      |> Sim.input("ada", %{"build" => "wall", "attack" => false, "ax" => ax, "ay" => ay})
+      |> Sim.tick()
+
+    assert state.resources.wood < 48
+    assert Enum.any?(buildings(state), &(&1.kind == :wall))
+  end
+
+  test "restart keeps the same party and waits again" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("Ada", :warrior))
+    {:ok, state} = Sim.join(state, player("Bo", :mage))
+    state = %{state | phase: :over, kills: 3}
+    state = Sim.restart(state)
+
+    assert state.hold
+    assert {:build, _} = state.phase
+    assert state.players["Ada"].name == "Ada"
+    assert state.players["Ada"].hero == :warrior
+    assert state.players["Bo"].hero == :mage
+    assert state.players["Ada"].public_id == "p1"
   end
 
   test "a living scout reveals the next wave before the last five seconds" do

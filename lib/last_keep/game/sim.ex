@@ -18,11 +18,14 @@ defmodule LastKeep.Game.Sim do
     build: nil
   }
 
+  @empty_pressed %{attack: false, q: false, e: false, r: false, f: false}
+
   def new(code, opts \\ []) do
     seed = Keyword.get(opts, :seed, System.unique_integer([:positive]))
     seed = if seed < 1, do: 1, else: seed
     build = Keyword.get(opts, :build_ticks, Rules.first_build_ticks())
     keep_hp = Keyword.get(opts, :keep_hp, 900)
+    hold = Keyword.get(opts, :hold, true)
     rng = :rand.seed_s(:exsss, {seed, seed + 3, seed + 11})
     {hints, rng} = Waves.plan(1, rng)
 
@@ -30,6 +33,7 @@ defmodule LastKeep.Game.Sim do
       code: code,
       rng: rng,
       phase: {:build, build},
+      hold: hold,
       hints: hints,
       keep: %{hp: keep_hp, max_hp: keep_hp, r: 54.0}
     }
@@ -78,7 +82,17 @@ defmodule LastKeep.Game.Sim do
   def input(%State{} = state, id, payload) when is_map(payload) do
     case state.players[id] do
       %{connected: true} = player ->
-        put_player(state, %{player | input: parse_input(payload)})
+        next = parse_input(payload)
+
+        pressed = %{
+          attack: player.pressed.attack or rise(player.input.attack, next.attack),
+          q: player.pressed.q or rise(player.input.q, next.q),
+          e: player.pressed.e or rise(player.input.e, next.e),
+          r: player.pressed.r or rise(player.input.r, next.r),
+          f: player.pressed.f or rise(player.input.f, next.f)
+        }
+
+        put_player(state, %{player | input: next, pressed: pressed})
 
       _ ->
         state
@@ -164,6 +178,30 @@ defmodule LastKeep.Game.Sim do
 
   def score(%State{} = state), do: waves_survived(state) * 1000 + state.kills * 10
 
+  def release(%State{hold: true} = state, id) do
+    case state.players[id] do
+      %{public_id: "p1"} -> %{state | hold: false}
+      _ -> state
+    end
+  end
+
+  def release(%State{} = state, _id), do: state
+
+  def restart(%State{} = state) do
+    fresh = new(state.code, seed: System.unique_integer([:positive]))
+
+    state.players
+    |> Enum.sort_by(fn {_id, player} ->
+      player.public_id |> String.trim_leading("p") |> String.to_integer()
+    end)
+    |> Enum.reduce(fresh, fn {id, player}, sim ->
+      {:ok, sim} =
+        join(sim, %{id: id, name: player.name, hero: player.hero, connected: player.connected})
+
+      sim
+    end)
+  end
+
   defp bump(state), do: %{state | tick: state.tick + 1, events: []}
 
   defp reconnect(state, id, name, connected) do
@@ -206,7 +244,8 @@ defmodule LastKeep.Game.Sim do
       connected: connected,
       generation: 0,
       input: @empty_input,
-      prev: @empty_input
+      prev: @empty_input,
+      pressed: @empty_pressed
     }
 
     state
@@ -331,12 +370,14 @@ defmodule LastKeep.Game.Sim do
 
   defp maybe_attack(state, player, hero) do
     build = player.input.build
+    clicked = edged?(player, :attack)
+    on_monster = aimed_monster(state, player) != nil
 
     cond do
-      build && rising?(player, :attack) ->
+      build && clicked && not on_monster ->
         try_place(state, hero, build, player.input.ax, player.input.ay)
 
-      player.input.attack && hero.cooldowns.attack <= 0 ->
+      (player.input.attack or clicked) && hero.cooldowns.attack <= 0 ->
         cast(state, player, hero, :attack, Rules.kit(hero.hero).attack)
 
       true ->
@@ -345,8 +386,9 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp maybe_skill(state, player, hero, slot) do
-    if rising?(player, slot) and hero.cooldowns[slot] <= 0 do
-      cast(state, player, hero, slot, Map.get(Rules.kit(hero.hero), slot))
+    if edged?(player, slot) and hero.cooldowns[slot] <= 0 do
+      state = cast(state, player, hero, slot, Map.get(Rules.kit(hero.hero), slot))
+      event(state, %{type: "shot", x: hero.x, y: hero.y})
     else
       state
     end
@@ -355,7 +397,7 @@ defmodule LastKeep.Game.Sim do
   defp maybe_feed(state, player, hero) do
     near = hypot(hero.x, hero.y) < 100
 
-    if rising?(player, :f) and near and state.resources.food >= 5 do
+    if edged?(player, :f) and near and state.resources.food >= 5 do
       state = pay(state, %{wood: 0, gold: 0, food: 5})
       heal = 50
       keep = state.keep
@@ -369,6 +411,7 @@ defmodule LastKeep.Game.Sim do
   defp cast(state, _player, hero, slot, %{kind: :melee} = ability) do
     hero = start_cd(state, hero, slot, ability.cd)
     state = put_entity(state, hero)
+    state = event(state, %{type: "swing", x: hero.x, y: hero.y})
     range = ability.range
 
     monsters(state)
@@ -381,7 +424,7 @@ defmodule LastKeep.Game.Sim do
 
       state
       |> hurt_monster(monster.id, damage, Rules.kill_bonus(hero.hero))
-      |> event(%{type: "hit", x: monster.x, y: monster.y})
+      |> event(%{type: "hit", x: monster.x, y: monster.y, amount: damage})
     end)
     |> repair_near(hero, Map.get(ability, :repair, 0))
   end
@@ -391,6 +434,8 @@ defmodule LastKeep.Game.Sim do
     state = put_entity(state, hero)
     {dx, dy} = aim_dir(hero, state.players[hero.player_id].input)
     damage = scaled_damage(ability.damage, state, hero.hero, nil)
+
+    state = event(state, %{type: "shot", x: hero.x, y: hero.y})
 
     insert(state, %{
       type: :projectile,
@@ -714,7 +759,7 @@ defmodule LastKeep.Game.Sim do
         else
           state
           |> drop(projectile.id)
-          |> event(%{type: "hit", x: projectile.x, y: projectile.y})
+          |> event(%{type: "hit", x: monster.x, y: monster.y, amount: projectile.damage})
         end
     end
   end
@@ -727,7 +772,9 @@ defmodule LastKeep.Game.Sim do
       hypot(monster.x - projectile.x, monster.y - projectile.y) <= projectile.aoe + monster.r
     end)
     |> Enum.reduce(state, fn monster, state ->
-      hurt_monster(state, monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
+      state
+      |> hurt_monster(monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
+      |> event(%{type: "hit", x: monster.x, y: monster.y, amount: projectile.damage})
     end)
     |> event(%{type: "boom", x: projectile.x, y: projectile.y})
   end
@@ -961,6 +1008,8 @@ defmodule LastKeep.Game.Sim do
     %{state | phase: :over, keep: %{state.keep | hp: 0}}
   end
 
+  defp advance_phase(%{hold: true} = state), do: state
+
   defp advance_phase(%{phase: {:build, ticks}} = state) when ticks > 1 do
     %{state | phase: {:build, ticks - 1}}
   end
@@ -1007,7 +1056,7 @@ defmodule LastKeep.Game.Sim do
   defp spawn_group(state, group, wave) do
     Enum.reduce(1..group.count, state, fn i, state ->
       angle = group.angle + (i - group.count / 2) * 0.45
-      dist = 175 + rem(i * 13, 24)
+      dist = 108 + rem(i * 11, 18)
 
       spawn_monster(state, %{
         kind: group.kind,
@@ -1042,7 +1091,11 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp remember_input(state) do
-    players = Map.new(state.players, fn {id, player} -> {id, %{player | prev: player.input}} end)
+    players =
+      Map.new(state.players, fn {id, player} ->
+        {id, %{player | prev: player.input, pressed: @empty_pressed}}
+      end)
+
     %{state | players: players}
   end
 
@@ -1267,7 +1320,16 @@ defmodule LastKeep.Game.Sim do
     wrapped - :math.pi()
   end
 
+  defp aimed_monster(state, player) do
+    nearest(monsters(state), player.input.ax, player.input.ay, 28)
+  end
+
   defp rising?(player, key), do: Map.get(player.input, key) && not Map.get(player.prev, key)
+
+  # A tap can arrive and leave before the next tick. The edge sticks until that tick.
+  defp rise(was, now), do: now and not was
+
+  defp edged?(player, key), do: Map.get(player.pressed, key) or rising?(player, key)
 
   defp afford?(state, cost) do
     state.resources.wood >= Map.get(cost, :wood, 0) and

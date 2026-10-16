@@ -11,6 +11,7 @@ defmodule LastKeep.Game.Snapshot do
       phase: phase_name(state.phase),
       phase_ms: phase_ms(state.phase),
       enraged: state.enraged,
+      hold: state.hold,
       wave: state.wave,
       keep: %{hp: state.keep.hp, max: state.keep.max_hp, r: state.keep.r},
       resources: state.resources,
@@ -56,6 +57,9 @@ defmodule LastKeep.Game.Snapshot do
       hp: hero.hp,
       max: hero.max_hp,
       alive: hero.alive,
+      host: player.public_id == "p1",
+      range: kit.range,
+      costs: costs(player.hero),
       cds: %{
         attack: hero.cooldowns.attack * Rules.tick_ms(),
         q: hero.cooldowns.q * Rules.tick_ms(),
@@ -69,6 +73,14 @@ defmodule LastKeep.Game.Snapshot do
         r: kit.r.cd * Rules.tick_ms()
       }
     }
+  end
+
+  defp costs(hero) do
+    Map.new([:wall, :tower, :trap, :field, :forge, :mage_tower], fn kind ->
+      cost = Rules.cost(kind, hero)
+
+      {Atom.to_string(kind), %{wood: Map.get(cost, :wood, 0), gold: Map.get(cost, :gold, 0)}}
+    end)
   end
 
   defp monster(monster) do

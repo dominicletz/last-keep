@@ -12,6 +12,13 @@ const BUILD_LABEL = {
   forge: "5 Forge",
   mage_tower: "6 Spire"
 }
+const SKILL_NAME = {
+  warrior: { attack: "Strike", q: "Dash", e: "Guard", r: "Nova" },
+  mage: { attack: "Bolt", q: "Fireball", e: "Frost", r: "Meteor" },
+  scout: { attack: "Shot", q: "Dash", e: "Mark", r: "Volley" },
+  farmer: { attack: "Swing", q: "Sow", e: "Harvest", r: "Feast" },
+  engineer: { attack: "Mend", q: "Wall", e: "Trap", r: "Line" }
+}
 
 export function bootPlay(code) {
   const stage = document.querySelector("#stage")
@@ -102,6 +109,14 @@ function start(code, seat, ui) {
   let build = null
   let joined = false
   let aim = { x: 0, y: 0 }
+  const fx = []
+
+  ui.overlay.addEventListener("click", (event) => {
+    if (event.target.closest("[data-restart]")) {
+      event.preventDefault()
+      channel.push("restart", {})
+    }
+  })
 
   channel.join()
     .receive("ok", (snap) => {
@@ -125,15 +140,19 @@ function start(code, seat, ui) {
     paint(ui, snap, selfId, build)
   })
 
-  ui.view.canvas.addEventListener("pointermove", (event) => {
+  function look(event) {
     const hit = ui.view.aim(event.clientX, event.clientY)
     if (hit) aim = hit
-  })
+  }
+  ui.view.canvas.addEventListener("pointermove", look)
   ui.view.canvas.addEventListener("pointerdown", (event) => {
+    look(event)
     if (event.button === 0) input.attack = true
+    send()
   })
   window.addEventListener("pointerup", () => {
     input.attack = false
+    send()
   })
 
   window.addEventListener("keydown", (event) => {
@@ -152,6 +171,7 @@ function start(code, seat, ui) {
     if (["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "KeyR", "KeyF", "Space"].includes(event.code)) {
       event.preventDefault()
     }
+    send()
   })
   window.addEventListener("keyup", (event) => keys.delete(event.code))
 
@@ -169,9 +189,10 @@ function start(code, seat, ui) {
       build = build === button.dataset.build ? null : button.dataset.build
       refresh()
     }
+    if (button.dataset.start !== undefined && !button.disabled) channel.push("start", {})
   })
 
-  window.setInterval(() => {
+  function send() {
     if (!joined || !selfId || typing()) return
     const move = axes(keys)
     input.mx = move.x
@@ -184,7 +205,9 @@ function start(code, seat, ui) {
     input.f = keys.has("KeyF")
     input.build = build
     channel.push("input", input)
-  }, 50)
+  }
+
+  window.setInterval(send, 50)
 
   function paint(ui, snap, selfId, build) {
     ui.view.draw(snap, selfId)
@@ -197,6 +220,7 @@ function start(code, seat, ui) {
     stock.textContent = `Wood ${snap.resources.wood}  Food ${snap.resources.food}  Gold ${snap.resources.gold}`
     const heart = ui.hud.querySelector("[data-heart]")
     const hp = ui.hud.querySelector("[data-hp]")
+    const names = SKILL_NAME[me?.hero] || SKILL_NAME.warrior
     if (me) {
       heart.style.width = `${Math.max(0, (me.hp / me.max) * 100)}%`
       hp.textContent = me.alive ? `${me.hp} / ${me.max}` : "Down"
@@ -205,19 +229,34 @@ function start(code, seat, ui) {
         const left = me.cds[key]
         const max = me.cd_max[key] || 1
         node.style.height = left > 0 ? `${Math.min(100, (left / max) * 100)}%` : "0%"
+        const label = ui.hud.querySelector(`[data-skill-name="${key}"]`)
+        const seconds = left > 0 ? ` ${Math.ceil(left / 1000)}s` : ""
+        label.textContent = `${names[key]}${seconds}`
       }
     }
+    const start = ui.hud.querySelector("[data-start]")
+    start.hidden = !snap.hold
+    start.disabled = !me?.host
+    start.textContent = me?.host ? "Start the night" : "Waiting for the host"
     ui.hud.querySelectorAll("[data-build]").forEach((button) => {
-      button.classList.toggle("on", button.dataset.build === build)
+      const kind = button.dataset.build
+      const cost = me?.costs?.[kind]
+      const gold = cost?.gold ? ` ${cost.gold} gold` : ""
+      const wood = cost ? `${cost.wood} wood${gold}` : ""
+      button.innerHTML = `${BUILD_LABEL[kind]}<small>${wood}</small>`
+      button.classList.toggle("on", kind === build)
     })
+    const legal = !!me && Math.hypot(aim.x - me.x, aim.y - me.y) <= (me.range || 160) && Math.hypot(aim.x, aim.y) > 90
+    ui.view.ghost(build, aim.x, aim.y, legal)
     const roster = ui.hud.querySelector("[data-roster]")
     roster.innerHTML = (snap.players || [])
       .map((player) => {
         const width = Math.max(0, (player.hp / player.max) * 100)
-        return `<div class="who ${player.connected ? "" : "off"}"><span>${escapeHtml(player.name)}</span><span>${player.hero}</span><div class="meter"><span style="width:${width}%"></span></div></div>`
+        return `<div class="who ${player.connected ? "" : "off"}"><span>${escapeHtml(player.name)}</span><span>${escapeHtml(heroLabel(player.hero))}</span><div class="meter"><span style="width:${width}%"></span></div></div>`
       })
       .join("")
     drawHints(ui, snap)
+    drawFx(ui, snap, fx)
     if (snap.phase === "over") showOver(ui, snap)
     else ui.overlay.hidden = true
   }
@@ -234,16 +273,21 @@ function hudMarkup() {
     ["e", "E"],
     ["r", "R"]
   ]
-    .map(([key, label]) => `<div class="skill" data-skill="${key}">${label}<div class="cool"></div></div>`)
+    .map(
+      ([key, label]) =>
+        `<div class="skill" data-skill="${key}"><b>${label}</b><small data-skill-name="${key}"></small><div class="cool"></div></div>`
+    )
     .join("")
   const builds = BUILD.map((kind) => `<button type="button" class="build" data-build="${kind}">${BUILD_LABEL[kind]}</button>`).join("")
   return `
     <div class="hud-top">
-      <div class="chip"><b data-wave>Wave</b><div data-clock></div></div>
+      <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-next></div></div>
+      <button type="button" data-start hidden>Start the night</button>
       <div class="chip" data-stock></div>
       <button type="button" data-copy>Copy invite</button>
     </div>
     <div class="hint-layer" data-hints></div>
+    <div class="hint-layer" data-fx></div>
     <div class="hud-bottom">
       <div class="heart"><div>You <span data-hp></span></div><div class="meter"><span data-heart style="width:100%"></span></div><div>Keep <span data-keep></span></div></div>
       <div class="skills">${skills}</div>
@@ -254,24 +298,50 @@ function hudMarkup() {
 }
 
 function clockText(snap) {
+  if (snap.hold) return "Waiting to start"
   const seconds = Math.ceil(snap.phase_ms / 1000)
-  const label = snap.phase === "build" ? "Build" : snap.enraged ? "Enraged" : "Enrage"
-  return `${label} ${seconds}s`
+  if (snap.phase === "build") return `Night in ${seconds}s`
+  if (snap.enraged) return "Frenzied. They are faster"
+  return `Frenzy in ${seconds}s`
 }
 
 function drawHints(ui, snap) {
   const layer = ui.hud.querySelector("[data-hints]")
-  const waveHints = (snap.hints || []).map((hint) => {
-    const worldX = Math.cos(hint.angle) * 620
-    const worldY = Math.sin(hint.angle) * 620
-    return marker(ui, worldX, worldY, `${hint.kind} ${hint.count}`)
-  })
   const offscreen = (snap.monsters || [])
     .map((monster) => marker(ui, monster.x, monster.y, monster.kind, true))
     .filter(Boolean)
-  layer.innerHTML = [...waveHints, ...offscreen].join("")
+  layer.innerHTML = offscreen.join("")
+  const next = ui.hud.querySelector("[data-next]")
+  const hints = snap.hints || []
+  next.textContent =
+    snap.phase === "build" && hints.length
+      ? `Next ${hints.map((hint) => `${hint.kind} ${hint.count}`).join(", ")}`
+      : ""
   const keep = ui.hud.querySelector("[data-keep]")
   if (keep) keep.textContent = `${snap.keep.hp}/${snap.keep.max}`
+}
+
+function drawFx(ui, snap, fx) {
+  const now = performance.now()
+  for (const ev of snap.events || []) {
+    if (ev.type === "hit" || ev.type === "swing" || ev.type === "shot" || ev.type === "deny") {
+      fx.push({ ...ev, until: now + (ev.type === "hit" ? 700 : 280) })
+    }
+  }
+  const live = fx.filter((item) => item.until > now)
+  fx.length = 0
+  fx.push(...live)
+  const layer = ui.hud.querySelector("[data-fx]")
+  layer.innerHTML = live
+    .map((item) => {
+      const point = ui.view.project(item.x, item.y)
+      const left = (point.x * 0.5 + 0.5) * 100
+      const top = (-point.y * 0.5 + 0.5) * 100
+      if (item.type === "hit") return `<div class="floater" style="left:${left}%;top:${top}%">${item.amount || ""}</div>`
+      if (item.type === "deny") return `<div class="floater deny" style="left:${left}%;top:${top}%">can't</div>`
+      return `<div class="slash" style="left:${left}%;top:${top}%"></div>`
+    })
+    .join("")
 }
 
 function marker(ui, worldX, worldY, label, onlyOffscreen) {
@@ -293,7 +363,7 @@ function showOver(ui, snap) {
     <div class="panel">
       <h2>The keep has fallen</h2>
       <p>Wave ${snap.wave}. Survived ${snap.waves_survived}. ${snap.kills} kills. Score ${snap.score}.</p>
-      <p><a class="button" href="/">New keep</a></p>
+      <p><button type="button" data-restart>New keep</button></p>
       <h2>High scores</h2>
       <ol id="score-list"></ol>
     </div>`
@@ -316,6 +386,12 @@ function typing(event) {
     return true
   }
   return false
+}
+
+function heroLabel(hero) {
+  const name = String(hero || "")
+  if (!name) return ""
+  return name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 function escapeHtml(value) {

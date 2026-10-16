@@ -35,6 +35,16 @@ defmodule LastKeepWeb.GameChannel do
     {:reply, :ok, socket}
   end
 
+  def handle_in("start", _payload, socket) do
+    Room.start(socket.assigns.code, socket.assigns.player_id)
+    {:reply, :ok, socket}
+  end
+
+  def handle_in("restart", _payload, socket) do
+    Room.restart(socket.assigns.code)
+    {:reply, :ok, socket}
+  end
+
   def handle_in(_event, _payload, socket), do: {:noreply, socket}
 
   @impl true

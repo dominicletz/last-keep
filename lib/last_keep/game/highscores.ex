@@ -29,11 +29,16 @@ defmodule LastKeep.Game.Highscores do
     {:reply, :ok, scores}
   end
 
-  def handle_call(:list, _from, scores), do: {:reply, scores, scores}
+  def handle_call(:list, _from, scores), do: {:reply, Enum.filter(scores, &shown?/1), scores}
 
   def handle_call(:reset, _from, _scores) do
     save([])
     {:reply, :ok, []}
+  end
+
+  defp shown?(row) do
+    is_integer(row.score) and row.score > 0 and
+      Enum.any?(row.names || [], fn name -> is_binary(name) and String.trim(name) != "" end)
   end
 
   defp normalize(entry) do
