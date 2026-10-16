@@ -46,5 +46,11 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-029 | Dominic manual | gameplay | high | Monsters spawn on top of the yard. Push the spawn ring out, enlarge the map, and keep the time to reach the keep fair. | open |
 | LK-030 | Dominic manual | gameplay/graphics | medium | A ring of trees is only scenery. Players cannot chop it. Make those trees harvestable, or draw them so they are obviously not wood, and say which in the interaction doc. | open |
 | LK-031 | Dominic manual | gameplay | high | No keep upgrade. Spending wood and gold should enlarge the buildable town and pull the camera back, with no card pick. | open |
+| LK-032 | Bram, round 1 | gameplay | high | After one wall the corner said "Too far" and a pale dot sat on the grass. No build range was drawn on the yard, and the trap never landed. `playtests/round-1/shots/02-Bram.png` | open |
+| LK-033 | Bram, round 1 | graphics | high | The wall that cost 4 wood reads as a short black bar. A brown block appeared on the yard in the same beat, so the builder could not tell which shape was the wall. `playtests/round-1/shots/02-Bram.png` | open |
+| LK-034 | Bram, round 1 | gameplay | high | The keep fell on wave 1 with 0 kills and 0 score while wood was still 40 and no trap was down. Re-check of LK-016: this room did not leave the keep high. The frenzy shot still showed 900/900 with one red stacked shape already on the yard. `playtests/round-1/shots/04-Bram.png`, `playtests/round-1/shots/05-Bram.png` | open |
+| LK-035 | Bram, round 1 | graphics | medium | The only enemy on Bram's screen was one stacked red shape with a pale head and a white 2 on the body. `playtests/round-1/shots/04-Bram.png` | open |
+| LK-036 | Bram, round 1 | graphics | medium | Bram's health read 81/125 during frenzy and 125/125 on the fallen screen. `playtests/round-1/shots/04-Bram.png`, `playtests/round-1/shots/05-Bram.png` | open |
+| LK-037 | Bram, round 1 | graphics | low | The invite button is clipped to "Copy invit". `playtests/round-1/shots/01-Bram.png` | open |
 
 No implemented hero is isolated. Farmer, engineer, scout, warrior, and mage each have an outgoing edge in `docs/interactions.json`.
