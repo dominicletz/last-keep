@@ -1,0 +1,10 @@
+ts	phase	decision	why	evidence	result
+2026-10-16T17:35:00Z	start	Started the Last Keep v1 run from CONCEPT.md and an empty repo	The owner asked for a playable co-op game, tests, and a deploy to agentyard.letz.tw	CONCEPT.md	open
+2026-10-16T17:40:00Z	frame	Done means the site serves the game, a WebSocket joins a room, CI is green, and the PR is merged	Those are the checks the owner named	README.md	open
+2026-10-16T17:45:00Z	design	One pure State and a Sim.tick reducer inside a room GenServer	The owner fixed the process model, and a second design pass would restate it	lib/last_keep/game/sim.ex	tests green
+2026-10-16T17:50:00Z	design	Full JSON snapshots at 20 Hz, public player ids, secret reconnect tokens	Deltas and shared tokens were the wrong risks for fifteen players	lib/last_keep/game/snapshot.ex	tests green
+2026-10-16T17:55:00Z	workflow	Installed pstack with npx skills add backnotprop/pstack --agent cursor --copy	Future agents in this repo need the skills, and the CLI wrote them to .agents/skills	skills-lock.json	installed
+2026-10-16T18:00:00Z	sim	Kept hero kits, wave plans, and building costs in tables	The tick should read data instead of growing a new branch per hero	lib/last_keep/game/rules.ex	mix test 27 passed
+2026-10-16T18:21:05Z	verify	The game-over overlay was painting over the match because display:grid beat the hidden attribute	Clicks missed the join form and the canvas read as black	priv/static/css/game.css	fixed, two browsers joined
+2026-10-16T18:21:05Z	client	Dusk lighting stays readable after the Lambert 1/pi shade, and trees sit inside the first camera view	A black frame is not a playable keep	assets/js/render.js	screenshot avg about 100
+2026-10-16T18:21:05Z	client	Build highlight updates from the key and click that change it	A 100ms repaint was only there to refresh that highlight	assets/js/play.js	comment-sicko

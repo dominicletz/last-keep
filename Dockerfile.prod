@@ -1,0 +1,58 @@
+ARG ELIXIR_VERSION=1.18.4
+ARG OTP_VERSION=28
+
+FROM elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION} AS builder
+
+ARG MIX_ENV=prod
+
+ENV MIX_ENV=${MIX_ENV} \
+    LANG=C.UTF-8
+
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends build-essential git nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN mix local.hex --force && mix local.rebar --force
+
+COPY mix.exs mix.lock ./
+RUN mix deps.get --only ${MIX_ENV}
+
+COPY assets/package.json assets/package-lock.json ./assets/
+RUN npm ci --prefix assets
+
+COPY config ./config
+COPY lib ./lib
+COPY priv ./priv
+COPY assets/js ./assets/js
+
+RUN mix assets.deploy \
+    && mix compile \
+    && mix release
+
+# The official Elixir image is Debian trixie. The runner stays on that glibc.
+FROM debian:trixie-slim AS runner
+
+ENV LANG=C.UTF-8 \
+    MIX_ENV=prod \
+    HOME=/home/lastkeep
+
+RUN apt-get update -qq \
+    && apt-get install -y --no-install-recommends adduser ca-certificates curl libncurses6 libstdc++6 openssl \
+    && rm -rf /var/lib/apt/lists/* \
+    && addgroup --system lastkeep \
+    && adduser --system --ingroup lastkeep --home /home/lastkeep lastkeep \
+    && mkdir -p /data \
+    && chown lastkeep:lastkeep /data
+
+WORKDIR /app
+
+COPY --from=builder --chown=lastkeep:lastkeep /app/_build/prod/rel/last_keep ./
+COPY --chown=lastkeep:lastkeep docker-entrypoint.sh ./
+
+USER lastkeep
+
+EXPOSE 4000
+
+CMD ["/bin/sh", "/app/docker-entrypoint.sh"]
