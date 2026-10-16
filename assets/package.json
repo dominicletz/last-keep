@@ -1,7 +1,15 @@
 {
   "name": "last-keep",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test js/input.test.js js/present.test.js",
+    "check": "tsc --noEmit -p jsconfig.json"
+  },
   "dependencies": {
     "three": "0.170.0"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }

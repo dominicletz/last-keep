@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { present } from "./present"
 
 const HERO_COLOR = {
   warrior: 0x8e99a6,
@@ -9,11 +10,11 @@ const HERO_COLOR = {
 }
 
 const MONSTER_COLOR = {
-  goblin: 0x6a9a38,
-  skeleton: 0xd8d2c4,
-  wolf: 0x3a3e46,
-  troll: 0x4e7a3a,
-  boss: 0x46385f
+  goblin: 0xc43a22,
+  skeleton: 0xe8e0d0,
+  wolf: 0x2c3344,
+  troll: 0x2f6a32,
+  boss: 0x6a3a8a
 }
 
 const BUILDING_COLOR = {
@@ -26,7 +27,7 @@ const BUILDING_COLOR = {
 }
 
 export function createView(stage) {
-  const renderer = new THREE.WebGLRenderer({ antialias: false })
+  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true })
   renderer.setSize(480, 270, false)
   renderer.setPixelRatio(1)
   renderer.shadowMap.enabled = true
@@ -39,7 +40,7 @@ export function createView(stage) {
   scene.fog = new THREE.Fog(0x8a4030, 760, 1500)
 
   const aspect = 480 / 270
-  const view = 168
+  const view = 230
   const camera = new THREE.OrthographicCamera(-view * aspect, view * aspect, view, -view, 0.1, 2400)
 
   scene.add(new THREE.HemisphereLight(0xffb070, 0x24361c, 1.15))
@@ -153,7 +154,7 @@ export function createView(stage) {
         scene.add(mesh)
       }
       mesh.position.set(row.x, 0, row.y)
-      if (mesh.userData.face) mesh.rotation.y = -row.facing
+      if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
       if (mesh.userData.hp) {
         const ratio = row.max ? row.hp / row.max : 1
         mesh.userData.hp.scale.x = Math.max(ratio, 0.05)
@@ -214,21 +215,32 @@ export function createView(stage) {
       const keepRatio = snap.keep.max ? snap.keep.hp / snap.keep.max : 1
       keep.scale.y = 0.65 + keepRatio * 0.35
 
-      sync("hero", snap.players || [], (row) => {
+      const drawn = present(snap)
+
+      sync("hero", drawn.heroes, (row) => {
         const weapon = new THREE.Mesh(new THREE.BoxGeometry(4, 16, 4), mat(0xd8d2c4))
         weapon.position.set(10, 14, 0)
         weapon.castShadow = true
-        return figure(HERO_COLOR[row.hero] || 0x888888, row.hero === "warrior" ? 1.15 : 1, weapon)
-      })
-
-      sync("monster", snap.monsters || [], (row) => {
-        const scale = row.kind === "boss" ? 2.1 : row.kind === "troll" ? 1.6 : row.kind === "wolf" ? 1.15 : 1
-        const mesh = figure(MONSTER_COLOR[row.kind] || 0x668844, scale)
-        if (row.kind === "wolf") mesh.scale.z = 1.6
+        const mesh = figure(HERO_COLOR[row.hero] || 0x888888, row.hero === "warrior" ? 1.15 : 1, weapon)
+        mesh.userData.role = "hero"
         return mesh
       })
 
-      sync("building", snap.buildings || [], (row) => {
+      sync("monster", drawn.monsters, (row) => {
+        const scale = row.kind === "boss" ? 2.4 : row.kind === "troll" ? 1.9 : row.kind === "wolf" ? 1.35 : 1.45
+        const mesh = figure(MONSTER_COLOR[row.kind] || 0xc43a22, scale)
+        if (row.kind === "wolf") mesh.scale.z = 1.6
+        const mark = new THREE.Mesh(
+          new THREE.BoxGeometry(6, 4, 4),
+          new THREE.MeshBasicMaterial({ color: 0xff00aa })
+        )
+        mark.position.set(0, 30 * scale, 5)
+        mesh.add(mark)
+        mesh.userData.role = "monster"
+        return mesh
+      })
+
+      sync("building", drawn.buildings, (row) => {
         const group = new THREE.Group()
         if (row.kind === "wall") group.add(boxMesh(30, 22, 12, BUILDING_COLOR.wall, 11))
         else if (row.kind === "tower") {
@@ -281,6 +293,12 @@ export function createView(stage) {
       )
 
       renderer.render(scene, camera)
+      const counts = { heroes: 0, monsters: 0 }
+      scene.traverse((object) => {
+        if (object.userData?.role === "hero") counts.heroes += 1
+        if (object.userData?.role === "monster") counts.monsters += 1
+      })
+      window.__lastKeep = { counts, phase: snap.phase, wave: snap.wave }
     }
   }
 }

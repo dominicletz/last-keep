@@ -222,6 +222,39 @@ defmodule LastKeep.Game.SimTest do
     assert engineer.resources.wood > warrior.resources.wood
   end
 
+  test "wave 1 goblins spawn on the visible field" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1)
+    state = Sim.tick(state)
+
+    assert state.wave == 1
+    assert Sim.monsters(state) != []
+
+    for monster <- Sim.monsters(state) do
+      dist = :math.sqrt(monster.x * monster.x + monster.y * monster.y)
+      assert dist > 160
+      assert dist < 240
+    end
+  end
+
+  test "a warrior who chases the nearest goblin survives wave 1" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    state = Sim.tick(state)
+
+    state =
+      Enum.reduce_while(1..4_000, state, fn _, state ->
+        cond do
+          state.phase == :over -> {:halt, state}
+          match?({:build, _}, state.phase) -> {:halt, state}
+          true -> {:cont, chase_nearest(state, "ada")}
+        end
+      end)
+
+    assert {:build, _} = state.phase
+    assert state.keep.hp > 0
+    assert state.kills >= 3
+  end
+
   test "a living scout reveals the next wave before the last five seconds" do
     hidden = Sim.new("KEEP01", seed: 1, build_ticks: 400)
     snap = Snapshot.render(hidden)
@@ -248,6 +281,37 @@ defmodule LastKeep.Game.SimTest do
       })
 
     Sim.tick(state)
+  end
+
+  defp chase_nearest(state, id) do
+    me = hero(state, id)
+
+    case Sim.monsters(state) do
+      [] ->
+        Sim.tick(state)
+
+      monsters ->
+        monster =
+          Enum.min_by(monsters, fn monster ->
+            :math.sqrt(
+              (monster.x - me.x) * (monster.x - me.x) + (monster.y - me.y) * (monster.y - me.y)
+            )
+          end)
+
+        dx = monster.x - me.x
+        dy = monster.y - me.y
+        length = max(:math.sqrt(dx * dx + dy * dy), 0.001)
+
+        state
+        |> Sim.input(id, %{
+          "mx" => dx / length,
+          "my" => dy / length,
+          "ax" => monster.x,
+          "ay" => monster.y,
+          "attack" => true
+        })
+        |> Sim.tick()
+    end
   end
 
   defp player(id, hero), do: %{id: id, name: id, hero: hero, connected: true}

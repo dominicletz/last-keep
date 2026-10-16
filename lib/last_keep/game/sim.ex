@@ -1006,8 +1006,8 @@ defmodule LastKeep.Game.Sim do
 
   defp spawn_group(state, group, wave) do
     Enum.reduce(1..group.count, state, fn i, state ->
-      angle = group.angle + (i - group.count / 2) * 0.12
-      dist = 960 + rem(i * 37, 50)
+      angle = group.angle + (i - group.count / 2) * 0.45
+      dist = 175 + rem(i * 13, 24)
 
       spawn_monster(state, %{
         kind: group.kind,

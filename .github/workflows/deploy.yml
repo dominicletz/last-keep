@@ -72,3 +72,18 @@ jobs:
             -p "$DEPLOY_PORT" \
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd '$DEPLOY_PATH' && IMAGE_TAG='$IMAGE_TAG' GHCR_USERNAME='$GHCR_USERNAME' GITHUB_TOKEN='$GITHUB_TOKEN' DEPLOY_PATH='$DEPLOY_PATH' bash remote.sh"
+
+      - name: Install the browser smoke harness
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Prove the live game in a browser
+        env:
+          BASE_URL: https://agentyard.letz.tw
+        run: |
+          set -eu
+          npm ci
+          npx playwright install chromium --with-deps
+          npx playwright test

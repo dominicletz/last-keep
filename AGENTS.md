@@ -6,6 +6,8 @@ Last Keep is an authoritative multiplayer game. Elixir owns the simulation. The 
 
 pstack is the workflow for this repo. The skills are installed under `.agents/skills` from [backnotprop/pstack](https://github.com/backnotprop/pstack), targeted at Cursor (`npx skills add backnotprop/pstack --agent cursor --copy`). Use poteto-mode for feature work. `skills-lock.json` records the installed versions. Restore them with `npx skills experimental_install` when the lockfile is the source you trust.
 
+Before you say a change is done, run `.agents/skills/verify-last-keep/SKILL.md`. That skill is the definition of done. It drives two real browsers against the running game. A green `mix test` is not a substitute.
+
 ## Layout
 
 - `lib/last_keep/game/sim.ex` is the pure tick. A `State` struct is the whole world. `phase` is `{:build, ticks}`, `{:wave, ticks}`, or `:over`.
@@ -35,9 +37,15 @@ mix assets.setup
 npm ci --prefix assets
 mix assets.build
 mix test
+npm test --prefix assets
+npm run check --prefix assets
+npm ci
+npx playwright test
 ```
 
-`mix test` covers room membership, reconnect, combat, wave plans, the HTTP API, and a channel with three clients. Tests that touch the room supervisor are `async: false` because the registry is a single process.
+`mix test` covers room membership, reconnect, combat, wave plans, the HTTP API, a channel with three clients, and a warrior who clears wave 1. Tests that touch the room supervisor are `async: false` because the registry is a single process.
+
+`npx playwright test` is the browser proof. It creates a room, opens the invite in a second browser, and waits until monsters are on the canvas. Set `BASE_URL` to point it at a deployed site. CI and the deploy workflow both run it.
 
 ## Deploy
 

@@ -70,6 +70,7 @@ defmodule LastKeep.Game.Waves do
   defp count_for(wave, :troll), do: 1 + div(wave, 7)
   defp count_for(wave, :wolf), do: 2 + div(wave, 3)
   defp count_for(wave, :skeleton), do: 2 + div(wave, 2)
+  defp count_for(1, :goblin), do: 2
   defp count_for(wave, :goblin), do: 3 + div(wave, 2)
 
   defp angle(rng) do

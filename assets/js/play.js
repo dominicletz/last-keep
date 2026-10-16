@@ -1,6 +1,7 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
+import { axes, seatFromQuery } from "./input"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const BUILD_LABEL = {
@@ -18,42 +19,62 @@ export function bootPlay(code) {
   const join = document.querySelector("#join-game")
   const overlay = document.querySelector("#overlay")
   const view = createView(stage)
+  const ui = { stage, hud, join, overlay, view }
   const saved = readSeat(code)
+  const queried = seatFromQuery(window.location.search)
+
+  join.addEventListener("submit", (event) => {
+    event.preventDefault()
+    const name = join.querySelector("#player-name").value
+    const hero = join.querySelector("input[name=hero]:checked").value
+    const token = crypto.randomUUID().replaceAll("-", "")
+    enter(code, { token, name, hero }, ui)
+  })
 
   if (saved) {
     join.hidden = true
-    start(code, saved, { stage, hud, join, overlay, view })
+    start(code, saved, ui)
+  } else if (queried) {
+    prefill(join, queried.name, queried.hero)
+    join.hidden = true
+    const token = crypto.randomUUID().replaceAll("-", "")
+    enter(code, { token, name: queried.name, hero: queried.hero }, ui)
   } else {
-    const name = join.querySelector("#player-name")
-    name.value = localStorage.getItem("lastkeep-name") || ""
-    join.addEventListener("submit", async (event) => {
-      event.preventDefault()
-      const error = join.querySelector("#join-error")
-      error.hidden = true
-      const hero = join.querySelector("input[name=hero]:checked").value
-      const token = crypto.randomUUID().replaceAll("-", "")
-      try {
-        const response = await fetch(`/api/rooms/${code}/join`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ name: name.value, hero, token })
-        })
-        const body = await response.json()
-        if (!response.ok) {
-          error.hidden = false
-          error.textContent = body.error === "full" ? "This keep is full." : "Could not join."
-          return
-        }
-        const seat = { token: body.token, name: name.value.trim(), hero }
-        localStorage.setItem("lastkeep-name", seat.name)
-        localStorage.setItem(`lastkeep:${code}`, JSON.stringify(seat))
-        join.hidden = true
-        start(code, seat, { stage, hud, join, overlay, view })
-      } catch (_err) {
-        error.hidden = false
-        error.textContent = "The keep did not answer."
-      }
+    prefill(join, localStorage.getItem("lastkeep-name") || "", "warrior")
+  }
+}
+
+function prefill(join, name, hero) {
+  join.querySelector("#player-name").value = name
+  const radio = join.querySelector(`input[value="${hero}"]`)
+  if (radio) radio.checked = true
+}
+
+async function enter(code, seat, ui) {
+  const error = ui.join.querySelector("#join-error")
+  error.hidden = true
+  try {
+    const response = await fetch(`/api/rooms/${code}/join`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: seat.name, hero: seat.hero, token: seat.token })
     })
+    const body = await response.json()
+    if (!response.ok) {
+      ui.join.hidden = false
+      error.hidden = false
+      error.textContent = body.error === "full" ? "This keep is full." : "Could not join."
+      return
+    }
+    const stored = { token: body.token, name: seat.name.trim(), hero: seat.hero }
+    localStorage.setItem("lastkeep-name", stored.name)
+    localStorage.setItem(`lastkeep:${code}`, JSON.stringify(stored))
+    ui.join.hidden = true
+    start(code, stored, ui)
+  } catch (_err) {
+    ui.join.hidden = false
+    error.hidden = false
+    error.textContent = "The keep did not answer."
   }
 }
 
@@ -238,46 +259,30 @@ function clockText(snap) {
   return `${label} ${seconds}s`
 }
 
-function axes(keys) {
-  // The camera sits on the +x +z diagonal, so W moves toward the top of the screen.
-  const f = Math.SQRT1_2
-  let x = 0
-  let y = 0
-  if (keys.has("KeyW")) {
-    x -= f
-    y -= f
-  }
-  if (keys.has("KeyS")) {
-    x += f
-    y += f
-  }
-  if (keys.has("KeyD")) {
-    x += f
-    y -= f
-  }
-  if (keys.has("KeyA")) {
-    x -= f
-    y += f
-  }
-  const length = Math.hypot(x, y)
-  if (length > 1) return { x: x / length, y: y / length }
-  return { x, y }
-}
-
 function drawHints(ui, snap) {
   const layer = ui.hud.querySelector("[data-hints]")
-  layer.innerHTML = (snap.hints || [])
-    .map((hint) => {
-      const worldX = Math.cos(hint.angle) * 620
-      const worldY = Math.sin(hint.angle) * 620
-      const point = ui.view.project(worldX, worldY)
-      const x = Math.max(0.18, Math.min(0.72, point.x * 0.5 + 0.5))
-      const y = Math.max(0.18, Math.min(0.68, -point.y * 0.5 + 0.5))
-      return `<div class="hint-arrow" style="left:${x * 100}%;top:${y * 100}%">${hint.kind} ${hint.count}</div>`
-    })
-    .join("")
+  const waveHints = (snap.hints || []).map((hint) => {
+    const worldX = Math.cos(hint.angle) * 620
+    const worldY = Math.sin(hint.angle) * 620
+    return marker(ui, worldX, worldY, `${hint.kind} ${hint.count}`)
+  })
+  const offscreen = (snap.monsters || [])
+    .map((monster) => marker(ui, monster.x, monster.y, monster.kind, true))
+    .filter(Boolean)
+  layer.innerHTML = [...waveHints, ...offscreen].join("")
   const keep = ui.hud.querySelector("[data-keep]")
   if (keep) keep.textContent = `${snap.keep.hp}/${snap.keep.max}`
+}
+
+function marker(ui, worldX, worldY, label, onlyOffscreen) {
+  const point = ui.view.project(worldX, worldY)
+  const x = point.x * 0.5 + 0.5
+  const y = -point.y * 0.5 + 0.5
+  const inside = x > 0.08 && x < 0.92 && y > 0.12 && y < 0.78
+  if (onlyOffscreen && inside) return ""
+  const left = Math.max(0.14, Math.min(0.86, x)) * 100
+  const top = Math.max(0.16, Math.min(0.72, y)) * 100
+  return `<div class="hint-arrow" style="left:${left}%;top:${top}%">${label}</div>`
 }
 
 function showOver(ui, snap) {

@@ -1,0 +1,24 @@
+const { defineConfig } = require("@playwright/test")
+
+const baseURL = process.env.BASE_URL || "http://127.0.0.1:4000"
+
+module.exports = defineConfig({
+  testDir: "e2e",
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
+  outputDir: "tmp/playwright-output",
+  retries: process.env.CI ? 1 : 0,
+  use: {
+    baseURL,
+    viewport: { width: 1280, height: 800 },
+    launchOptions: process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}
+  },
+  webServer: process.env.BASE_URL
+    ? undefined
+    : {
+        command: "mix phx.server",
+        url: "http://127.0.0.1:4000",
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000
+      }
+})
