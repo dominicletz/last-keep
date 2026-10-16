@@ -31,10 +31,10 @@ Inspired by Kingdom Two Crowns: waves are slower, with a long economy and
 building phase between them.
 
 - Players grow fields, gather resources, and build.
-- A short (about 15 seconds) shop / card pick between waves offers roguelike
-  upgrades.
-- Open question: how the short card pick and the long building phase fit
-  together (for example, the card pick at the start of each building phase).
+- There is no card pick between waves. Roguelike progression comes from what
+  the group builds and finds during the economy phase instead, for example a
+  mage tower that unlocks spell upgrades, a forge that improves weapons, or
+  relics dropped by bosses and elites.
 
 ## City building
 
