@@ -217,19 +217,21 @@ input[type="text"], input:not([type="radio"]) {
   position: absolute;
   color: #fff4d2;
   font-weight: 700;
-  font-size: 1.45rem;
-  text-shadow: 2px 2px 0 #000;
-  animation: float-up 1.1s ease-out forwards;
+  font-size: 2.15rem;
+  letter-spacing: 0.02em;
+  text-shadow: 3px 3px 0 #000;
+  animation: float-up 1.25s ease-out forwards;
+  pointer-events: none;
 }
 .floater.death {
   color: #ffe08a;
-  font-size: 1.7rem;
+  font-size: 2.4rem;
 }
 .floater.boom {
   color: #ff7a2a;
-  font-size: 1.5rem;
+  font-size: 2.2rem;
 }
-.floater.deny { color: #ffb15a; font-size: 1rem; }
+.floater.deny { color: #ffb15a; font-size: 1.15rem; }
 .bonuses { max-width: 16rem; font-size: 0.72rem; line-height: 1.3; }
 [data-build-reason] { color: #ffb15a; margin-top: 0.2rem; max-width: 14rem; }
 @keyframes float-up {

@@ -96,15 +96,18 @@ async function invalidPlacementExplains(page) {
   )
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
   expect(await page.evaluate(() => window.__lastKeep.buildings)).toBe(0)
+  await page.waitForTimeout(2600)
+  await expect(page.locator("[data-build-reason]")).toBeHidden()
 }
 
 async function placeWall(page) {
   const wood = await page.evaluate(() => window.__lastKeep.wood)
   const armed = await page.locator('[data-build="wall"]').evaluate((node) => node.classList.contains("on"))
   if (!armed) await page.keyboard.press("Digit1")
+  await page.evaluate(() => window.__lastKeepTest.blur())
   const spot = await page.evaluate(() => {
     const me = window.__lastKeep.self
-    return window.__lastKeep.toClient(me.x + 48, me.y + 8)
+    return window.__lastKeep.toClient(me.x + 100, me.y + 36)
   })
   await page.mouse.click(spot.x, spot.y)
   await page.waitForFunction(
@@ -140,6 +143,7 @@ function blankNotes() {
     boom: false,
     fireball: false,
     nan: false,
+    rising: false,
     unstable: false,
     waves: []
   }
@@ -155,6 +159,11 @@ async function sample(tab, notes) {
       fx,
       wave,
       floaters,
+      rising: [...document.querySelectorAll("[data-fx] .floater")].some((node) => {
+        const style = getComputedStyle(node)
+        const anim = node.getAnimations()[0]
+        return parseFloat(style.fontSize) >= 24 && String(style.animationName).includes("float-up") && anim && anim.currentTime > 40
+      }),
       log: game.log || [],
       kinds: game.kinds || [],
       projectiles: game.projectiles || []
@@ -166,6 +175,7 @@ async function sample(tab, notes) {
   if (row.fx.includes("Slain")) notes.slain = true
   if (row.fx.includes("Boom")) notes.boom = true
   if (row.floaters.some((left) => !left || left.includes("NaN"))) notes.nan = true
+  if (row.rising) notes.rising = true
   for (const ev of row.log) {
     if (ev.type === "hit" && ev.amount > 0) notes.hit = true
     if (ev.type === "death") notes.death = true
@@ -280,6 +290,7 @@ function assertCombat(notes) {
   expect(notes.fireball).toBe(true)
   expect(notes.boom).toBe(true)
   expect(notes.nan).toBe(false)
+  expect(notes.rising).toBe(true)
 }
 
 function assertWaveStable(notes) {
@@ -317,6 +328,7 @@ async function twoPlayerNight(browser) {
   await expect(page.locator('[data-skill-name="attack"]')).toHaveText("Strike")
   await expect(friend.locator('[data-skill-name="q"]')).toHaveText("Fireball")
   await expect(page.locator('[data-build="wall"]')).toContainText("8 wood")
+  await expect(page.locator("[data-score]")).toHaveText("Score 0")
   await assertBonuses(page)
   await page.screenshot({ path: shot("coop-host.png") })
   await friend.screenshot({ path: shot("coop-guest.png") })
@@ -324,6 +336,7 @@ async function twoPlayerNight(browser) {
   await focusClickDoesNotAttack(page)
   await clickDoesNotSpendWithoutABuilding(page)
   await invalidPlacementExplains(page)
+  await movementIsInterpolated(page)
   await placeWall(page)
 
   await expect(page.locator("[data-start]")).toHaveText("Start the night")
@@ -342,6 +355,9 @@ async function twoPlayerNight(browser) {
   const notes = blankNotes()
   await castFireball(friend, notes)
   await fight(page, friend, notes)
+  await friend.waitForFunction(() => (window.__lastKeep.log || []).some((row) => row.type === "boom"), {
+    timeout: 5_000
+  })
   await page.waitForFunction(() => window.__lastKeep.kills >= 1, { timeout: 30_000 })
   await page.waitForFunction(
     () =>
@@ -356,17 +372,102 @@ async function twoPlayerNight(browser) {
   assertCombat(notes)
   assertWaveStable(notes)
   await expect(page.locator("[data-wave]")).toHaveText("Wave 2")
+  const score = await page.evaluate(() => window.__lastKeep.score)
+  expect(score).toBeGreaterThanOrEqual(1000)
+  await expect(page.locator("[data-score]")).toHaveText(`Score ${score}`)
   await page.screenshot({ path: shot("cleared-host.png") })
   expect(errors, errors.join("\n")).toEqual([])
   await host.context.close()
   await guest.context.close()
 }
 
-async function joinFromForm(browser) {
+async function movementIsInterpolated(page) {
+  await page.bringToFront()
+  await page.evaluate(() => {
+    const active = document.activeElement
+    if (active && active.blur) active.blur()
+  })
+  const origin = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
+  await page.keyboard.down("KeyW")
+  const rows = await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const samples = []
+        const start = performance.now()
+        function tick() {
+          const game = window.__lastKeep
+          if (game?.rendered && game.self) {
+            samples.push({ x: game.rendered.x, z: game.rendered.z, sx: game.self.x, sz: game.self.y })
+          }
+          if (performance.now() - start < 900) requestAnimationFrame(tick)
+          else resolve(samples)
+        }
+        requestAnimationFrame(tick)
+      })
+  )
+  await page.keyboard.up("KeyW")
+  expect(rows.length).toBeGreaterThan(5)
+  const last = rows[rows.length - 1]
+  const travel = Math.hypot(last.sx - origin.x, last.sz - origin.y)
+  let sawBlend = false
+  let maxGap = 0
+  for (const row of rows) {
+    const gap = Math.hypot(row.x - row.sx, row.z - row.sz)
+    maxGap = Math.max(maxGap, gap)
+    if (gap > 0.4) sawBlend = true
+  }
+  expect(travel).toBeGreaterThan(20)
+  expect(sawBlend).toBe(true)
+  expect(maxGap).toBeLessThan(14)
+}
+
+async function squarePixels(browser) {
+  const errors = []
   const host = await createHost(browser, "Ada", "warrior")
+  watch(host.page, "host", errors)
+  const ratios = []
+  for (const size of [
+    { width: 1600, height: 600 },
+    { width: 600, height: 1000 },
+    { width: 1280, height: 800 }
+  ]) {
+    await host.page.setViewportSize(size)
+    await host.page.waitForFunction(
+      (expected) => {
+        const frame = window.__lastKeep && window.__lastKeep.frame
+        if (!frame) return false
+        const bufferAspect = frame.bufferWidth / frame.bufferHeight
+        return Math.abs(bufferAspect - expected) < 0.08 && Math.abs(frame.aspect - expected) < 0.08 && frame.halfW >= 180
+      },
+      size.width / size.height
+    )
+    ratios.push(
+      await host.page.evaluate(() => {
+        const game = window.__lastKeep
+        const origin = game.toClient(0, 0)
+        const east = game.toClient(40, 0)
+        const north = game.toClient(0, 40)
+        const dx = Math.hypot(east.x - origin.x, east.y - origin.y)
+        const dy = Math.hypot(north.x - origin.x, north.y - origin.y)
+        return dx / dy
+      })
+    )
+    await host.page.screenshot({ path: shot(`frame-${size.width}x${size.height}.png`) })
+  }
+  expect(Math.abs(ratios[0] - ratios[1])).toBeLessThan(0.12)
+  expect(Math.abs(ratios[1] - ratios[2])).toBeLessThan(0.12)
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
+async function joinFromForm(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior")
+  watch(host.page, "host", errors)
   const code = await host.page.evaluate(() => document.body.dataset.code)
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const friend = await context.newPage()
+  watch(friend, "guest", errors)
   await friend.goto(`/r/${code}`)
   await expect(friend.locator("#join-game")).toBeVisible()
   await friend.locator("#player-name").fill("Bo")
@@ -377,6 +478,7 @@ async function joinFromForm(browser) {
     return roster.includes("Bo") && roster.includes("Ada") && document.querySelector("#join-game").hidden
   })
   await friend.screenshot({ path: shot("form-join.png") })
+  expect(errors, errors.join("\n")).toEqual([])
   await context.close()
   await host.context.close()
 }
@@ -396,5 +498,6 @@ module.exports = {
   proofDir,
   twoPlayerNight,
   joinFromForm,
+  squarePixels,
   scoreList
 }

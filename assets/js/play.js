@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, seatFromQuery } from "./input"
-import { bonusCopy, ignoreFocusClick, placementReason, waveLabel } from "./hud"
+import { bonusCopy, ignoreFocusClick, placementReason, reasonOpen, showReason, waveLabel } from "./hud"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const BUILD_LABEL = {
@@ -113,6 +113,7 @@ function start(code, seat, ui) {
   let aim = { x: 0, y: 0 }
   const fx = []
   const seen = { kinds: [], labels: [], log: [] }
+  let reasonEntry = { text: "", until: 0 }
   let focused = document.hasFocus()
   window.__lastKeepTest = {
     blur() {
@@ -156,12 +157,17 @@ function start(code, seat, ui) {
     const hit = ui.view.aim(event.clientX, event.clientY)
     if (hit) aim = hit
   }
-  ui.view.canvas.addEventListener("pointermove", look)
+  ui.view.canvas.addEventListener("pointermove", (event) => {
+    look(event)
+    if (build) refresh()
+  })
   ui.view.canvas.addEventListener("pointerdown", (event) => {
     const focusing = ignoreFocusClick(focused)
     focused = true
-    if (focusing || event.button !== 0) return
+    if (event.button !== 0) return
     look(event)
+    if (build) refresh()
+    if (focusing && !build) return
     if (build && !aim.monster) input.place = true
     else input.attack = true
     send()
@@ -234,6 +240,7 @@ function start(code, seat, ui) {
     const stock = ui.hud.querySelector("[data-stock]")
     const label = waveLabel(snap.shown_wave)
     if (seen.labels[seen.labels.length - 1] !== label) seen.labels.push(label)
+    ui.hud.querySelector("[data-score]").textContent = `Score ${snap.score ?? 0}`
     for (const shot of snap.projectiles || []) {
       if (!seen.kinds.includes(shot.kind)) seen.kinds.push(shot.kind)
     }
@@ -273,11 +280,16 @@ function start(code, seat, ui) {
       button.classList.toggle("on", kind === armed)
     })
     const cost = armed && me?.costs ? me.costs[armed] : null
-    const reason = armed ? placementReason({ ...me, cost }, aim, snap.resources) : ""
+    const preview = armed ? placementReason({ ...me, cost }, aim, snap.resources) : ""
+    const denied = (snap.events || []).find((ev) => ev.type === "deny" && ev.reason)
+    const now = performance.now()
+    if (denied) reasonEntry = showReason(reasonEntry, denied.reason, now, 2200, true)
+    else reasonEntry = showReason(reasonEntry, preview, now)
     const reasonNode = ui.hud.querySelector("[data-build-reason]")
-    reasonNode.hidden = !armed
-    reasonNode.textContent = armed ? reason || `Placing ${armed}. Esc cancels.` : ""
-    const legal = !!me && !reason
+    const open = reasonOpen(reasonEntry, now)
+    reasonNode.hidden = !open
+    reasonNode.textContent = open ? reasonEntry.text : ""
+    const legal = !!me && !preview
     ui.view.ghost(armed, aim.x, aim.y, legal)
     const copy = bonusCopy(snap)
     ui.hud.querySelector("[data-forge]").textContent = copy.forge
@@ -323,7 +335,7 @@ function hudMarkup() {
   const builds = BUILD.map((kind) => `<button type="button" class="build" data-build="${kind}">${BUILD_LABEL[kind]}</button>`).join("")
   return `
     <div class="hud-top">
-      <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-next></div><div data-build-reason hidden></div></div>
+      <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-score>Score 0</div><div data-next></div><div data-build-reason hidden></div></div>
       <button type="button" data-start hidden>Start the night</button>
       <div class="chip bonuses" data-bonuses><div data-forge></div><div data-spire></div><div data-relics></div></div>
       <div class="chip" data-stock></div>
@@ -364,47 +376,49 @@ function drawHints(ui, snap) {
   if (keep) keep.textContent = `${snap.keep.hp}/${snap.keep.max}`
 }
 
+let nextFx = 1
+
 function drawFx(ui, snap, fx, seen) {
   const now = performance.now()
-  for (const ev of snap.events || []) {
-    if (ev.type === "hit" || ev.type === "death" || ev.type === "boom" || ev.type === "slam" || ev.type === "deny") {
-      const text =
-        ev.type === "death"
-          ? "Slain"
-          : ev.type === "boom"
-            ? "Boom"
-            : ev.type === "deny"
-              ? ev.reason || "Can't"
-              : ev.amount == null
-                ? ""
-                : String(ev.amount)
-      if (!text) continue
-      const row = {
-        type: ev.type,
-        amount: ev.amount || 0,
-        text,
-        x: ev.x,
-        y: ev.y,
-        until: now + (ev.type === "death" ? 2500 : ev.type === "hit" ? 1200 : 900)
-      }
-      fx.push(row)
-      seen.log.push({ type: ev.type, amount: ev.amount || 0, text })
-      if (seen.log.length > 40) seen.log.shift()
-    }
-  }
-  const live = fx.filter((item) => item.until > now)
-  fx.length = 0
-  fx.push(...live)
   const layer = ui.hud.querySelector("[data-fx]")
-  layer.innerHTML = live
-    .map((item) => {
-      const point = ui.view.project(item.x, item.y)
-      const left = (point.x * 0.5 + 0.5) * 100
-      const top = (-point.y * 0.5 + 0.5) * 100
-      const kind = item.type === "death" ? "death" : item.type === "deny" ? "deny" : item.type === "boom" ? "boom" : ""
-      return `<div class="floater ${kind}" style="left:${left}%;top:${top}%">${item.text}</div>`
-    })
-    .join("")
+  for (const ev of snap.events || []) {
+    if (ev.type !== "hit" && ev.type !== "death" && ev.type !== "boom" && ev.type !== "slam" && ev.type !== "deny") continue
+    const text =
+      ev.type === "death"
+        ? "Slain"
+        : ev.type === "boom"
+          ? "Boom"
+          : ev.type === "deny"
+            ? ev.reason || "Can't"
+            : ev.amount == null
+              ? ""
+              : String(ev.amount)
+    if (!text || !Number.isFinite(ev.x) || !Number.isFinite(ev.y)) continue
+    const id = nextFx++
+    const row = {
+      id,
+      type: ev.type,
+      amount: ev.amount || 0,
+      text,
+      until: now + (ev.type === "death" ? 2500 : ev.type === "hit" ? 1400 : 1100)
+    }
+    fx.push(row)
+    seen.log.push({ type: ev.type, amount: ev.amount || 0, text })
+    if (seen.log.length > 40) seen.log.shift()
+    const point = ui.view.project(ev.x, ev.y)
+    const node = document.createElement("div")
+    node.className = `floater${ev.type === "death" ? " death" : ev.type === "deny" ? " deny" : ev.type === "boom" ? " boom" : ""}`
+    node.dataset.fxId = String(id)
+    node.textContent = text
+    node.style.left = `${(point.x * 0.5 + 0.5) * 100}%`
+    node.style.top = `${(-point.y * 0.5 + 0.5) * 100}%`
+    layer.appendChild(node)
+  }
+  for (let i = fx.length - 1; i >= 0; i -= 1) {
+    if (fx[i].until > now) continue
+    layer.querySelector(`[data-fx-id="${fx[i].id}"]`)?.remove()
+    fx.splice(i, 1)
+  }
 }
 
 function marker(ui, worldX, worldY, label, onlyOffscreen) {

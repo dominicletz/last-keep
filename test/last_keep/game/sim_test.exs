@@ -229,11 +229,77 @@ defmodule LastKeep.Game.SimTest do
     assert state.wave == 1
     assert Sim.monsters(state) != []
 
+    assert length(Sim.monsters(state)) == 2
+
     for monster <- Sim.monsters(state) do
       dist = :math.sqrt(monster.x * monster.x + monster.y * monster.y)
-      assert dist > 100
-      assert dist < 140
+      assert dist > 130
+      assert dist < 155
+      assert monster.speed < 30
+      assert monster.damage <= 2
     end
+  end
+
+  test "wave 1 is a smaller slower bite than the next night" do
+    rng = :rand.seed_s(:exsss, {3, 4, 5})
+    {one, _} = Waves.plan(1, rng)
+    {two, _} = Waves.plan(2, rng)
+    assert Enum.sum(Enum.map(one, & &1.count)) < Enum.sum(Enum.map(two, & &1.count))
+
+    state = Sim.new("KEEP01", seed: 1)
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 140, y: 0, wave: 1})
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: -140, y: 0, wave: 2})
+    [later, early] = Enum.sort_by(Sim.monsters(state), & &1.x)
+    assert early.speed < later.speed
+    assert early.damage < later.damage
+  end
+
+  test "two idle heroes who keep swinging clear wave 1 with the keep still high" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    {:ok, state} = Sim.join(state, player("bo", :mage))
+    state = Sim.tick(state)
+
+    state =
+      Enum.reduce_while(1..4_000, state, fn _, state ->
+        cond do
+          state.phase == :over -> {:halt, state}
+          match?({:build, _}, state.phase) and state.wave >= 1 -> {:halt, state}
+          true -> {:cont, defend_in_place(state)}
+        end
+      end)
+
+    assert {:build, _} = state.phase
+    assert state.kills >= 2
+    assert state.keep.hp >= 700
+
+    for id <- ["ada", "bo"] do
+      hero = hero(state, id)
+      assert hero.alive
+      assert hero.hp > div(hero.max_hp, 2)
+    end
+  end
+
+  test "a couple of wave 1 bites do not down the warrior" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    before = ada.hp
+
+    state =
+      Sim.spawn_monster(state, %{
+        kind: :goblin,
+        x: ada.x + 18,
+        y: ada.y,
+        hp: 200,
+        wave: 1
+      })
+
+    state = Enum.reduce(1..45, state, fn _, state -> Sim.tick(state) end)
+    ada = hero(state, "ada")
+    assert ada.alive
+    assert ada.hp > before - 30
+    assert ada.hp > 100
   end
 
   test "a warrior who chases the nearest goblin survives wave 1" do
@@ -252,7 +318,7 @@ defmodule LastKeep.Game.SimTest do
 
     assert {:build, _} = state.phase
     assert state.keep.hp > 0
-    assert state.kills >= 3
+    assert state.kills >= 2
   end
 
   test "the night waits until the host starts" do
@@ -459,6 +525,38 @@ defmodule LastKeep.Game.SimTest do
         "ax" => ada.x + 40,
         "ay" => ada.y
       })
+
+    Sim.tick(state)
+  end
+
+  defp defend_in_place(state) do
+    state =
+      Enum.reduce(["ada", "bo"], state, fn id, state ->
+        me = hero(state, id)
+
+        case Sim.monsters(state) do
+          [] ->
+            Sim.input(state, id, %{"mx" => 0, "my" => 0, "attack" => false})
+
+          monsters ->
+            monster =
+              Enum.min_by(monsters, fn monster ->
+                :math.sqrt(
+                  (monster.x - me.x) * (monster.x - me.x) +
+                    (monster.y - me.y) * (monster.y - me.y)
+                )
+              end)
+
+            Sim.input(state, id, %{
+              "mx" => 0,
+              "my" => 0,
+              "ax" => monster.x,
+              "ay" => monster.y,
+              "attack" => true,
+              "q" => id == "bo"
+            })
+        end
+      end)
 
     Sim.tick(state)
   end

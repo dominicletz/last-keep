@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test js/input.test.js js/present.test.js js/hud.test.js js/motion.test.js js/elite.test.js",
+    "test": "node --test js/input.test.js js/present.test.js js/hud.test.js js/motion.test.js js/elite.test.js js/frame.test.js",
     "check": "tsc --noEmit -p jsconfig.json"
   },
   "dependencies": {
