@@ -21,6 +21,7 @@ Read this index, then the feature file. Drive the app with `npx playwright test`
 
 ## Features
 
-- [Create a game](./create.md) covers the landing form and the room URL.
+- [Create a game](./create.md) covers the landing form, the room URL, and the wait for the host.
 - [Join from an invite](./invite.md) covers a query invite and the bare-link form.
-- [See the wave](./wave.md) covers rendered monsters, not only socket data.
+- [Place a wall](./build.md) covers a click that spends wood.
+- [See the wave and fight it](./wave.md) covers goblins on the yard, a real click kill, and surviving wave 1.

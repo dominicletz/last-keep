@@ -45,7 +45,7 @@ npx playwright test
 
 `mix test` covers room membership, reconnect, combat, wave plans, the HTTP API, a channel with three clients, and a warrior who clears wave 1. Tests that touch the room supervisor are `async: false` because the registry is a single process.
 
-`npx playwright test` is the browser proof. It creates a room, opens the invite in a second browser, and waits until monsters are on the canvas. Set `BASE_URL` to point it at a deployed site. CI and the deploy workflow both run it.
+`npx playwright test` is the browser proof. It uses a 1280 by 800 viewport, places a wall, starts the night from the host button, and fights wave 1 with clicks and keys until a goblin dies on screen. Set `BASE_URL` to point it at a deployed site. CI and the deploy workflow both run it.
 
 ## Deploy
 

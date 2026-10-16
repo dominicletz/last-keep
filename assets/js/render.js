@@ -10,7 +10,7 @@ const HERO_COLOR = {
 }
 
 const MONSTER_COLOR = {
-  goblin: 0xc43a22,
+  goblin: 0xff3a22,
   skeleton: 0xe8e0d0,
   wolf: 0x2c3344,
   troll: 0x2f6a32,
@@ -40,7 +40,7 @@ export function createView(stage) {
   scene.fog = new THREE.Fog(0x8a4030, 760, 1500)
 
   const aspect = 480 / 270
-  const view = 230
+  const view = 140
   const camera = new THREE.OrthographicCamera(-view * aspect, view * aspect, view, -view, 0.1, 2400)
 
   scene.add(new THREE.HemisphereLight(0xffb070, 0x24361c, 1.15))
@@ -90,9 +90,17 @@ export function createView(stage) {
   scene.add(keep)
 
   const meshes = new Map()
+  const ghost = new THREE.Mesh(
+    new THREE.BoxGeometry(30, 22, 12),
+    new THREE.MeshBasicMaterial({ color: 0x7ea35a, transparent: true, opacity: 0.55 })
+  )
+  ghost.position.y = 11
+  ghost.visible = false
+  scene.add(ghost)
   const raycaster = new THREE.Raycaster()
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   const focus = new THREE.Vector3()
+  let liveMonsters = []
 
   function forest() {
     const cone = new THREE.ConeGeometry(18, 46, 5)
@@ -168,9 +176,9 @@ export function createView(stage) {
     }
   }
 
-  function figure(color, scale, weapon) {
+  function figure(color, scale, weapon, emissive = 0x000000) {
     const group = new THREE.Group()
-    const body = new THREE.Mesh(new THREE.BoxGeometry(12 * scale, 16 * scale, 8 * scale), mat(color))
+    const body = new THREE.Mesh(new THREE.BoxGeometry(12 * scale, 16 * scale, 8 * scale), mat(color, emissive))
     body.position.y = 12 * scale
     body.castShadow = true
     const head = new THREE.Mesh(new THREE.BoxGeometry(8 * scale, 8 * scale, 8 * scale), mat(0xf0d2b0))
@@ -190,6 +198,19 @@ export function createView(stage) {
     canvas: renderer.domElement,
     aim(clientX, clientY) {
       const rect = renderer.domElement.getBoundingClientRect()
+      let nearest = null
+      let nearestPx = 64
+      for (const monster of liveMonsters) {
+        const point = new THREE.Vector3(monster.x, 16, monster.y).project(camera)
+        const sx = rect.left + (point.x * 0.5 + 0.5) * rect.width
+        const sy = rect.top + (-point.y * 0.5 + 0.5) * rect.height
+        const dist = Math.hypot(sx - clientX, sy - clientY)
+        if (dist < nearestPx) {
+          nearestPx = dist
+          nearest = monster
+        }
+      }
+      if (nearest) return { x: nearest.x, y: nearest.y }
       const ndc = new THREE.Vector2(
         ((clientX - rect.left) / rect.width) * 2 - 1,
         -((clientY - rect.top) / rect.height) * 2 + 1
@@ -205,8 +226,10 @@ export function createView(stage) {
     },
     draw(snap, selfId) {
       const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
-      if (me) focus.set(me.x, 0, me.y)
-      const dist = 230
+      const anchorX = me ? me.x * 0.22 : 0
+      const anchorZ = me ? me.y * 0.22 : 0
+      focus.set(anchorX, 0, anchorZ)
+      const dist = 150
       camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
       camera.lookAt(focus.x, 0, focus.z)
       sun.position.set(focus.x + 90, 200, focus.z + 30)
@@ -226,16 +249,13 @@ export function createView(stage) {
         return mesh
       })
 
+      liveMonsters = snap.monsters || []
+
       sync("monster", drawn.monsters, (row) => {
-        const scale = row.kind === "boss" ? 2.4 : row.kind === "troll" ? 1.9 : row.kind === "wolf" ? 1.35 : 1.45
-        const mesh = figure(MONSTER_COLOR[row.kind] || 0xc43a22, scale)
+        const scale = row.kind === "boss" ? 2.6 : row.kind === "troll" ? 2.1 : row.kind === "wolf" ? 1.7 : 2.2
+        const emissive = row.kind === "goblin" || row.kind === "boss" ? 0x6a1408 : 0x000000
+        const mesh = figure(MONSTER_COLOR[row.kind] || 0xff3a22, scale, null, emissive)
         if (row.kind === "wolf") mesh.scale.z = 1.6
-        const mark = new THREE.Mesh(
-          new THREE.BoxGeometry(6, 4, 4),
-          new THREE.MeshBasicMaterial({ color: 0xff00aa })
-        )
-        mark.position.set(0, 30 * scale, 5)
-        mesh.add(mark)
         mesh.userData.role = "monster"
         return mesh
       })
@@ -272,25 +292,10 @@ export function createView(stage) {
 
       sync("shot", snap.projectiles || [], (row) => {
         const color = row.kind === "fireball" || row.kind === "meteor" ? 0xff7a2a : 0xf2e2b0
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 6), mat(color, color))
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(12, 12, 12), mat(color, color))
         mesh.position.y = row.kind === "meteor" ? 30 : 10
         return mesh
       })
-
-      sync(
-        "hint",
-        (snap.hints || []).map((hint, index) => ({
-          id: index,
-          x: Math.cos(hint.angle) * 620,
-          y: Math.sin(hint.angle) * 620,
-          kind: hint.kind
-        })),
-        () => {
-          const mesh = new THREE.Mesh(new THREE.ConeGeometry(8, 26, 4), mat(0xffb15a, 0xff6a1a))
-          mesh.position.y = 16
-          return mesh
-        }
-      )
 
       renderer.render(scene, camera)
       const counts = { heroes: 0, monsters: 0 }
@@ -298,8 +303,70 @@ export function createView(stage) {
         if (object.userData?.role === "hero") counts.heroes += 1
         if (object.userData?.role === "monster") counts.monsters += 1
       })
-      window.__lastKeep = { counts, phase: snap.phase, wave: snap.wave }
+      const monsters = (snap.monsters || []).map((monster) => {
+        const point = new THREE.Vector3(monster.x, 16, monster.y).project(camera)
+        return {
+          id: monster.id,
+          kind: monster.kind,
+          x: monster.x,
+          y: monster.y,
+          onScreen: Math.abs(point.x) < 0.72 && Math.abs(point.y) < 0.62 && point.z < 1
+        }
+      })
+      window.__lastKeep = {
+        counts,
+        phase: snap.phase,
+        hold: !!snap.hold,
+        wave: snap.wave,
+        keep: snap.keep,
+        wood: snap.resources?.wood,
+        kills: snap.kills,
+        self: me ? { x: me.x, y: me.y, name: me.name, hero: me.hero, host: me.host, range: me.range } : null,
+        monsters,
+        buildings: (snap.buildings || []).length,
+        toClient,
+        redNear
+      }
+    },
+    ghost(kind, x, z, ok) {
+      ghost.visible = !!kind
+      if (!kind) return
+      ghost.position.set(x, 11, z)
+      ghost.material.color.set(ok ? 0x7ea35a : 0xc84b3a)
     }
+  }
+
+  function toClient(x, z) {
+    const point = new THREE.Vector3(x, 16, z).project(camera)
+    const rect = renderer.domElement.getBoundingClientRect()
+    return {
+      x: rect.left + (point.x * 0.5 + 0.5) * rect.width,
+      y: rect.top + (-point.y * 0.5 + 0.5) * rect.height
+    }
+  }
+
+  function redNear(x, z) {
+    const point = new THREE.Vector3(x, 16, z).project(camera)
+    const canvas = renderer.domElement
+    const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
+    const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)
+    const copy = document.createElement("canvas")
+    copy.width = canvas.width
+    copy.height = canvas.height
+    const ctx = copy.getContext("2d", { willReadFrequently: true })
+    ctx.drawImage(canvas, 0, 0)
+    const size = 17
+    const sx0 = Math.max(0, px - 8)
+    const sy0 = Math.max(0, py - 8)
+    const block = ctx.getImageData(sx0, sy0, Math.min(size, copy.width - sx0), Math.min(size, copy.height - sy0))
+    let count = 0
+    for (let i = 0; i < block.data.length; i += 4) {
+      const r = block.data[i]
+      const g = block.data[i + 1]
+      const b = block.data[i + 2]
+      if (r > 150 && r > g + 40 && r > b + 20) count += 1
+    }
+    return count
   }
 }
 

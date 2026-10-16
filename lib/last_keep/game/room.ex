@@ -23,6 +23,10 @@ defmodule LastKeep.Game.Room do
 
   def input(code, id, payload), do: GenServer.cast(via(code), {:input, id, payload})
 
+  def start(code, id), do: GenServer.cast(via(code), {:start, id})
+
+  def restart(code), do: GenServer.cast(via(code), :restart)
+
   def step(code), do: GenServer.call(via(code), :step)
 
   def snapshot(code), do: GenServer.call(via(code), :snapshot)
@@ -94,6 +98,14 @@ defmodule LastKeep.Game.Room do
     {:noreply, %{state | sim: Sim.input(state.sim, id, payload)}}
   end
 
+  def handle_cast({:start, id}, state) do
+    {:noreply, %{state | sim: Sim.release(state.sim, id)}}
+  end
+
+  def handle_cast(:restart, state) do
+    {:noreply, %{state | sim: Sim.restart(state.sim), scored: false}}
+  end
+
   @impl true
   def handle_info(:tick, state) do
     state = advance(state)
@@ -112,7 +124,7 @@ defmodule LastKeep.Game.Room do
     sim = Sim.tick(state.sim)
     state = %{state | sim: sim}
 
-    if sim.phase == :over and not state.scored do
+    if sim.phase == :over and not state.scored and Sim.score(sim) > 0 do
       Highscores.submit(%{
         score: Sim.score(sim),
         wave: sim.wave,

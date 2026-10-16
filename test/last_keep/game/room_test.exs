@@ -34,7 +34,7 @@ defmodule LastKeep.Game.RoomTest do
   end
 
   test "two rooms do not share a wave" do
-    {:ok, left} = Rooms.create(auto_tick: false, seed: 1, build_ticks: 1)
+    {:ok, left} = Rooms.create(auto_tick: false, seed: 1, build_ticks: 1, hold: false)
     {:ok, right} = Rooms.create(auto_tick: false, seed: 9, build_ticks: 50)
 
     Room.step(left)
@@ -42,14 +42,42 @@ defmodule LastKeep.Game.RoomTest do
     assert Room.snapshot(right).phase == "build"
   end
 
-  test "a fallen keep is recorded once" do
-    {:ok, code} = Rooms.create(auto_tick: false, seed: 1, keep_hp: 5)
-    {:ok, _token, _id, _snap} = Rooms.enlist(code, %{name: "Io", hero: :warrior})
+  test "a scoreless fall is not listed, and a real score is recorded once" do
+    {:ok, blank} = Rooms.create(auto_tick: false, seed: 1, keep_hp: 5)
+    {:ok, _token, _id, _snap} = Rooms.enlist(blank, %{name: "Io", hero: :warrior})
+
+    :ok =
+      GenServer.call(
+        Room.via(blank),
+        {:spawn_monster, %{kind: :boss, x: 80, y: 0, hp: 400, damage: 50}}
+      )
+
+    Enum.each(1..8, fn _ -> Room.step(blank) end)
+    assert Room.snapshot(blank).phase == "over"
+    assert Highscores.list() == []
+
+    {:ok, code} = Rooms.create(auto_tick: false, seed: 2, keep_hp: 30)
+
+    {:ok, token, public_id, snap} =
+      Rooms.enlist(code, %{name: "Io", hero: :warrior, connected: true})
+
+    me = Enum.find(snap.players, &(&1.id == public_id))
 
     :ok =
       GenServer.call(
         Room.via(code),
-        {:spawn_monster, %{kind: :boss, x: 80, y: 0, hp: 400, damage: 50}}
+        {:spawn_monster, %{kind: :goblin, x: me.x + 36, y: me.y, hp: 10, damage: 0}}
+      )
+
+    Room.input(code, token, %{"attack" => true, "ax" => me.x + 36, "ay" => me.y})
+    Room.input(code, token, %{"attack" => false, "ax" => me.x + 36, "ay" => me.y})
+    snap = Room.step(code)
+    assert snap.kills >= 1
+
+    :ok =
+      GenServer.call(
+        Room.via(code),
+        {:spawn_monster, %{kind: :boss, x: 80, y: 0, hp: 400, damage: 80}}
       )
 
     Enum.each(1..8, fn _ -> Room.step(code) end)
