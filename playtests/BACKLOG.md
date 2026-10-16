@@ -23,13 +23,13 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-011 | Dominic, PR #5 round | graphics | medium | Forge, spire, and relic copy were missing from the HUD | done in PR #5 | `assertBonuses` |
 | LK-012 | Dominic, PR #5 round | character | medium | Elites looked and behaved like ordinary monsters | done in PR #5 | `armor, a fast lunge, a forge, and a boss slam are different` |
 | LK-013 | Dominic, PR #5 round | graphics | medium | Movement snapped between snapshots | done in PR #5 | `npm test` interpolation, `window.__lastKeep.smoothing` |
-| LK-014 | Dominic, production VDQPTZ | graphics | high | Hit numbers sat still, and a goblin's bite read as a stuck 4 | done in this change | `assertCombat` rising floater |
-| LK-015 | Dominic, production VDQPTZ | gameplay | high | The first wall click after pressing 1 only showed the ghost | done in this change | `placeWall` blur then one click |
-| LK-016 | Dominic, production VDQPTZ | gameplay | high | Wave 1 reached the keep at once and two bites nearly downed the warrior | done in this change | `two idle heroes who keep swinging clear wave 1 with the keep still high`, `a couple of wave 1 bites do not down the warrior` |
-| LK-017 | Dominic, production VDQPTZ | graphics | medium | The run score appeared only after the keep fell | done in this change | `twoPlayerNight` `[data-score]` |
-| LK-018 | Dominic, production VDQPTZ | graphics | medium | WASD interpolation had not been checked on a moving hero | done in this change | `movementIsInterpolated`, `a position update is interpolated and does not jump` |
-| LK-019 | Dominic, production VDQPTZ | graphics | medium | An invalid placement reason stayed until the next action | done in this change | `an invalid placement reason fades instead of sticking`, `invalidPlacementExplains` |
-| LK-020 | Dominic, production VDQPTZ | graphics | medium | The picture stretched when the window was not 16:9 | done in this change | `squarePixels`, `frame.test.js` |
+| LK-014 | Dominic, production VDQPTZ | graphics | high | Hit numbers sat still, and a goblin's bite read as a stuck 4 | done in PR #6 | `assertCombat` rising floater |
+| LK-015 | Dominic, production VDQPTZ | gameplay | high | The first wall click after pressing 1 only showed the ghost | done in PR #6 | `placeWall` blur then one click |
+| LK-016 | Dominic, production VDQPTZ | gameplay | high | Wave 1 reached the keep at once and two bites nearly downed the warrior | done in PR #6 | `two idle heroes who keep swinging clear wave 1 with the keep still high`, `a couple of wave 1 bites do not down the warrior` |
+| LK-017 | Dominic, production VDQPTZ | graphics | medium | The run score appeared only after the keep fell | done in PR #6 | `twoPlayerNight` `[data-score]` |
+| LK-018 | Dominic, production VDQPTZ | graphics | medium | WASD interpolation had not been checked on a moving hero | done in PR #6 | `movementIsInterpolated`, `a position update is interpolated and does not jump` |
+| LK-019 | Dominic, production VDQPTZ | graphics | medium | An invalid placement reason stayed until the next action | done in PR #6 | `an invalid placement reason fades instead of sticking`, `invalidPlacementExplains` |
+| LK-020 | Dominic, production VDQPTZ | graphics | medium | The picture stretched when the window was not 16:9 | done in PR #6 | `squarePixels`, `frame.test.js` |
 
 ## Open
 
