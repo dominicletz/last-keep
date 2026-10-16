@@ -12,10 +12,15 @@ function shot(name) {
   return path.join(proofDir, name)
 }
 
+function gameUrl(path) {
+  const origin = (process.env.BASE_URL || "http://127.0.0.1:4000").replace(/\/$/, "")
+  return `${origin}${path.startsWith("/") ? path : `/${path}`}`
+}
+
 async function createHost(browser, name, hero) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
-  await page.goto("/")
+  await page.goto(gameUrl("/"))
   await page.locator("#player-name").fill(name)
   await page.locator(`input[value="${hero}"]`).check()
   await page.locator("#create-button").click()
@@ -27,7 +32,7 @@ async function createHost(browser, name, hero) {
 async function joinQuery(browser, code, name, hero) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
-  await page.goto(`/r/${code}?name=${encodeURIComponent(name)}&hero=${hero}`)
+  await page.goto(gameUrl(`/r/${code}?name=${encodeURIComponent(name)}&hero=${hero}`))
   await page.waitForFunction((who) => {
     const roster = document.querySelector("[data-roster]")?.innerText || ""
     return roster.includes(who) && document.querySelector("#join-game")?.hidden
@@ -496,6 +501,9 @@ async function scoreList(request) {
 module.exports = {
   prepareProof,
   proofDir,
+  gameUrl,
+  createHost,
+  joinQuery,
   twoPlayerNight,
   joinFromForm,
   squarePixels,

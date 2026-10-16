@@ -836,12 +836,48 @@ defmodule LastKeep.Game.Sim do
   defp step_monsters(state) do
     ids = for {id, %{type: :monster}} <- state.entities, do: id
 
-    Enum.reduce(ids, state, fn id, state ->
-      case state.entities[id] do
-        nil -> state
-        monster -> step_monster(state, monster)
-      end
+    state =
+      Enum.reduce(ids, state, fn id, state ->
+        case state.entities[id] do
+          nil -> state
+          monster -> step_monster(state, monster)
+        end
+      end)
+
+    separate_monsters(state, ids)
+  end
+
+  defp separate_monsters(state, ids) do
+    Enum.reduce(pairs(ids), state, fn {left, right}, state ->
+      push_apart(state, left, right)
     end)
+  end
+
+  defp pairs([]), do: []
+  defp pairs([_]), do: []
+  defp pairs([head | tail]), do: Enum.map(tail, &{head, &1}) ++ pairs(tail)
+
+  defp push_apart(state, left_id, right_id) do
+    with %{type: :monster} = left <- state.entities[left_id],
+         %{type: :monster} = right <- state.entities[right_id] do
+      dx = right.x - left.x
+      dy = right.y - left.y
+      dist = hypot(dx, dy)
+      need = left.r + right.r
+
+      if dist >= need do
+        state
+      else
+        {ux, uy} = if dist < 0.01, do: {1.0, 0.0}, else: {dx / dist, dy / dist}
+        gap = (need - dist) / 2
+
+        state
+        |> put_entity(%{left | x: left.x - ux * gap, y: left.y - uy * gap})
+        |> put_entity(%{right | x: right.x + ux * gap, y: right.y + uy * gap})
+      end
+    else
+      _ -> state
+    end
   end
 
   defp step_monster(state, monster) do

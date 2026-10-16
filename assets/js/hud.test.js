@@ -1,11 +1,17 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { bonusCopy, ignoreFocusClick, placementReason, reasonOpen, showReason, waveLabel } from "./hud.js"
+import { bonusCopy, ignoreFocusClick, nextLine, placementReason, reasonOpen, showReason, waveLabel } from "./hud.js"
 
 test("the wave label is one number and does not say next", () => {
   assert.equal(waveLabel(1), "Wave 1")
   assert.equal(waveLabel(2), "Wave 2")
   assert.equal(waveLabel(0), "Wave 1")
+})
+
+test("the next wave is counted in words", () => {
+  assert.equal(nextLine("wave", [{ kind: "goblin", count: 2 }]), "")
+  assert.equal(nextLine("build", [{ kind: "goblin", count: 2 }]), "Next: 2 goblins")
+  assert.equal(nextLine("build", [{ kind: "wolf", count: 1 }]), "Next: 1 wolf")
 })
 
 test("the click that focuses the window is not an attack", () => {

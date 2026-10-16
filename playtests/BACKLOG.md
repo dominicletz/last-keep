@@ -39,12 +39,20 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-022 | Dominic, interaction graph | gameplay | high | The spire does not unlock spells. It only raises mage damage and shortens mage cooldowns. | open |
 | LK-023 | Dominic, interaction graph | gameplay | medium | There is no city-growth layer. The party places every building by hand. | open |
 | LK-024 | queued playtest loop | audio | high | The game has no audio layer. The next playtest's music report should add ambient day/night, combat, hit, death, build, and a wave horn, starting with a first layer if the build is still silent. | open |
-| LK-025 | queued playtest loop | gameplay | medium | Playtest rounds use five specialists in one room (gameplay, graphics, music and sound, game logic, character design). Each writes a section. The report ends with one ranked fix list. The roster is the playtest skill. The bots are not built yet. | open |
-| LK-026 | Dominic manual | logic | high | Monsters overlap. They need server-side separation so a wall line can funnel them through a gap. | open |
+| LK-025 | queued playtest loop | gameplay | medium | Four personas share one room through `e2e/playtest/`. The check is `e2e/playtest.spec.js`. | done |
+| LK-026 | Dominic manual | logic | high | Monsters push apart when they overlap (`defp separate_monsters`, test "two goblins that share a spot step apart"). They still do not block a path, so a wall line cannot funnel them. | open |
 | LK-027 | Dominic manual | logic | high | Heroes walk through each other and through monsters. Bodies should block. The warrior dash is the exception that passes through monsters. | open |
 | LK-028 | Dominic manual | logic | high | The keep can be walked into. It should be solid for heroes and monsters, and monsters should bite it from the edge. | open |
 | LK-029 | Dominic manual | gameplay | high | Monsters spawn on top of the yard. Push the spawn ring out, enlarge the map, and keep the time to reach the keep fair. | open |
 | LK-030 | Dominic manual | gameplay/graphics | medium | A ring of trees is only scenery. Players cannot chop it. Make those trees harvestable, or draw them so they are obviously not wood, and say which in the interaction doc. | open |
 | LK-031 | Dominic manual | gameplay | high | No keep upgrade. Spending wood and gold should enlarge the buildable town and pull the camera back, with no card pick. | open |
+| LK-032 | Bram, round 1 | gameplay | high | After one wall the corner said "Too far" and a pale dot sat on the grass. No build range was drawn on the yard, and the trap never landed. `playtests/round-1/shots/02-Bram.png` | open |
+| LK-033 | Bram, round 1 | graphics | high | The wall that cost 4 wood reads as a short black bar. A brown block appeared on the yard in the same beat, so the builder could not tell which shape was the wall. `playtests/round-1/shots/02-Bram.png` | open |
+| LK-034 | Bram, round 1 | gameplay | high | The keep fell on wave 1 with 0 kills and 0 score while wood was still 40 and no trap was down. Re-check of LK-016: this room did not leave the keep high. The frenzy shot still showed 900/900 with one red stacked shape already on the yard. `playtests/round-1/shots/04-Bram.png`, `playtests/round-1/shots/05-Bram.png` | open |
+| LK-035 | Bram, round 1 | graphics | medium | Two goblins stood in one red shape. They now step apart. Guarded by "two goblins that share a spot step apart". `playtests/round-1/shots/04-Bram.png` | done |
+| LK-036 | Bram, round 1 | graphics | medium | Bram's health read 81/125 during frenzy and 125/125 on the fallen screen. `playtests/round-1/shots/04-Bram.png`, `playtests/round-1/shots/05-Bram.png` | open |
+| LK-037 | Bram, round 1 | graphics | low | The invite button used to end past the window. The top bar now stays inside 1280px. Guarded by `e2e/playtest.spec.js`. `playtests/round-1/shots/01-Bram.png` | done |
+| LK-038 | Ada, Lux, Bram, Pip, round 1 | graphics | high | The yard did not say which body was yours. Your name now sits on your figure, in the You line, and on your roster row. Guarded by `e2e/playtest.spec.js`. | done |
+| LK-039 | Pip, round 1 | gameplay | medium | "Next goblin 2" did not read as a count. The line now says "Next: 2 goblins". Guarded by `assets/js/hud.test.js`. | done |
 
 No implemented hero is isolated. Farmer, engineer, scout, warrior, and mage each have an outgoing edge in `docs/interactions.json`.

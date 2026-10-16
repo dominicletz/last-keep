@@ -98,7 +98,7 @@ Produces: the melee answer to a monster that has reached the yard, a short guard
 
 Who depends on it: the keep, when something is already inside the walls. Without a warrior the party still kills at range, but the body in the yard is gone and kills pay less gold.
 
-Planned edge: bodies will block. A hero will not walk through another hero or a monster, and monsters will not walk through each other, so a wall line can squeeze them into a gap. The warrior's dash is the exception that passes through monsters. Today `slide` and `chase` stop only for buildings, and the dash uses that same slide, so nothing is there to pass through yet.
+Monsters that overlap push apart, so two goblins cannot stand inside one body. They still do not block a path. A hero still walks through another hero or a monster, and a wall line still cannot squeeze a pack into a gap. The warrior's dash is the planned exception that will pass through monsters once bodies block. Today `slide` and `chase` stop only for buildings.
 
 ### Mage
 
@@ -146,7 +146,7 @@ Dotted arrows in the graph are these edges. They are `planned` in `interactions.
 - Elites do not drop relics. Only a boss does.
 - The spire does not unlock new spells. It only buffs the mage's damage and cooldowns.
 - There is no city-growth layer. The party places each building by hand. The keep upgrade above is the first step of that idea, and it is not built either.
-- Monsters do not block each other, heroes do not block heroes, and heroes do not block monsters. A wall cannot funnel a pack yet.
+- Monsters push apart when they overlap. They still do not block a path, heroes do not block heroes, and heroes do not block monsters. A wall cannot funnel a pack yet.
 - The warrior dash does not pass through monsters, because monsters are not obstacles.
 - The keep is not solid.
 - Spawn distance and the map size are still the current rings.

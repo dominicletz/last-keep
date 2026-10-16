@@ -6,9 +6,21 @@ const RELIC = {
   granary: "Granary makes fields feed more."
 }
 
+const PLURAL = { goblin: "goblins", wolf: "wolves", troll: "trolls", boss: "bosses" }
+
 export function waveLabel(shown) {
   const wave = Math.max(1, Number(shown) || 1)
   return `Wave ${wave}`
+}
+
+export function nextLine(phase, hints) {
+  if (phase !== "build" || !hints || hints.length === 0) return ""
+  const parts = hints.map((hint) => {
+    const count = hint.count || 1
+    const word = count === 1 ? hint.kind : PLURAL[hint.kind] || `${hint.kind}s`
+    return `${count} ${word}`
+  })
+  return `Next: ${parts.join(", ")}`
 }
 
 export function ignoreFocusClick(wasFocused) {

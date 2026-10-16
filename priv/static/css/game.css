@@ -164,9 +164,10 @@ input[type="text"], input:not([type="radio"]) {
   align-items: stretch;
 }
 
-.hud-top, .hud-bottom { position: relative; z-index: 2; }
+.hud-top, .hud-bottom { position: relative; z-index: 2; min-width: 0; }
 
-.hud-top { justify-content: space-between; }
+.hud-top { justify-content: space-between; flex-wrap: wrap; width: 100%; }
+#hud [data-copy], #hud [data-start] { flex: 0 0 auto; white-space: nowrap; }
 .hud-bottom { align-items: flex-end; justify-content: space-between; }
 
 .chip, .roster, .skill, .build, .heart {
@@ -180,6 +181,7 @@ input[type="text"], input:not([type="radio"]) {
 .roster .who { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 0.95rem; text-transform: none; }
 .roster .who span:first-child { text-transform: none; font-weight: 700; }
 .roster .who.off { opacity: 0.45; }
+.roster .who.me { outline: 2px solid var(--gold); }
 .meter { height: 6px; background: #3a2018; margin-top: 0.15rem; }
 .meter span { display: block; height: 100%; background: var(--blood); }
 
@@ -207,6 +209,15 @@ input[type="text"], input:not([type="radio"]) {
 .heart .meter span { background: var(--moss); }
 
 .hint-layer { position: absolute; inset: 0; pointer-events: none; }
+[data-you] {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  color: #f0c14a;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 2px 2px 0 #000;
+  pointer-events: none;
+}
 .hint-arrow {
   position: absolute;
   color: #ffb15a;

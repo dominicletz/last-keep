@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, seatFromQuery } from "./input"
-import { bonusCopy, ignoreFocusClick, placementReason, reasonOpen, showReason, waveLabel } from "./hud"
+import { bonusCopy, ignoreFocusClick, nextLine, placementReason, reasonOpen, showReason, waveLabel } from "./hud"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const BUILD_LABEL = {
@@ -252,7 +252,7 @@ function start(code, seat, ui) {
     const names = SKILL_NAME[me?.hero] || SKILL_NAME.warrior
     if (me) {
       heart.style.width = `${Math.max(0, (me.hp / me.max) * 100)}%`
-      hp.textContent = me.alive ? `${me.hp} / ${me.max}` : "Down"
+      hp.textContent = me.alive ? `${me.name}  ${me.hp} / ${me.max}` : `${me.name}  Down`
       for (const key of ["attack", "q", "e", "r"]) {
         const node = ui.hud.querySelector(`[data-skill="${key}"] .cool`)
         const left = me.cds[key]
@@ -301,10 +301,12 @@ function start(code, seat, ui) {
     roster.innerHTML = (snap.players || [])
       .map((player) => {
         const width = Math.max(0, (player.hp / player.max) * 100)
-        return `<div class="who ${player.connected ? "" : "off"}"><span>${escapeHtml(player.name)}</span><span>${escapeHtml(heroLabel(player.hero))}</span><div class="meter"><span style="width:${width}%"></span></div></div>`
+        const mine = player.id === selfId ? "me" : ""
+        return `<div class="who ${mine} ${player.connected ? "" : "off"}"><span>${escapeHtml(player.name)}</span><span>${escapeHtml(heroLabel(player.hero))}</span><div class="meter"><span style="width:${width}%"></span></div></div>`
       })
       .join("")
     drawHints(ui, snap)
+    drawYou(ui, snap, selfId)
     drawFx(ui, snap, fx, seen)
     if (window.__lastKeep) {
       window.__lastKeep.log = seen.log
@@ -342,6 +344,7 @@ function hudMarkup() {
       <button type="button" data-copy>Copy invite</button>
     </div>
     <div class="hint-layer" data-hints></div>
+    <div class="hint-layer"><div data-you hidden></div></div>
     <div class="hint-layer" data-fx></div>
     <div class="hud-bottom">
       <div class="heart"><div>You <span data-hp></span></div><div class="meter"><span data-heart style="width:100%"></span></div><div>Keep <span data-keep></span></div></div>
@@ -360,6 +363,22 @@ function clockText(snap) {
   return `Frenzy in ${seconds}s`
 }
 
+function drawYou(ui, snap, selfId) {
+  const label = ui.hud.querySelector("[data-you]")
+  const me = (snap.players || []).find((player) => player.id === selfId)
+  const point = me && ui.view.project ? ui.view.project(me.x, me.y) : null
+  if (!label || !me || !point || point.behind) {
+    if (label) label.hidden = true
+    return
+  }
+  const rect = ui.view.canvas.getBoundingClientRect()
+  const hud = ui.hud.getBoundingClientRect()
+  label.hidden = false
+  label.textContent = me.name
+  label.style.left = `${rect.left - hud.left + (point.x * 0.5 + 0.5) * rect.width}px`
+  label.style.top = `${rect.top - hud.top + (-point.y * 0.5 + 0.5) * rect.height - 28}px`
+}
+
 function drawHints(ui, snap) {
   const layer = ui.hud.querySelector("[data-hints]")
   const offscreen = (snap.monsters || [])
@@ -368,10 +387,7 @@ function drawHints(ui, snap) {
   layer.innerHTML = offscreen.join("")
   const next = ui.hud.querySelector("[data-next]")
   const hints = snap.hints || []
-  next.textContent =
-    snap.phase === "build" && hints.length
-      ? `Next ${hints.map((hint) => `${hint.kind} ${hint.count}`).join(", ")}`
-      : ""
+  next.textContent = nextLine(snap.phase, hints)
   const keep = ui.hud.querySelector("[data-keep]")
   if (keep) keep.textContent = `${snap.keep.hp}/${snap.keep.max}`
 }

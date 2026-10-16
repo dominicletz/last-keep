@@ -261,6 +261,11 @@ export function createView(stage) {
         weapon.castShadow = true
         const mesh = figure(HERO_COLOR[row.hero] || 0x888888, row.hero === "warrior" ? 1.15 : 1, weapon)
         mesh.userData.role = "hero"
+        if (row.id === selfId) {
+          const plate = new THREE.Mesh(new THREE.BoxGeometry(28, 1.2, 28), mat(0xf0c14a))
+          plate.position.y = 0.6
+          mesh.add(plate)
+        }
         return mesh
       })
 
