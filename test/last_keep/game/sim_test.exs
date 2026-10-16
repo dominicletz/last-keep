@@ -222,6 +222,16 @@ defmodule LastKeep.Game.SimTest do
     assert engineer.resources.wood > warrior.resources.wood
   end
 
+  test "two goblins that share a spot step apart" do
+    state = Sim.new("KEEP01", seed: 1)
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 200.0, y: 40.0, wave: 2})
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 200.0, y: 40.0, wave: 2})
+    state = Sim.tick(state)
+    [a, b] = Sim.monsters(state)
+    gap = :math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
+    assert gap >= a.r + b.r - 0.1
+  end
+
   test "wave 1 goblins spawn on the visible field" do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
     state = Sim.tick(state)

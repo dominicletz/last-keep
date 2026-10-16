@@ -80,13 +80,13 @@ function send(dir, command) {
   const port = Number(fs.readFileSync(portFile(dir), "utf8"))
   return new Promise((resolve, reject) => {
     const socket = net.connect(port, "127.0.0.1", () => {
-      socket.end(`${JSON.stringify(command)}\n`)
+      socket.write(`${JSON.stringify(command)}\n`)
     })
     let buffer = ""
     socket.on("data", (chunk) => {
       buffer += chunk
-    })
-    socket.on("end", () => {
+      if (!buffer.includes("\n")) return
+      socket.end()
       try {
         resolve(JSON.parse(buffer))
       } catch (error) {
