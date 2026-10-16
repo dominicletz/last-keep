@@ -48,12 +48,18 @@ async function serve(dir) {
       }
       return { ok: true, beat, files }
     }
-    if (command.op === "act") {
-      const seat = party.seats.find((item) => item.name === command.player)
-      if (!seat) return { ok: false, error: `no player ${command.player}` }
-      await act(seat.page, command)
-      const state = await readState(seat.page)
-      return { ok: true, name: seat.name, state }
+    if (command.op === "act" || command.op === "acts") {
+      const list = command.op === "acts" ? command.players : [command]
+      await Promise.all(
+        list.map(async (item) => {
+          const seat = party.seats.find((entry) => entry.name === item.player)
+          if (!seat) throw new Error(`no player ${item.player}`)
+          await act(seat.page, item)
+        })
+      )
+      const states = []
+      for (const seat of party.seats) states.push({ name: seat.name, state: await readState(seat.page) })
+      return { ok: true, states }
     }
     if (command.op === "stop") {
       server.close()
