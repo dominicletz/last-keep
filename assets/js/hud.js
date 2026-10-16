@@ -15,6 +15,16 @@ export function ignoreFocusClick(wasFocused) {
   return wasFocused === false
 }
 
+export function showReason(previous, next, now, holdMs = 2200, restick = false) {
+  if (!next) return { text: "", until: 0 }
+  if (restick || !previous || next !== previous.text) return { text: next, until: now + holdMs }
+  return previous
+}
+
+export function reasonOpen(entry, now) {
+  return !!(entry && entry.text && now < entry.until)
+}
+
 export function placementReason(me, aim, resources) {
   if (!me || !aim) return ""
   const reach = me.range || 160

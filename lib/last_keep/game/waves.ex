@@ -1,7 +1,12 @@
 defmodule LastKeep.Game.Waves do
   @moduledoc false
 
-  def plan(wave, rng) when wave >= 1 do
+  def plan(1, rng) do
+    {angle, rng} = angle(rng)
+    {[%{angle: angle, kind: :goblin, count: 2, elite: nil}], rng}
+  end
+
+  def plan(wave, rng) when wave >= 2 do
     {angle, rng} = angle(rng)
     elite = elite(wave)
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { bonusCopy, ignoreFocusClick, placementReason, waveLabel } from "./hud.js"
+import { bonusCopy, ignoreFocusClick, placementReason, reasonOpen, showReason, waveLabel } from "./hud.js"
 
 test("the wave label is one number and does not say next", () => {
   assert.equal(waveLabel(1), "Wave 1")
@@ -19,6 +19,17 @@ test("an illegal wall explains itself", () => {
   assert.equal(placementReason(me, { x: 400, y: 0 }, { wood: 48, gold: 0 }), "Too far")
   assert.equal(placementReason(me, { x: 160, y: 0 }, { wood: 2, gold: 0 }), "Not enough wood")
   assert.equal(placementReason(me, { x: 160, y: 0 }, { wood: 48, gold: 0 }), "")
+})
+
+test("an invalid placement reason fades instead of sticking", () => {
+  const shown = showReason({ text: "", until: 0 }, "Too close to the keep", 1000)
+  assert.equal(reasonOpen(shown, 1000), true)
+  assert.equal(reasonOpen(shown, 3199), true)
+  assert.equal(reasonOpen(shown, 3200), false)
+  const held = showReason(shown, "Too close to the keep", 2000)
+  assert.equal(held.until, shown.until)
+  const again = showReason(shown, "Too close to the keep", 4000, 2200, true)
+  assert.equal(again.until, 6200)
 })
 
 test("forge, spire, and relics are explained", () => {

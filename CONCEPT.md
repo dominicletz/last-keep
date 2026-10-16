@@ -10,6 +10,10 @@ settlement in the middle of the map, grows it into a walled city, and holds out
 against endless waves of monsters coming from every side. How long can your
 group survive?
 
+The implemented interaction graph is
+[`docs/GAME-INTERACTIONS.md`](docs/GAME-INTERACTIONS.md). A line on this page
+that is not an edge in that graph is still planned.
+
 ## Players
 
 - 2–15 players, co-op.

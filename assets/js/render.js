@@ -1,7 +1,8 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { lerp } from "./motion"
+import { frameFor } from "./frame"
+import { poseAt } from "./motion"
 
 const HERO_COLOR = {
   warrior: 0x8e99a6,
@@ -41,9 +42,9 @@ export function createView(stage) {
   scene.background = new THREE.Color(0x8a4030)
   scene.fog = new THREE.Fog(0x8a4030, 760, 1500)
 
-  const aspect = 480 / 270
-  const view = 140
-  const camera = new THREE.OrthographicCamera(-view * aspect, view * aspect, view, -view, 0.1, 2400)
+  const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
+  const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
+  let viewFrame = opening
 
   scene.add(new THREE.HemisphereLight(0xffb070, 0x24361c, 1.15))
   const ambient = new THREE.AmbientLight(0xffd2a4, 1.55)
@@ -106,6 +107,9 @@ export function createView(stage) {
   const tracks = new Map()
   const bursts = []
   let lastTick = -1
+  let heroKey = null
+  applyFrame()
+  window.addEventListener("resize", applyFrame)
 
   function forest() {
     const cone = new THREE.ConeGeometry(18, 46, 5)
@@ -194,10 +198,12 @@ export function createView(stage) {
     head.castShadow = true
     group.add(body, head)
     if (weapon) group.add(weapon)
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(14, 2, 2), mat(0xc84b3a))
-    bar.position.y = 34 * scale
-    group.add(bar)
-    group.userData.hp = bar
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 2), mat(0x1a100c))
+    const fill = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 2), mat(0x7ea35a))
+    plate.position.y = 36 * scale
+    fill.position.set(0, 36 * scale, 1.2)
+    group.add(plate, fill)
+    group.userData.hp = fill
     group.userData.face = true
     return group
   }
@@ -233,6 +239,7 @@ export function createView(stage) {
       return { x: point.x, y: point.y, behind: point.z > 1 }
     },
     draw(snap, selfId) {
+      applyFrame()
       const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
       const anchorX = me ? me.x * 0.22 : 0
       const anchorZ = me ? me.y * 0.22 : 0
@@ -327,6 +334,8 @@ export function createView(stage) {
           onScreen: Math.abs(point.x) < 0.72 && Math.abs(point.y) < 0.62 && point.z < 1
         }
       })
+      heroKey = me ? `hero:${me.id}` : null
+      const heroMesh = heroKey ? meshes.get(heroKey) : null
       window.__lastKeep = {
         counts,
         phase: snap.phase,
@@ -335,6 +344,7 @@ export function createView(stage) {
         keep: snap.keep,
         wood: snap.resources?.wood,
         kills: snap.kills,
+        score: snap.score ?? 0,
         self: me
           ? {
               x: me.x,
@@ -356,6 +366,14 @@ export function createView(stage) {
         mageTower: !!snap.mage_tower,
         shownWave: snap.shown_wave,
         smoothing: true,
+        rendered: heroMesh ? { x: heroMesh.position.x, z: heroMesh.position.z } : null,
+        frame: {
+          aspect: camera.right / camera.top,
+          bufferWidth: renderer.domElement.width,
+          bufferHeight: renderer.domElement.height,
+          halfW: viewFrame.halfW,
+          halfH: viewFrame.halfH
+        },
         toClient,
         redNear
       }
@@ -413,10 +431,27 @@ export function createView(stage) {
   }
 
   function smoothed(key) {
-    const row = tracks.get(key)
-    if (!row) return { x: 0, z: 0 }
-    const t = (performance.now() - row.at) / 45
-    return { x: lerp(row.fromX, row.toX, t), z: lerp(row.fromZ, row.toZ, t) }
+    return poseAt(tracks.get(key), performance.now(), 45)
+  }
+
+  function applyFrame() {
+    const rect = stage.getBoundingClientRect()
+    const next = frameFor(rect.width || stage.clientWidth || 480, rect.height || stage.clientHeight || 270)
+    const unchanged =
+      viewFrame.bufferWidth === next.bufferWidth &&
+      viewFrame.bufferHeight === next.bufferHeight &&
+      viewFrame.halfW === next.halfW &&
+      renderer.domElement.width === next.bufferWidth
+    viewFrame = next
+    if (unchanged) return
+    renderer.setSize(next.bufferWidth, next.bufferHeight, false)
+    renderer.domElement.style.width = "100%"
+    renderer.domElement.style.height = "100%"
+    camera.left = next.left
+    camera.right = next.right
+    camera.top = next.top
+    camera.bottom = next.bottom
+    camera.updateProjectionMatrix()
   }
 
   function addBurst(x, z, color) {
@@ -493,6 +528,10 @@ export function createView(stage) {
         burst.mesh.scale.setScalar(1 + age * 3.2)
         burst.mesh.material.opacity = 1 - age
       }
+    }
+    const heroMesh = heroKey ? meshes.get(heroKey) : null
+    if (heroMesh && window.__lastKeep) {
+      window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
     }
     renderer.render(scene, camera)
     requestAnimationFrame(frame)

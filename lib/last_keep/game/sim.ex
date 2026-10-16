@@ -126,7 +126,11 @@ defmodule LastKeep.Game.Sim do
     scale_hp = Rules.hp_scale(wave)
     scale_dmg = Rules.dmg_scale(wave)
     hp = Map.get(attrs, :hp, round(base.hp * scale_hp))
-    damage = Map.get(attrs, :damage, round(base.damage * scale_dmg))
+
+    damage =
+      Map.get(attrs, :damage, max(round(base.damage * scale_dmg * Rules.bite(kind, wave)), 1))
+
+    speed = base.speed * Rules.pace(kind, wave)
     elite = Map.get(attrs, :elite)
 
     monster = %{
@@ -137,7 +141,7 @@ defmodule LastKeep.Game.Sim do
       y: num(Map.get(attrs, :y, 0.0)),
       hp: hp,
       max_hp: hp,
-      speed: base.speed,
+      speed: speed,
       damage: damage,
       r: base.r * 1.0,
       aggro: base.aggro,
@@ -1078,7 +1082,7 @@ defmodule LastKeep.Game.Sim do
   defp spawn_group(state, group, wave) do
     Enum.reduce(1..group.count, state, fn i, state ->
       angle = group.angle + (i - group.count / 2) * 0.45
-      dist = 108 + rem(i * 11, 18)
+      dist = spawn_ring(wave, i)
 
       spawn_monster(state, %{
         kind: group.kind,
@@ -1089,6 +1093,9 @@ defmodule LastKeep.Game.Sim do
       })
     end)
   end
+
+  defp spawn_ring(1, i), do: 136 + rem(i * 11, 12)
+  defp spawn_ring(_wave, i), do: 108 + rem(i * 11, 18)
 
   defp clear_wave(state) do
     {hints, rng} = Waves.plan(state.wave + 1, state.rng)

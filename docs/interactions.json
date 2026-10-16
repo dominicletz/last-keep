@@ -1,0 +1,77 @@
+{
+  "heroes": ["warrior", "mage", "scout", "farmer", "engineer"],
+  "resources": [
+    {
+      "id": "wood",
+      "producers": ["tree"],
+      "consumers": ["wall", "tower", "trap", "field", "forge", "mage_tower", "barricade"]
+    },
+    {
+      "id": "food",
+      "producers": ["field", "farmer"],
+      "consumers": ["feast", "keep"]
+    },
+    {
+      "id": "gold",
+      "producers": ["field", "bounty"],
+      "consumers": ["tower", "forge", "mage_tower"]
+    }
+  ],
+  "buildings": [
+    {"id": "wall", "purpose": "Blocks a monster until the wall breaks, so the bite never reaches the keep."},
+    {"id": "tower", "purpose": "Shoots the nearest monster and spends wood and gold to cover a side the heroes are not on."},
+    {"id": "trap", "purpose": "Bursts for a large hit when a monster steps on it, then it is gone."},
+    {"id": "field", "purpose": "Feeds the stockpile with food and a little gold during the day."},
+    {"id": "forge", "purpose": "Raises every attack's damage while the building stands."},
+    {"id": "mage_tower", "purpose": "Raises mage damage and shortens mage cooldowns while the spire stands."}
+  ],
+  "edges": [
+    {"from": "tree", "to": "wood", "via": "Any living hero who stands on a tree chops wood.", "status": "implemented", "rule": "defp gather"},
+    {"from": "wood", "to": "wall", "via": "Placing a wall pays its wood cost.", "status": "implemented", "rule": "defp try_place"},
+    {"from": "wood", "to": "tower", "via": "A tower costs wood and gold.", "status": "implemented", "rule": "def cost(:tower"},
+    {"from": "wood", "to": "trap", "via": "A trap costs wood.", "status": "implemented", "rule": "def cost(:trap"},
+    {"from": "wood", "to": "field", "via": "A field costs wood. A farmer pays less.", "status": "implemented", "rule": "def cost(:field"},
+    {"from": "wood", "to": "forge", "via": "The forge costs wood and gold.", "status": "implemented", "rule": "def cost(:forge"},
+    {"from": "wood", "to": "mage_tower", "via": "The spire costs wood and gold.", "status": "implemented", "rule": "def cost(:mage_tower"},
+    {"from": "wood", "to": "barricade", "via": "A barricade pays wood and lays three walls.", "status": "implemented", "rule": "def barricade_cost"},
+    {"from": "gold", "to": "tower", "via": "A tower costs gold as well as wood.", "status": "implemented", "rule": "def cost(:tower"},
+    {"from": "gold", "to": "forge", "via": "The forge costs gold as well as wood.", "status": "implemented", "rule": "def cost(:forge"},
+    {"from": "gold", "to": "mage_tower", "via": "The spire costs gold as well as wood.", "status": "implemented", "rule": "def cost(:mage_tower"},
+    {"from": "farmer", "to": "field", "via": "Sow places a field without paying wood.", "status": "implemented", "rule": "kind: :sow"},
+    {"from": "field", "to": "food", "via": "Fields yield food during the build, and a living farmer doubles that yield.", "status": "implemented", "rule": "defp field_yield"},
+    {"from": "field", "to": "gold", "via": "Fields also add a little gold during the build.", "status": "implemented", "rule": "defp field_yield"},
+    {"from": "farmer", "to": "food", "via": "Harvest collects food from nearby fields.", "status": "implemented", "rule": "kind: :harvest"},
+    {"from": "food", "to": "keep", "via": "Feeding beside the keep spends food and restores keep health.", "status": "implemented", "rule": "defp maybe_feed"},
+    {"from": "food", "to": "farmer", "via": "Feast spends food and heals every living hero.", "status": "implemented", "rule": "kind: :feast"},
+    {"from": "bounty", "to": "gold", "via": "A kill pays the monster's bounty. A warrior kill pays one extra gold.", "status": "implemented", "rule": "def kill_bonus"},
+    {"from": "engineer", "to": "wall", "via": "An engineer pays less wood for walls, towers, and traps, and can raise a line of walls.", "status": "implemented", "rule": "def cost(:wall, :engineer)"},
+    {"from": "engineer", "to": "wall", "via": "The engineer's swing repairs the nearest building.", "status": "implemented", "rule": "defp repair_near"},
+    {"from": "wall", "to": "keep", "via": "A monster that cannot walk through a wall bites the wall instead of the keep.", "status": "implemented", "rule": "defp chew_wall"},
+    {"from": "tower", "to": "monsters", "via": "A standing tower fires arrows at a monster in range.", "status": "implemented", "rule": "defp towers"},
+    {"from": "trap", "to": "monsters", "via": "A trap damages the monster that steps on it.", "status": "implemented", "rule": "defp trigger_trap"},
+    {"from": "warrior", "to": "monsters", "via": "Strike, dash, and nova damage monsters in front of the warrior.", "status": "implemented", "rule": "kind: :nova"},
+    {"from": "warrior", "to": "warrior", "via": "Guard cuts the damage of bites against that hero.", "status": "implemented", "rule": "kind: :guard"},
+    {"from": "mage", "to": "monsters", "via": "Bolt, fireball, and meteor damage monsters. Frost slows them.", "status": "implemented", "rule": "kind: :fireball"},
+    {"from": "scout", "to": "monsters", "via": "Mark makes a monster take more damage. Volley and the shot damage it.", "status": "implemented", "rule": "kind: :mark"},
+    {"from": "scout", "to": "hints", "via": "A living scout reveals the next wave's directions before the last five seconds.", "status": "implemented", "rule": "defp scout_alive?"},
+    {"from": "forge", "to": "warrior", "via": "A standing forge multiplies attack damage for every hero.", "status": "implemented", "rule": "defp scaled_damage"},
+    {"from": "mage_tower", "to": "mage", "via": "A standing spire raises mage damage and shortens mage cooldowns.", "status": "implemented", "rule": "defp cd_mult"},
+    {"from": "monsters", "to": "keep", "via": "A monster in reach of the keep bites it. A boss slam hits harder.", "status": "implemented", "rule": "defp strike"},
+    {"from": "monsters", "to": "warrior", "via": "A monster that is closer to a hero than to the keep bites the hero.", "status": "implemented", "rule": "defp monster_target"},
+    {"from": "boss", "to": "relic", "via": "Killing a boss adds one relic the party does not already hold.", "status": "implemented", "rule": "defp maybe_relic"},
+    {"from": "relic", "to": "keep", "via": "Heartwood raises the keep's maximum health.", "status": "implemented", "rule": "defp grow_keep"},
+    {"from": "relic", "to": "warrior", "via": "Whetstone adds damage and swiftness adds move speed.", "status": "implemented", "rule": "defp speed_mult"},
+    {"from": "relic", "to": "field", "via": "Granary adds extra food to the field yield.", "status": "implemented", "rule": "defp field_yield"},
+    {"from": "elite", "to": "relic", "via": "CONCEPT.md says elites drop relics too. Only a boss drops one today.", "status": "planned"},
+    {"from": "mage_tower", "to": "spells", "via": "CONCEPT.md describes a mage tower that unlocks spell upgrades. The spire only buffs damage and cooldown.", "status": "planned"},
+    {"from": "wall", "to": "city", "via": "CONCEPT.md describes the settlement growing into a walled city. Players place buildings by hand. There is no city-growth layer.", "status": "planned"},
+    {"from": "monsters", "to": "monsters", "via": "Monster bodies do not block each other, so a wall line cannot squeeze them into a gap.", "status": "planned"},
+    {"from": "warrior", "to": "monsters", "via": "Heroes do not block monsters. The planned rule is that bodies block, and the warrior dash is the one pass through a monster.", "status": "planned"},
+    {"from": "warrior", "to": "warrior", "via": "Heroes do not block other heroes.", "status": "planned"},
+    {"from": "keep", "to": "warrior", "via": "The keep is not solid. slide has the flag, and every caller passes false.", "status": "planned"},
+    {"from": "keep", "to": "monsters", "via": "Monsters can walk into the keep and bite it from inside. They should attack from the edge.", "status": "planned"},
+    {"from": "wood", "to": "keep", "via": "A keep upgrade that spends wood and gold is not built. There is no card pick.", "status": "planned"},
+    {"from": "keep", "to": "wall", "via": "An upgrade should widen the build radius and pull the camera back. The radius is still the hero kit range.", "status": "planned"},
+    {"from": "scenery", "to": "wood", "via": "The client draws a tree ring that is not an entity and has no wood. Real trees are chopped until they disappear.", "status": "planned"}
+  ]
+}

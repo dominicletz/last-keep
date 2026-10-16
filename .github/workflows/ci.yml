@@ -34,7 +34,7 @@ jobs:
       - run: mix assets.setup
       - run: npm ci --prefix assets
       - run: mix assets.build
-      - run: mix test
+      - run: mix test --cover
       - run: npm test --prefix assets
       - run: npm run check --prefix assets
       - run: npm ci

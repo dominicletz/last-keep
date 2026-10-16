@@ -10,6 +10,8 @@ This is the definition of done. `mix test` does not replace it. A passing run th
 
 The checks live in `e2e/scenarios.js`. `e2e/coop.spec.js` calls those functions and does not restate them. When a check changes, change `e2e/scenarios.js`. Do not copy the steps into this skill.
 
+How roles touch is `docs/GAME-INTERACTIONS.md`. `mix test` includes `test/last_keep/game/interactions_test.exs`, which checks `docs/interactions.json` against the simulation. A playtest that reviews roles uses `.agents/skills/playtest-last-keep/SKILL.md` and does not replace this browser proof.
+
 ## Launch
 
 From the repo root, with Elixir 1.18 and OTP 28 on `PATH`:
@@ -48,11 +50,12 @@ Against a deployed site:
 BASE_URL=https://agentyard.letz.tw npx playwright test
 ```
 
-`e2e/coop.spec.js` runs three scenarios exported from `e2e/scenarios.js`:
+`e2e/coop.spec.js` runs four scenarios exported from `e2e/scenarios.js`:
 
-- `twoPlayerNight` — Bob the warrior hosts, LLL the mage joins from the invite query. The night waits. A click that only focuses the window does not swing. A click with no building armed does not spend wood. An illegal wall says why and spends nothing. A legal wall spends wood and then disarms. Both clients see goblins on the yard. The mage's Fireball is on screen and bursts. Damage numbers and `Slain` are on screen. The wave label only moves forward, from `Wave 1` to `Wave 2`. The keep survives. Forge, Spire, and relic copy are on the HUD, and `window.__lastKeep.smoothing` is true.
-- `joinFromForm` — a bare `/r/<code>` link shows the join form, and Bo the engineer enters Ada's room.
+- `twoPlayerNight` — Bob the warrior hosts, LLL the mage joins from the invite query. The night waits. The score chip reads `Score 0`. A click that only focuses the window does not swing. A click with no building armed does not spend wood. An illegal wall says why, spends nothing, and the reason hides. One click after the window blurs places a legal wall, spends wood, and disarms. Movement while walking interpolates. Both clients see goblins on the yard. The mage's Fireball is on screen and bursts. Damage numbers rise and fade, and `Slain` is on screen. The wave label only moves forward, from `Wave 1` to `Wave 2`. The keep survives. The score chip matches the snapshot. Forge, Spire, and relic copy are on the HUD, and `window.__lastKeep.smoothing` is true.
+- `joinFromForm` — a bare `/r/<code>` link shows the join form, and Bo the engineer enters Ada's room. Console errors fail the scenario.
 - `scoreList` — `GET /api/highscores` has no score of 0 and no blank names.
+- `squarePixels` — the buffer aspect and the camera aspect follow the window at 1600×600, 600×1000, and 1280×800. Console errors fail the scenario.
 
 The browser reads `window.__lastKeep` (phase, wood, buildings, monsters, projectiles, log, labels, kinds, attackCd, shownWave, smoothing, `toClient`, `redNear`) and `window.__lastKeepTest.blur()` for the focus click. Those hooks are the same ones this skill's run uses. Do not add a second script.
 
@@ -70,4 +73,4 @@ Stop the `mix phx.server` process you started. Do not kill every `beam` on the m
 
 ## Helpers
 
-`npx playwright test` is the harness. `npm test --prefix assets` checks the modules under `assets/js` that the scenarios depend on: invite parsing, snapshot drawing, the wave label, the focus click, placement reasons, relic copy, interpolation, and elite looks. `npm run check --prefix assets` typechecks those modules. The feature map is `features/README.md`. It names the same functions and does not repeat their steps.
+`npx playwright test` is the harness. `npm test --prefix assets` checks the modules under `assets/js` that the scenarios depend on: invite parsing, snapshot drawing, the wave label, the focus click, placement reasons, relic copy, interpolation, the frame aspect, and elite looks. `npm run check --prefix assets` typechecks those modules. `mix test --cover` is the coverage floor in `docs/VERIFICATION.md`. The feature map is `features/README.md`. It names the same functions and does not repeat their steps.
