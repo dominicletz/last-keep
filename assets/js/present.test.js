@@ -25,6 +25,14 @@ test("a monster without a facing still gets a real rotation", () => {
   assert.equal(Number.isFinite(view.monsters[0].facing), true)
 })
 
+test("an elite keeps the mark the renderer uses", () => {
+  const view = present({
+    monsters: [{ id: 9, kind: "boss", x: 40, y: 10, elite: "armored", hp: 80, max: 80 }]
+  })
+  assert.equal(view.monsters[0].kind, "boss")
+  assert.equal(view.monsters[0].elite, "armored")
+})
+
 test("a monster with a bad position is not drawn", () => {
   const view = present({ monsters: [{ id: 1, kind: "goblin", x: null, y: 10 }] })
   assert.deepEqual(view.monsters, [])

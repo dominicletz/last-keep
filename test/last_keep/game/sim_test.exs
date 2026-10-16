@@ -285,8 +285,8 @@ defmodule LastKeep.Game.SimTest do
 
     state =
       state
-      |> Sim.input("ada", %{"build" => "wall", "attack" => true, "ax" => ax, "ay" => ay})
-      |> Sim.input("ada", %{"build" => "wall", "attack" => false, "ax" => ax, "ay" => ay})
+      |> Sim.input("ada", %{"build" => "wall", "place" => true, "ax" => ax, "ay" => ay})
+      |> Sim.input("ada", %{"build" => "wall", "place" => false, "ax" => ax, "ay" => ay})
       |> Sim.tick()
 
     assert state.resources.wood < 48
@@ -320,6 +320,133 @@ defmodule LastKeep.Game.SimTest do
     assert Snapshot.render(late).hints != []
   end
 
+  test "a refused wall does not spend wood, and an attack does not build" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    wood = state.resources.wood
+
+    refused =
+      state
+      |> Sim.input("ada", %{"build" => "wall", "place" => true, "ax" => 0, "ay" => 0})
+      |> Sim.tick()
+
+    assert refused.resources.wood == wood
+    assert buildings(refused) == []
+
+    assert Enum.any?(
+             refused.events,
+             &(&1.type == "deny" and &1.reason == "Too close to the keep")
+           )
+
+    swung =
+      state
+      |> Sim.input("ada", %{"attack" => true, "ax" => ada.x + 40, "ay" => ada.y})
+      |> Sim.tick()
+
+    assert swung.resources.wood == wood
+    assert buildings(swung) == []
+  end
+
+  test "a mage fireball damages a goblin and bursts" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :mage))
+    ada = hero(state, "ada")
+
+    state =
+      Sim.spawn_monster(state, %{
+        kind: :goblin,
+        x: ada.x + 80,
+        y: ada.y,
+        hp: 40,
+        wave: 1
+      })
+
+    state =
+      state
+      |> Sim.input("ada", %{"q" => true, "ax" => ada.x + 80, "ay" => ada.y})
+      |> Sim.input("ada", %{"q" => false, "ax" => ada.x + 80, "ay" => ada.y})
+
+    {state, saw_boom} =
+      Enum.reduce(1..40, {state, false}, fn _, {state, saw} ->
+        state = Sim.tick(state)
+        {state, saw or Enum.any?(state.events, &(&1.type == "boom"))}
+      end)
+
+    [monster] = Sim.monsters(state)
+    assert monster.hp < 40
+    assert saw_boom
+  end
+
+  test "the shown wave moves forward once when a wave clears" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    state = Sim.tick(state)
+    assert Snapshot.render(state).shown_wave == 1
+
+    state = %{
+      state
+      | entities: Map.reject(state.entities, fn {_id, entity} -> entity.type == :monster end)
+    }
+
+    assert Snapshot.render(state).shown_wave == 1
+    state = Sim.tick(state)
+    assert {:build, _} = state.phase
+    assert Snapshot.render(state).shown_wave == 2
+    state = Sim.tick(state)
+    assert Snapshot.render(state).shown_wave == 2
+  end
+
+  test "armor, a fast lunge, a forge, and a boss slam are different" do
+    plain = hit_goblin(nil)
+    armored = hit_goblin(:armored)
+    assert armored.hp > plain.hp
+
+    state = Sim.new("KEEP01", seed: 1)
+
+    state =
+      Sim.spawn_monster(state, %{kind: :goblin, x: 200, y: 0, hp: 50, elite: :fast, wave: 1})
+
+    state = Enum.reduce(1..8, state, fn _, state -> Sim.tick(state) end)
+    [fast] = Sim.monsters(state)
+    assert fast.x < 180
+
+    boss = Sim.new("KEEP01", seed: 1, keep_hp: 200)
+    boss = Sim.spawn_monster(boss, %{kind: :boss, x: 70, y: 0, hp: 400, damage: 10, wave: 10})
+    boss = Enum.reduce(1..25, boss, fn _, state -> Sim.tick(state) end)
+    assert boss.keep.hp <= 200 - 18
+
+    forged = Sim.new("KEEP01", seed: 1)
+    forged = Sim.spawn_building(forged, %{kind: :forge, x: 180, y: 0})
+    {:ok, forged} = Sim.join(forged, player("ada", :warrior))
+    ada = hero(forged, "ada")
+    forged = Sim.spawn_monster(forged, %{kind: :goblin, x: ada.x + 30, y: ada.y, hp: 80, wave: 1})
+    forged = Sim.input(forged, "ada", %{"attack" => true, "ax" => ada.x + 30, "ay" => ada.y})
+    forged = Sim.tick(forged)
+    [hurt] = Sim.monsters(forged)
+    assert hurt.hp <= 80 - 29
+  end
+
+  defp hit_goblin(elite) do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+
+    state =
+      Sim.spawn_monster(state, %{
+        kind: :goblin,
+        x: ada.x + 30,
+        y: ada.y,
+        hp: 80,
+        elite: elite,
+        wave: 1
+      })
+
+    state = Sim.input(state, "ada", %{"attack" => true, "ax" => ada.x + 30, "ay" => ada.y})
+    state = Sim.tick(state)
+    hd(Sim.monsters(state))
+  end
+
   defp place_wall(hero) do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 400)
     {:ok, state} = Sim.join(state, player("ada", hero))
@@ -328,7 +455,7 @@ defmodule LastKeep.Game.SimTest do
     state =
       push(state, "ada", %{
         "build" => "wall",
-        "attack" => true,
+        "place" => true,
         "ax" => ada.x + 40,
         "ay" => ada.y
       })

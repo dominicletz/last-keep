@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 This is the definition of done. `mix test` does not replace it. A passing run that only counts meshes, or that never clicks, is not done. Run the Playwright suite against the server you changed. After a deploy, run the same suite with `BASE_URL` set to the live origin.
 
+The checks live in `e2e/scenarios.js`. `e2e/coop.spec.js` calls those functions and does not restate them. When a check changes, change `e2e/scenarios.js`. Do not copy the steps into this skill.
+
 ## Launch
 
 From the repo root, with Elixir 1.18 and OTP 28 on `PATH`:
@@ -22,7 +24,7 @@ PORT=4000 mix phx.server
 
 Ready means `curl -fsS http://127.0.0.1:4000/` contains `Last Keep` and the body contains `Create game`. A socket that accepts TCP is not ready.
 
-`npx playwright test` starts that server itself when `BASE_URL` is unset and port 4000 is free. If a server you started is already on port 4000, the suite reuses it. Restart that server after a code change or the browser will prove the old build.
+`npx playwright test` starts that server itself when `BASE_URL` is unset and port 4000 is free. If a server you started is already on port 4000, the suite reuses it. Restart that server after a code change or the browser will prove the old build. The shell often exports `BASE_URL` for production. Unset it for a local run.
 
 The viewport is 1280 by 800. That is the size a manual playtest uses. Do not shrink it to make a sprite fit.
 
@@ -46,25 +48,21 @@ Against a deployed site:
 BASE_URL=https://agentyard.letz.tw npx playwright test
 ```
 
-The suite is `e2e/coop.spec.js`. It uses two browser contexts at 1280 by 800 and drives the page with clicks and keys.
+`e2e/coop.spec.js` runs three scenarios exported from `e2e/scenarios.js`:
 
-- Host: open `/`, fill `#player-name` with `Bob`, check warrior, submit `#create-button`.
-- Guest with an invite query: open `/r/<code>?name=LLL&hero=mage`. `#join-game` is hidden. Both `[data-roster]` elements contain `Bob`, `LLL`, `Warrior`, and `Mage`.
-- Before anyone starts, `[data-clock]` is `Waiting to start`. The host `[data-start]` reads `Start the night`. The guest button reads `Waiting for the host`. `[data-skill-name="attack"]` reads `Strike`. The wall button contains `8 wood`.
-- Wall: press `Digit1`, click a yard point just ahead of the hero (`window.__lastKeep.toClient`), and wait until wood drops and `buildings` is at least 1. Press `Escape` so the next click attacks.
-- Night: the host clicks `[data-start]`. The wave does not begin on room creation.
-- Wave: `window.__lastKeep.monsters` has at least 2 goblins, every one `onScreen`, and `redNear` at one of them is greater than 8. `[data-hints]` does not contain an edge label like `goblin 2`. `[data-clock]` contains `Frenzy`. The two clients read keep HP within 40 of each other at the same moment.
-- Fight: both browsers hold WASD and click the goblin for up to 50 seconds. `kills` reaches at least 1 from that input. The phase returns to `build` with keep HP above 0.
-- Guest with a bare link: open `/r/<code>`, fill `#player-name` with `Bo`, check engineer, submit the join form. The roster contains `Bo`.
-- Scores: `GET /api/highscores` has no row with score 0 and no row whose names are blank.
+- `twoPlayerNight` — Bob the warrior hosts, LLL the mage joins from the invite query. The night waits. A click that only focuses the window does not swing. A click with no building armed does not spend wood. An illegal wall says why and spends nothing. A legal wall spends wood and then disarms. Both clients see goblins on the yard. The mage's Fireball is on screen and bursts. Damage numbers and `Slain` are on screen. The wave label only moves forward, from `Wave 1` to `Wave 2`. The keep survives. Forge, Spire, and relic copy are on the HUD, and `window.__lastKeep.smoothing` is true.
+- `joinFromForm` — a bare `/r/<code>` link shows the join form, and Bo the engineer enters Ada's room.
+- `scoreList` — `GET /api/highscores` has no score of 0 and no blank names.
 
-`[data-restart]` on the fallen-keep panel calls the `restart` channel event. It is a button, not a link home. `mix test` covers that the same party is still in the room and the night waits again.
+The browser reads `window.__lastKeep` (phase, wood, buildings, monsters, projectiles, log, labels, kinds, attackCd, shownWave, smoothing, `toClient`, `redNear`) and `window.__lastKeepTest.blur()` for the focus click. Those hooks are the same ones this skill's run uses. Do not add a second script.
+
+Server rules that the browser cannot force (a refused cost, Fireball damage, the shown-wave step, elite armor, a fast lunge, a boss slam) are ExUnit tests in `test/last_keep/game/sim_test.exs`. Run `mix test` as well.
 
 ## Evidence
 
-Write screenshots to `tmp/verify-artifacts/`. The suite writes `coop-host.png`, `coop-guest.png`, `wall-host.png`, `wave-host.png`, `wave-guest.png`, `cleared-host.png`, and `form-join.png`. Cleanup does not delete that directory.
+Write screenshots to `tmp/verify-artifacts/`. `twoPlayerNight` writes `coop-host.png`, `coop-guest.png`, `reason-host.png`, `wall-host.png`, `wave-host.png`, `wave-guest.png`, `combat-host.png`, and `cleared-host.png`. `joinFromForm` writes `form-join.png`. Cleanup does not delete that directory.
 
-A passing run shows both players, a placed wall, goblins on the yard inside the camera, and a cleared wave. A roster assertion without the screenshot is not proof. A monster count without red pixels at the goblin's projected position is not proof. A magenta pixel anywhere on the canvas is not proof.
+A passing run shows both players, a placed wall, the refusal reason, goblins on the yard inside the camera, a damage number, and a cleared wave. A roster assertion without the screenshot is not proof. A monster count without red pixels at the goblin's projected position is not proof.
 
 ## Cleanup
 
@@ -72,4 +70,4 @@ Stop the `mix phx.server` process you started. Do not kill every `beam` on the m
 
 ## Helpers
 
-`npx playwright test` is the harness. `npm test --prefix assets` checks invite parsing, camera-relative movement, and that a snapshot goblin stays in the draw list. `npm run check --prefix assets` typechecks those modules. The feature map is `features/README.md`.
+`npx playwright test` is the harness. `npm test --prefix assets` checks the modules under `assets/js` that the scenarios depend on: invite parsing, snapshot drawing, the wave label, the focus click, placement reasons, relic copy, interpolation, and elite looks. `npm run check --prefix assets` typechecks those modules. The feature map is `features/README.md`. It names the same functions and does not repeat their steps.
