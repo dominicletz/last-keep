@@ -1,0 +1,1417 @@
+defmodule LastKeep.Game.Sim do
+  @moduledoc false
+
+  alias LastKeep.Game.Rules
+  alias LastKeep.Game.State
+  alias LastKeep.Game.Waves
+
+  @empty_input %{
+    mx: 0.0,
+    my: 0.0,
+    ax: 0.0,
+    ay: 0.0,
+    attack: false,
+    q: false,
+    e: false,
+    r: false,
+    f: false,
+    build: nil
+  }
+
+  def new(code, opts \\ []) do
+    seed = Keyword.get(opts, :seed, System.unique_integer([:positive]))
+    seed = if seed < 1, do: 1, else: seed
+    build = Keyword.get(opts, :build_ticks, Rules.first_build_ticks())
+    keep_hp = Keyword.get(opts, :keep_hp, 900)
+    rng = :rand.seed_s(:exsss, {seed, seed + 3, seed + 11})
+    {hints, rng} = Waves.plan(1, rng)
+
+    state = %State{
+      code: code,
+      rng: rng,
+      phase: {:build, build},
+      hints: hints,
+      keep: %{hp: keep_hp, max_hp: keep_hp, r: 54.0}
+    }
+
+    place_trees(state, 30)
+  end
+
+  def join(%State{} = state, attrs) do
+    id = attrs.id
+    name = attrs.name
+    hero = attrs.hero
+    connected = Map.get(attrs, :connected, true)
+
+    cond do
+      not Rules.hero?(hero) ->
+        {:error, :hero}
+
+      state.phase == :over and not Map.has_key?(state.players, id) ->
+        {:error, :over}
+
+      Map.has_key?(state.players, id) ->
+        {:ok, reconnect(state, id, name, connected)}
+
+      map_size(state.players) >= Rules.max_players() ->
+        {:error, :full}
+
+      true ->
+        {:ok, add_player(state, id, name, hero, connected)}
+    end
+  end
+
+  def disconnect(%State{} = state, id, generation \\ nil) do
+    case state.players[id] do
+      nil ->
+        state
+
+      player ->
+        if generation == nil or player.generation == generation do
+          put_player(state, %{player | connected: false, input: @empty_input})
+        else
+          state
+        end
+    end
+  end
+
+  def input(%State{} = state, id, payload) when is_map(payload) do
+    case state.players[id] do
+      %{connected: true} = player ->
+        put_player(state, %{player | input: parse_input(payload)})
+
+      _ ->
+        state
+    end
+  end
+
+  def tick(%State{phase: :over} = state), do: %{state | tick: state.tick + 1, events: []}
+
+  def tick(%State{} = state) do
+    state
+    |> bump()
+    |> cooldowns()
+    |> respawns()
+    |> move_heroes()
+    |> gather()
+    |> abilities()
+    |> remember_input()
+    |> projectiles()
+    |> towers()
+    |> step_monsters()
+    |> economy()
+    |> advance_phase()
+  end
+
+  def spawn_monster(%State{} = state, attrs) do
+    kind = Map.get(attrs, :kind, :goblin)
+    base = Rules.monster(kind)
+    wave = Map.get(attrs, :wave, max(state.wave, 1))
+    scale_hp = Rules.hp_scale(wave)
+    scale_dmg = Rules.dmg_scale(wave)
+    hp = Map.get(attrs, :hp, round(base.hp * scale_hp))
+    damage = Map.get(attrs, :damage, round(base.damage * scale_dmg))
+    elite = Map.get(attrs, :elite)
+
+    monster = %{
+      type: :monster,
+      id: state.next_id,
+      kind: kind,
+      x: num(Map.get(attrs, :x, 0.0)),
+      y: num(Map.get(attrs, :y, 0.0)),
+      hp: hp,
+      max_hp: hp,
+      speed: base.speed,
+      damage: damage,
+      r: base.r * 1.0,
+      aggro: base.aggro,
+      attack_cd: 0,
+      slow: 0,
+      marked: 0,
+      elite: elite,
+      enraged: false
+    }
+
+    insert(state, monster)
+  end
+
+  def spawn_building(%State{} = state, attrs) do
+    kind = attrs.kind
+    spec = Rules.building(kind)
+
+    building = %{
+      type: :building,
+      id: state.next_id,
+      kind: kind,
+      x: snap(num(attrs.x)),
+      y: snap(num(attrs.y)),
+      hp: spec.hp,
+      max_hp: spec.hp,
+      r: spec.r * 1.0,
+      cd: 0
+    }
+
+    state |> insert(building) |> refresh_upgrades()
+  end
+
+  def waves_survived(%State{phase: phase, wave: wave}) when phase in [:over] or is_tuple(phase) do
+    case phase do
+      {:wave, _} -> max(wave - 1, 0)
+      :over -> max(wave - 1, 0)
+      _ -> wave
+    end
+  end
+
+  def score(%State{} = state), do: waves_survived(state) * 1000 + state.kills * 10
+
+  defp bump(state), do: %{state | tick: state.tick + 1, events: []}
+
+  defp reconnect(state, id, name, connected) do
+    player = state.players[id]
+    put_player(state, %{player | name: name, connected: connected})
+  end
+
+  defp add_player(state, id, name, hero, connected) do
+    n = map_size(state.players)
+    angle = n * 2.2
+    x = :math.cos(angle) * 120
+    y = :math.sin(angle) * 120
+    stats = Rules.kit(hero)
+    public_id = "p#{n + 1}"
+
+    entity = %{
+      type: :hero,
+      id: state.next_id,
+      player_id: id,
+      hero: hero,
+      x: x,
+      y: y,
+      facing: angle + :math.pi(),
+      hp: stats.hp,
+      max_hp: stats.hp,
+      r: 14.0,
+      alive: true,
+      respawn: 0,
+      guard: 0,
+      chop: 0,
+      cooldowns: %{attack: 0, q: 0, e: 0, r: 0}
+    }
+
+    player = %{
+      id: id,
+      public_id: public_id,
+      name: name,
+      hero: hero,
+      hero_id: entity.id,
+      connected: connected,
+      generation: 0,
+      input: @empty_input,
+      prev: @empty_input
+    }
+
+    state
+    |> insert(entity)
+    |> put_player(player)
+  end
+
+  defp cooldowns(state) do
+    entities =
+      Map.new(state.entities, fn
+        {id, %{type: :hero, cooldowns: cds} = hero} ->
+          cds = Map.new(cds, fn {key, value} -> {key, max(value - 1, 0)} end)
+          {id, %{hero | cooldowns: cds, guard: max(hero.guard - 1, 0)}}
+
+        {id, %{type: :monster} = monster} ->
+          {id,
+           %{
+             monster
+             | attack_cd: max(monster.attack_cd - 1, 0),
+               slow: max(monster.slow - 1, 0),
+               marked: max(monster.marked - 1, 0)
+           }}
+
+        other ->
+          other
+      end)
+
+    %{state | entities: entities}
+  end
+
+  defp respawns(state) do
+    Enum.reduce(heroes(state), state, fn hero, state ->
+      cond do
+        hero.alive ->
+          state
+
+        hero.respawn <= 1 ->
+          {unit, rng} = :rand.uniform_s(state.rng)
+          angle = unit * 2 * :math.pi()
+          stats = Rules.kit(hero.hero)
+
+          put_entity(%{state | rng: rng}, %{
+            hero
+            | alive: true,
+              hp: stats.hp,
+              respawn: 0,
+              x: :math.cos(angle) * 110,
+              y: :math.sin(angle) * 110
+          })
+
+        true ->
+          put_entity(state, %{hero | respawn: hero.respawn - 1})
+      end
+    end)
+  end
+
+  defp move_heroes(state) do
+    Enum.reduce(state.players, state, fn {_id, player}, state ->
+      hero = state.entities[player.hero_id]
+
+      if player.connected and hero.alive do
+        {mx, my} = norm(player.input.mx, player.input.my)
+        speed = Rules.kit(hero.hero).speed * speed_mult(state)
+        dx = mx * speed * 0.05
+        dy = my * speed * 0.05
+        {x, y} = slide(state, hero.x, hero.y, dx, dy, hero.r, false)
+        {x, y} = clamp_map(x, y, 1000)
+        facing = facing_of(hero, player.input, x, y)
+        put_entity(state, %{hero | x: x, y: y, facing: facing})
+      else
+        state
+      end
+    end)
+  end
+
+  defp gather(state) do
+    Enum.reduce(living_heroes(state), state, fn hero, state ->
+      case nearest(trees(state), hero.x, hero.y, 48) do
+        nil ->
+          state
+
+        tree ->
+          rate = Rules.kit(hero.hero).chop
+          acc = hero.chop + 1
+
+          if acc >= rate and tree.wood > 0 do
+            state = add_resource(state, :wood, 1)
+            tree = %{tree | wood: tree.wood - 1}
+            hero = %{state.entities[hero.id] | chop: 0}
+
+            state =
+              if tree.wood <= 0 do
+                drop(state, tree.id)
+              else
+                put_entity(state, tree)
+              end
+
+            put_entity(state, hero)
+          else
+            put_entity(state, %{hero | chop: acc})
+          end
+      end
+    end)
+  end
+
+  defp abilities(state) do
+    Enum.reduce(state.players, state, fn {_id, player}, state ->
+      hero = state.entities[player.hero_id]
+
+      if player.connected and hero.alive do
+        hero = state.entities[player.hero_id]
+        state = maybe_attack(state, player, hero)
+        state = maybe_skill(state, player, state.entities[hero.id], :q)
+        state = maybe_skill(state, player, state.entities[hero.id], :e)
+        state = maybe_skill(state, player, state.entities[hero.id], :r)
+        maybe_feed(state, player, state.entities[hero.id])
+      else
+        state
+      end
+    end)
+  end
+
+  defp maybe_attack(state, player, hero) do
+    build = player.input.build
+
+    cond do
+      build && rising?(player, :attack) ->
+        try_place(state, hero, build, player.input.ax, player.input.ay)
+
+      player.input.attack && hero.cooldowns.attack <= 0 ->
+        cast(state, player, hero, :attack, Rules.kit(hero.hero).attack)
+
+      true ->
+        state
+    end
+  end
+
+  defp maybe_skill(state, player, hero, slot) do
+    if rising?(player, slot) and hero.cooldowns[slot] <= 0 do
+      cast(state, player, hero, slot, Map.get(Rules.kit(hero.hero), slot))
+    else
+      state
+    end
+  end
+
+  defp maybe_feed(state, player, hero) do
+    near = hypot(hero.x, hero.y) < 100
+
+    if rising?(player, :f) and near and state.resources.food >= 5 do
+      state = pay(state, %{wood: 0, gold: 0, food: 5})
+      heal = 50
+      keep = state.keep
+      hp = min(keep.hp + heal, keep.max_hp)
+      event(%{state | keep: %{keep | hp: hp}}, %{type: "heal", x: 0.0, y: 0.0})
+    else
+      state
+    end
+  end
+
+  defp cast(state, _player, hero, slot, %{kind: :melee} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    state = put_entity(state, hero)
+    range = ability.range
+
+    monsters(state)
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - hero.x, monster.y - hero.y) <= range + monster.r and
+        angle_between(hero, monster) <= ability.arc / 2
+    end)
+    |> Enum.reduce(state, fn monster, state ->
+      damage = scaled_damage(ability.damage, state, hero.hero, monster)
+
+      state
+      |> hurt_monster(monster.id, damage, Rules.kill_bonus(hero.hero))
+      |> event(%{type: "hit", x: monster.x, y: monster.y})
+    end)
+    |> repair_near(hero, Map.get(ability, :repair, 0))
+  end
+
+  defp cast(state, _player, hero, slot, %{kind: :bolt} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    state = put_entity(state, hero)
+    {dx, dy} = aim_dir(hero, state.players[hero.player_id].input)
+    damage = scaled_damage(ability.damage, state, hero.hero, nil)
+
+    insert(state, %{
+      type: :projectile,
+      id: state.next_id,
+      kind: :bolt,
+      x: hero.x + dx * 18,
+      y: hero.y + dy * 18,
+      vx: dx * ability.speed,
+      vy: dy * ability.speed,
+      damage: damage,
+      r: ability.radius * 1.0,
+      life: ability.life,
+      aoe: 0.0,
+      hero: hero.hero
+    })
+  end
+
+  defp cast(state, player, hero, slot, %{kind: :fireball} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    state = put_entity(state, hero)
+    {dx, dy} = aim_dir(hero, player.input)
+    damage = scaled_damage(ability.damage, state, hero.hero, nil)
+
+    insert(state, %{
+      type: :projectile,
+      id: state.next_id,
+      kind: :fireball,
+      x: hero.x + dx * 18,
+      y: hero.y + dy * 18,
+      vx: dx * ability.speed,
+      vy: dy * ability.speed,
+      damage: damage,
+      r: ability.radius * 1.0,
+      life: ability.life,
+      aoe: ability.aoe * 1.0,
+      hero: hero.hero
+    })
+  end
+
+  defp cast(state, player, hero, slot, %{kind: :meteor} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    state = put_entity(state, hero)
+    damage = scaled_damage(ability.damage, state, hero.hero, nil)
+
+    insert(state, %{
+      type: :projectile,
+      id: state.next_id,
+      kind: :meteor,
+      x: player.input.ax * 1.0,
+      y: player.input.ay * 1.0,
+      vx: 0.0,
+      vy: 0.0,
+      damage: damage,
+      r: 12.0,
+      life: ability.life,
+      aoe: ability.aoe * 1.0,
+      hero: hero.hero
+    })
+  end
+
+  defp cast(state, player, hero, slot, %{kind: :volley} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    state = put_entity(state, hero)
+    {dx, dy} = aim_dir(hero, player.input)
+    base = :math.atan2(dy, dx)
+    damage = scaled_damage(ability.damage, state, hero.hero, nil)
+
+    Enum.reduce(0..(ability.count - 1), state, fn i, state ->
+      spread = (i - (ability.count - 1) / 2) * 0.18
+      ang = base + spread
+      vx = :math.cos(ang) * ability.speed
+      vy = :math.sin(ang) * ability.speed
+
+      insert(state, %{
+        type: :projectile,
+        id: state.next_id,
+        kind: :arrow,
+        x: hero.x + :math.cos(ang) * 18,
+        y: hero.y + :math.sin(ang) * 18,
+        vx: vx,
+        vy: vy,
+        damage: damage,
+        r: 6.0,
+        life: ability.life,
+        aoe: 0.0,
+        hero: hero.hero
+      })
+    end)
+  end
+
+  defp cast(state, player, hero, slot, %{kind: :dash} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    {dx, dy} = aim_dir(hero, player.input)
+    {x, y} = dash_to(state, hero, dx * ability.dist, dy * ability.dist)
+    state = put_entity(state, %{hero | x: x, y: y})
+
+    if ability.damage > 0 do
+      monsters(state)
+      |> Enum.filter(fn monster ->
+        hypot(monster.x - x, monster.y - y) <= ability.radius + monster.r
+      end)
+      |> Enum.reduce(state, fn monster, state ->
+        damage = scaled_damage(ability.damage, state, hero.hero, monster)
+        hurt_monster(state, monster.id, damage, Rules.kill_bonus(hero.hero))
+      end)
+    else
+      state
+    end
+  end
+
+  defp cast(state, _player, hero, slot, %{kind: :guard} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    put_entity(state, %{hero | guard: ability.ticks})
+  end
+
+  defp cast(state, _player, hero, slot, %{kind: :nova} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    state = put_entity(state, hero)
+
+    monsters(state)
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - hero.x, monster.y - hero.y) <= ability.radius + monster.r
+    end)
+    |> Enum.reduce(state, fn monster, state ->
+      damage = scaled_damage(ability.damage, state, hero.hero, monster)
+      hurt_monster(state, monster.id, damage, Rules.kill_bonus(hero.hero))
+    end)
+  end
+
+  defp cast(state, _player, hero, slot, %{kind: :frost} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    state = put_entity(state, hero)
+
+    monsters(state)
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - hero.x, monster.y - hero.y) <= ability.radius + monster.r
+    end)
+    |> Enum.reduce(state, fn monster, state ->
+      case state.entities[monster.id] do
+        nil -> state
+        current -> put_entity(state, %{current | slow: ability.ticks})
+      end
+    end)
+  end
+
+  defp cast(state, _player, hero, slot, %{kind: :mark} = ability) do
+    hero = start_cd(state, hero, slot, ability.cd)
+    state = put_entity(state, hero)
+
+    monsters(state)
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - hero.x, monster.y - hero.y) <= ability.range and
+        angle_between(hero, monster) <= ability.arc
+    end)
+    |> Enum.reduce(state, fn monster, state ->
+      case state.entities[monster.id] do
+        nil -> state
+        current -> put_entity(state, %{current | marked: ability.ticks})
+      end
+    end)
+  end
+
+  defp cast(state, player, hero, slot, %{kind: :sow}) do
+    hero = start_cd(state, hero, slot, Rules.kit(:farmer).q.cd)
+    state = put_entity(state, hero)
+    try_place(state, hero, :field, player.input.ax, player.input.ay, %{wood: 0, gold: 0})
+  end
+
+  defp cast(state, _player, hero, slot, %{kind: :harvest} = ability) do
+    fields =
+      buildings(state)
+      |> Enum.filter(fn building ->
+        building.kind == :field and
+          hypot(building.x - hero.x, building.y - hero.y) <= ability.radius
+      end)
+
+    if fields == [] do
+      state
+    else
+      hero = start_cd(state, hero, slot, ability.cd)
+      state = put_entity(state, hero)
+      add_resource(state, :food, length(fields) * ability.food)
+    end
+  end
+
+  defp cast(state, _player, hero, slot, %{kind: :feast} = ability) do
+    spend = min(ability.food, state.resources.food)
+
+    if spend <= 0 do
+      state
+    else
+      hero = start_cd(state, hero, slot, ability.cd)
+      state = put_entity(state, hero)
+      state = pay(state, %{wood: 0, gold: 0, food: spend})
+      heal = spend * ability.heal
+
+      Enum.reduce(living_heroes(state), state, fn current, state ->
+        current = state.entities[current.id]
+        put_entity(state, %{current | hp: min(current.hp + heal, current.max_hp)})
+      end)
+    end
+  end
+
+  defp cast(state, player, hero, slot, %{kind: :wall}) do
+    hero = start_cd(state, hero, slot, Rules.kit(hero.hero).q.cd)
+    state = put_entity(state, hero)
+    try_place(state, hero, :wall, player.input.ax, player.input.ay)
+  end
+
+  defp cast(state, player, hero, slot, %{kind: :trap}) do
+    hero = start_cd(state, hero, slot, Rules.kit(hero.hero).e.cd)
+    state = put_entity(state, hero)
+    try_place(state, hero, :trap, player.input.ax, player.input.ay)
+  end
+
+  defp cast(state, player, hero, slot, %{kind: :barricade}) do
+    cost = Rules.barricade_cost(hero.hero)
+
+    if afford?(state, cost) do
+      hero = start_cd(state, hero, slot, Rules.kit(hero.hero).r.cd)
+      state = put_entity(state, hero)
+      state = pay(state, cost)
+      {dx, dy} = aim_dir(hero, player.input)
+      px = -dy
+      py = dx
+      cx = hero.x + dx * 70
+      cy = hero.y + dy * 70
+
+      Enum.reduce(-1..1, state, fn i, state ->
+        try_place(state, hero, :wall, cx + px * i * 36, cy + py * i * 36, %{wood: 0, gold: 0})
+      end)
+    else
+      event(state, %{type: "deny", x: player.input.ax, y: player.input.ay})
+    end
+  end
+
+  defp cast(state, _player, _hero, _slot, _ability), do: state
+
+  defp try_place(state, hero, kind, x, y, cost \\ nil) do
+    x = snap(num(x))
+    y = snap(num(y))
+    cost = cost || Rules.cost(kind, hero.hero)
+    limit = build_limit(kind)
+    have = Enum.count(buildings(state), &(&1.kind == kind))
+    dist = hypot(x - hero.x, y - hero.y)
+
+    cond do
+      have >= limit ->
+        event(state, %{type: "deny", x: x, y: y})
+
+      dist > Rules.kit(hero.hero).range ->
+        event(state, %{type: "deny", x: x, y: y})
+
+      hypot(x, y) < state.keep.r + 28 ->
+        event(state, %{type: "deny", x: x, y: y})
+
+      overlap?(state, x, y, Rules.building(kind).r) ->
+        event(state, %{type: "deny", x: x, y: y})
+
+      not afford?(state, cost) ->
+        event(state, %{type: "deny", x: x, y: y})
+
+      true ->
+        state
+        |> pay(cost)
+        |> spawn_building(%{kind: kind, x: x, y: y})
+        |> event(%{type: "place", kind: kind, x: x, y: y})
+    end
+  end
+
+  defp build_limit(:wall), do: 80
+  defp build_limit(:tower), do: 16
+  defp build_limit(:trap), do: 40
+  defp build_limit(:field), do: 14
+  defp build_limit(:forge), do: 1
+  defp build_limit(:mage_tower), do: 1
+
+  defp projectiles(state) do
+    ids = for {id, %{type: :projectile}} <- state.entities, do: id
+
+    Enum.reduce(ids, state, fn id, state ->
+      case state.entities[id] do
+        nil -> state
+        projectile -> step_projectile(state, projectile)
+      end
+    end)
+  end
+
+  defp step_projectile(state, %{kind: :meteor, life: life} = projectile) when life <= 1 do
+    explode(state, projectile)
+  end
+
+  defp step_projectile(state, %{kind: :meteor} = projectile) do
+    put_entity(state, %{projectile | life: projectile.life - 1})
+  end
+
+  defp step_projectile(state, projectile) do
+    projectile = %{
+      projectile
+      | x: projectile.x + projectile.vx * 0.05,
+        y: projectile.y + projectile.vy * 0.05,
+        life: projectile.life - 1
+    }
+
+    case nearest(monsters(state), projectile.x, projectile.y, projectile.r + 8) do
+      nil ->
+        if projectile.life <= 0 do
+          if projectile.aoe > 0, do: explode(state, projectile), else: drop(state, projectile.id)
+        else
+          put_entity(state, projectile)
+        end
+
+      monster ->
+        state = put_entity(state, projectile)
+
+        state =
+          hurt_monster(state, monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
+
+        if projectile.aoe > 0 do
+          explode(state, projectile)
+        else
+          state
+          |> drop(projectile.id)
+          |> event(%{type: "hit", x: projectile.x, y: projectile.y})
+        end
+    end
+  end
+
+  defp explode(state, projectile) do
+    state = drop(state, projectile.id)
+
+    monsters(state)
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - projectile.x, monster.y - projectile.y) <= projectile.aoe + monster.r
+    end)
+    |> Enum.reduce(state, fn monster, state ->
+      hurt_monster(state, monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
+    end)
+    |> event(%{type: "boom", x: projectile.x, y: projectile.y})
+  end
+
+  defp towers(state) do
+    ids = for {id, %{type: :building, kind: :tower}} <- state.entities, do: id
+
+    Enum.reduce(ids, state, fn id, state ->
+      case state.entities[id] do
+        nil ->
+          state
+
+        %{cd: cd} = tower when cd > 0 ->
+          put_entity(state, %{tower | cd: cd - 1})
+
+        tower ->
+          case nearest(monsters(state), tower.x, tower.y, 250) do
+            nil ->
+              state
+
+            monster ->
+              {dx, dy} = norm(monster.x - tower.x, monster.y - tower.y)
+              damage = scaled_damage(11, state, :tower, nil)
+
+              state
+              |> put_entity(%{tower | cd: 18})
+              |> insert(%{
+                type: :projectile,
+                id: state.next_id,
+                kind: :arrow,
+                x: tower.x,
+                y: tower.y,
+                vx: dx * 420,
+                vy: dy * 420,
+                damage: damage,
+                r: 6.0,
+                life: 30,
+                aoe: 0.0,
+                hero: :tower
+              })
+          end
+      end
+    end)
+  end
+
+  defp step_monsters(state) do
+    ids = for {id, %{type: :monster}} <- state.entities, do: id
+
+    Enum.reduce(ids, state, fn id, state ->
+      case state.entities[id] do
+        nil -> state
+        monster -> step_monster(state, monster)
+      end
+    end)
+  end
+
+  defp step_monster(state, monster) do
+    monster = state.entities[monster.id] || monster
+    hero = aggro_hero(state, monster)
+    {tx, ty, target} = monster_target(state, monster, hero)
+    reach = if target == :hero, do: monster.r + 16, else: state.keep.r + monster.r
+    dist = hypot(monster.x - tx, monster.y - ty)
+
+    state =
+      if dist <= reach and monster.attack_cd <= 0 do
+        strike(state, monster, target, hero)
+      else
+        chase(state, monster, tx, ty)
+      end
+
+    case state.entities[monster.id] do
+      nil -> state
+      moved -> trigger_trap(state, moved)
+    end
+  end
+
+  defp monster_target(_state, _monster, nil), do: {0.0, 0.0, :keep}
+
+  defp monster_target(state, monster, hero) do
+    to_hero = hypot(monster.x - hero.x, monster.y - hero.y)
+    to_keep = hypot(monster.x, monster.y) - state.keep.r
+
+    if to_hero <= monster.aggro and to_hero < to_keep do
+      {hero.x, hero.y, :hero}
+    else
+      {0.0, 0.0, :keep}
+    end
+  end
+
+  defp aggro_hero(state, monster) do
+    living_heroes(state)
+    |> Enum.filter(fn hero -> hypot(hero.x - monster.x, hero.y - monster.y) <= monster.aggro end)
+    |> closest(fn hero -> hypot(hero.x - monster.x, hero.y - monster.y) end)
+  end
+
+  defp strike(state, monster, :keep, _hero) do
+    damage = monster_damage(monster)
+    keep = state.keep
+    hp = max(keep.hp - damage, 0)
+
+    state
+    |> Map.put(:keep, %{keep | hp: hp})
+    |> put_entity(%{monster | attack_cd: 20})
+    |> event(%{type: "hit", x: 0.0, y: 0.0})
+  end
+
+  defp strike(state, monster, :hero, hero) do
+    case state.entities[hero.id] do
+      %{alive: true} = current ->
+        damage = monster_damage(monster)
+        damage = if current.guard > 0, do: round(damage * 0.4), else: damage
+        hp = current.hp - damage
+
+        current =
+          if hp <= 0 do
+            %{current | hp: 0, alive: false, respawn: respawn_ticks(state)}
+          else
+            %{current | hp: hp}
+          end
+
+        state
+        |> put_entity(current)
+        |> put_entity(%{monster | attack_cd: 20})
+        |> event(%{type: "hit", x: current.x, y: current.y})
+
+      _ ->
+        chase(state, monster, 0.0, 0.0)
+    end
+  end
+
+  defp chase(state, monster, tx, ty) do
+    {dx, dy} = norm(tx - monster.x, ty - monster.y)
+    speed = monster.speed * slow_mult(monster) * elite_speed(monster)
+    step = speed * 0.05
+    nx = monster.x + dx * step
+    ny = monster.y + dy * step
+
+    cond do
+      not blocked?(state, nx, ny, monster.r) ->
+        put_entity(state, %{monster | x: nx, y: ny})
+
+      not blocked?(state, nx, monster.y, monster.r) and abs(nx - monster.x) > 0.2 ->
+        put_entity(state, %{monster | x: nx})
+
+      not blocked?(state, monster.x, ny, monster.r) and abs(ny - monster.y) > 0.2 ->
+        put_entity(state, %{monster | y: ny})
+
+      true ->
+        chew_wall(state, monster)
+    end
+  end
+
+  defp chew_wall(state, monster) do
+    case nearest(blockers(state), monster.x, monster.y, monster.r + 24) do
+      nil ->
+        state
+
+      wall ->
+        if monster.attack_cd > 0 do
+          state
+        else
+          damage = monster_damage(monster)
+          hp = wall.hp - damage
+
+          state =
+            if hp <= 0 do
+              drop(state, wall.id)
+            else
+              put_entity(state, %{wall | hp: hp})
+            end
+
+          state
+          |> refresh_upgrades()
+          |> put_entity(%{state.entities[monster.id] | attack_cd: 20})
+          |> event(%{type: "hit", x: wall.x, y: wall.y})
+        end
+    end
+  end
+
+  defp trigger_trap(state, monster) do
+    case Enum.find(buildings(state), fn building ->
+           building.kind == :trap and
+             hypot(building.x - monster.x, building.y - monster.y) <= building.r + monster.r
+         end) do
+      nil ->
+        state
+
+      trap ->
+        state
+        |> hurt_monster(monster.id, 44, 0)
+        |> drop(trap.id)
+        |> event(%{type: "hit", x: trap.x, y: trap.y})
+    end
+  end
+
+  defp economy(%{phase: {:build, _}} = state) do
+    state
+    |> field_yield()
+    |> regrow_trees()
+  end
+
+  defp economy(state), do: state
+
+  defp field_yield(state) do
+    if rem(state.tick, 40) == 0 do
+      fields = Enum.count(buildings(state), &(&1.kind == :field))
+      farmer = Enum.any?(living_heroes(state), &(&1.hero == :farmer))
+      bonus = if farmer, do: fields, else: 0
+      granary = if :granary in state.relics, do: div(fields + 1, 2), else: 0
+      state = add_resource(state, :food, fields + bonus + granary)
+      if rem(state.tick, 120) == 0, do: add_resource(state, :gold, fields), else: state
+    else
+      state
+    end
+  end
+
+  defp regrow_trees(state) do
+    if rem(state.tick, 80) == 0 and length(trees(state)) < 26 do
+      {angle, rng} = angle_of(state.rng)
+      {dist, rng} = :rand.uniform_s(rng)
+      x = :math.cos(angle) * (460 + dist * 280)
+      y = :math.sin(angle) * (460 + dist * 280)
+
+      insert(%{state | rng: rng}, %{type: :tree, id: state.next_id, x: x, y: y, wood: 12, r: 16.0})
+    else
+      state
+    end
+  end
+
+  defp advance_phase(%{keep: %{hp: hp}} = state) when hp <= 0 do
+    %{state | phase: :over, keep: %{state.keep | hp: 0}}
+  end
+
+  defp advance_phase(%{phase: {:build, ticks}} = state) when ticks > 1 do
+    %{state | phase: {:build, ticks - 1}}
+  end
+
+  defp advance_phase(%{phase: {:build, _}} = state), do: start_wave(state)
+
+  defp advance_phase(%{phase: {:wave, ticks}} = state) do
+    state =
+      cond do
+        ticks > 1 -> %{state | phase: {:wave, ticks - 1}}
+        ticks == 1 -> state |> Map.put(:phase, {:wave, 0}) |> enrage()
+        true -> state
+      end
+
+    if monsters(state) == [] do
+      clear_wave(state)
+    else
+      state
+    end
+  end
+
+  defp advance_phase(state), do: state
+
+  defp start_wave(state) do
+    wave = state.wave + 1
+
+    {hints, rng} =
+      if state.hints == [], do: Waves.plan(wave, state.rng), else: {state.hints, state.rng}
+
+    state = %{
+      state
+      | wave: wave,
+        rng: rng,
+        phase: {:wave, Rules.wave_ticks()},
+        hints: hints,
+        enraged: false
+    }
+
+    Enum.reduce(hints, state, fn group, state ->
+      spawn_group(state, group, wave)
+    end)
+  end
+
+  defp spawn_group(state, group, wave) do
+    Enum.reduce(1..group.count, state, fn i, state ->
+      angle = group.angle + (i - group.count / 2) * 0.12
+      dist = 960 + rem(i * 37, 50)
+
+      spawn_monster(state, %{
+        kind: group.kind,
+        x: :math.cos(angle) * dist,
+        y: :math.sin(angle) * dist,
+        elite: group.elite,
+        wave: wave
+      })
+    end)
+  end
+
+  defp clear_wave(state) do
+    {hints, rng} = Waves.plan(state.wave + 1, state.rng)
+
+    %{
+      state
+      | phase: {:build, Rules.build_ticks(state.wave)},
+        hints: hints,
+        rng: rng,
+        enraged: false
+    }
+  end
+
+  defp enrage(state) do
+    entities =
+      Map.new(state.entities, fn
+        {id, %{type: :monster} = monster} -> {id, %{monster | enraged: true}}
+        other -> other
+      end)
+
+    %{state | entities: entities, enraged: true}
+  end
+
+  defp remember_input(state) do
+    players = Map.new(state.players, fn {id, player} -> {id, %{player | prev: player.input}} end)
+    %{state | players: players}
+  end
+
+  defp hurt_monster(state, id, amount, bonus_gold) do
+    case state.entities[id] do
+      %{type: :monster, hp: hp} = monster ->
+        marked = if monster.marked > 0, do: 1.4, else: 1.0
+        amount = round(amount * armor_mult(monster) * marked)
+        left = hp - amount
+
+        if left <= 0 do
+          gold = Rules.bounty(monster.kind) + bonus_gold
+
+          state
+          |> Map.update!(:kills, &(&1 + 1))
+          |> add_resource(:gold, gold)
+          |> drop(id)
+          |> maybe_relic(monster)
+          |> event(%{type: "death", kind: monster.kind, x: monster.x, y: monster.y})
+        else
+          put_entity(state, %{monster | hp: left})
+        end
+
+      _ ->
+        state
+    end
+  end
+
+  defp maybe_relic(state, %{kind: :boss}) do
+    pool = [:heartwood, :whetstone, :swiftness, :banner, :granary] -- state.relics
+
+    case pool do
+      [] ->
+        state
+
+      _ ->
+        {relic, rng} = pick(state.rng, pool)
+        state = %{state | relics: state.relics ++ [relic], rng: rng}
+        state = if relic == :heartwood, do: grow_keep(state), else: state
+        event(state, %{type: "relic", relic: relic, x: 0.0, y: 0.0})
+    end
+  end
+
+  defp maybe_relic(state, _), do: state
+
+  defp grow_keep(state) do
+    keep = state.keep
+
+    %{
+      state
+      | keep: %{keep | max_hp: keep.max_hp + 280, hp: min(keep.hp + 280, keep.max_hp + 280)}
+    }
+  end
+
+  defp repair_near(state, _hero, repair) when repair <= 0, do: state
+
+  defp repair_near(state, hero, repair) do
+    case nearest(buildings(state), hero.x, hero.y, 56) do
+      nil ->
+        state
+
+      building ->
+        put_entity(state, %{building | hp: min(building.hp + repair, building.max_hp)})
+    end
+  end
+
+  defp start_cd(state, hero, slot, base) do
+    hero = state.entities[hero.id]
+    cd = round(base * cd_mult(state, hero.hero, slot))
+    %{hero | cooldowns: Map.put(hero.cooldowns, slot, cd)}
+  end
+
+  defp cd_mult(state, :mage, slot) when slot in [:attack, :q, :e, :r] do
+    if state.upgrades.mage_tower, do: 0.85, else: 1.0
+  end
+
+  defp cd_mult(_state, _hero, _slot), do: 1.0
+
+  defp scaled_damage(base, state, hero, _monster) do
+    mult = 1.0
+    mult = if state.upgrades.forge, do: mult * 1.15, else: mult
+    mult = if :whetstone in state.relics, do: mult * 1.1, else: mult
+    mult = if hero == :mage and state.upgrades.mage_tower, do: mult * 1.25, else: mult
+    max(round(base * mult), 1)
+  end
+
+  defp armor_mult(%{elite: :armored}), do: 0.65
+  defp armor_mult(_), do: 1.0
+
+  defp monster_damage(monster) do
+    mult = if monster.enraged or monster.elite == :enraged, do: 1.45, else: 1.0
+    max(round(monster.damage * mult), 1)
+  end
+
+  defp slow_mult(%{slow: n}) when n > 0, do: 0.5
+  defp slow_mult(_), do: 1.0
+
+  defp elite_speed(%{elite: :fast}), do: 1.35
+  defp elite_speed(%{enraged: true}), do: 1.2
+  defp elite_speed(%{elite: :enraged}), do: 1.2
+  defp elite_speed(_), do: 1.0
+
+  defp speed_mult(state) do
+    if :swiftness in state.relics, do: 1.08, else: 1.0
+  end
+
+  defp respawn_ticks(state) do
+    base = if match?({:build, _}, state.phase), do: 40, else: 160
+    if :banner in state.relics, do: round(base * 0.7), else: base
+  end
+
+  defp place_trees(state, count) do
+    Enum.reduce(1..count, state, fn i, state ->
+      angle = i * 2.399
+      dist = 260 + rem(i * 53, 400)
+
+      insert(state, %{
+        type: :tree,
+        id: state.next_id,
+        x: :math.cos(angle) * dist,
+        y: :math.sin(angle) * dist,
+        wood: 12,
+        r: 16.0
+      })
+    end)
+  end
+
+  defp refresh_upgrades(state) do
+    kinds = Enum.map(buildings(state), & &1.kind)
+
+    %{
+      state
+      | upgrades: %{
+          forge: :forge in kinds,
+          mage_tower: :mage_tower in kinds
+        }
+    }
+  end
+
+  defp overlap?(state, x, y, radius) do
+    Enum.any?(buildings(state), fn building ->
+      hypot(building.x - x, building.y - y) < building.r + radius - 6
+    end)
+  end
+
+  defp blocked?(state, x, y, radius) do
+    Enum.any?(blockers(state), fn building ->
+      hypot(building.x - x, building.y - y) < building.r + radius
+    end)
+  end
+
+  defp slide(state, x, y, dx, dy, radius, solid_keep?) do
+    nx = x + dx
+    ny = y + dy
+
+    cond do
+      solid_keep? and hypot(nx, ny) < state.keep.r + radius ->
+        {x, y}
+
+      not blocked?(state, nx, ny, radius) ->
+        {nx, ny}
+
+      not blocked?(state, nx, y, radius) and abs(dx) > 0.2 ->
+        {nx, y}
+
+      not blocked?(state, x, ny, radius) and abs(dy) > 0.2 ->
+        {x, ny}
+
+      true ->
+        {x, y}
+    end
+  end
+
+  defp dash_to(state, hero, dx, dy) do
+    steps = 6
+
+    Enum.reduce(1..steps, {hero.x, hero.y}, fn _, {x, y} ->
+      slide(state, x, y, dx / steps, dy / steps, hero.r, false)
+    end)
+    |> then(fn {x, y} -> clamp_map(x, y, 1000) end)
+  end
+
+  defp clamp_map(x, y, radius) do
+    dist = hypot(x, y)
+
+    if dist > radius do
+      {x / dist * radius, y / dist * radius}
+    else
+      {x, y}
+    end
+  end
+
+  defp facing_of(hero, input, x, y) do
+    dx = input.ax - x
+    dy = input.ay - y
+
+    if hypot(dx, dy) > 4 do
+      :math.atan2(dy, dx)
+    else
+      hero.facing
+    end
+  end
+
+  defp aim_dir(hero, input) do
+    {dx, dy} = norm(input.ax - hero.x, input.ay - hero.y)
+
+    if dx == 0.0 and dy == 0.0 do
+      {:math.cos(hero.facing), :math.sin(hero.facing)}
+    else
+      {dx, dy}
+    end
+  end
+
+  defp angle_between(hero, monster) do
+    ang = :math.atan2(monster.y - hero.y, monster.x - hero.x)
+    abs(normalize_angle(ang - hero.facing))
+  end
+
+  defp normalize_angle(angle) do
+    wrapped = :math.fmod(angle + :math.pi(), 2 * :math.pi())
+    wrapped = if wrapped < 0, do: wrapped + 2 * :math.pi(), else: wrapped
+    wrapped - :math.pi()
+  end
+
+  defp rising?(player, key), do: Map.get(player.input, key) && not Map.get(player.prev, key)
+
+  defp afford?(state, cost) do
+    state.resources.wood >= Map.get(cost, :wood, 0) and
+      state.resources.gold >= Map.get(cost, :gold, 0) and
+      state.resources.food >= Map.get(cost, :food, 0)
+  end
+
+  defp pay(state, cost) do
+    resources =
+      state.resources
+      |> Map.update!(:wood, &(&1 - Map.get(cost, :wood, 0)))
+      |> Map.update!(:gold, &(&1 - Map.get(cost, :gold, 0)))
+      |> Map.update!(:food, &(&1 - Map.get(cost, :food, 0)))
+
+    %{state | resources: resources}
+  end
+
+  defp add_resource(state, key, amount) do
+    resources = Map.update!(state.resources, key, &min(&1 + amount, Rules.cap(key)))
+    %{state | resources: resources}
+  end
+
+  defp parse_input(payload) do
+    %{
+      mx: clamp_axis(field(payload, :mx)),
+      my: clamp_axis(field(payload, :my)),
+      ax: clamp_world(field(payload, :ax)),
+      ay: clamp_world(field(payload, :ay)),
+      attack: truthy(field(payload, :attack)),
+      q: truthy(field(payload, :q)),
+      e: truthy(field(payload, :e)),
+      r: truthy(field(payload, :r)),
+      f: truthy(field(payload, :f)),
+      build: parse_build(field(payload, :build))
+    }
+  end
+
+  defp field(map, key) do
+    Map.get(map, key, Map.get(map, Atom.to_string(key)))
+  end
+
+  defp parse_build(kind) when kind in [:wall, :tower, :trap, :field, :forge, :mage_tower],
+    do: kind
+
+  defp parse_build(kind) when is_binary(kind) do
+    case kind do
+      "wall" -> :wall
+      "tower" -> :tower
+      "trap" -> :trap
+      "field" -> :field
+      "forge" -> :forge
+      "mage_tower" -> :mage_tower
+      _ -> nil
+    end
+  end
+
+  defp parse_build(_), do: nil
+
+  defp truthy(true), do: true
+  defp truthy("true"), do: true
+  defp truthy(1), do: true
+  defp truthy(_), do: false
+
+  defp clamp_axis(value) when is_number(value),
+    do: value |> max(-1.0) |> min(1.0) |> Kernel.*(1.0)
+
+  defp clamp_axis(_), do: 0.0
+
+  defp clamp_world(value) when is_number(value),
+    do: value |> max(-2000.0) |> min(2000.0) |> Kernel.*(1.0)
+
+  defp clamp_world(_), do: 0.0
+
+  defp num(value) when is_number(value), do: value * 1.0
+  defp num(_), do: 0.0
+
+  defp snap(value), do: Float.round(value / 36.0) * 36.0
+
+  defp insert(state, entity) do
+    %{
+      state
+      | next_id: state.next_id + 1,
+        entities: Map.put(state.entities, entity.id, entity)
+    }
+  end
+
+  defp put_entity(state, entity),
+    do: %{state | entities: Map.put(state.entities, entity.id, entity)}
+
+  defp put_player(state, player),
+    do: %{state | players: Map.put(state.players, player.id, player)}
+
+  defp drop(state, id), do: %{state | entities: Map.delete(state.entities, id)}
+
+  defp event(state, ev) do
+    %{state | events: Enum.take([ev | state.events], 24)}
+  end
+
+  defp heroes(state), do: for({_id, %{type: :hero} = hero} <- state.entities, do: hero)
+
+  defp living_heroes(state) do
+    Enum.filter(heroes(state), fn hero ->
+      player = state.players[hero.player_id]
+      (hero.alive and player) && player.connected
+    end)
+  end
+
+  def monsters(%State{} = state),
+    do: for({_id, %{type: :monster} = monster} <- state.entities, do: monster)
+
+  defp buildings(state),
+    do: for({_id, %{type: :building} = building} <- state.entities, do: building)
+
+  defp blockers(state) do
+    Enum.filter(buildings(state), fn building -> building.kind not in [:field, :trap] end)
+  end
+
+  defp trees(state), do: for({_id, %{type: :tree} = tree} <- state.entities, do: tree)
+
+  defp nearest(list, x, y, max_dist) do
+    list
+    |> Enum.filter(fn item ->
+      hypot(item.x - x, item.y - y) <= max_dist + Map.get(item, :r, 0)
+    end)
+    |> closest(fn item -> hypot(item.x - x, item.y - y) end)
+  end
+
+  defp closest([], _fun), do: nil
+  defp closest(list, fun), do: Enum.min_by(list, fun)
+
+  defp hypot(x, y), do: :math.sqrt(x * x + y * y)
+
+  defp norm(x, y) do
+    length = hypot(x, y)
+    if length < 1.0e-6, do: {0.0, 0.0}, else: {x / length, y / length}
+  end
+
+  defp angle_of(rng) do
+    {u, rng} = :rand.uniform_s(rng)
+    {u * 2 * :math.pi(), rng}
+  end
+
+  defp pick(rng, list) do
+    {index, rng} = :rand.uniform_s(length(list), rng)
+    {Enum.at(list, index - 1), rng}
+  end
+end

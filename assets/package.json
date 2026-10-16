@@ -1,0 +1,7 @@
+{
+  "name": "last-keep",
+  "private": true,
+  "dependencies": {
+    "three": "0.170.0"
+  }
+}

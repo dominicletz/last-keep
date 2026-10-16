@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <title>{assigns[:page_title] || "Last Keep"}</title>
+    <link rel="icon" href={~p"/favicon.ico"} />
+    <link rel="stylesheet" href={~p"/css/game.css"} />
+    <script defer type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+  </head>
+  <body data-page={@page} data-code={@code}>
+    {@inner_content}
+  </body>
+</html>

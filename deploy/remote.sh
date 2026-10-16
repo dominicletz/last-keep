@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -eu
+
+if [ -f /opt/agentyard/docker-compose.prod.yml ]; then
+  docker compose -f /opt/agentyard/docker-compose.prod.yml --project-directory /opt/agentyard down
+fi
+
+if [ -f /opt/agentyard/docker-compose.yml ]; then
+  docker compose -f /opt/agentyard/docker-compose.yml --project-directory /opt/agentyard down
+fi
+
+cd "$DEPLOY_PATH"
+
+if [ ! -f .env ]; then
+  secret=$(openssl rand -base64 48 | tr -d '\n')
+  umask 077
+  cat > .env <<ENV
+SECRET_KEY_BASE=${secret}
+PHX_HOST=agentyard.letz.tw
+PORT=4000
+PHX_SERVER=true
+DOMAIN=agentyard.letz.tw
+ENV
+  chmod 600 .env
+fi
+
+printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
+export LAST_KEEP_IMAGE_TAG="$IMAGE_TAG"
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d --remove-orphans
+docker logout ghcr.io || true
+docker image prune -f
