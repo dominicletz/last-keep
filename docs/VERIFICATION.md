@@ -139,3 +139,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-17 hero picker portraits
 
 - The five picker cards show the day close-up from `test/gallery/<hero>/portrait.png`, served at `/images/portraits/<hero>.png`. `createHost` requires five images, each between 64 and 128 pixels tall. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 specialist round 6
+
+- Room `KR8DDW` on https://agentyard.letz.tw after the voxel figures deploy (`6 passed`). Fidelity against the round-5 baseline is mood 2, town 3, heroes 3, monsters 3, ui 3. The round-5 rows stay. A goblin at game zoom is an olive figure with orange eyes, not the concept spear-carrier, and the wolf, bat, ogre, and rider were not on the yard. This does not change the simulation. The coverage floor stays 69.

@@ -74,10 +74,12 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-043 | Ada, round 3 room 64MLX4 | gameplay | medium | Raise the keep stayed pressable at gold 2 when the cost was 8. The button stays disabled until wood and gold both cover the cost. Guarded by `raiseReady` in `assets/js/hud.test.js` and by `e2e/playtest.spec.js`, which requires the control to be disabled at gold 0. | done |
 | LK-044 | Lux, round 3 room 64MLX4 | graphics | medium | Two monsters draw with separate outlines, bars, and offsets. Guarded by `bodies.test.js` and `twoPlayerNight`. `playtests/round-3/shots/04-Ada.png` | done |
 | LK-045 | Nia, round 3 room 64MLX4 | character | medium | Warrior, mage, scout, farmer, and engineer each build a different body. Guarded by `heroes.test.js` and `heroSilhouettes`. `playtests/round-3/shots/01-Nia.png` | done |
-| LK-046 | Pip, round 3 room 64MLX4 | logic | low | Food is still only the number in the resource chip. The screen does not say what a feast spends it on. | open |
+| LK-046 | Pip, round 3 room 64MLX4 | logic | low | Food is still only the number in the resource chip. The screen does not say what a feast spends it on. Round 6 room KR8DDW puts that number on a sack labeled Food 8 and still does not say what a feast spends. | open |
 | LK-047 | Lux, round 4 room ZT4PJ2 | graphics | medium | An edge call stops short of the roster and is right-aligned there. Guarded by `callAnchor` in `hud.test.js` and `twoPlayerNight`. `playtests/round-4/shots/15-Ada.png` | done |
-| LK-048 | Ada, round 4 room ZT4PJ2 | gameplay | medium | Raise the keep is inert while gold is short and it is painted like a live button. A click in room ZT4PJ2 did not spend wood or gold. Round 5 room ME475J still paints it live at gold 3. | open |
-| LK-060 | Ada, round 5 room ME475J | gameplay | low | A wave-1 pair can straddle the 45-degree call bucket and the yard says "goblin" twice instead of "2 goblins". `playtests/round-5/shots/06-Ada.png` | open |
+| LK-048 | Ada, round 4 room ZT4PJ2 | gameplay | medium | Raise the keep is inert while gold is short and it is painted like a live button. A click in room ZT4PJ2 did not spend wood or gold. Round 5 room ME475J still paints it live at gold 3. Round 6 room KR8DDW still paints it live at gold 0 and at gold 2. | open |
+| LK-060 | Ada, round 5 room ME475J | gameplay | low | A wave-1 pair can straddle the 45-degree call bucket and the yard says "goblin" twice instead of "2 goblins". `playtests/round-5/shots/06-Ada.png`. Round 6 room KR8DDW does it again. `playtests/round-6/shots/04-Ada.png` | open |
+| LK-074 | Lux, round 6 room KR8DDW | graphics | medium | An edge call can sit on the Raise the keep button. The word goblin covered that label at the start of wave 1. `playtests/round-6/shots/04-Ada.png` | open |
+| LK-075 | Lux, round 6 room KR8DDW | graphics | medium | The wave, clock, score, and keep line are pinned on the yard. Walking away clips them off the screen, and near the edge the sign wraps into a narrow column. `playtests/round-6/shots/06-Ada.png`, `playtests/round-6/shots/08-Ada.png` | open |
 
 ## Fidelity
 
@@ -90,5 +92,10 @@ Scores are 1 to 5 against the concept sheets. A later row for the same area may 
 | heroes | 2026-10-17 | 2 | Five props match the roles. The meshes are still blocks. |
 | monsters | 2026-10-17 | 2 | A red goblin and skeletons in the pile. No ogre, wolf, bat, or dark rider. |
 | ui | 2026-10-17 | 2 | The ring, the calls, and the name tags are in the world. Stock, clock, and score are panels. |
+| mood | 2026-10-17 | 2 | Dusk warms the yard and the keep window stays lit at night. The day field is still dark olive, not the sheet's dusk pines. |
+| town | 2026-10-17 | 3 | The keep is a stone tower with courses, a lit window, pines, and dirt paths. The plaza is still a dark octagon and the outer ring is bare trunks. |
+| heroes | 2026-10-17 | 3 | The picker cards are the close-ups, and the yard separates the shield, the brim, the hood, and the hammer. At game zoom the bodies are still small chunks, not the concept sheet. |
+| monsters | 2026-10-17 | 3 | A goblin is olive with orange eyes and a skeleton is a separate grey body. At game zoom neither shows ribs or a spear, and the wolf, bat, ogre, and rider were not on the yard. |
+| ui | 2026-10-17 | 3 | Wood, food, and gold are sacks, and the next pack is a beacon. The wave line is a yard sign that clips once the camera leaves the keep, and the glass buttons remain. |
 
 No implemented hero is isolated. Farmer, engineer, scout, warrior, and mage each have an outgoing edge in `docs/interactions.json`.
