@@ -146,7 +146,7 @@ The night has its own sound. Day and building play one loop, the wave plays anot
 
 No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, and gold has a producer and a consumer. The test fails if that stops being true.
 
-Trees with wood are entities. A living hero standing on one chops it, and the tree leaves the world when the wood is gone. Those trees are drawn with a green crown. The client also draws a ring of bare grey trunks. That ring is not an entity. It has no crown and no wood, so it cannot be chopped. `Rules.scenery_ring/0` says so.
+Trees with wood are entities. A living hero standing on one chops it, and the tree leaves the world when the wood is gone. Those trees are drawn as a layered pine: a wood trunk and stacked boughs. The client also draws seventy bare trunks in three rings. That ring is not an entity. It has no crown and no wood, so it cannot be chopped. `Rules.scenery_ring/0` says so.
 
 ## Planned, not in the simulation
 

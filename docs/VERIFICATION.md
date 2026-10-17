@@ -80,3 +80,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - The keep is a stone tower with a thatch roof, a door, and a brazier. `keepParts(rank)` adds a course of stone at each rank, battlements from rank 2, and a banner at rank 4. The live page reports that on `window.__lastKeep.townLook`.
 - Walls are five palisade posts and a torch. Fields are wheat stalks. The forge is a stone house with a thatch roof. The yard ground is the grass token and the dirt paths are the path token.
 - `town.test.js` locks the ranks and the kit. The two-player night requires a rank-0 keep with a roof and a brazier, and no battlement yet. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 pine forest
+
+- A harvestable tree is three stacked boughs on a wood trunk. The outer ring is still seventy bare trunks, now in three distances, and it still has no crown and no wood. `scenery.test.js` locks both. The two-player night reads `window.__lastKeep.forestLook` and requires 70 trunks, no wood, no crown, and at least three boughs on the pine. This does not change the simulation. The coverage floor stays 69.
