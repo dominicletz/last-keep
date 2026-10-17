@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { heroKinds, heroSignature } from "./heroes.js"
+import { fitSlack, horizontalRadius } from "../models/registry.js"
+import { heroKinds, heroParts, heroSignature } from "./heroes.js"
 
 test("each hero builds a distinct mesh signature", () => {
   const kinds = heroKinds()
@@ -31,4 +32,16 @@ test("each hero builds a distinct mesh signature", () => {
   assert.ok(farmer.bounds.w > warrior.bounds.w)
   assert.ok(mage.bounds.h > warrior.bounds.h)
   assert.ok(scout.bounds.w < warrior.bounds.w)
+})
+
+test("each hero wears the prop from the hero sheet", () => {
+  const color = (kind, name) => heroParts(kind).find((part) => part.name === name).color
+  assert.equal(color("warrior", "shield"), 0x38516f)
+  assert.equal(color("mage", "gem"), 0x23d9f3)
+  assert.equal(color("scout", "hood"), 0x88a05b)
+  assert.equal(color("farmer", "brim"), 0xe5b268)
+  assert.equal(color("engineer", "apron"), 0x4c3d27)
+  for (const kind of heroKinds()) {
+    assert.ok(horizontalRadius(heroParts(kind)) <= 14 * fitSlack, kind)
+  }
 })

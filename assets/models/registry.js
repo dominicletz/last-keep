@@ -64,11 +64,11 @@ function building(id, r, minArea, frame, parts, figure = id) {
 // measured dusk mask). A shrink below it fails. It also has to stay at least
 // half of whatever the current render measures.
 const REGISTRY = [
-  hero("warrior", 499, crop(24, 158, 268, 412)),
+  hero("warrior", 519, crop(24, 158, 268, 412)),
   hero("mage", 418, crop(312, 124, 196, 448)),
   hero("scout", 293, crop(524, 100, 216, 480)),
   hero("farmer", 718, crop(752, 98, 250, 480)),
-  hero("engineer", 297, crop(1016, 158, 224, 432)),
+  hero("engineer", 344, crop(1016, 158, 224, 432)),
   monster("goblin", 16, 304, crop(16, 328, 236, 246), [
     box("body", 20, 14, 14, 0, 9, 0, 0x676f3c),
     box("head", 12, 10, 12, 0, 20, 0, 0x676f3c),
