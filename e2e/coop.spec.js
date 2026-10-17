@@ -25,5 +25,6 @@ test("the five heroes stand as different bodies", async ({ browser }) => {
 })
 
 test("a scripted night puts every monster kind on the yard", async ({ browser }) => {
+  test.skip(Boolean(process.env.BASE_URL), "the parade is only on the suite server")
   await paradeShowsEveryKind(browser)
 })
