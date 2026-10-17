@@ -5,7 +5,7 @@ import { cameraDistance, dirtRadius, viewScale, zoomFor } from "./town.js"
 
 test("the keep tower grows a course of stone at each rank", () => {
   const heights = [0, 1, 2, 3, 4].map((rank) => keepParts(rank).find((part) => part.name === "tower").h)
-  assert.deepEqual(heights, [70, 84, 98, 112, 126])
+  assert.deepEqual(heights, [104, 118, 132, 146, 160])
   assert.equal(keepParts(1).some((part) => part.name === "battlement"), false)
   assert.equal(keepParts(2).some((part) => part.name === "battlement"), true)
   assert.equal(keepParts(4).some((part) => part.name === "banner"), true)
@@ -14,6 +14,10 @@ test("the keep tower grows a course of stone at each rank", () => {
     assert.ok(horizontalRadius(parts) <= 54 * fitSlack)
     assert.ok(parts.some((part) => part.name === "roof" && part.color === 0x43382e))
     assert.ok(parts.some((part) => part.name === "brazier"))
+    assert.ok(parts.filter((part) => part.name === "merlon").length >= 4)
+    assert.ok(parts.filter((part) => part.name === "house").length >= 2)
+    assert.ok(parts.some((part) => part.name === "belfry" && part.color === 0xeea821))
+    assert.ok(parts.some((part) => part.name === "pine" && part.color === 0x353e27))
   }
   assert.deepEqual(
     modelParts("keep").map((part) => part.name),

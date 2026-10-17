@@ -84,3 +84,8 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-17 pine forest
 
 - A harvestable tree is three stacked boughs on a wood trunk. The outer ring is still seventy bare trunks, now in three distances, and it still has no crown and no wood. `scenery.test.js` locks both. The two-player night reads `window.__lastKeep.forestLook` and requires 70 trunks, no wood, no crown, and at least three boughs on the pine. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 keep light
+
+- The grass token moved from the shadow at 460,374 to the moss at 648,408. It was not the thatch roof. The gallery day background is that sky median, and dusk and night are darker shades of it. `sceneColorProblems` fails a ground token closer to the roof than to the moss, and a gallery sky whose mix is not the concept sky.
+- The rank-0 keep is a taller stone tower with a lit belfry, merlons, two timber houses, and pines behind it. Flame and torch colors emit. A night keep has to stay brighter than its sky, with a warm window. `nightLightProblems` locks that. The tower still grows at each rank. This does not change the simulation. The coverage floor stays 69.

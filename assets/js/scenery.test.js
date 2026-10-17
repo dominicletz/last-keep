@@ -31,7 +31,7 @@ test("seventy bare trunks stand in three rings behind the layered pines", () => 
   const tree = modelParts("tree")
   const boughs = tree.filter((part) => part.name === "bough")
   assert.ok(boughs.length >= 3)
-  assert.ok(boughs.every((part) => part.color === 0x353e27 || part.color === 0x292b10))
+  assert.ok(boughs.every((part) => part.color === 0x353e27 || part.color === 0x374115))
   assert.ok(tree.some((part) => part.name === "trunk" && part.color === 0x8e755b))
   assert.ok(horizontalRadius(tree) <= 16 * fitSlack)
   const scenery = modelParts("scenery")

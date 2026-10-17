@@ -21,12 +21,12 @@ const FLAME = 0xeea821
 const WHEAT = 0x976122
 const TORCH = 0xf5751e
 const WOOD = 0x8e755b
+const PINE = 0x353e27
 const ROBE = 0x3e6dab
 const GEM = 0x23d9f3
 const HIDE = 0x4d433b
 const DUSK = 0x5d505b
-const PINE = 0x353e27
-const GRASS = 0x292b10
+const GRASS = 0x374115
 
 function box(name, w, h, d, x, y, z, color) {
   return { name, shape: "box", w, h, d, x, y, z, color }
@@ -119,7 +119,7 @@ const REGISTRY = [
     cone("cap", 20, 12, 20, 0, 40, 0, DUSK),
     box("gem", 5, 5, 5, 0, 48, 0, GEM)
   ], "spell light"),
-  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 3447, null),
+  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 5296, null),
   entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 307, pineParts()),
   entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "pine trunk", crop: crop(1080, 160, 180, 260) }, 97, null)
 ]
@@ -156,22 +156,36 @@ function wheatParts() {
 
 // Rank 0 is the gallery keep. Each raise adds a course of stone.
 // Rank 2 grows battlements. Rank 4 flies a banner.
+// The foot has timber houses, the top is a lit belfry, and pines stand behind it.
 export function keepParts(rank = 0) {
   const step = Math.max(0, Math.min(4, rank | 0))
-  const towerH = 70 + step * 14
-  const towerY = 28 + towerH / 2
-  const roofY = 28 + towerH + 8
+  const towerH = 104 + step * 14
+  const towerY = 32 + towerH / 2
+  const roofY = 32 + towerH + 10
   const parts = [
-    box("base", 70, 28, 70, 0, 14, 0, STONE),
-    box("tower", 28, towerH, 28, 0, towerY, 0, STONE),
-    cone("roof", 44, 22, 44, 0, roofY, 0, THATCH),
-    box("door", 16, 18, 4, 0, 10, 36, PALISADE),
-    box("window", 6, 8, 4, 0, towerY, 16, FLAME),
-    box("brazier", 8, 4, 8, 22, 30, 22, HIDE),
-    box("flame", 4, 8, 4, 22, 36, 22, FLAME)
+    box("house", 34, 22, 28, -46, 11, 8, WOOD),
+    cone("eave", 40, 14, 34, -46, 26, 8, THATCH),
+    box("house", 30, 18, 26, 44, 9, -4, WOOD),
+    cone("eave", 36, 12, 30, 44, 22, -4, THATCH),
+    box("base", 72, 32, 72, 0, 16, 0, STONE),
+    box("tower", 32, towerH, 32, 0, towerY, 0, STONE),
+    box("merlon", 8, 10, 8, -12, roofY - 8, 12, STONE),
+    box("merlon", 8, 10, 8, 12, roofY - 8, 12, STONE),
+    box("merlon", 8, 10, 8, -12, roofY - 8, -12, STONE),
+    box("merlon", 8, 10, 8, 12, roofY - 8, -12, STONE),
+    box("belfry", 12, 16, 6, 0, roofY - 18, 17, FLAME),
+    cone("roof", 46, 26, 46, 0, roofY + 6, 0, THATCH),
+    box("door", 16, 20, 4, 0, 12, 38, PALISADE),
+    box("window", 8, 14, 4, 0, 58, 17, FLAME),
+    box("brazier", 10, 4, 10, 26, 34, 26, HIDE),
+    box("flame", 8, 12, 8, 26, 42, 26, FLAME),
+    prism("pine", 2.2, 3.4, 20, 5, -22, 10, -62, WOOD),
+    cone("pine", 18, 30, 18, -22, 30, -62, PINE, 5),
+    prism("pine", 2, 3, 16, 5, 18, 8, -70, WOOD),
+    cone("pine", 14, 24, 14, 18, 24, -70, PINE, 5)
   ]
-  if (step >= 2) parts.push(box("battlement", 36, 6, 8, 0, 28 + towerH - 4, 16, STONE))
-  if (step >= 4) parts.push(box("banner", 3, 16, 3, 0, roofY + 18, 0, PALISADE))
+  if (step >= 2) parts.push(box("battlement", 40, 8, 10, 0, 32 + towerH - 6, 18, STONE))
+  if (step >= 4) parts.push(box("banner", 3, 18, 3, 0, roofY + 24, 0, PALISADE))
   return parts
 }
 

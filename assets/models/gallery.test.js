@@ -1,10 +1,12 @@
 import assert from "node:assert/strict"
+import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
+import { groundColor, skyColor } from "../js/scene.js"
 import { checkModels, repoRoot } from "./run.js"
-import { conceptProblems, coverageProblems, fitSlack, iouLimit, paletteProblems, rulesFrom, uncitedPaletteProblems } from "./registry.js"
-import { maskIou } from "./raster.js"
-import { citationProblems, loadSheet, medianHex } from "./sheets.js"
+import { conceptProblems, coverageProblems, fitSlack, iouLimit, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
+import { galleryRigs, maskIou } from "./raster.js"
+import { citationProblems, loadSheet, medianHex, sceneColorProblems } from "./sheets.js"
 
 test("the gallery matches the goldens and a second run", () => {
   const result = checkModels({ writeGolden: false })
@@ -31,6 +33,26 @@ test("a palette token matches the jpeg median of its cited patch", () => {
   assert.equal(outside.length, 1)
   assert.equal(uncitedPaletteProblems("| boot | #3a342c | boots |\n").length, 1)
   assert.equal(uncitedPaletteProblems("| steel | #d8cfc3 | heroes.jpg | 238,264,8,8 | blades |\n").length, 0)
+})
+
+test("the gallery sky and the yard ground stay on the concept moss and dusk", () => {
+  const theme = loadSheet(path.join(repoRoot(), "docs/concept/theme.jpg"))
+  const markdown = fs.readFileSync(path.join(repoRoot(), "STYLE.md"), "utf8")
+  const { cited } = styleTables(markdown)
+  assert.deepEqual(
+    sceneColorProblems(markdown, theme, cited, galleryRigs, { ground: groundColor, sky: skyColor }),
+    []
+  )
+  const roof = cited.find((token) => token.name === "thatch")
+  const brick = {
+    day: { bg: [0x8a, 0x40, 0x30] },
+    dusk: { bg: [0x3a, 0x18, 0x16] },
+    night: { bg: [0x14, 0x0e, 0x12] }
+  }
+  const drifted = cited.map((token) => (token.name === "grass" ? { ...token, hex: roof.hex } : token))
+  const problems = sceneColorProblems(markdown, theme, drifted, brick, { ground: groundColor, sky: skyColor })
+  assert.ok(problems.some((line) => line.includes("closer to the thatch roof")))
+  assert.ok(problems.some((line) => line.includes("day gallery background")))
 })
 
 test("a kind with no model, a loose color, and a foreign sheet fail", () => {

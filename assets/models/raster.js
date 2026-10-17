@@ -2,30 +2,45 @@ import * as THREE from "three"
 import { deflateSync, inflateSync } from "node:zlib"
 import { cameraDistance } from "../js/town.js"
 import { frameFor } from "../js/frame.js"
+import { skyColor } from "../js/scene.js"
 
 // Gallery rigs. Material colors are shaded after the palette check.
-// Day is the brightest, night the darkest, and the night point is warm.
-const RIGS = {
+// Day is the concept sky. Dusk and night are darker shades of that sky.
+// Flame and torch colors emit, so a night window stays lit.
+const EMISSIVE = new Set([0xeea821, 0xf5751e])
+
+function rgbOf(hex) {
+  return [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]
+}
+
+function scaleRgb(hex, factor) {
+  return rgbOf(hex).map((channel) => Math.round(channel * factor))
+}
+
+export const galleryRigs = {
   day: {
-    bg: [0x8a, 0x40, 0x30],
+    bg: rgbOf(skyColor),
     ambient: [0.62, 0.56, 0.48],
     key: [0.5, 0.42, 0.3],
     keyDir: normalize([0.45, 1, 0.2]),
-    point: null
+    point: null,
+    emission: 0.12
   },
   dusk: {
-    bg: [0x3a, 0x18, 0x16],
+    bg: scaleRgb(skyColor, 0.62),
     ambient: [0.32, 0.22, 0.18],
     key: [0.24, 0.14, 0.08],
     keyDir: normalize([0.2, 0.5, 0.12]),
-    point: { pos: [18, 22, 24], color: [0.2, 0.09, 0.03], range: 140 }
+    point: { pos: [26, 42, 26], color: [0.35, 0.16, 0.04], range: 150 },
+    emission: 0.4
   },
   night: {
-    bg: [0x14, 0x0e, 0x12],
-    ambient: [0.05, 0.06, 0.1],
-    key: [0.03, 0.04, 0.07],
+    bg: scaleRgb(skyColor, 0.2),
+    ambient: [0.24, 0.2, 0.26],
+    key: [0.04, 0.03, 0.05],
     keyDir: normalize([-0.15, 0.4, -0.1]),
-    point: { pos: [18, 22, 24], color: [0.38, 0.16, 0.05], range: 120 }
+    point: { pos: [26, 42, 26], color: [0.85, 0.36, 0.08], range: 72 },
+    emission: 0.5
   }
 }
 
@@ -43,7 +58,7 @@ export function gameFrame() {
 }
 
 export function renderParts(parts, light) {
-  const rig = RIGS[light]
+  const rig = galleryRigs[light]
   if (!rig) throw new Error(`unknown light ${light}`)
   const { frame, camera } = gameFrame()
   const width = frame.bufferWidth
@@ -382,11 +397,48 @@ function shade(hex, normal, center, rig) {
   const mr = ((hex >> 16) & 255) / 255
   const mg = ((hex >> 8) & 255) / 255
   const mb = (hex & 255) / 255
+  const emit = EMISSIVE.has(hex) ? rig.emission || 0 : 0
   return [
-    clampByte(mr * (rig.ambient[0] + rig.key[0] * ndotl + pr)),
-    clampByte(mg * (rig.ambient[1] + rig.key[1] * ndotl + pg)),
-    clampByte(mb * (rig.ambient[2] + rig.key[2] * ndotl + pb))
+    clampByte(mr * (rig.ambient[0] + rig.key[0] * ndotl + pr + emit)),
+    clampByte(mg * (rig.ambient[1] + rig.key[1] * ndotl + pg + emit)),
+    clampByte(mb * (rig.ambient[2] + rig.key[2] * ndotl + pb + emit))
   ]
+}
+
+export function nightContrast(image) {
+  let max = 0
+  let sum = 0
+  let count = 0
+  let bright = 0
+  let warm = 0
+  let bg = 0
+  let bgCount = 0
+  for (let i = 0; i < image.mask.length; i++) {
+    const o = i * 3
+    const r = image.rgb[o]
+    const g = image.rgb[o + 1]
+    const b = image.rgb[o + 2]
+    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    if (!image.mask[i]) {
+      bg += luma
+      bgCount += 1
+      continue
+    }
+    sum += luma
+    count += 1
+    if (luma > max) max = luma
+    if (luma >= 48) {
+      bright += 1
+      if (r > g && r > b + 8) warm += 1
+    }
+  }
+  return {
+    max,
+    mean: count === 0 ? 0 : sum / count,
+    bright,
+    warm,
+    bg: bgCount === 0 ? 0 : bg / bgCount
+  }
 }
 
 function clampByte(value) {
