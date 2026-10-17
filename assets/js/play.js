@@ -2,7 +2,8 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, seatFromQuery } from "./input"
-import { bonusCopy, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
+import { bonusCopy, callAnchor, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
+import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const BUILD_LABEL = {
@@ -116,6 +117,27 @@ function start(code, seat, ui) {
   const seen = { kinds: [], labels: [], log: [] }
   let reasonEntry = { text: "", until: 0 }
   let focused = document.hasFocus()
+  const audio = createConductor({ storage: window.localStorage })
+  const unlockAudio = () => audio.unlock()
+  window.addEventListener("pointerdown", unlockAudio)
+  window.addEventListener("keydown", unlockAudio)
+  const muteButton = ui.hud.querySelector("[data-mute]")
+  const volumeInput = ui.hud.querySelector("[data-volume]")
+  if (volumeInput) volumeInput.value = String(Math.round(audio.prefs().volume * 100))
+  if (muteButton) muteButton.textContent = audio.prefs().muted ? "Muted" : "Sound"
+  muteButton?.addEventListener("click", () => {
+    audio.setMuted(!audio.prefs().muted)
+    muteButton.textContent = audio.prefs().muted ? "Muted" : "Sound"
+    publishAudio()
+  })
+  volumeInput?.addEventListener("input", () => {
+    audio.setVolume(Number(volumeInput.value) / 100)
+    if (audio.prefs().muted) {
+      audio.setMuted(false)
+      if (muteButton) muteButton.textContent = "Sound"
+    }
+    publishAudio()
+  })
   window.__lastKeepTest = {
     blur() {
       focused = false
@@ -124,6 +146,21 @@ function start(code, seat, ui) {
       if (down) keys.add(code)
       else keys.delete(code)
       send()
+    },
+    mute(muted) {
+      audio.setMuted(muted)
+      if (muteButton) muteButton.textContent = audio.prefs().muted ? "Muted" : "Sound"
+      publishAudio()
+    },
+    volume(value) {
+      audio.setVolume(value)
+      if (volumeInput) volumeInput.value = String(Math.round(audio.prefs().volume * 100))
+      publishAudio()
+    },
+    hear(snap) {
+      const cues = audio.hear(snap)
+      publishAudio()
+      return cues
     }
   }
   window.addEventListener("blur", () => {
@@ -246,6 +283,18 @@ function start(code, seat, ui) {
 
   window.setInterval(send, 50)
 
+  function publishAudio() {
+    if (!window.__lastKeep) return
+    const prefs = audio.prefs()
+    window.__lastKeep.audio = {
+      cues: audio.heard(),
+      muted: prefs.muted,
+      volume: prefs.volume,
+      unlocked: prefs.unlocked,
+      loop: prefs.loop
+    }
+  }
+
   function paint(ui, snap, selfId, armed) {
     ui.view.draw(snap, selfId)
     const me = (snap.players || []).find((player) => player.id === selfId)
@@ -327,10 +376,12 @@ function start(code, seat, ui) {
     drawHints(ui, snap)
     drawYou(ui, snap, selfId)
     drawFx(ui, snap, fx, seen)
+    audio.hear(snap)
     if (window.__lastKeep) {
       window.__lastKeep.log = seen.log
       window.__lastKeep.labels = seen.labels
       window.__lastKeep.kinds = seen.kinds
+      publishAudio()
     }
     if (snap.phase === "over") showOver(ui, snap)
     else ui.overlay.hidden = true
@@ -362,6 +413,7 @@ function hudMarkup() {
       <div class="chip" data-stock></div>
       <button type="button" data-raise>Raise the keep</button>
       <button type="button" data-copy>Copy invite</button>
+      <div class="sound"><button type="button" data-mute>Sound</button><input type="range" min="0" max="100" value="70" data-volume aria-label="Volume"></div>
     </div>
     <div class="hint-layer" data-hints></div>
     <div class="hint-layer"><div data-you hidden></div></div>
@@ -463,9 +515,27 @@ function marker(ui, worldX, worldY, label, onlyOffscreen) {
   const y = -point.y * 0.5 + 0.5
   const inside = x > 0.08 && x < 0.92 && y > 0.12 && y < 0.78
   if (onlyOffscreen && inside) return ""
-  const left = Math.max(0.14, Math.min(0.86, x)) * 100
-  const top = Math.max(0.16, Math.min(0.72, y)) * 100
-  return `<div class="hint-arrow" style="left:${left}%;top:${top}%">${label}</div>`
+  const layer = ui.hud.querySelector("[data-hints]")
+  const hud = ui.hud.getBoundingClientRect()
+  const layerBox = layer.getBoundingClientRect()
+  const anchor = callAnchor(x, y, rosterNorm(ui, hud))
+  const left = anchor.left * hud.width - (layerBox.left - hud.left)
+  const top = anchor.top * hud.height - (layerBox.top - hud.top)
+  const end = anchor.end ? " end" : ""
+  return `<div class="hint-arrow${end}" style="left:${left}px;top:${top}px">${label}</div>`
+}
+
+function rosterNorm(ui, hud) {
+  const roster = ui.hud.querySelector("[data-roster]")
+  if (!roster || hud.width < 1 || hud.height < 1) return null
+  const box = roster.getBoundingClientRect()
+  if (box.width < 8 || box.height < 8) return null
+  return {
+    left: (box.left - hud.left) / hud.width,
+    top: (box.top - hud.top) / hud.height,
+    right: (box.right - hud.left) / hud.width,
+    bottom: (box.bottom - hud.top) / hud.height
+  }
 }
 
 function showOver(ui, snap) {
@@ -493,8 +563,9 @@ function readSeat(code) {
 }
 
 function typing(event) {
-  const tag = document.activeElement && document.activeElement.tagName
-  if (tag === "INPUT" || tag === "TEXTAREA") {
+  const active = document.activeElement
+  const tag = active && active.tagName
+  if (tag === "TEXTAREA" || (tag === "INPUT" && active.type !== "range")) {
     if (event) event.stopPropagation()
     return true
   }

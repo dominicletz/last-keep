@@ -36,3 +36,12 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - `hud.test.js` requires two goblins in one direction to share the call "2 goblins", and requires the raise control to stay inert until wood and gold both cover the cost.
 - `e2e/playtest.spec.js` requires the invite button, the raise button, and the roster to sit inside 1280×800 and to keep their boxes apart. The warrior still has to walk. Each seat is brought to the front before the roster is read and before the walk, so a background tab still has to show the names and still has to move. The raise control has to be disabled while gold is 0. The browser server for that suite starts with `PLAYWRIGHT=1`, which turns off the asset watcher and live reload so a rebuild cannot wipe the roster mid-check. In CI the browser checks run one at a time, so a second window cannot push the measured page into the background. A held key is applied in the page. The walk still has to pass 20, and the movement sample still has to be longer than 5 frames. Wave 1 is recorded as soon as the goblins are on the yard, and the wave list still has to contain 1 and 2.
 - This pass does not change the Elixir simulation. The coverage floor stays 68.
+
+## 2026-10-17 audio and silhouettes
+
+- `assets/js/audio.test.js` maps a wave start to the night loop and the horn, a clear to the day loop and the sting, a keep bite to `keep-hit`, a slam plus a monster hit to `keep-hit` and `hit`, and a fall to `fall`. Mute and volume round-trip through storage, and a repeated tick does not replay the cue.
+- `twoPlayerNight` requires the horn and the night loop after the host starts, the build cue from the wall, the hit and kill cues from the fight, the sting when wave 1 clears, and a fall cue from the same bus. Mute and volume survive a reload. The build ring is on while a wall is armed and its radius is the hero's reach. Two goblins on the yard have draw offsets at least 16 apart. An edge call's box does not cover the roster.
+- `heroSilhouettes` puts warrior, mage, engineer, scout, and farmer in one room and requires five distinct mark, bounds, and part-count signatures on `window.__lastKeep.figures`.
+- `heroes.test.js` requires those five signatures. `bodies.test.js` requires the pair offset. `hud.test.js` requires an edge call to stop short of the roster box and the build ring to follow the armed reach.
+- CI fails a flaky Playwright pass, and it fails if `assets/js/audio.js` contains a remote URL.
+- This pass does not change the Elixir simulation. The coverage floor stays 68.

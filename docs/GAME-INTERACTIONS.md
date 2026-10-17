@@ -138,6 +138,10 @@ Goblins, skeletons, wolves, and trolls walk at the keep or at the nearest hero a
 
 Wave 1 is two slower, softer goblins from one direction, spawned about 620 to 659 units from the origin. Later nights spawn farther, about 760 to 839, then add directions, skeletons, wolves, trolls, elites, and bosses. Heroes stand near radius 120. The map clamps at 1800. A wave-1 goblin still has time to reach the keep inside the minute.
 
+On screen the five heroes do not share a body. A warrior reads as broad shoulders and a shield, a mage as a robe, hat, and staff, a scout as a hood and a bow, a farmer as a straw brim and a fork, and an engineer as an apron and a hammer. Two monsters drawn on the same ground step apart, each with its own outline and bar, so a pair at the door is two bodies.
+
+The night has its own sound. Day and building play one loop, the wave plays another, a horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. Nothing is loaded from another host.
+
 ## Empty roles
 
 No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, and gold has a producer and a consumer. The test fails if that stops being true.

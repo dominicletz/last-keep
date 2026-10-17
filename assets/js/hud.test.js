@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { bonusCopy, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud.js"
+import { bonusCopy, callAnchor, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, showReason, waveLabel } from "./hud.js"
 
 test("the wave label is one number and does not say next", () => {
   assert.equal(waveLabel(1), "Wave 1")
@@ -53,6 +53,22 @@ test("raising the keep names the wood and gold it costs", () => {
   assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 2 }), false)
   assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }), true)
   assert.equal(raiseReady(null, { wood: 48, gold: 8 }), false)
+})
+
+test("an edge call beside the roster stops short of the names", () => {
+  const roster = { left: 0.78, top: 0, right: 0.98, bottom: 0.36 }
+  const parked = callAnchor(0.9, 0.12, roster)
+  assert.ok(parked.left < roster.left)
+  assert.equal(parked.end, true)
+  const open = callAnchor(0.2, 0.5, roster)
+  assert.ok(Math.abs(open.left - 0.2) < 0.001)
+  assert.equal(open.end, false)
+})
+
+test("an armed build draws a ring the size of the hero's reach", () => {
+  assert.deepEqual(rangeRingState(true, 180), { on: true, radius: 180 })
+  assert.deepEqual(rangeRingState(false, 180), { on: false, radius: 0 })
+  assert.deepEqual(rangeRingState(true, 0), { on: false, radius: 0 })
 })
 
 test("offscreen monsters in one direction share a counted call", () => {
