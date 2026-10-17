@@ -366,21 +366,30 @@ async function assertDiegeticHud(page) {
     const nodes = [
       ...document.querySelectorAll(".chip, [data-bonuses], [data-stock], [data-roster], .skill, .build, .heart")
     ]
+    const sacks = [...document.querySelectorAll(".sack")]
     const problems = []
     let area = 0
-    for (const node of nodes) {
+    for (const node of [...nodes, ...sacks]) {
       const style = getComputedStyle(node)
       const box = node.getBoundingClientRect()
       area += box.width * box.height
       const alpha = alphaOf(style.backgroundColor)
       const border = parseFloat(style.borderTopWidth) || 0
-      const name = nameOf(node)
+      const name = node.classList.contains("sack") ? "sack" : nameOf(node)
       if (alpha > 0.35) problems.push(`${name} fill`)
       if (border >= 2) problems.push(`${name} border`)
     }
-    return { area: Math.round(area), count: nodes.length, problems }
+    const chrome = document.querySelectorAll("[data-chrome]").length
+    const world = document.querySelectorAll("[data-world]").length
+    return { area: Math.round(area), count: nodes.length, chrome, world, sacks: sacks.length, problems }
   })
   expect(report.count).toBe(15)
+  expect(report.sacks).toBe(3)
+  expect(report.world).toBe(5)
+  // Caption glass was these same 15 slots. Sacks, relic lines, the heart,
+  // the roster, and the keep sign left it. The glass keeps 4 skills and 6 builds.
+  expect(report.chrome).toBe(10)
+  expect(report.chrome).toBeLessThan(15)
   expect(report.problems).toEqual([])
   // The same slots on opaque panels covered 150656px at 1280×800.
   expect(report.area).toBeLessThan(105000)

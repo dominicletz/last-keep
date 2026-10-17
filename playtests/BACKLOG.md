@@ -42,6 +42,7 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-069 | concept monsters.jpg, assets goblin skeleton wolf troll bat boss | graphics | high | The sheet has six bodies. The sim and the gallery had no bat, and the live boss was not the dark rider mesh. The six kinds are planned into the nights, night 1 stays two goblins, and the live mesh is the gallery model. | done in PR #30 | `the six concept monsters are in the nights`, `townLook.bestiary` |
 | LK-070 | concept theme, asset lighting | graphics | high | The yard stayed on one daylight rig after the host started the night. The build is day, the last eight seconds are dusk, and a wave is night. Night is darker than dusk, which is darker than day. | done in PR #31 | `lightName`, `twoPlayerNight` |
 | LK-071 | hero picker, assets warrior mage scout farmer engineer | graphics | medium | The picker was a color swatch. Each card now shows that hero's day close-up. A card image shorter than 64px or taller than 128px fails. | done in PR #32 | `createHost` portrait images |
+| LK-072 | PR #25 after-shot, asset hud | graphics | high | Captions still sat on the glass. Wood, food, and gold are three sacks on the yard. The next pack stands on its approach bearing. The keep sign, relic lines, the heart, and the roster sit in the world. The glass keeps four skills and six builds, and a chrome count other than 10 fails. | done | `chromeCount`, `assertDiegeticHud`, `e2e/playtest.spec.js` |
 
 ## Open
 

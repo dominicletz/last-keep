@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, showReason, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, bonusCopy, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rosterAnchor, sackLine, showReason, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -87,6 +87,48 @@ test("an armed build draws a ring the size of the hero's reach", () => {
   assert.deepEqual(rangeRingState(true, 180), { on: true, radius: 180 })
   assert.deepEqual(rangeRingState(false, 180), { on: false, radius: 0 })
   assert.deepEqual(rangeRingState(true, 0), { on: false, radius: 0 })
+})
+
+test("the glass keeps ten controls after the sacks leave it", () => {
+  assert.equal(CHROME_BUDGET, 10)
+  assert.ok(CHROME_BUDGET < CAPTION_GLASS)
+  const root = {
+    querySelectorAll(selector) {
+      assert.equal(selector, "[data-chrome]")
+      return Array.from({ length: CHROME_BUDGET })
+    }
+  }
+  assert.equal(chromeCount(root), CHROME_BUDGET)
+  assert.equal(chromeCount(null), 0)
+})
+
+test("wood, food, and gold each sit in their own sack", () => {
+  const marks = sackLine({ wood: 40, food: 12, gold: 3 })
+  assert.deepEqual(marks.map((mark) => mark.text), ["Wood 40", "Food 12", "Gold 3"])
+  assert.equal(new Set(marks.map((mark) => `${mark.x},${mark.y}`)).size, 3)
+})
+
+test("a hinted pack stands on its approach bearing", () => {
+  const east = hintBeacon({ angle: 0, kind: "goblin", count: 2 })
+  assert.ok(Math.abs(east.x - 520) < 0.001)
+  assert.ok(Math.abs(east.y) < 0.001)
+  assert.equal(east.label, "2 goblins")
+  const north = hintBeacon({ angle: Math.PI / 2, kind: "wolf", count: 1 })
+  assert.ok(Math.abs(north.x) < 0.001)
+  assert.ok(north.y > 500)
+  assert.equal(north.label, "1 wolf")
+  assert.equal(hintBeacons([{ angle: 0, kind: "goblin", count: 2 }]).length, 1)
+  assert.deepEqual(hintBeacons([]), [])
+})
+
+test("the roster board sits west of the party", () => {
+  const board = rosterAnchor([
+    { x: 20, y: 10 },
+    { x: 40, y: 30 }
+  ])
+  assert.equal(board.x, -60)
+  assert.equal(board.y, 20)
+  assert.deepEqual(rosterAnchor([]), { x: -150, y: 40 })
 })
 
 test("offscreen monsters in one direction share a counted call", () => {

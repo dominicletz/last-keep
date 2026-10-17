@@ -116,6 +116,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 - The wave line, relic lines, resource tally, roster, ability keys, and build keys are captions on the yard. They no longer use the `#160f0ccc` panel or a 3px border. `assertDiegeticHud` fails a fill above 0.35, a top border of 2px or more, or a combined box of 105000px or more. The panel stack measured 150656px. Raise stays disabled at gold 0, and the invite, raise, and roster boxes still have to sit inside 1280×800 without covering each other. This does not change the simulation. The coverage floor stays 69.
 
+## 2026-10-17 sack economy
+
+- Wood, food, and gold are three sacks on the yard, and the next pack is a beacon on its approach bearing. The keep sign, relic lines, the heart, and the roster are pinned in the world. `assertDiegeticHud` still fails a fill above 0.35, a top border of 2px or more, or a combined box of 105000px or more, and it still counts the same 15 slots. The glass count is 10, under the caption count of 15. Raise stays disabled at gold 0. This does not change the simulation. The coverage floor stays 69.
+
 ## 2026-10-17 hero colors
 
 - Warrior plate is the lit grey `#b5afaa` from heroes.jpg at 184,186, not the shadow `#494745`. The mage robe stays deep blue, the scout cloak forest green, the farmer hat straw with denim, and the engineer apron leather. The day close-up is the portrait. `heroColorProblems` fails when a dominant close-up color is outside that hero's concept crop, including a brown warrior body. Gallery day light and the in-game sun are neutral, so the grey is not clipped to orange. This does not change the simulation. The coverage floor stays 69.

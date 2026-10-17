@@ -8,6 +8,27 @@ const RELIC = {
 
 const PLURAL = { goblin: "goblins", wolf: "wolves", troll: "trolls", bat: "bats", boss: "bosses" }
 
+// The caption HUD locked 15 glass slots: wave, relics, stock, roster, heart,
+// four skills, and six builds. The keep sign, relic lines, three sacks, the
+// heart, and the roster sit in the yard. The glass keeps the four skills and
+// six builds.
+export const CAPTION_GLASS = 15
+export const CHROME_BUDGET = 10
+
+export const SACK_SPOT = {
+  wood: { x: 52, y: 18 },
+  food: { x: 72, y: 46 },
+  gold: { x: 34, y: 48 }
+}
+
+export const KEEP_SIGN = { x: 16, y: -6 }
+export const RELIC_SIGN = { x: -78, y: -28 }
+
+export function chromeCount(root) {
+  if (!root || typeof root.querySelectorAll !== "function") return 0
+  return root.querySelectorAll("[data-chrome]").length
+}
+
 export const waveClock = /^(Frenzy in \d+s|Frenzied\. They are faster)$/
 
 // A place event clears the armed build once per snapshot tick.
@@ -33,12 +54,45 @@ export function waveLabel(shown) {
 
 export function nextLine(phase, hints) {
   if (phase !== "build" || !hints || hints.length === 0) return ""
-  const parts = hints.map((hint) => {
-    const count = hint.count || 1
-    const word = count === 1 ? hint.kind : PLURAL[hint.kind] || `${hint.kind}s`
-    return `${count} ${word}`
-  })
+  const parts = hints.map((hint) => packWord(hint))
   return `Next: ${parts.join(", ")}`
+}
+
+export function sackLine(resources = {}) {
+  return ["wood", "food", "gold"].map((key) => ({
+    key,
+    text: `${key[0].toUpperCase()}${key.slice(1)} ${Number(resources[key]) || 0}`,
+    x: SACK_SPOT[key].x,
+    y: SACK_SPOT[key].y
+  }))
+}
+
+export function hintBeacon(hint, radius = 520) {
+  const angle = Number(hint?.angle) || 0
+  return {
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius,
+    label: packWord(hint)
+  }
+}
+
+export function hintBeacons(hints, radius = 520) {
+  return (hints || []).filter((hint) => hint && hint.kind).map((hint) => hintBeacon(hint, radius))
+}
+
+export function rosterAnchor(players) {
+  const list = players || []
+  if (list.length === 0) return { x: -150, y: 40 }
+  const x = list.reduce((sum, player) => sum + (Number(player.x) || 0), 0) / list.length
+  const y = list.reduce((sum, player) => sum + (Number(player.y) || 0), 0) / list.length
+  return { x: x - 90, y }
+}
+
+function packWord(hint) {
+  const count = hint?.count || 1
+  const kind = hint?.kind || "monster"
+  const word = count === 1 ? kind : PLURAL[kind] || `${kind}s`
+  return `${count} ${word}`
 }
 
 export function ignoreFocusClick(wasFocused) {
