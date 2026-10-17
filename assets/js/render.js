@@ -185,28 +185,6 @@ export function createView(stage) {
     }
   }
 
-  function figure(color, scale, weapon, emissive = 0x000000) {
-    const group = new THREE.Group()
-    const body = new THREE.Mesh(new THREE.BoxGeometry(12 * scale, 16 * scale, 8 * scale), mat(color, emissive))
-    body.position.y = 12 * scale
-    body.castShadow = true
-    const head = new THREE.Mesh(new THREE.BoxGeometry(8 * scale, 8 * scale, 8 * scale), mat(0xf0d2b0))
-    head.position.y = 24 * scale
-    head.castShadow = true
-    group.add(body, head)
-    if (weapon) group.add(weapon)
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 2), mat(0x1a100c))
-    const fill = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 2), mat(0x7ea35a))
-    plate.position.y = 36 * scale
-    fill.position.set(0, 36 * scale, 1.2)
-    group.add(plate, fill)
-    group.userData.hp = fill
-    group.userData.bar = plate
-    group.userData.face = true
-    group.userData.bodyScale = scale
-    return group
-  }
-
   let lastRender = 0
   let lastInput = -Infinity
   let renders = 0
@@ -423,7 +401,8 @@ export function createView(stage) {
           keep: keepParts(townRank).map((part) => part.name),
           keepColors: [...new Set(keepParts(townRank).map((part) => part.color))],
           plaza: plazaColor,
-          path: true
+          path: true,
+          bestiary: ["goblin", "skeleton", "wolf", "troll", "bat", "boss"]
         },
         forestLook,
         rendered: heroMesh ? { x: heroMesh.position.x, z: heroMesh.position.z } : null,
@@ -584,24 +563,23 @@ export function createView(stage) {
   }
 
   function monsterMesh(row) {
-    let mesh
+    const bounds = modelBounds(row.kind)
+    const mesh = groupFrom(modelParts(row.kind))
+    mesh.userData.span = bounds
+    mesh.userData.face = true
+    if (row.kind === "bat") mesh.userData.lift = 22
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 2), mat(0x1a100c))
+    const fill = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 2), mat(0x7ea35a))
+    plate.position.y = bounds.height + 4
+    fill.position.set(0, bounds.height + 4, 1.2)
+    mesh.add(plate, fill)
+    mesh.userData.hp = fill
+    mesh.userData.bar = plate
     const look = eliteLook(row)
-    if (look === "horned") mesh = bossMesh()
-    else if (look === "plated") mesh = platedMesh()
-    else if (look === "lean") mesh = leanMesh()
-    else if (look === "spiked") mesh = spikedMesh()
-    else {
-      const bounds = modelBounds(row.kind)
-      mesh = groupFrom(modelParts(row.kind))
-      mesh.userData.span = bounds
-      mesh.userData.face = true
-      const plate = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 2), mat(0x1a100c))
-      const fill = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 2), mat(0x7ea35a))
-      plate.position.y = bounds.height + 4
-      fill.position.set(0, bounds.height + 4, 1.2)
-      mesh.add(plate, fill)
-      mesh.userData.hp = fill
-      mesh.userData.bar = plate
+    if (look === "plated" || look === "lean" || look === "spiked") {
+      const mark = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 5), mat(look === "spiked" ? 0xf5751e : 0xd8cfc3))
+      mark.position.y = bounds.height + 10
+      mesh.add(mark)
     }
     const spread = monsterSpread(row.id)
     mesh.userData.spread = spread
@@ -620,45 +598,5 @@ export function createView(stage) {
     }
     return mesh
   }
-
-  function bossMesh() {
-    const group = figure(0x4a2068, 2.8, null, 0x2a0840)
-    const horn = new THREE.Mesh(new THREE.ConeGeometry(3, 16, 4), mat(0xf2e2b0))
-    horn.position.set(-7, 46, 0)
-    const other = horn.clone()
-    other.position.x = 7
-    group.add(horn, other)
-    return group
-  }
-
-  function platedMesh() {
-    const group = figure(0x8a9098, 2.2, null, 0x222428)
-    group.add(boxMesh(8, 18, 4, 0xd5d8de, 10))
-    return group
-  }
-
-  function leanMesh() {
-    const group = figure(0xffb15a, 1.7, null, 0x6a3a08)
-    group.scale.z = 0.65
-    return group
-  }
-
-  function spikedMesh() {
-    const group = figure(0xff3a22, 2.3, null, 0x6a1408)
-    const spike = new THREE.Mesh(new THREE.ConeGeometry(2, 12, 4), mat(0xffe08a, 0xff7a2a))
-    spike.position.set(0, 36, 0)
-    group.add(spike)
-    return group
-  }
 }
 
-function boxMesh(w, h, d, color, y) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshLambertMaterial({ color })
-  )
-  mesh.position.y = y
-  mesh.castShadow = true
-  mesh.receiveShadow = true
-  return mesh
-}

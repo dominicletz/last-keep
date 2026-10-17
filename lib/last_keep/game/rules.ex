@@ -106,7 +106,10 @@ defmodule LastKeep.Game.Rules do
   def monster(:skeleton), do: %{hp: 46, speed: 64, damage: 10, r: 13, aggro: 140}
   def monster(:wolf), do: %{hp: 34, speed: 118, damage: 9, r: 13, aggro: 240}
   def monster(:troll), do: %{hp: 180, speed: 50, damage: 20, r: 22, aggro: 100}
+  def monster(:bat), do: %{hp: 16, speed: 96, damage: 6, r: 12, aggro: 220}
   def monster(:boss), do: %{hp: 980, speed: 44, damage: 30, r: 34, aggro: 130}
+
+  def monsters, do: [:goblin, :skeleton, :wolf, :troll, :bat, :boss]
 
   def hp_scale(wave), do: 1 + 0.14 * (wave - 1)
   def dmg_scale(wave), do: 1 + 0.08 * (wave - 1)
@@ -123,6 +126,7 @@ defmodule LastKeep.Game.Rules do
   def bounty(:skeleton), do: 1
   def bounty(:wolf), do: 2
   def bounty(:troll), do: 5
+  def bounty(:bat), do: 2
   def bounty(:boss), do: 20
 
   def kill_bonus(:warrior), do: 1

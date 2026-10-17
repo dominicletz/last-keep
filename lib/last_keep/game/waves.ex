@@ -57,6 +57,7 @@ defmodule LastKeep.Game.Waves do
 
   defp kind_for(wave, i) do
     cond do
+      wave >= 6 and rem(i, 5) == 4 -> :bat
       wave >= 4 and rem(i, 4) == 3 -> :troll
       wave >= 3 and rem(i, 3) == 2 -> :wolf
       wave >= 2 and rem(i, 2) == 1 -> :skeleton
@@ -66,6 +67,7 @@ defmodule LastKeep.Game.Waves do
 
   defp add_kind(wave, i) do
     cond do
+      wave >= 10 and rem(i, 3) == 2 -> :bat
       wave >= 10 and rem(i, 2) == 0 -> :wolf
       wave >= 5 -> :skeleton
       true -> :goblin
@@ -73,6 +75,7 @@ defmodule LastKeep.Game.Waves do
   end
 
   defp count_for(wave, :troll), do: 1 + div(wave, 7)
+  defp count_for(wave, :bat), do: 2 + div(wave, 4)
   defp count_for(wave, :wolf), do: 2 + div(wave, 3)
   defp count_for(wave, :skeleton), do: 2 + div(wave, 2)
   defp count_for(1, :goblin), do: 2

@@ -75,6 +75,7 @@ Every Rules hero, every monster the simulation spawns, every building, and the y
 | skeleton | monster | monsters.jpg | skeleton | 260,328,260,246 |
 | wolf | monster | monsters.jpg | wolf | 760,340,270,245 |
 | troll | monster | monsters.jpg | ogre | 524,292,226,286 |
+| bat | monster | monsters.jpg | bat | 408,68,260,96 |
 | boss | monster | monsters.jpg | dark rider | 1000,70,275,520 |
 | wall | building | theme.jpg | palisade | 160,280,250,220 |
 | tower | building | theme.jpg | stone tower | 590,36,120,130 |
