@@ -128,6 +128,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 - The concept sheet's six bodies are goblin, skeleton, wolf, the ogre (sim kind `troll`), bat, and the dark rider (sim kind `boss`). The bat is a small winged biter with a bounty of 2. Nights 1 through 12 plan every kind, and night 1 stays two goblins. The live mesh is that kind's gallery model, including the dark rider, and a bat is drawn up off the ground. `townLook.bestiary` lists the six. This changes the simulation. The coverage floor stays 69.
 
+## 2026-10-17 voxel figures
+
+- Heroes and monsters are voxel grids, greedy-meshed into the boxes the raster and the live scene already draw. The warrior close-up shows a crested helm, a face, a blue shield with a gold cross, and a sword. The goblin close-up shows ears, orange eyes, teeth, and a spear with a flame. The wolf has fur and four legs, the bat has wings, the skeleton has ribs, and the dark rider sits on a horse. A hero or monster under the voxel detail floor of 12 fails, so three boxes fail. Buildings stay exempt. Cell size keeps each dusk silhouette at or above its recorded floor. This does not change the simulation. The coverage floor stays 69.
+
 ## 2026-10-17 day, dusk, and night
 
 - The yard stays on the neutral day rig while the party is waiting and through most of the build. The last eight seconds of the build are dusk. A wave, a frenzy, and a fallen keep are night, and night is darker than dusk, which is darker than day. `window.__lastKeep.light` reports the name. The day sun is still the neutral yard light, so grey plate is not clipped. This does not change the simulation. The coverage floor stays 69.

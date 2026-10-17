@@ -1,4 +1,5 @@
 import { heroParts } from "../js/heroes.js"
+import { batVoxels, goblinVoxels, ogreVoxels, riderVoxels, skeletonVoxels, wolfVoxels } from "./figures.js"
 import { sceneryForest } from "../js/scenery.js"
 
 // A mesh may extend this many times past the gameplay radius. The farmer brim
@@ -71,43 +72,12 @@ const REGISTRY = [
   hero("scout", 632, crop(524, 100, 216, 480)),
   hero("farmer", 1529, crop(752, 98, 250, 480)),
   hero("engineer", 774, crop(1016, 158, 224, 432)),
-  monster("goblin", 16, 682, crop(16, 328, 236, 246), [
-    box("body", 20, 14, 14, 0, 9, 0, 0x676f3c),
-    box("head", 12, 10, 12, 0, 20, 0, 0x676f3c),
-    box("ear", 10, 4, 4, -14, 22, 0, 0x676f3c),
-    box("ear", 10, 4, 4, 14, 22, 0, 0x676f3c)
-  ]),
-  monster("skeleton", 13, 293, crop(260, 328, 260, 246), [
-    box("ribs", 8, 20, 5, 0, 14, 0, 0x908b8a),
-    box("skull", 6, 6, 6, 0, 28, 0, 0x908b8a),
-    box("arm", 2, 16, 2, -6, 16, 0, 0x908b8a),
-    box("arm", 2, 16, 2, 6, 16, 0, 0x908b8a)
-  ]),
-  monster("wolf", 13, 445, crop(760, 340, 270, 245), [
-    box("body", 26, 8, 10, 0, 7, 0, 0x6e6767),
-    box("head", 8, 8, 8, 14, 12, 0, 0x6e6767),
-    box("snout", 6, 4, 4, 20, 11, 0, 0x6e6767),
-    box("tail", 10, 3, 3, -16, 10, 0, 0x6e6767)
-  ]),
-  monster("troll", 22, 1884, crop(524, 292, 226, 286), [
-    box("body", 32, 30, 22, 0, 18, 0, 0x70724d),
-    box("head", 16, 14, 16, 0, 40, 0, 0x70724d),
-    box("arm", 10, 22, 10, -20, 24, 0, 0x70724d),
-    box("arm", 10, 22, 10, 20, 24, 0, 0x70724d)
-  ], "ogre"),
-  monster("bat", 12, 280, crop(408, 68, 260, 96), [
-    box("body", 10, 6, 8, 0, 10, 0, 0x4d433b),
-    box("head", 6, 5, 6, 6, 12, 0, 0x4d433b),
-    box("wing", 14, 2, 10, -12, 12, 0, 0x4d433b),
-    box("wing", 14, 2, 10, 12, 12, 0, 0x4d433b),
-    box("eye", 2, 2, 2, 8, 14, 3, 0xf5751e)
-  ], "bat"),
-  monster("boss", 34, 2402, crop(1000, 70, 275, 520), [
-    box("body", 36, 40, 24, 0, 26, 0, 0x4a464c),
-    box("head", 16, 14, 16, 0, 52, 0, 0x4a464c),
-    cone("horn", 8, 20, 8, -18, 66, 0, 0x3a264d),
-    cone("horn", 8, 20, 8, 18, 66, 0, 0x3a264d)
-  ], "dark rider"),
+  monster("goblin", 16, 682, crop(16, 328, 236, 246), goblinVoxels()),
+  monster("skeleton", 13, 293, crop(260, 328, 260, 246), skeletonVoxels()),
+  monster("wolf", 13, 445, crop(760, 340, 270, 245), wolfVoxels()),
+  monster("troll", 22, 1884, crop(524, 292, 226, 286), ogreVoxels(), "ogre"),
+  monster("bat", 12, 280, crop(408, 68, 260, 96), batVoxels(), "bat"),
+  monster("boss", 34, 2402, crop(1000, 70, 275, 520), riderVoxels(), "dark rider"),
   building("wall", 16, 571, crop(160, 280, 250, 220), palisadeParts(), "palisade"),
   building("tower", 16, 1028, crop(590, 36, 120, 130), [
     box("shaft", 18, 32, 18, 0, 16, 0, STONE),
@@ -227,7 +197,13 @@ export function keepParts(rank = 0) {
 export function models() {
   const look = sceneryForest()
   return REGISTRY.map((model) => {
-    if (model.family === "hero") return { ...model, parts: heroParts(model.id) }
+    if (model.family === "hero") {
+      const parts = heroParts(model.id)
+      return { ...model, parts, voxels: parts.voxelCount }
+    }
+    if (model.family === "monster") {
+      return { ...model, parts: model.parts.map((part) => ({ ...part })), voxels: model.parts.voxelCount }
+    }
     if (model.id === "keep") return { ...model, parts: keepParts(0) }
     if (model.id === "scenery") {
       return {

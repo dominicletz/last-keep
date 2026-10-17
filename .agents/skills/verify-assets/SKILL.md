@@ -41,6 +41,7 @@ All of these fail the command:
 - At game zoom the silhouette is empty or its pixel area is below the minimum recorded for that kind. The recorded minimum also has to stay at least half the measured area.
 - A hero's day-raster height at 1280×800 is under 24 internal pixels at town rank 0 or at town rank 4.
 - A hero or monster close-up is missing, its figure is outside 64–96 internal pixels, or its portrait is not that close-up.
+- A hero or monster is below the voxel detail floor of 12. The count is the voxel grid when the model has one, otherwise the part count. Three boxes fail. Buildings are exempt.
 - A hero's dominant close-up colors are outside the colors that occupy that hero's concept crop. A brown warrior plate fails this. The day light stays neutral so grey plate is not clipped to orange.
 - A Rules monster has no gallery model. The six are goblin, skeleton, wolf, troll (the ogre), bat, and boss (the dark rider).
 - Two kinds in the same family have a silhouette intersection-over-union at or above 0.85. They must read as different bodies.
