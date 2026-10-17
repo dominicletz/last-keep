@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { frameFor } from "./frame.js"
+import { frameFor, pixelSize } from "./frame.js"
 import { viewScale } from "./town.js"
 
 test("wide, square, and portrait windows keep square pixels and frame the yard", () => {
@@ -28,6 +28,14 @@ test("a world square keeps its aspect when the window aspect changes", () => {
   assert.ok(tallScale > 0)
   assert.ok(Math.abs(wide.bufferWidth / wide.bufferHeight - wide.aspect) < 0.0001)
   assert.ok(Math.abs(tall.bufferWidth / tall.bufferHeight - tall.aspect) < 0.0001)
+})
+
+test("the 1280 by 800 window is 640 by 400 internal pixels", () => {
+  const frame = frameFor(1280, 800, 0)
+  assert.equal(pixelSize, 2)
+  assert.equal(frame.bufferWidth, 640)
+  assert.equal(frame.bufferHeight, 400)
+  assert.equal(frame.halfH, 168)
 })
 
 test("a higher town rank widens the same window", () => {

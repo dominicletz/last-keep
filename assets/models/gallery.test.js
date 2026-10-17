@@ -5,7 +5,8 @@ import test from "node:test"
 import { groundColor, skyColor } from "../js/scene.js"
 import { checkModels, repoRoot } from "./run.js"
 import { conceptProblems, coverageProblems, fitSlack, iouLimit, keepStoneProblems, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
-import { galleryRigs, maskIou } from "./raster.js"
+import { galleryRigs, maskBounds, maskIou } from "./raster.js"
+import { heroHeightProblems, heroPixelFloor } from "./run.js"
 import { citationProblems, loadSheet, medianHex, sceneColorProblems } from "./sheets.js"
 
 test("the gallery matches the goldens and a second run", () => {
@@ -16,6 +17,22 @@ test("the gallery matches the goldens and a second run", () => {
   assert.equal(result.present["monsters.jpg"], true)
   assert.equal(fitSlack, 2)
   assert.equal(iouLimit, 0.85)
+  assert.equal(heroPixelFloor, 24)
+  for (const row of result.rendered) {
+    if (row.family !== "hero" && row.family !== "monster") continue
+    const height = maskBounds(row.closeup).height
+    assert.ok(height >= 64 && height <= 96, `${row.id} close-up ${height}`)
+    assert.equal(row.portrait.width, row.closeup.width)
+    assert.equal(row.portrait.height, row.closeup.height)
+  }
+})
+
+test("a hero under 24 internal pixels fails at rank 0 and at rank 4", () => {
+  const short = heroHeightProblems([
+    { id: "scout", family: "hero", parts: [{ name: "body", shape: "box", w: 4, h: 8, d: 4, x: 0, y: 4, z: 0, color: 0xd99b64 }] }
+  ])
+  assert.ok(short.some((line) => line.includes("rank 0")))
+  assert.ok(short.some((line) => line.includes("rank 4")))
 })
 
 test("a palette token matches the jpeg median of its cited patch", () => {

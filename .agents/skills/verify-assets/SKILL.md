@@ -22,9 +22,9 @@ The registry covers every hero from `Rules.heroes/0`, every monster kind the sim
 
 ## Render
 
-Each asset writes a contact sheet at game zoom through the pixel path, in day, dusk, and night light, under `artifacts/gallery/<id>/`. `docs/gallery.html` links the committed frames in `test/gallery/`. Hero portraits are the dusk crop of the hero sheets. CI uploads `artifacts/gallery/` as an artifact.
+Each asset writes a contact sheet at game zoom through the pixel path, in day, dusk, and night light, under `artifacts/gallery/<id>/`. Heroes and monsters also write a close-up about 80px tall and a `compare.png` beside the concept crop. Portrait cards are that close-up. `docs/gallery.html` links the committed frames in `test/gallery/`. CI uploads `artifacts/gallery/` as an artifact.
 
-A side-by-side frame places the concept crop from `docs/concept/` next to the in-game render. The concept files are `heroes.jpg`, `monsters.jpg`, and `theme.jpg`. The fourth panel is that crop, nearest-neighbor and letterboxed. `docs/gallery.html` links `concept.png`. If a sheet is not in the repo, the slot stays empty and the page says so. Do not invent a substitute. A mapping that names any other file fails.
+A side-by-side frame places the concept crop from `docs/concept/` next to the in-game render. The concept files are `heroes.jpg`, `monsters.jpg`, and `theme.jpg`. The last panel is that crop, nearest-neighbor and letterboxed. Heroes and monsters insert a close-up before it, and `compare.png` shows the close-up beside the crop at the same height. `docs/gallery.html` links `concept.png`. If a sheet is not in the repo, the slot stays empty and the page says so. Do not invent a substitute. A mapping that names any other file fails.
 
 Every palette token cites one of those sheets and an `x,y,w,h` region. The hex has to equal the jpeg-js lower median of that patch. A token with no citation, a region outside the sheet, or a hex that is not that median fails. A hand-exported PNG is still not a pass.
 
@@ -39,6 +39,8 @@ All of these fail the command:
 - The grass token is farther than 18 from the concept moss, or closer to the thatch roof than to that moss. The day gallery background is not the concept sky median. A dusk or night background whose mix is more than 0.04 from that sky, or closer to the roof than to the sky, fails.
 - A building with a flame or torch is unreadable at night. The keep's brightest pixel is below luma 80, it has fewer than 8 warm pixels, or its silhouette does not sit at least 4 luma above the night sky. Other lit buildings have a lower floor.
 - At game zoom the silhouette is empty or its pixel area is below the minimum recorded for that kind. The recorded minimum also has to stay at least half the measured area.
+- A hero's day-raster height at 1280×800 is under 24 internal pixels at town rank 0 or at town rank 4.
+- A hero or monster close-up is missing, its figure is outside 64–96 internal pixels, or its portrait is not that close-up.
 - Two kinds in the same family have a silhouette intersection-over-union at or above 0.85. They must read as different bodies.
 - The mesh bounds do not fit the gameplay collider for that kind. The fit slack is 2.
 - A Rules kind has no model, no `STYLE.md` entry, or no concept mapping.
