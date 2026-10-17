@@ -46,8 +46,10 @@ test("five specialists share one room and the warrior can walk", async ({ browse
     expect(box.x + box.width).toBeLessThanOrEqual(1280)
     expect(box.y + box.height).toBeLessThanOrEqual(800)
   }
+  const sign = await ada.locator(".chip").boundingBox()
   expect(overlaps(copy, roster)).toBe(false)
   expect(overlaps(raise, roster)).toBe(false)
+  expect(overlaps(sign, roster)).toBe(false)
   const before = await readState(ada)
   await keyInPage(ada, "KeyW", true)
   try {

@@ -21,8 +21,8 @@ export const SACK_SPOT = {
   gold: { x: 34, y: 48 }
 }
 
-export const KEEP_SIGN = { x: 16, y: -6 }
-export const RELIC_SIGN = { x: -78, y: -28 }
+export const KEEP_SIGN = { x: 110, y: -90 }
+export const RELIC_SIGN = { x: -120, y: -48 }
 
 export function chromeCount(root) {
   if (!root || typeof root.querySelectorAll !== "function") return 0
@@ -85,7 +85,7 @@ export function rosterAnchor(players) {
   if (list.length === 0) return { x: -150, y: 40 }
   const x = list.reduce((sum, player) => sum + (Number(player.x) || 0), 0) / list.length
   const y = list.reduce((sum, player) => sum + (Number(player.y) || 0), 0) / list.length
-  return { x: x - 90, y }
+  return { x: x - 280, y: y - 50 }
 }
 
 function packWord(hint) {

@@ -126,8 +126,8 @@ test("the roster board sits west of the party", () => {
     { x: 20, y: 10 },
     { x: 40, y: 30 }
   ])
-  assert.equal(board.x, -60)
-  assert.equal(board.y, 20)
+  assert.equal(board.x, -250)
+  assert.equal(board.y, -30)
   assert.deepEqual(rosterAnchor([]), { x: -150, y: 40 })
 })
 
