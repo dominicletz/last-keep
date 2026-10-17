@@ -1,5 +1,14 @@
 import Config
 
+playwright = System.get_env("PLAYWRIGHT") == "1"
+
+watchers =
+  if playwright do
+    []
+  else
+    [esbuild: {Esbuild, :install_and_run, [:last_keep, ~w(--sourcemap=inline --watch)]}]
+  end
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #
@@ -14,9 +23,7 @@ config :last_keep, LastKeepWeb.Endpoint,
   code_reloader: true,
   debug_errors: true,
   secret_key_base: "H2F6ih+IDq3ZooVfLP8MnCpwgzlIoIvwFI9KahZULYBqO0LzR6uHZgomH5u7tKY2",
-  watchers: [
-    esbuild: {Esbuild, :install_and_run, [:last_keep, ~w(--sourcemap=inline --watch)]}
-  ]
+  watchers: watchers
 
 # ## SSL Support
 #

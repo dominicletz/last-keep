@@ -19,10 +19,17 @@ async function openParty(browser, options = {}) {
     const seat = await joinQuery(browser, code, player.name, player.hero)
     seats.push({ ...player, page: seat.page, context: seat.context })
   }
-  await seats[0].page.waitForFunction(
-    (names) => names.every((name) => document.querySelector("[data-roster]")?.innerText?.includes(name)),
-    players.map((player) => player.name)
-  )
+  const names = players.map((player) => player.name)
+  for (const seat of seats) {
+    await seat.page.bringToFront()
+    await seat.page.waitForFunction(
+      (expected) => {
+        const text = document.querySelector("[data-roster]")?.textContent || ""
+        return expected.every((name) => text.includes(name))
+      },
+      names
+    )
+  }
   return {
     code,
     seats,
@@ -69,10 +76,19 @@ async function shot(page, file) {
 }
 
 async function keyInPage(page, code, down) {
+  await page.bringToFront()
   await page.evaluate(
     ({ code, down }) => {
+      const active = document.activeElement
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) active.blur()
+      if (window.__lastKeepTest) window.__lastKeepTest.hold(code, down)
       window.dispatchEvent(
-        new KeyboardEvent(down ? "keydown" : "keyup", { code, bubbles: true, cancelable: true })
+        new KeyboardEvent(down ? "keydown" : "keyup", {
+          code,
+          key: code,
+          bubbles: true,
+          cancelable: true
+        })
       )
     },
     { code, down }

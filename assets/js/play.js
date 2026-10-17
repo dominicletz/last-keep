@@ -119,6 +119,11 @@ function start(code, seat, ui) {
   window.__lastKeepTest = {
     blur() {
       focused = false
+    },
+    hold(code, down) {
+      if (down) keys.add(code)
+      else keys.delete(code)
+      send()
     }
   }
   window.addEventListener("blur", () => {

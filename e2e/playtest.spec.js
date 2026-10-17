@@ -13,6 +13,7 @@ test("five specialists share one room and the warrior can walk", async ({ browse
     "character"
   ])
   for (const seat of party.seats) {
+    await seat.page.bringToFront()
     await expect(seat.page.locator("[data-roster]")).toContainText("Ada")
     await expect(seat.page.locator("[data-roster]")).toContainText(seat.name)
   }
@@ -22,6 +23,7 @@ test("five specialists share one room and the warrior can walk", async ({ browse
   await expect(ada.locator("[data-you]")).toBeVisible()
   await expect(ada.locator("[data-you]")).toHaveText("Ada")
   await expect(ada.locator("[data-next]")).toContainText("2 goblins")
+  await expect(ada.locator("[data-raise]")).toBeDisabled()
   const copy = await ada.locator("[data-copy]").boundingBox()
   const raise = await ada.locator("[data-raise]").boundingBox()
   const roster = await ada.locator("[data-roster]").boundingBox()
