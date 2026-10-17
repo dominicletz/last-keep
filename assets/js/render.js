@@ -11,7 +11,7 @@ import { keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { bodyPixel } from "./paint.js"
-import { groundColor, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
+import { cycleLight, groundColor, lightName, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -32,7 +32,8 @@ export function createView(stage) {
   let viewFrame = opening
   let townRank = 0
 
-  scene.add(new THREE.HemisphereLight(yardLight.sky, yardLight.ground, yardLight.hemisphere))
+  const sky = new THREE.HemisphereLight(yardLight.sky, yardLight.ground, yardLight.hemisphere)
+  scene.add(sky)
   const ambient = new THREE.AmbientLight(yardLight.ambient, yardLight.ambientLevel)
   scene.add(ambient)
   const sun = new THREE.DirectionalLight(yardLight.sun, yardLight.sunLevel)
@@ -151,9 +152,10 @@ export function createView(stage) {
     const group = new THREE.Group()
     group.userData.rank = rank
     for (const piece of keepParts(rank)) group.add(pieceMesh(piece))
-    const torch = new THREE.PointLight(0xeea821, 8, 180)
+    const torch = new THREE.PointLight(0xeea821, 8, 220)
     torch.position.set(22, 40, 22)
     group.add(torch)
+    group.userData.torch = torch
     return group
   }
 
@@ -269,6 +271,18 @@ export function createView(stage) {
       return { x: point.x, y: point.y, behind: point.z > 1 }
     },
     draw(snap, selfId) {
+      const name = lightName(snap)
+      const rig = cycleLight[name]
+      if (keep.userData.torch) keep.userData.torch.intensity = name === "night" ? 22 : name === "dusk" ? 10 : 4
+      sky.color.set(rig.sky)
+      sky.groundColor.set(rig.ground)
+      sky.intensity = rig.hemisphere
+      ambient.color.set(rig.ambient)
+      ambient.intensity = rig.ambientLevel
+      sun.color.set(rig.sun)
+      sun.intensity = rig.sunLevel
+      scene.background.set(rig.background)
+      scene.fog.color.set(rig.background)
       townRank = snap.town || 0
       applyFrame()
       const zoom = zoomFor(snap)
@@ -367,6 +381,7 @@ export function createView(stage) {
       window.__lastKeep = {
         counts,
         phase: snap.phase,
+        light: lightName(snap),
         hold: !!snap.hold,
         wave: snap.wave,
         keep: snap.keep,

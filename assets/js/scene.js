@@ -17,3 +17,46 @@ export const yardLight = {
   sun: 0xfff3e4,
   sunLevel: 0.52
 }
+
+// The build is day. The last eight seconds of the build are dusk. A wave is night.
+// Day stays on yardLight so grey plate is not clipped. Night is the darkest.
+export const cycleLight = {
+  day: { ...yardLight, background: skyColor },
+  dusk: {
+    sky: 0x8a7060,
+    ground: 0x2a3818,
+    hemisphere: 0.32,
+    ambient: 0xb09078,
+    ambientLevel: 0.34,
+    sun: 0xf0b080,
+    sunLevel: 0.4,
+    background: 0x3e3844
+  },
+  night: {
+    sky: 0x6a6478,
+    ground: 0x24301c,
+    hemisphere: 0.28,
+    ambient: 0x8a8494,
+    ambientLevel: 0.36,
+    sun: 0xc0b0a0,
+    sunLevel: 0.3,
+    background: 0x322e3a
+  }
+}
+
+export function lightName(snap) {
+  if (!snap) return "day"
+  if (snap.phase === "wave" || snap.phase === "over" || snap.enraged) return "night"
+  if (snap.hold) return "day"
+  if (snap.phase === "build") {
+    const ms = Number(snap.phase_ms)
+    if (Number.isFinite(ms) && ms > 0 && ms <= 8000) return "dusk"
+    return "day"
+  }
+  return "day"
+}
+
+export function lightLevel(name) {
+  const rig = cycleLight[name] || cycleLight.day
+  return rig.hemisphere + rig.ambientLevel + rig.sunLevel
+}
