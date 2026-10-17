@@ -16,7 +16,7 @@ Every change ships with tests. A simulation change needs an ExUnit test. A brows
 
 ## Models
 
-`STYLE.md` is the art loop. `npm run models` is the check, and `.agents/skills/verify-assets/SKILL.md` is the definition of that check. The command reads `assets/models/`, renders every Rules kind and yard prop at game zoom under day, dusk, and night, and fails unless the second run matches `test/gallery/`. `docs/gallery.html` shows those frames beside the concept slot. The concept sheets are `docs/concept/lk_heroes.jpg`, `lk_theme.jpg`, and `lk_monsters.jpg`. They are not in the repo. Do not invent a substitute. The first theming pull request is this pipeline. It does not author the town kit.
+`STYLE.md` is the art loop. `npm run models` is the check, and `.agents/skills/verify-assets/SKILL.md` is the definition of that check. The command reads `assets/models/`, renders every Rules kind and yard prop at game zoom under day, dusk, and night, and fails unless the second run matches `test/gallery/`. `docs/gallery.html` shows those frames beside the concept crop. The concept sheets are `docs/concept/heroes.jpg`, `monsters.jpg`, and `theme.jpg`. Every palette token cites one of those sheets and a region, and the hex is the jpeg-js median of that patch. Do not invent a substitute sheet. This pass does not author the town kit.
 
 ## Verification ratchet
 

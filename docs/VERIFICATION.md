@@ -64,3 +64,9 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - The same command rejects a material color that is not a `STYLE.md` token, a silhouette under the recorded minimum, a same-family intersection-over-union at or above 0.85, a mesh past twice its gameplay radius, and a Rules kind with no model, no style row, or no concept mapping.
 - `fidelity.test.js` keeps the round-5 scores and fails a later lower score with an empty reason.
 - The concept sheets are not in the repo. The gallery says so. This pass does not change the Elixir simulation. The coverage floor stays 69.
+
+## 2026-10-17 concept palette
+
+- `docs/concept/heroes.jpg`, `monsters.jpg`, and `theme.jpg` are the reference sheets. Each gallery contact sheet ends with that asset's crop. `docs/gallery.html` links `concept.png`.
+- `STYLE.md` hexes are the jpeg-js lower median of the cited 8×8 patch. A token with no sheet and region, a region outside the sheet, or a hex that is not that median fails `npm run models`.
+- This pass recolors the existing meshes to those tokens. It does not change the Elixir simulation. The coverage floor stays 69.

@@ -30,6 +30,7 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-018 | Dominic, production VDQPTZ | graphics | medium | WASD interpolation had not been checked on a moving hero | done in PR #6 | `movementIsInterpolated`, `a position update is interpolated and does not jump` |
 | LK-019 | Dominic, production VDQPTZ | graphics | medium | An invalid placement reason stayed until the next action | done in PR #6 | `an invalid placement reason fades instead of sticking`, `invalidPlacementExplains` |
 | LK-020 | Dominic, production VDQPTZ | graphics | medium | The picture stretched when the window was not 16:9 | done in PR #6 | `squarePixels`, `frame.test.js` |
+| LK-058 | Dominic | graphics | high | The concept sheets were missing, so the gallery left the concept slot empty and the palette was copied from the builders. The sheets are `docs/concept/heroes.jpg`, `monsters.jpg`, and `theme.jpg`. Each gallery slot shows that asset's crop, and every palette token cites its sheet and region. | done | `npm run models`, `gallery.test.js` citation check |
 
 ## Open
 
@@ -64,7 +65,6 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-047 | Lux, round 4 room ZT4PJ2 | graphics | medium | An edge call stops short of the roster and is right-aligned there. Guarded by `callAnchor` in `hud.test.js` and `twoPlayerNight`. `playtests/round-4/shots/15-Ada.png` | done |
 | LK-048 | Ada, round 4 room ZT4PJ2 | gameplay | medium | Raise the keep is inert while gold is short and it is painted like a live button. A click in room ZT4PJ2 did not spend wood or gold. Round 5 room ME475J still paints it live at gold 3. | open |
 | LK-060 | Ada, round 5 room ME475J | gameplay | low | A wave-1 pair can straddle the 45-degree call bucket and the yard says "goblin" twice instead of "2 goblins". `playtests/round-5/shots/06-Ada.png` | open |
-| LK-058 | Dominic | graphics | high | First theming pull request: `npm run models`, `.agents/skills/verify-assets/SKILL.md`, and the concept-versus-render loop. Commit `docs/concept/lk_heroes.jpg`, `lk_theme.jpg`, and `lk_monsters.jpg` here. Those files were not in the workspace, so the gallery leaves the concept slot empty. Do not invent substitutes. Do not author the town kit here. | open |
 
 ## Fidelity
 

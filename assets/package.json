@@ -10,6 +10,7 @@
     "three": "0.170.0"
   },
   "devDependencies": {
+    "jpeg-js": "0.4.4",
     "typescript": "5.9.3"
   }
 }
