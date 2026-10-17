@@ -28,7 +28,7 @@ const BUILDING_COLOR = {
 }
 
 export function createView(stage) {
-  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true })
+  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
   renderer.setSize(480, 270, false)
   renderer.setPixelRatio(1)
   renderer.shadowMap.enabled = true
@@ -51,7 +51,7 @@ export function createView(stage) {
   scene.add(ambient)
   const sun = new THREE.DirectionalLight(0xffa050, 2.6)
   sun.castShadow = true
-  sun.shadow.mapSize.set(1024, 1024)
+  sun.shadow.mapSize.set(256, 256)
   sun.shadow.bias = -0.0008
   sun.shadow.camera.near = 20
   sun.shadow.camera.far = 900
@@ -136,7 +136,8 @@ export function createView(stage) {
         dummy.updateMatrix()
         trunks.setMatrixAt(i, dummy.matrix)
       }
-      trunks.castShadow = true
+      trunks.castShadow = false
+      trunks.receiveShadow = false
       scene.add(trunks)
     }
   }
@@ -215,6 +216,59 @@ export function createView(stage) {
     group.userData.bodyScale = scale
     return group
   }
+
+  let lastRender = 0
+  let lastInput = -Infinity
+  let renders = 0
+
+  function noteInput() {
+    lastInput = performance.now()
+  }
+
+  function paintFrame() {
+    renderer.render(scene, camera)
+    renders += 1
+    if (window.__lastKeep) window.__lastKeep.renders = renders
+  }
+
+  window.addEventListener("pointerdown", noteInput)
+  window.addEventListener("keydown", noteInput)
+
+  function frame() {
+    const now = performance.now()
+    for (const [key, mesh] of meshes) placeMesh(key, mesh)
+    for (let i = bursts.length - 1; i >= 0; i -= 1) {
+      const burst = bursts[i]
+      const age = (now - burst.at) / 520
+      if (age >= 1) {
+        scene.remove(burst.mesh)
+        bursts.splice(i, 1)
+      } else {
+        burst.mesh.scale.setScalar(1 + age * 3.2)
+        burst.mesh.material.opacity = 1 - age
+      }
+    }
+    const heroMesh = heroKey ? meshes.get(heroKey) : null
+    if (heroMesh && window.__lastKeep) {
+      window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
+    }
+    for (const [key, mesh] of meshes) {
+      if (!key.startsWith("monster:") && !key.startsWith("hero:")) continue
+      probe.set(mesh.position.x, 16, mesh.position.z).project(camera)
+      mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
+    }
+    // Headless reports every page as visible, so five shadow frames never yield
+    // and the walk's evaluate sits until the test timeout. A page that just
+    // got a key paints with the tick. The others coast.
+    const gap = now - lastInput < 1500 ? 50 : 250
+    if (now - lastRender >= gap) {
+      paintFrame()
+      lastRender = now
+    }
+    requestAnimationFrame(frame)
+  }
+
+  requestAnimationFrame(frame)
 
   return {
     canvas: renderer.domElement,
@@ -323,7 +377,6 @@ export function createView(stage) {
         }
       }
 
-      renderer.render(scene, camera)
       const counts = { heroes: 0, monsters: 0, shots: 0 }
       scene.traverse((object) => {
         if (object.userData?.role === "hero") counts.heroes += 1
@@ -399,6 +452,7 @@ export function createView(stage) {
           halfW: viewFrame.halfW,
           halfH: viewFrame.halfH
         },
+        renders,
         toClient,
         redNear
       }
@@ -428,19 +482,20 @@ export function createView(stage) {
   }
 
   function redNear(x, z) {
+    paintFrame()
+    const gl = renderer.getContext()
     const point = new THREE.Vector3(x, 16, z).project(camera)
     const canvas = renderer.domElement
     const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
     const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)
-    const copy = document.createElement("canvas")
-    copy.width = canvas.width
-    copy.height = canvas.height
-    const ctx = copy.getContext("2d", { willReadFrequently: true })
-    ctx.drawImage(canvas, 0, 0)
     const size = 17
     const sx0 = Math.max(0, px - 8)
     const sy0 = Math.max(0, py - 8)
-    const block = ctx.getImageData(sx0, sy0, Math.min(size, copy.width - sx0), Math.min(size, copy.height - sy0))
+    const width = Math.min(size, canvas.width - sx0)
+    const height = Math.min(size, canvas.height - sy0)
+    const buf = new Uint8Array(width * height * 4)
+    gl.readPixels(sx0, Math.max(0, canvas.height - (sy0 + height)), width, height, gl.RGBA, gl.UNSIGNED_BYTE, buf)
+    const block = { data: buf }
     let count = 0
     for (let i = 0; i < block.data.length; i += 4) {
       const r = block.data[i]
@@ -598,35 +653,6 @@ export function createView(stage) {
     group.add(spike)
     return group
   }
-
-  function frame() {
-    const now = performance.now()
-    for (const [key, mesh] of meshes) placeMesh(key, mesh)
-    for (let i = bursts.length - 1; i >= 0; i -= 1) {
-      const burst = bursts[i]
-      const age = (now - burst.at) / 520
-      if (age >= 1) {
-        scene.remove(burst.mesh)
-        bursts.splice(i, 1)
-      } else {
-        burst.mesh.scale.setScalar(1 + age * 3.2)
-        burst.mesh.material.opacity = 1 - age
-      }
-    }
-    const heroMesh = heroKey ? meshes.get(heroKey) : null
-    if (heroMesh && window.__lastKeep) {
-      window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
-    }
-    for (const [key, mesh] of meshes) {
-      if (!key.startsWith("monster:") && !key.startsWith("hero:")) continue
-      probe.set(mesh.position.x, 16, mesh.position.z).project(camera)
-      mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
-    }
-    renderer.render(scene, camera)
-    requestAnimationFrame(frame)
-  }
-
-  requestAnimationFrame(frame)
 }
 
 function boxMesh(w, h, d, color, y) {
