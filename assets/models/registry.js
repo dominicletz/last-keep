@@ -14,7 +14,9 @@ export const yardProps = ["keep", "tree", "scenery"]
 
 const HERO_RADIUS = 14
 const TREE_RADIUS = 16
-const STONE = 0x554034
+const STONE = 0x654e41
+const COURSE = 0x453a32
+const JOINT = 0x2c2a2a
 const THATCH = 0x43382e
 const PALISADE = 0x795237
 const FLAME = 0xeea821
@@ -119,7 +121,7 @@ const REGISTRY = [
     cone("cap", 20, 12, 20, 0, 40, 0, DUSK),
     box("gem", 5, 5, 5, 0, 48, 0, GEM)
   ], "spell light"),
-  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 5296, null),
+  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 6583, null),
   entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 307, pineParts()),
   entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "pine trunk", crop: crop(1080, 160, 180, 260) }, 97, null)
 ]
@@ -154,6 +156,30 @@ function wheatParts() {
   return parts
 }
 
+// Stacked courses. Stone bands are twice the joint and the greyer course,
+// and the odd courses step in so the blocks read at game zoom.
+function shellCourses(height, bottom, width, depth) {
+  const parts = []
+  const pattern = [
+    { h: 12, color: STONE },
+    { h: 6, color: JOINT },
+    { h: 12, color: STONE },
+    { h: 6, color: COURSE }
+  ]
+  let y = bottom
+  let i = 0
+  const top = bottom + height
+  while (y < top - 0.5) {
+    const spec = pattern[i % pattern.length]
+    const h = Math.min(spec.h, top - y)
+    const inset = i % 2 === 0 ? 0 : 2
+    parts.push(box("course", width - inset, h, depth - inset, 0, y + h / 2, 0, spec.color))
+    y += h
+    i += 1
+  }
+  return parts
+}
+
 // Rank 0 is the gallery keep. Each raise adds a course of stone.
 // Rank 2 grows battlements. Rank 4 flies a banner.
 // The foot has timber houses, the top is a lit belfry, and pines stand behind it.
@@ -167,16 +193,18 @@ export function keepParts(rank = 0) {
     cone("eave", 40, 14, 34, -46, 26, 8, THATCH),
     box("house", 30, 18, 26, 44, 9, -4, WOOD),
     cone("eave", 36, 12, 30, 44, 22, -4, THATCH),
-    box("base", 72, 32, 72, 0, 16, 0, STONE),
-    box("tower", 32, towerH, 32, 0, towerY, 0, STONE),
-    box("merlon", 8, 10, 8, -12, roofY - 8, 12, STONE),
-    box("merlon", 8, 10, 8, 12, roofY - 8, 12, STONE),
-    box("merlon", 8, 10, 8, -12, roofY - 8, -12, STONE),
+    box("base", 64, 28, 64, 0, 16, 0, STONE),
+    ...shellCourses(32, 0, 72, 72),
+    box("tower", 26, towerH, 26, 0, towerY, 0, STONE),
+    ...shellCourses(towerH, 32, 32, 32),
+    box("merlon", 8, 10, 8, -12, roofY - 8, 12, COURSE),
+    box("merlon", 8, 10, 8, 12, roofY - 8, 12, JOINT),
+    box("merlon", 8, 10, 8, -12, roofY - 8, -12, COURSE),
     box("merlon", 8, 10, 8, 12, roofY - 8, -12, STONE),
-    box("belfry", 12, 16, 6, 0, roofY - 18, 17, FLAME),
+    box("belfry", 12, 16, 6, 0, roofY - 18, 22, FLAME),
     cone("roof", 46, 26, 46, 0, roofY + 6, 0, THATCH),
     box("door", 16, 20, 4, 0, 12, 38, PALISADE),
-    box("window", 8, 14, 4, 0, 58, 17, FLAME),
+    box("window", 8, 14, 4, 0, 58, 22, FLAME),
     box("brazier", 10, 4, 10, 26, 34, 26, HIDE),
     box("flame", 8, 12, 8, 26, 42, 26, FLAME),
     prism("pine", 2.2, 3.4, 20, 5, -22, 10, -62, WOOD),
@@ -184,7 +212,7 @@ export function keepParts(rank = 0) {
     prism("pine", 2, 3, 16, 5, 18, 8, -70, WOOD),
     cone("pine", 14, 24, 14, 18, 24, -70, PINE, 5)
   ]
-  if (step >= 2) parts.push(box("battlement", 40, 8, 10, 0, 32 + towerH - 6, 18, STONE))
+  if (step >= 2) parts.push(box("battlement", 40, 8, 10, 0, 32 + towerH - 6, 22, STONE))
   if (step >= 4) parts.push(box("banner", 3, 18, 3, 0, roofY + 24, 0, PALISADE))
   return parts
 }
@@ -340,6 +368,68 @@ export function paletteProblems(listed, tokens) {
       if (!tokens.has(hex)) problems.push(`${model.id} ${part.name} uses #${hex}, which is not a STYLE.md palette token`)
     }
   }
+  return problems
+}
+
+const KEEP_BODY = new Set(["base", "tower", "course", "merlon", "battlement"])
+
+function rgbOf(hex) {
+  const value = typeof hex === "string" ? Number.parseInt(hex.replace("#", ""), 16) : hex
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
+}
+
+function colorDist(a, b) {
+  const left = rgbOf(a)
+  const right = rgbOf(b)
+  return Math.hypot(left[0] - right[0], left[1] - right[1], left[2] - right[2])
+}
+
+// The keep body has to read as the belfry stone, with more than one tone.
+// Roof stays thatch. A uniform brown shaft fails.
+export function keepStoneProblems(listed, cited) {
+  const problems = []
+  const stone = cited.find((token) => token.name === "stone")
+  const keep = listed.find((model) => model.id === "keep")
+  if (!stone || !keep) {
+    problems.push("keep stone check is missing the keep or the stone token")
+    return problems
+  }
+  const crop = keep.concept && keep.concept.crop
+  const region = stone.region
+  const inside =
+    crop &&
+    region &&
+    region.x >= crop.x &&
+    region.y >= crop.y &&
+    region.x + region.w <= crop.x + crop.w &&
+    region.y + region.h <= crop.y + crop.h
+  if (!inside) problems.push(`stone #${stone.hex} is not sampled from the keep belfry crop`)
+  const body = (keep.parts || []).filter((part) => KEEP_BODY.has(part.name))
+  if (body.length === 0) {
+    problems.push("keep has no stone body")
+    return problems
+  }
+  const volume = new Map()
+  for (const part of body) {
+    const hex = hexOf(part.color).slice(1)
+    const size = Math.abs(part.w * part.h * part.d) || 0
+    volume.set(hex, (volume.get(hex) || 0) + size)
+  }
+  let dominant = null
+  let best = -1
+  for (const [hex, size] of volume) {
+    if (size > best) {
+      best = size
+      dominant = hex
+    }
+  }
+  const dist = colorDist(dominant, stone.hex)
+  if (dist > 18) {
+    problems.push(`keep body dominant #${dominant} is ${dist.toFixed(1)} away from stone #${stone.hex}`)
+  }
+  if (volume.size < 3) problems.push("keep body does not vary by course, so the masonry does not read")
+  const roof = (keep.parts || []).find((part) => part.name === "roof")
+  if (!roof || hexOf(roof.color) !== "#43382e") problems.push("keep roof is not the thatch token")
   return problems
 }
 

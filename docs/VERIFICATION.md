@@ -93,3 +93,8 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-17 hero sheet
 
 - The warrior carries a shield and a sword, the mage a robe, a pointed hat, and a gemmed staff, the scout a hood and a bow, the farmer a straw brim and a pitchfork, and the engineer an apron, a hammer, and logs. `heroes.test.js` locks those marks, the prop colors, and the collider fit. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 keep masonry
+
+- The stone token moved from the brown shaft at 636,124 (`#554034`) to the lit belfry block at 672,143 (`#654e41`). Course `#453a32` and joint `#2c2a2a` are the greyer block and the mortar in that same crop. The keep roof stays thatch.
+- The keep shaft and its foot are stacked courses. Stone bands are twice the joint and the course, and the odd courses step in. `keepStoneProblems` fails when the body's dominant color is more than 18 from that stone, when the body has fewer than three tones, or when the roof is not thatch. The tower still grows at each rank. This does not change the simulation. The coverage floor stays 69.

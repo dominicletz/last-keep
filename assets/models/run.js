@@ -10,6 +10,7 @@ import {
   fitSlack,
   iouLimit,
   models,
+  keepStoneProblems,
   paletteProblems,
   radiusProblems,
   rulesFrom,
@@ -52,6 +53,7 @@ export function checkModels({ writeGolden = false } = {}) {
   const { tokens, cited, kinds } = styleTables(styleSource)
   problems.push(...coverageProblems(listed, rules))
   problems.push(...paletteProblems(listed, tokens))
+  problems.push(...keepStoneProblems(listed, cited))
   problems.push(...styleProblems(listed, kinds))
   problems.push(...conceptProblems(listed))
   problems.push(...fitProblems(listed))

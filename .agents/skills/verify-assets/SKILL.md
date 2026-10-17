@@ -34,6 +34,7 @@ All of these fail the command:
 
 - The render throws or the sheet is empty.
 - A material color is not a `STYLE.md` palette token. Tolerance is zero on the spec, before lighting.
+- The keep body's dominant color is more than 18 from the stone token sampled in the belfry crop, the body uses fewer than three tones, or the roof is not thatch.
 - A palette token does not cite `heroes.jpg`, `monsters.jpg`, or `theme.jpg` and a region, or the jpeg-js median of that region is not the cited hex.
 - The grass token is farther than 18 from the concept moss, or closer to the thatch roof than to that moss. The day gallery background is not the concept sky median. A dusk or night background whose mix is more than 0.04 from that sky, or closer to the roof than to the sky, fails.
 - A building with a flame or torch is unreadable at night. The keep's brightest pixel is below luma 80, it has fewer than 8 warm pixels, or its silhouette does not sit at least 4 luma above the night sky. Other lit buildings have a lower floor.

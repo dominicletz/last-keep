@@ -35,7 +35,11 @@ A model spec names a token. It does not paste a fresh hex. Lighting may darken a
 | sunset | #e58e54 | theme.jpg | 936,36,8,8 | sunset |
 | soil | #080c0e | theme.jpg | 170,86,8,8 | concept slot ground |
 | pine | #353e27 | theme.jpg | 54,600,8,8 | pine crown and scout legs |
-| stone | #554034 | theme.jpg | 636,124,8,8 | keep and tower stone |
+| stone | #654e41 | theme.jpg | 672,143,8,8 | keep and tower stone |
+| course | #453a32 | theme.jpg | 668,105,8,8 | keep masonry course |
+| joint | #2c2a2a | theme.jpg | 682,101,8,8 | keep mortar joint |
+
+The old stone patch at 636,124 was a brown shaft course, `#554034`. The stone token is now the lit belfry block. Course and joint are the greyer block and the mortar beside it, both inside the keep crop. The keep roof stays thatch. The check fails when the keep body's dominant color is more than 18 from this stone, or when the body is fewer than three tones.
 | thatch | #43382e | theme.jpg | 660,230,8,8 | keep roof |
 | wheat | #976122 | theme.jpg | 872,364,8,8 | crop field |
 | grass | #374115 | theme.jpg | 648,408,8,8 | ground |
