@@ -11,7 +11,7 @@ import { keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { bodyPixel } from "./paint.js"
-import { groundColor, skyColor, yardLight } from "./scene.js"
+import { groundColor, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -68,14 +68,18 @@ export function createView(stage) {
   ground.receiveShadow = true
   scene.add(ground)
 
-  const dirt = new THREE.Mesh(new THREE.CircleGeometry(150, 8), mat(0x5e4529))
-  dirt.rotation.x = -Math.PI / 2
-  dirt.position.y = 0.2
-  dirt.receiveShadow = true
-  scene.add(dirt)
-  const pathNS = new THREE.Mesh(new THREE.BoxGeometry(18, 0.45, 280), mat(0x5e4529))
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, 8), mat(plazaColor))
+  plaza.rotation.x = -Math.PI / 2
+  plaza.position.y = 0.2
+  plaza.receiveShadow = true
+  const ring = new THREE.Mesh(new THREE.RingGeometry(146, 168, 8), mat(ringColor))
+  ring.rotation.x = -Math.PI / 2
+  ring.position.y = 0.28
+  ring.receiveShadow = true
+  scene.add(plaza, ring)
+  const pathNS = new THREE.Mesh(new THREE.BoxGeometry(18, 0.45, 280), mat(pathColor))
   pathNS.position.y = 0.4
-  const pathEW = new THREE.Mesh(new THREE.BoxGeometry(280, 0.45, 18), mat(0x5e4529))
+  const pathEW = new THREE.Mesh(new THREE.BoxGeometry(280, 0.45, 18), mat(pathColor))
   pathEW.position.y = 0.35
   scene.add(pathNS, pathEW)
 
@@ -295,8 +299,10 @@ export function createView(stage) {
       const anchorZ = me ? me.y * 0.22 : 0
       focus.set(anchorX, 0, anchorZ)
       const dist = zoom.camera
-      dirt.scale.setScalar(zoom.dirt / 150)
-      const pathSpan = zoom.dirt / 150
+      const yardScale = zoom.dirt / 150
+      plaza.scale.setScalar(yardScale)
+      ring.scale.setScalar(yardScale)
+      const pathSpan = yardScale
       pathNS.scale.set(1, 1, pathSpan)
       pathEW.scale.set(pathSpan, 1, 1)
       if (keep.userData.rank !== townRank) {
@@ -415,6 +421,7 @@ export function createView(stage) {
         townLook: {
           rank: townRank,
           keep: keepParts(townRank).map((part) => part.name),
+          plaza: plazaColor,
           path: true
         },
         forestLook,

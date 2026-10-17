@@ -36,7 +36,7 @@ All of these fail the command:
 - A material color is not a `STYLE.md` palette token. Tolerance is zero on the spec, before lighting.
 - The keep body's dominant color is more than 18 from the stone token sampled in the belfry crop, the body uses fewer than three tones, or the roof is not thatch.
 - A palette token does not cite `heroes.jpg`, `monsters.jpg`, or `theme.jpg` and a region, or the jpeg-js median of that region is not the cited hex.
-- The grass token is farther than 18 from the concept moss, or closer to the thatch roof than to that moss. The day gallery background is not the concept sky median. A dusk or night background whose mix is more than 0.04 from that sky, or closer to the roof than to the sky, fails.
+- The grass token is farther than 18 from the concept moss, or closer to the thatch roof than to that moss. The day gallery background is not the concept sky median. A dusk or night background whose mix is more than 0.04 from that sky, or closer to the roof than to the sky, fails. The plaza fill has to be the grass token. A plaza painted with the path token fails.
 - A building with a flame or torch is unreadable at night. The keep's brightest pixel is below luma 80, it has fewer than 8 warm pixels, or its silhouette does not sit at least 4 luma above the night sky. Other lit buildings have a lower floor.
 - At game zoom the silhouette is empty or its pixel area is below the minimum recorded for that kind. The recorded minimum also has to stay at least half the measured area.
 - A hero's day-raster height at 1280×800 is under 24 internal pixels at town rank 0 or at town rank 4.
