@@ -21,6 +21,37 @@ export function isTypingTarget(node) {
   return true
 }
 
+// Blurring one hidden control moves focus to the next one in the same form.
+// Doing that from a focus listener chases the cursor forever and the page
+// stops answering. One pass blurs the hidden control, and a re-entrant call
+// does nothing.
+let blurBusy = false
+
+export function blurHiddenFocus(doc) {
+  if (blurBusy || !doc) return false
+  const active = doc.activeElement
+  if (!active || typeof active.closest !== "function" || !active.closest("[hidden]")) return false
+  blurBusy = true
+  try {
+    if (typeof active.blur === "function") active.blur()
+    const next = doc.activeElement
+    if (
+      next &&
+      next !== active &&
+      typeof next.closest === "function" &&
+      next.closest("[hidden]") &&
+      typeof next.blur === "function"
+    ) {
+      next.blur()
+    }
+    const canvas = typeof doc.querySelector === "function" ? doc.querySelector("#stage canvas") : null
+    if (canvas && typeof canvas.focus === "function") canvas.focus()
+    return true
+  } finally {
+    blurBusy = false
+  }
+}
+
 export function axes(keys) {
   // The camera sits on the +x +z diagonal, so W moves toward the top of the screen.
   const f = Math.SQRT1_2

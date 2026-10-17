@@ -137,7 +137,10 @@ defmodule LastKeep.Game.Room do
   end
 
   @impl true
-  def handle_info(:tick, state) do
+  # A timer that already fired cannot be cancelled. Dropping its ref and
+  # starting another clock left both running, so every join could double the
+  # tick. Only the ref stored in state is the live clock.
+  def handle_info({:tick, ref}, %{timer: {ref, _timer}} = state) do
     state = advance(%{state | timer: nil})
     state = note_presence(state)
 
@@ -151,7 +154,9 @@ defmodule LastKeep.Game.Room do
     end
   end
 
-  def handle_info(:reap, state) do
+  def handle_info({:tick, _ref}, state), do: {:noreply, state}
+
+  def handle_info({:reap, ref}, %{timer: {ref, _timer}} = state) do
     state = note_presence(%{state | timer: nil})
 
     cond do
@@ -165,6 +170,8 @@ defmodule LastKeep.Game.Room do
         end
     end
   end
+
+  def handle_info({:reap, _ref}, state), do: {:noreply, state}
 
   defp advance(state) do
     sim = Sim.tick(state.sim)
@@ -230,18 +237,20 @@ defmodule LastKeep.Game.Room do
 
   defp schedule_tick(state) do
     state = cancel_timer(state)
-    %{state | timer: Process.send_after(self(), :tick, 50)}
+    ref = make_ref()
+    %{state | timer: {ref, Process.send_after(self(), {:tick, ref}, 50)}}
   end
 
   defp schedule_reap(state, delay) do
     state = cancel_timer(state)
-    %{state | timer: Process.send_after(self(), :reap, max(delay, 0))}
+    ref = make_ref()
+    %{state | timer: {ref, Process.send_after(self(), {:reap, ref}, max(delay, 0))}}
   end
 
   defp cancel_timer(%{timer: nil} = state), do: state
 
-  defp cancel_timer(state) do
-    Process.cancel_timer(state.timer)
+  defp cancel_timer(%{timer: {_ref, timer}} = state) do
+    Process.cancel_timer(timer)
     %{state | timer: nil}
   end
 end

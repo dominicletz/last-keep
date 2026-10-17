@@ -1,7 +1,7 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
-import { axes, isTypingTarget, seatFromQuery } from "./input"
+import { axes, blurHiddenFocus, isTypingTarget, seatFromQuery } from "./input"
 import { bonusCopy, callAnchor, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
@@ -70,7 +70,7 @@ async function enter(code, seat, ui) {
     })
     const body = await response.json()
     if (!response.ok) {
-      ui.join.hidden = false
+      revealJoin(ui.join)
       error.hidden = false
       error.textContent = body.error === "full" ? "This keep is full." : "Could not join."
       return
@@ -81,7 +81,7 @@ async function enter(code, seat, ui) {
     concealJoin(ui.join)
     start(code, stored, ui)
   } catch (_err) {
-    ui.join.hidden = false
+    revealJoin(ui.join)
     error.hidden = false
     error.textContent = "The keep did not answer."
   }
@@ -90,8 +90,9 @@ async function enter(code, seat, ui) {
 function start(code, seat, ui) {
   ui.hud.hidden = false
   ui.hud.innerHTML = hudMarkup()
-  releaseHiddenFocus()
-  window.addEventListener("focus", releaseHiddenFocus)
+  ui.view.canvas.tabIndex = 0
+  blurHiddenFocus(document)
+  window.addEventListener("focus", () => blurHiddenFocus(document))
   const socket = new Socket("/socket")
   socket.connect()
   const channel = socket.channel(`game:${code}`, { token: seat.token, name: seat.name, hero: seat.hero })
@@ -184,7 +185,7 @@ function start(code, seat, ui) {
       paint(ui, snap, selfId, build)
     })
     .receive("error", (body) => {
-      ui.join.hidden = false
+      revealJoin(ui.join)
       ui.hud.hidden = true
       const error = ui.join.querySelector("#join-error")
       error.hidden = false
@@ -272,7 +273,7 @@ function start(code, seat, ui) {
   })
 
   function send() {
-    releaseHiddenFocus()
+    blurHiddenFocus(document)
     if (!joined || !selfId || typing()) return
     const move = axes(keys)
     input.mx = move.x
@@ -570,12 +571,13 @@ function readSeat(code) {
 
 function concealJoin(join) {
   join.hidden = true
-  releaseHiddenFocus()
+  join.inert = true
+  blurHiddenFocus(document)
 }
 
-function releaseHiddenFocus() {
-  const active = document.activeElement
-  if (active && active.closest && active.closest("[hidden]")) active.blur()
+function revealJoin(join) {
+  join.inert = false
+  join.hidden = false
 }
 
 function typing(event) {

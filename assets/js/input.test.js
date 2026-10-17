@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, isTypingTarget, seatFromQuery } from "./input.js"
+import { axes, blurHiddenFocus, isTypingTarget, seatFromQuery } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -29,6 +29,47 @@ test("a hidden or non-text field does not count as typing", () => {
   assert.equal(isTypingTarget(range), false)
   assert.equal(isTypingTarget(radio), false)
   assert.equal(isTypingTarget(null), false)
+})
+
+test("blurring a hidden field does not chase focus", () => {
+  const canvas = {
+    focusCount: 0,
+    focus() {
+      this.focusCount += 1
+      doc.activeElement = this
+    }
+  }
+  const radio = {
+    tagName: "INPUT",
+    type: "radio",
+    blurCount: 0,
+    closest: () => ({}),
+    blur() {
+      this.blurCount += 1
+      doc.activeElement = canvas
+      blurHiddenFocus(doc)
+    }
+  }
+  const name = {
+    tagName: "INPUT",
+    type: "text",
+    blurCount: 0,
+    closest: () => ({}),
+    blur() {
+      this.blurCount += 1
+      doc.activeElement = radio
+      blurHiddenFocus(doc)
+    }
+  }
+  const doc = {
+    activeElement: name,
+    querySelector: () => canvas
+  }
+  assert.equal(blurHiddenFocus(doc), true)
+  assert.equal(name.blurCount, 1)
+  assert.equal(radio.blurCount, 1)
+  assert.equal(canvas.focusCount, 1)
+  assert.equal(blurHiddenFocus(doc), false)
 })
 
 test("W moves toward the top of the isometric view", () => {
