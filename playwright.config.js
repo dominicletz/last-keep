@@ -19,6 +19,9 @@ module.exports = defineConfig({
         command: "mix phx.server",
         url: "http://127.0.0.1:4000",
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000
+        timeout: 120_000,
+        env: {
+          PLAYWRIGHT: "1"
+        }
       }
 })

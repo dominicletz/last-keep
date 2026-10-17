@@ -23,7 +23,7 @@ end
 config :last_keep, LastKeepWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: String.to_integer(System.get_env("PORT", "4000"))]
 
-if config_env() == :dev do
+if config_env() == :dev and System.get_env("PLAYWRIGHT") != "1" do
   # Reload browser tabs when matching files change.
   config :last_keep, LastKeepWeb.Endpoint,
     live_reload: [
