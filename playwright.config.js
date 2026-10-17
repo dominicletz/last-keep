@@ -6,6 +6,7 @@ module.exports = defineConfig({
   testDir: "e2e",
   timeout: 150_000,
   expect: { timeout: 15_000 },
+  workers: process.env.CI ? 1 : undefined,
   outputDir: "tmp/playwright-output",
   retries: process.env.CI ? 1 : 0,
   use: {

@@ -90,7 +90,7 @@ async function clickDoesNotSpendWithoutABuilding(page) {
 
 async function invalidPlacementExplains(page) {
   const wood = await page.evaluate(() => window.__lastKeep.wood)
-  await page.keyboard.press("Digit1")
+  await pressKey(page, "Digit1")
   const center = await page.evaluate(() => window.__lastKeep.toClient(0, 0))
   await page.mouse.move(center.x, center.y)
   await expect(page.locator("[data-build-reason]")).toContainText(/keep|Too close/)
@@ -108,7 +108,7 @@ async function invalidPlacementExplains(page) {
 async function placeWall(page) {
   const wood = await page.evaluate(() => window.__lastKeep.wood)
   const armed = await page.locator('[data-build="wall"]').evaluate((node) => node.classList.contains("on"))
-  if (!armed) await page.keyboard.press("Digit1")
+  if (!armed) await pressKey(page, "Digit1")
   await page.evaluate(() => window.__lastKeepTest.blur())
   const spot = await page.evaluate(() => {
     const me = window.__lastKeep.self
@@ -198,7 +198,7 @@ async function castFireball(friend, notes) {
   expect(click).toBeTruthy()
   await friend.mouse.click(click.x, click.y)
   await friend.mouse.click(click.x, click.y)
-  await friend.keyboard.press("q")
+  await pressKey(friend, "KeyQ")
   try {
     await friend.waitForFunction(() => {
       const game = window.__lastKeep
@@ -237,10 +237,35 @@ async function fight(page, friend, notes) {
     guestKey = await step(friend, guestKey)
     await page.waitForTimeout(200)
   }
-  if (hostKey) await page.keyboard.up(hostKey)
-  if (guestKey) await friend.keyboard.up(guestKey)
+  if (hostKey) await holdKey(page, hostKey, false)
+  if (guestKey) await holdKey(friend, guestKey, false)
   await sample(page, notes)
   await sample(friend, notes)
+}
+
+async function holdKey(page, code, down) {
+  await page.evaluate(
+    ({ code, down }) => {
+      const active = document.activeElement
+      if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) active.blur()
+      if (window.__lastKeepTest) window.__lastKeepTest.hold(code, down)
+      window.dispatchEvent(
+        new KeyboardEvent(down ? "keydown" : "keyup", {
+          code,
+          key: code,
+          bubbles: true,
+          cancelable: true
+        })
+      )
+    },
+    { code, down }
+  )
+}
+
+async function pressKey(page, code) {
+  await holdKey(page, code, true)
+  await page.waitForTimeout(80)
+  await holdKey(page, code, false)
 }
 
 async function step(tab, held) {
@@ -273,9 +298,9 @@ async function step(tab, held) {
     return { key, dist, hero: me.hero, click: game.toClient(monster.x, monster.y) }
   })
   if (!plan) return held
-  if (held && held !== plan.key) await tab.keyboard.up(held)
-  if (plan.dist > 36) await tab.keyboard.down(plan.key)
-  else if (held) await tab.keyboard.up(held)
+  if (held && held !== plan.key) await holdKey(tab, held, false)
+  if (plan.dist > 36) await holdKey(tab, plan.key, true)
+  else if (held) await holdKey(tab, held, false)
   const viewport = tab.viewportSize()
   const inside =
     plan.click.x > 8 &&
@@ -283,7 +308,7 @@ async function step(tab, held) {
     plan.click.x < viewport.width - 8 &&
     plan.click.y < viewport.height - 8
   if (inside) await tab.mouse.click(plan.click.x, plan.click.y)
-  if (plan.hero === "mage") await tab.keyboard.press("q")
+  if (plan.hero === "mage") await pressKey(tab, "KeyQ")
   return plan.dist > 36 ? plan.key : null
 }
 
@@ -346,8 +371,10 @@ async function twoPlayerNight(browser) {
 
   await expect(page.locator("[data-start]")).toHaveText("Start the night")
   await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
+  const notes = blankNotes()
   await page.locator("[data-start]").click()
   await expectGoblinsOnYard(page)
+  await sample(page, notes)
   await expectGoblinsOnYard(friend)
   const sameKeep = await Promise.all([
     page.evaluate(() => window.__lastKeep.keep.hp),
@@ -357,7 +384,6 @@ async function twoPlayerNight(browser) {
   await page.screenshot({ path: shot("wave-host.png") })
   await friend.screenshot({ path: shot("wave-guest.png") })
 
-  const notes = blankNotes()
   await castFireball(friend, notes)
   await fight(page, friend, notes)
   await friend.waitForFunction(() => (window.__lastKeep.log || []).some((row) => row.type === "boom"), {
@@ -393,7 +419,7 @@ async function movementIsInterpolated(page) {
     if (active && active.blur) active.blur()
   })
   const origin = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
-  await page.keyboard.down("KeyW")
+  await holdKey(page, "KeyW", true)
   const rows = await page.evaluate(
     () =>
       new Promise((resolve) => {
@@ -410,7 +436,7 @@ async function movementIsInterpolated(page) {
         requestAnimationFrame(tick)
       })
   )
-  await page.keyboard.up("KeyW")
+  await holdKey(page, "KeyW", false)
   expect(rows.length).toBeGreaterThan(5)
   const last = rows[rows.length - 1]
   const travel = Math.hypot(last.sx - origin.x, last.sz - origin.y)

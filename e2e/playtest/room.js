@@ -81,6 +81,7 @@ async function keyInPage(page, code, down) {
     ({ code, down }) => {
       const active = document.activeElement
       if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) active.blur()
+      if (window.__lastKeepTest) window.__lastKeepTest.hold(code, down)
       window.dispatchEvent(
         new KeyboardEvent(down ? "keydown" : "keyup", {
           code,
