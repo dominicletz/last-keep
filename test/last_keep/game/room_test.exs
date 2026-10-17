@@ -88,6 +88,31 @@ defmodule LastKeep.Game.RoomTest do
     assert length(Highscores.list()) == 1
   end
 
+  test "five abandoned rooms stop and the count returns to baseline" do
+    baseline = Rooms.count()
+
+    codes =
+      for n <- 1..5 do
+        {:ok, code} = Rooms.create(idle_ms: 500, lobby_ms: 500, seed: n)
+
+        {:ok, token, _id, _snap} =
+          Rooms.enlist(code, %{
+            name: "P#{n}",
+            hero: :warrior,
+            token: "token-token-token",
+            connected: true
+          })
+
+        Room.disconnect(code, token)
+        code
+      end
+
+    assert Rooms.count() == baseline + 5
+    deadline = System.monotonic_time(:millisecond) + 2_000
+    until(fn -> Enum.all?(codes, &(not Rooms.exists?(&1))) end, deadline)
+    assert Rooms.count() == baseline
+  end
+
   test "an empty room stops ticking and the room count returns to baseline" do
     baseline = Rooms.count()
     {:ok, code} = Rooms.create(idle_ms: 800, lobby_ms: 800, seed: 4)
