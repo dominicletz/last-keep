@@ -143,3 +143,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-17 specialist round 6
 
 - Room `KR8DDW` on https://agentyard.letz.tw after the voxel figures deploy (`6 passed`). Fidelity against the round-5 baseline is mood 2, town 3, heroes 3, monsters 3, ui 3. The round-5 rows stay. A goblin at game zoom is an olive figure with orange eyes, not the concept spear-carrier, and the wolf, bat, ogre, and rider were not on the yard. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 dusk field and readable monsters
+
+- The yard ground is the lit clearing `#5c642f`, not the shadow moss `#374115`. A day field under luminance 90 fails as dark olive, including that moss. Dusk uses the orange horizon `#eba15d`. An in-game dusk frame has to stay within 18 degrees of the theme sheet's hue, at least as bright as that sheet, and show a torch at luminance 160. The dusk field itself fails when it is murky olive.
+- The goblin spear and the skeleton ribs have to cover at least the voxel detail floor of 12 pixels at game zoom, and the ribs have to read as three separate bands.
+- Wave 2 brings a wolf, wave 3 a troll and bats, wave 4 a dark rider. A scripted parade, only when `PLAYWRIGHT=1`, puts one of each kind on the yard. The food sack names the feast. A short Raise button is painted inert. A goblin pair across a compass boundary is one call, and that call stays under the top bar. The wave sign follows the hero and is clamped inside the window.
+- `mix test --cover` reports 70.19%. The floor stays 69.

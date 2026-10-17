@@ -73,7 +73,7 @@ const REGISTRY = [
   hero("farmer", 1529, crop(752, 98, 250, 480)),
   hero("engineer", 774, crop(1016, 158, 224, 432)),
   monster("goblin", 16, 682, crop(16, 328, 236, 246), goblinVoxels()),
-  monster("skeleton", 13, 293, crop(260, 328, 260, 246), skeletonVoxels()),
+  monster("skeleton", 13, 835, crop(260, 328, 260, 246), skeletonVoxels()),
   monster("wolf", 13, 445, crop(760, 340, 270, 245), wolfVoxels()),
   monster("troll", 22, 1884, crop(524, 292, 226, 286), ogreVoxels(), "ogre"),
   monster("bat", 12, 280, crop(408, 68, 260, 96), batVoxels(), "bat"),

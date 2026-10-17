@@ -166,6 +166,24 @@ defmodule LastKeep.Game.Sim do
     insert(state, monster)
   end
 
+  @parade [
+    {:goblin, 90.0, 30.0},
+    {:skeleton, -90.0, 30.0},
+    {:wolf, 30.0, 110.0},
+    {:troll, -40.0, 120.0},
+    {:bat, 130.0, -50.0},
+    {:boss, -130.0, -40.0}
+  ]
+
+  def parade(%State{} = state) do
+    Enum.reduce(@parade, state, fn {kind, x, y}, state ->
+      id = state.next_id
+      state = spawn_monster(state, %{kind: kind, x: x, y: y, wave: 1})
+      monster = %{state.entities[id] | speed: 10.0}
+      %{state | entities: Map.put(state.entities, id, monster)}
+    end)
+  end
+
   def spawn_building(%State{} = state, attrs) do
     kind = attrs.kind
     spec = Rules.building(kind)

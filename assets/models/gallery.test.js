@@ -123,6 +123,14 @@ test("the gallery sky and the yard ground stay on the concept moss and dusk", ()
   })
   assert.ok(problems.some((line) => line.includes("closer to the thatch roof")))
   assert.ok(problems.some((line) => line.includes("day gallery background")))
+  const olive = sceneColorProblems(markdown, theme, cited, galleryRigs, {
+    ground: 0x374115,
+    sky: skyColor,
+    plaza: plazaColor,
+    path: pathColor,
+    ring: ringColor
+  })
+  assert.ok(olive.some((line) => line.includes("dark olive")))
 })
 
 test("the keep body stays near the belfry stone and is not one brown tone", () => {
