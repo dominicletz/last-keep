@@ -11,6 +11,9 @@ A model spec names a token. It does not paste a fresh hex. Lighting may darken a
 | token | hex | sheet | region | use |
 | --- | --- | --- | --- | --- |
 | steel | #d8cfc3 | heroes.jpg | 238,264,8,8 | blades, helms, and goggles |
+| armor | #b5afaa | heroes.jpg | 184,186,8,8 | warrior plate |
+| deep | #142a48 | heroes.jpg | 465,187,8,8 | mage robe |
+| forest | #374a26 | heroes.jpg | 626,346,8,8 | scout cloak |
 | skin | #d99b64 | heroes.jpg | 184,238,8,8 | faces |
 | shield | #38516f | heroes.jpg | 232,346,8,8 | warrior shield |
 | robe | #3e6dab | heroes.jpg | 468,278,8,8 | mage robe and spell light |
@@ -20,7 +23,8 @@ A model spec names a token. It does not paste a fresh hex. Lighting may darken a
 | straw | #e5b268 | heroes.jpg | 848,162,8,8 | farmer hat |
 | denim | #3a4a60 | heroes.jpg | 836,332,8,8 | farmer tunic |
 | cloth | #e6ccad | heroes.jpg | 904,274,8,8 | engineer shirt |
-| apron | #4c3d27 | heroes.jpg | 1120,458,8,8 | aprons and warrior legs |
+| apron | #4c3d27 | heroes.jpg | 1120,458,8,8 | aprons |
+| jerkin | #472a17 | heroes.jpg | 1106,332,8,8 | engineer leather |
 | wood | #8e755b | heroes.jpg | 1180,344,8,8 | hafts, bows, and pine trunks |
 | leather | #261e0e | heroes.jpg | 640,400,8,8 | boots |
 | goblin | #676f3c | monsters.jpg | 194,444,8,8 | goblin hide |
@@ -100,6 +104,6 @@ Game zoom is a 1280 by 800 window at town rank 0, the same frustum `frameFor` us
 
 A hero's on-screen height is the day-raster mask at 1280 by 800. The floor is 24 internal pixels at town rank 0 and at town rank 4. Measured heights are warrior 57 and 39, mage 65 and 43, scout 52 and 35, farmer 62 and 42, engineer 47 and 32. The meshes were not scaled. The farmer brim is already 24 across, and the horizontal limit is 28 (gameplay radius 14, fit slack 2). A scale that would show the thin props would cross that limit. Rank 4 uses `viewScale` 1.48 and `cameraDistance` 294. The same 24px floor holds there, so there is no separate lower floor.
 
-Heroes and monsters get one dusk close-up. The camera uses the game angle and frames the mesh so the figure is 80 internal pixels tall, inside 64 to 96. `compare.png` puts that close-up beside the concept crop at the same height. The portrait card is the close-up.
+Heroes and monsters get one day close-up. The camera uses the game angle and frames the mesh so the figure is 80 internal pixels tall, inside 64 to 96. Day light is neutral, so a grey plate stays grey instead of baking to brown. `compare.png` puts that close-up beside the concept crop at the same height. The portrait card is the close-up. A hero's dominant close-up colors have to sit near colors that occupy that hero's concept crop.
 
 Do not merge a model that skipped a step.

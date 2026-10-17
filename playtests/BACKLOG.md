@@ -35,6 +35,7 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-062 | keep gallery, asset keep | graphics | high | At gallery zoom the keep was a small dark lump, and at night it disappeared. The concept keep is a tall stone belfry with crenellations, timber houses, a warm window, and pines behind it. The rank-0 keep now has those parts, and a night frame has to keep a lit window above the sky. | done in PR #22 | `nightLightProblems`, `the keep tower grows a course of stone at each rank` |
 | LK-063 | keep gallery, asset keep | graphics | high | The concept keep is grey stone masonry with block courses and crenellations. The tower body was one brown `#554034`, sampled from a shaft course at 636,124. The stone token is now the lit belfry block, with a greyer course and a mortar joint, and the roof stays thatch. | done in PR #24 | `keepStoneProblems`, `the keep body stays near the belfry stone and is not one brown tone` |
 | LK-064 | PR #23 hero sheets, assets warrior mage scout farmer engineer | graphics | high | At gallery and game zoom the new props were a handful of pixels, so the hero sheet could not be judged. The buffer is now 640×400, heroes stay at least 24px tall through rank 4, and each hero and monster has an 80px close-up beside the concept crop. Portraits are that close-up. | done in PR #25 | `heroHeightProblems`, `the gallery matches the goldens and a second run` |
+| LK-065 | PR #25 after-shot, assets warrior mage scout farmer engineer | graphics | high | The warrior close-up was a brown block. The concept warrior is grey steel plate, a helmet, a blue shield with a gold cross, and a silver sword. Bodies now use the concept colors: warrior light grey plate and blue shield, mage deep blue with gold trim, scout forest green, farmer straw and denim, engineer leather. Day light no longer clips that grey to orange. | done in PR #26 | `heroColorProblems`, `a brown warrior close-up fails the concept palette` |
 
 ## Open
 
@@ -69,6 +70,9 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-047 | Lux, round 4 room ZT4PJ2 | graphics | medium | An edge call stops short of the roster and is right-aligned there. Guarded by `callAnchor` in `hud.test.js` and `twoPlayerNight`. `playtests/round-4/shots/15-Ada.png` | done |
 | LK-048 | Ada, round 4 room ZT4PJ2 | gameplay | medium | Raise the keep is inert while gold is short and it is painted like a live button. A click in room ZT4PJ2 did not spend wood or gold. Round 5 room ME475J still paints it live at gold 3. | open |
 | LK-060 | Ada, round 5 room ME475J | gameplay | low | A wave-1 pair can straddle the 45-degree call bucket and the yard says "goblin" twice instead of "2 goblins". `playtests/round-5/shots/06-Ada.png` | open |
+| LK-066 | PR #25 after-shot, asset town | graphics | high | The town plaza is a flat orange-brown octagon. The concept ground is mossy green grass with dirt paths and stone. The plaza fill has to follow the sampled grass token, and the ground check has to fail when that fill is the path token. | open |
+| LK-067 | PR #25 after-shot, asset keep | graphics | high | The keep still reads mostly brown in the live yard. Confirm the masonry courses from the stone token reach the in-game keep, not only the gallery sheet. | open |
+| LK-068 | PR #25 after-shot, asset hud | graphics | high | The HUD is still a stack of panels: the top-left text box, the relics panel, the resource box, the roster, the ability bar, and the build bar. This is the diegetic UI pass. | open |
 
 ## Fidelity
 

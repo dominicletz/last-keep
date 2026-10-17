@@ -99,6 +99,7 @@ export function checkModels({ writeGolden = false } = {}) {
       problems.push(...nightLightProblems(listed, first))
       problems.push(...heroHeightProblems(listed))
       problems.push(...closeupProblems(first))
+      if (sheets["heroes.jpg"]) problems.push(...heroColorProblems(listed, sheets["heroes.jpg"]))
     } catch (error) {
       problems.push(`render threw: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -156,9 +157,9 @@ export function renderGallery(listed, sheets) {
     const concept = image
       ? blitCrop(image, model.concept.crop, frames.day.width, frames.day.height)
       : missingConcept(frames.day.width, frames.day.height)
-    const close = figureFamilies.has(model.family) ? renderCloseup(model.parts, "dusk") : null
+    const close = figureFamilies.has(model.family) ? renderCloseup(model.parts, "day") : null
     const panels = lightNames.map((light) => frames[light])
-    if (close) panels.push(placeOn(close, close.width, frames.day.height, galleryRigs.dusk.bg))
+    if (close) panels.push(placeOn(close, close.width, frames.day.height, galleryRigs.day.bg))
     panels.push(concept)
     const sheet = stackHorizontal(panels)
     const portrait = close
@@ -206,6 +207,106 @@ function placeOn(image, width, height, bg) {
     rgb.set(image.rgb.subarray(src, src + copyW * 3), ((y0 + y) * width + x0) * 3)
   }
   return { rgb, width, height }
+}
+
+function cropRgb(sheet, crop) {
+  const rgb = new Uint8Array(crop.w * crop.h * 3)
+  for (let y = 0; y < crop.h; y++) {
+    for (let x = 0; x < crop.w; x++) {
+      const src = ((crop.y + y) * sheet.width + (crop.x + x)) * 4
+      const dst = (y * crop.w + x) * 3
+      rgb[dst] = sheet.data[src]
+      rgb[dst + 1] = sheet.data[src + 1]
+      rgb[dst + 2] = sheet.data[src + 2]
+    }
+  }
+  return rgb
+}
+
+function quantize(rgb, width, height, mask, minLuma) {
+  const bins = new Map()
+  let total = 0
+  for (let i = 0; i < width * height; i++) {
+    if (mask && !mask[i]) continue
+    const o = i * 3
+    const r = rgb[o]
+    const g = rgb[o + 1]
+    const b = rgb[o + 2]
+    if (0.2126 * r + 0.7152 * g + 0.0722 * b < minLuma) continue
+    total += 1
+    const key = `${r >> 4},${g >> 4},${b >> 4}`
+    let bin = bins.get(key)
+    if (!bin) {
+      bin = { n: 0, r: 0, g: 0, b: 0 }
+      bins.set(key, bin)
+    }
+    bin.n += 1
+    bin.r += r
+    bin.g += g
+    bin.b += b
+  }
+  const colors = [...bins.values()].map((bin) => ({
+    n: bin.n,
+    rgb: [bin.r / bin.n, bin.g / bin.n, bin.b / bin.n]
+  }))
+  colors.sort((a, b) => b.n - a.n)
+  return { total, colors }
+}
+
+function rgbDist(a, b) {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+}
+
+function chromaDist(a, b) {
+  const left = a[0] + a[1] + a[2] || 1
+  const right = b[0] + b[1] + b[2] || 1
+  return Math.hypot(a[0] / left - b[0] / right, a[1] / left - b[1] / right, a[2] / left - b[2] / right)
+}
+
+// A close-up color is dominant at 16% of the lit figure. It has to match one crop
+// color that occupies at least 1.5% of the crop once the near-black backdrop is
+// gone. RGB tolerance 52 leaves room for the day light. Chroma tolerance 0.09
+// rejects a brown body that sits near a grey only because both are dark.
+export const heroColorTolerance = 52
+export const heroChromaTolerance = 0.09
+const heroConceptLuma = 48
+const heroConceptShare = 0.015
+const heroCloseShare = 0.16
+
+export function heroColorProblems(listed, sheet) {
+  const problems = []
+  if (!sheet) return ["hero color check is missing heroes.jpg"]
+  for (const model of listed) {
+    if (model.family !== "hero") continue
+    const crop = model.concept && model.concept.crop
+    if (!crop) {
+      problems.push(`${model.id} has no concept crop for its colors`)
+      continue
+    }
+    const concept = quantize(cropRgb(sheet, crop), crop.w, crop.h, null, heroConceptLuma)
+    const close = renderCloseup(model.parts, "day")
+    const shot = quantize(close.rgb, close.width, close.height, close.mask, 24)
+    const samples = concept.colors.filter((color) => color.n >= concept.total * heroConceptShare)
+    const keep = shot.colors.filter((color) => color.n >= shot.total * heroCloseShare)
+    if (shot.total === 0 || keep.length === 0 || samples.length === 0) {
+      problems.push(`${model.id} close-up has no comparable color`)
+      continue
+    }
+    for (const color of keep) {
+      let matched = false
+      for (const sample of samples) {
+        if (rgbDist(color.rgb, sample.rgb) <= heroColorTolerance && chromaDist(color.rgb, sample.rgb) <= heroChromaTolerance) {
+          matched = true
+          break
+        }
+      }
+      if (!matched) {
+        const hex = color.rgb.map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")
+        problems.push(`${model.id} close-up #${hex} is outside the concept crop`)
+      }
+    }
+  }
+  return problems
 }
 
 export const heroPixelFloor = 24

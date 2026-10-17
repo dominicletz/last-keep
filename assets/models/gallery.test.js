@@ -2,11 +2,11 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
-import { groundColor, skyColor } from "../js/scene.js"
-import { checkModels, repoRoot } from "./run.js"
+import { heroParts } from "../js/heroes.js"
+import { groundColor, skyColor, yardLight } from "../js/scene.js"
+import { checkModels, heroColorProblems, heroHeightProblems, heroPixelFloor, repoRoot } from "./run.js"
 import { conceptProblems, coverageProblems, fitSlack, iouLimit, keepStoneProblems, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
 import { galleryRigs, maskBounds, maskIou } from "./raster.js"
-import { heroHeightProblems, heroPixelFloor } from "./run.js"
 import { citationProblems, loadSheet, medianHex, sceneColorProblems } from "./sheets.js"
 
 test("the gallery matches the goldens and a second run", () => {
@@ -25,6 +25,38 @@ test("the gallery matches the goldens and a second run", () => {
     assert.equal(row.portrait.width, row.closeup.width)
     assert.equal(row.portrait.height, row.closeup.height)
   }
+})
+
+test("a brown warrior close-up fails the concept palette", () => {
+  const heroes = loadSheet(path.join(repoRoot(), "docs/concept/heroes.jpg"))
+  const armor = new Set(["torso", "leg", "shoulders", "pauldron", "helm", "crest"])
+  const crop = { x: 24, y: 158, w: 268, h: 412 }
+  const brown = heroColorProblems(
+    [
+      {
+        id: "warrior",
+        family: "hero",
+        concept: { crop },
+        parts: heroParts("warrior").map((part) => (armor.has(part.name) ? { ...part, color: 0x8a5a32 } : part))
+      }
+    ],
+    heroes
+  )
+  assert.ok(brown.some((line) => line.startsWith("warrior close-up")))
+  const plate = heroColorProblems(
+    [{ id: "warrior", family: "hero", concept: { crop }, parts: heroParts("warrior") }],
+    heroes
+  )
+  assert.deepEqual(plate, [])
+})
+
+test("daylight does not clip grey plate to orange", () => {
+  assert.ok(yardLight.sunLevel < 1)
+  assert.ok(yardLight.ambientLevel < 1)
+  assert.ok(yardLight.hemisphere < 1)
+  const sunRed = (yardLight.sun >> 16) & 255
+  const sunBlue = yardLight.sun & 255
+  assert.ok(sunRed - sunBlue < 40)
 })
 
 test("a hero under 24 internal pixels fails at rank 0 and at rank 4", () => {
