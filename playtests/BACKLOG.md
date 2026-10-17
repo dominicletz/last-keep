@@ -41,7 +41,7 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-068 | PR #25 after-shot, asset hud | graphics | high | The HUD was a stack of opaque panels: the wave box, the relic panel, the resource box, the roster, the ability bar, and the build bar. Those slots are edge captions. A fill above 0.35, a border of 2px or more, or a combined box of 105000px or more fails. | done in PR #29 | `assertDiegeticHud`, `twoPlayerNight` |
 | LK-069 | concept monsters.jpg, assets goblin skeleton wolf troll bat boss | graphics | high | The sheet has six bodies. The sim and the gallery had no bat, and the live boss was not the dark rider mesh. The six kinds are planned into the nights, night 1 stays two goblins, and the live mesh is the gallery model. | done in PR #30 | `the six concept monsters are in the nights`, `townLook.bestiary` |
 | LK-070 | concept theme, asset lighting | graphics | high | The yard stayed on one daylight rig after the host started the night. The build is day, the last eight seconds are dusk, and a wave is night. Night is darker than dusk, which is darker than day. | done in PR #31 | `lightName`, `twoPlayerNight` |
-| LK-071 | hero picker, assets warrior mage scout farmer engineer | graphics | medium | The picker was a color swatch. Each card now shows that hero's day close-up. A card image shorter than 64px or taller than 128px fails. | done | `createHost` portrait images |
+| LK-071 | hero picker, assets warrior mage scout farmer engineer | graphics | medium | The picker was a color swatch. Each card now shows that hero's day close-up. A card image shorter than 64px or taller than 128px fails. | done in PR #32 | `createHost` portrait images |
 
 ## Open
 
