@@ -88,6 +88,28 @@ defmodule LastKeep.Game.RoomTest do
     assert length(Highscores.list()) == 1
   end
 
+  test "a stale tick does not start a second clock" do
+    {:ok, code} = Rooms.create(seed: 5)
+
+    {:ok, _token, _id, _snap} =
+      Rooms.enlist(code, %{
+        name: "Ada",
+        hero: :warrior,
+        token: "token-token-token",
+        connected: true
+      })
+
+    pid = GenServer.whereis(Room.via(code))
+    {ref, _timer} = :sys.get_state(pid).timer
+    send(pid, {:tick, ref})
+    send(pid, {:tick, make_ref()})
+    Process.sleep(80)
+    first = Room.snapshot(code).tick
+    Process.sleep(500)
+    delta = Room.snapshot(code).tick - first
+    assert delta <= 14
+  end
+
   test "five abandoned rooms stop and the count returns to baseline" do
     baseline = Rooms.count()
 
