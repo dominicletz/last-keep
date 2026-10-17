@@ -28,6 +28,6 @@ fi
 printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
 export LAST_KEEP_IMAGE_TAG="$IMAGE_TAG"
 docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d --remove-orphans
+docker compose -f docker-compose.prod.yml up -d --wait --remove-orphans
 docker logout ghcr.io || true
 docker image prune -f

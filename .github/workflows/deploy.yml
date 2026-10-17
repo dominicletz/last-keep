@@ -73,6 +73,19 @@ jobs:
             "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd '$DEPLOY_PATH' && IMAGE_TAG='$IMAGE_TAG' GHCR_USERNAME='$GHCR_USERNAME' GITHUB_TOKEN='$GITHUB_TOKEN' DEPLOY_PATH='$DEPLOY_PATH' bash remote.sh"
 
+      - name: Wait until the live game answers
+        run: |
+          set -eu
+          for i in $(seq 1 60); do
+            if curl -fsS "https://agentyard.letz.tw/health"; then
+              echo "ready after ${i}"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "the game did not answer /health"
+          exit 1
+
       - name: Install the browser smoke harness
         uses: actions/setup-node@v4
         with:

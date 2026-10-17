@@ -3,10 +3,11 @@ const path = require("path")
 const { createHost, joinQuery } = require("../scenarios")
 
 const PARTY = [
-  { name: "Ada", hero: "warrior", persona: "tank" },
-  { name: "Lux", hero: "mage", persona: "mage" },
-  { name: "Bram", hero: "engineer", persona: "builder" },
-  { name: "Pip", hero: "scout", persona: "casual" }
+  { name: "Ada", hero: "warrior", persona: "gameplay" },
+  { name: "Lux", hero: "mage", persona: "graphics" },
+  { name: "Bram", hero: "engineer", persona: "music" },
+  { name: "Pip", hero: "scout", persona: "logic" },
+  { name: "Nia", hero: "farmer", persona: "character" }
 ]
 
 async function openParty(browser, options = {}) {
@@ -67,24 +68,41 @@ async function shot(page, file) {
   return file
 }
 
+async function keyInPage(page, code, down) {
+  await page.evaluate(
+    ({ code, down }) => {
+      window.dispatchEvent(
+        new KeyboardEvent(down ? "keydown" : "keyup", { code, bubbles: true, cancelable: true })
+      )
+    },
+    { code, down }
+  )
+}
+
 async function act(page, command = {}) {
   await focusGame(page)
   const keys = command.hold || []
   try {
-    if (command.build) await page.keyboard.press(`Digit${command.build}`)
-    for (const key of keys) await page.keyboard.down(key)
+    if (command.build) {
+      await keyInPage(page, `Digit${command.build}`, true)
+      await keyInPage(page, `Digit${command.build}`, false)
+    }
+    for (const key of keys) await keyInPage(page, key, true)
     if (command.click && Number.isFinite(command.click.x) && Number.isFinite(command.click.y)) {
       await page.mouse.click(command.click.x, command.click.y)
     }
     if (command.skill) {
       const skill = { q: "KeyQ", e: "KeyE", r: "KeyR", f: "KeyF" }[String(command.skill).toLowerCase()]
-      if (skill) await page.keyboard.press(skill)
+      if (skill) {
+        await keyInPage(page, skill, true)
+        await keyInPage(page, skill, false)
+      }
     }
     if (command.start) await page.locator("[data-start]").click()
     if (command.ms) await page.waitForTimeout(command.ms)
   } finally {
-    for (const key of keys) await page.keyboard.up(key).catch(() => {})
+    for (const key of keys) await keyInPage(page, key, false).catch(() => {})
   }
 }
 
-module.exports = { PARTY, openParty, focusGame, readState, shot, act }
+module.exports = { PARTY, openParty, focusGame, readState, shot, act, keyInPage }

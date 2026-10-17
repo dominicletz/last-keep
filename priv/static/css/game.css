@@ -167,7 +167,7 @@ input[type="text"], input:not([type="radio"]) {
 .hud-top, .hud-bottom { position: relative; z-index: 2; min-width: 0; }
 
 .hud-top { justify-content: space-between; flex-wrap: wrap; width: 100%; }
-#hud [data-copy], #hud [data-start] { flex: 0 0 auto; white-space: nowrap; }
+#hud [data-copy], #hud [data-start], #hud [data-raise] { flex: 0 0 auto; white-space: nowrap; }
 .hud-bottom { align-items: flex-end; justify-content: space-between; }
 
 .chip, .roster, .skill, .build, .heart {

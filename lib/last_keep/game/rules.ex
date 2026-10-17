@@ -14,6 +14,27 @@ defmodule LastKeep.Game.Rules do
   def build_ticks(cleared_wave) when cleared_wave <= 1, do: 700
   def build_ticks(cleared_wave), do: max(500, 700 - cleared_wave * 15)
 
+  def map_radius, do: 1800
+
+  def spawn_distance(1, i), do: 620 + rem(i * 17, 40)
+  def spawn_distance(_wave, i), do: 760 + rem(i * 17, 80)
+
+  def town_rank_cap, do: 4
+  def town_radius(rank), do: 180 + rank * 48
+  def camera_distance(rank), do: 150 + rank * 36
+  def dirt_radius(rank), do: 150 + rank * 40
+  def view_scale(rank), do: 1 + rank * 0.12
+
+  def build_range(hero, rank), do: max(kit(hero).range, town_radius(rank))
+
+  def keep_upgrade_cost(rank) when is_integer(rank) and rank >= 0 and rank < 4 do
+    %{wood: 24 + rank * 12, gold: 8 + rank * 6}
+  end
+
+  def scenery_ring do
+    "The outer ring is dead wood. It has a bare trunk, no crown, and no wood."
+  end
+
   def hero?(hero), do: hero in @heroes
 
   def kit(:warrior) do

@@ -18,6 +18,11 @@ defmodule LastKeepWeb.PageControllerTest do
     assert response(conn, 200) == "ico"
   end
 
+  test "GET /health answers before the game is played", %{conn: conn} do
+    conn = get(conn, "/health")
+    assert json_response(conn, 200) == %{"ok" => true}
+  end
+
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
     body = html_response(conn, 200)

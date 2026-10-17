@@ -15,6 +15,11 @@ defmodule LastKeep.Game.Snapshot do
       wave: state.wave,
       shown_wave: shown_wave(state),
       keep: %{hp: state.keep.hp, max: state.keep.max_hp, r: state.keep.r},
+      town: state.town,
+      camera: Rules.camera_distance(state.town),
+      dirt: Rules.dirt_radius(state.town),
+      view_scale: Rules.view_scale(state.town),
+      upgrade: upgrade_offer(state),
       resources: state.resources,
       kills: state.kills,
       score: Sim.score(state),
@@ -59,7 +64,7 @@ defmodule LastKeep.Game.Snapshot do
       max: hero.max_hp,
       alive: hero.alive,
       host: player.public_id == "p1",
-      range: kit.range,
+      range: Rules.build_range(player.hero, state.town),
       costs: costs(player.hero),
       cds: %{
         attack: hero.cooldowns.attack * Rules.tick_ms(),
@@ -74,6 +79,15 @@ defmodule LastKeep.Game.Snapshot do
         r: kit.r.cd * Rules.tick_ms()
       }
     }
+  end
+
+  defp upgrade_offer(%State{town: town}) do
+    if town >= Rules.town_rank_cap() do
+      nil
+    else
+      cost = Rules.keep_upgrade_cost(town)
+      %{rank: town + 1, wood: cost.wood, gold: cost.gold}
+    end
   end
 
   defp costs(hero) do

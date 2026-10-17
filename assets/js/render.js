@@ -3,6 +3,8 @@ import { present } from "./present"
 import { eliteLook } from "./elite"
 import { frameFor } from "./frame"
 import { poseAt } from "./motion"
+import { sceneryForest } from "./scenery"
+import { zoomFor } from "./town"
 
 const HERO_COLOR = {
   warrior: 0x8e99a6,
@@ -40,11 +42,12 @@ export function createView(stage) {
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(0x8a4030)
-  scene.fog = new THREE.Fog(0x8a4030, 760, 1500)
+  scene.fog = new THREE.Fog(0x8a4030, 900, 2400)
 
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
   const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
   let viewFrame = opening
+  let townRank = 0
 
   scene.add(new THREE.HemisphereLight(0xffb070, 0x24361c, 1.15))
   const ambient = new THREE.AmbientLight(0xffd2a4, 1.55)
@@ -75,7 +78,7 @@ export function createView(stage) {
   }
 
   const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(1100, 8),
+    new THREE.CircleGeometry(1900, 8),
     mat(0x4f7a3a)
   )
   ground.rotation.x = -Math.PI / 2
@@ -112,26 +115,23 @@ export function createView(stage) {
   window.addEventListener("resize", applyFrame)
 
   function forest() {
-    const cone = new THREE.ConeGeometry(18, 46, 5)
-    const trunk = new THREE.CylinderGeometry(3, 4, 12, 5)
-    const leaves = new THREE.InstancedMesh(cone, mat(0x2f6a3c), 70)
-    const trunks = new THREE.InstancedMesh(trunk, mat(0x6a4428), 70)
+    const look = sceneryForest()
     const dummy = new THREE.Object3D()
-    for (let i = 0; i < 70; i++) {
-      const angle = i * 2.4
-      const dist = 300 + (i % 8) * 36
-      dummy.position.set(Math.cos(angle) * dist, 20, Math.sin(angle) * dist)
-      dummy.scale.setScalar(0.8 + (i % 3) * 0.25)
-      dummy.updateMatrix()
-      leaves.setMatrixAt(i, dummy.matrix)
-      dummy.position.y = 6
-      dummy.scale.setScalar(1)
-      dummy.updateMatrix()
-      trunks.setMatrixAt(i, dummy.matrix)
+    if (look.parts.includes("trunk")) {
+      const trunk = new THREE.CylinderGeometry(3.2, 4.6, 28, 5)
+      const trunks = new THREE.InstancedMesh(trunk, mat(look.trunk), look.count)
+      for (let i = 0; i < look.count; i++) {
+        const angle = i * 2.4
+        const dist = 300 + (i % 8) * 36
+        dummy.position.set(Math.cos(angle) * dist, 14, Math.sin(angle) * dist)
+        dummy.scale.setScalar(0.85 + (i % 3) * 0.2)
+        dummy.rotation.set(0, angle, 0)
+        dummy.updateMatrix()
+        trunks.setMatrixAt(i, dummy.matrix)
+      }
+      trunks.castShadow = true
+      scene.add(trunks)
     }
-    leaves.castShadow = true
-    scene.add(leaves)
-    scene.add(trunks)
   }
 
   function makeKeep() {
@@ -239,12 +239,15 @@ export function createView(stage) {
       return { x: point.x, y: point.y, behind: point.z > 1 }
     },
     draw(snap, selfId) {
+      townRank = snap.town || 0
       applyFrame()
+      const zoom = zoomFor(snap)
       const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
       const anchorX = me ? me.x * 0.22 : 0
       const anchorZ = me ? me.y * 0.22 : 0
       focus.set(anchorX, 0, anchorZ)
-      const dist = 150
+      const dist = zoom.camera
+      dirt.scale.setScalar(zoom.dirt / 150)
       camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
       camera.lookAt(focus.x, 0, focus.z)
       sun.position.set(focus.x + 90, 200, focus.z + 30)
@@ -441,7 +444,7 @@ export function createView(stage) {
 
   function applyFrame() {
     const rect = stage.getBoundingClientRect()
-    const next = frameFor(rect.width || stage.clientWidth || 480, rect.height || stage.clientHeight || 270)
+    const next = frameFor(rect.width || stage.clientWidth || 480, rect.height || stage.clientHeight || 270, townRank)
     const unchanged =
       viewFrame.bufferWidth === next.bufferWidth &&
       viewFrame.bufferHeight === next.bufferHeight &&

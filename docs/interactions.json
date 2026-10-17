@@ -4,7 +4,7 @@
     {
       "id": "wood",
       "producers": ["tree"],
-      "consumers": ["wall", "tower", "trap", "field", "forge", "mage_tower", "barricade"]
+      "consumers": ["wall", "tower", "trap", "field", "forge", "mage_tower", "barricade", "keep"]
     },
     {
       "id": "food",
@@ -14,7 +14,7 @@
     {
       "id": "gold",
       "producers": ["field", "bounty"],
-      "consumers": ["tower", "forge", "mage_tower"]
+      "consumers": ["tower", "forge", "mage_tower", "keep"]
     }
   ],
   "buildings": [
@@ -64,15 +64,15 @@
     {"from": "relic", "to": "field", "via": "Granary adds extra food to the field yield.", "status": "implemented", "rule": "defp field_yield"},
     {"from": "elite", "to": "relic", "via": "CONCEPT.md says elites drop relics too. Only a boss drops one today.", "status": "planned"},
     {"from": "mage_tower", "to": "spells", "via": "CONCEPT.md describes a mage tower that unlocks spell upgrades. The spire only buffs damage and cooldown.", "status": "planned"},
-    {"from": "wall", "to": "city", "via": "CONCEPT.md describes the settlement growing into a walled city. Players place buildings by hand. There is no city-growth layer.", "status": "planned"},
+    {"from": "wall", "to": "city", "via": "CONCEPT.md describes the settlement growing into a walled city. Raising the keep widens the town. Buildings are still placed by hand.", "status": "planned"},
     {"from": "monsters", "to": "monsters", "via": "Overlapping monsters push apart so two bodies cannot share one spot.", "status": "implemented", "rule": "defp separate_monsters"},
-    {"from": "monsters", "to": "monsters", "via": "Monster bodies still do not block paths, so a wall line cannot squeeze them into a gap.", "status": "planned"},
-    {"from": "warrior", "to": "monsters", "via": "Heroes do not block monsters. The planned rule is that bodies block, and the warrior dash is the one pass through a monster.", "status": "planned"},
-    {"from": "warrior", "to": "warrior", "via": "Heroes do not block other heroes.", "status": "planned"},
-    {"from": "keep", "to": "warrior", "via": "The keep is not solid. slide has the flag, and every caller passes false.", "status": "planned"},
-    {"from": "keep", "to": "monsters", "via": "Monsters can walk into the keep and bite it from inside. They should attack from the edge.", "status": "planned"},
-    {"from": "wood", "to": "keep", "via": "A keep upgrade that spends wood and gold is not built. There is no card pick.", "status": "planned"},
-    {"from": "keep", "to": "wall", "via": "An upgrade should widen the build radius and pull the camera back. The radius is still the hero kit range.", "status": "planned"},
-    {"from": "scenery", "to": "wood", "via": "The client draws a tree ring that is not an entity and has no wood. Real trees are chopped until they disappear.", "status": "planned"}
+    {"from": "monsters", "to": "monsters", "via": "Monster bodies block each other, so a gap in a wall lets one through at a time.", "status": "implemented", "rule": "defp body_blocked?"},
+    {"from": "warrior", "to": "monsters", "via": "A hero stops on a monster. The warrior dash is the one pass through a monster.", "status": "implemented", "rule": "pass_monsters"},
+    {"from": "warrior", "to": "warrior", "via": "A living hero stops on another living hero.", "status": "implemented", "rule": "defp body_blocked?"},
+    {"from": "keep", "to": "warrior", "via": "The keep is solid. A hero stops at the wall.", "status": "implemented", "rule": "pass_keep"},
+    {"from": "keep", "to": "monsters", "via": "The keep is solid. A monster bites it from the edge.", "status": "implemented", "rule": "pass_keep"},
+    {"from": "wood", "to": "keep", "via": "Raising the keep spends wood and gold. There is no card pick.", "status": "implemented", "rule": "defp try_raise"},
+    {"from": "keep", "to": "wall", "via": "Each keep rank widens the build radius and pulls the camera back.", "status": "implemented", "rule": "def build_range"},
+    {"from": "scenery", "to": "wood", "via": "The outer ring is dead wood: bare trunks, no crown, and no wood. Living trees are the green ones.", "status": "implemented", "rule": "def scenery_ring"}
   ]
 }

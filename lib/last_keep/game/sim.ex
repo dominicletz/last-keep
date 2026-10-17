@@ -16,10 +16,19 @@ defmodule LastKeep.Game.Sim do
     r: false,
     f: false,
     place: false,
+    raise: false,
     build: nil
   }
 
-  @empty_pressed %{attack: false, q: false, e: false, r: false, f: false, place: false}
+  @empty_pressed %{
+    attack: false,
+    q: false,
+    e: false,
+    r: false,
+    f: false,
+    place: false,
+    raise: false
+  }
 
   def new(code, opts \\ []) do
     seed = Keyword.get(opts, :seed, System.unique_integer([:positive]))
@@ -91,7 +100,8 @@ defmodule LastKeep.Game.Sim do
           e: player.pressed.e or rise(player.input.e, next.e),
           r: player.pressed.r or rise(player.input.r, next.r),
           f: player.pressed.f or rise(player.input.f, next.f),
-          place: player.pressed.place or rise(player.input.place, next.place)
+          place: player.pressed.place or rise(player.input.place, next.place),
+          raise: player.pressed.raise or rise(player.input.raise, next.raise)
         }
 
         put_player(state, %{player | input: next, pressed: pressed})
@@ -318,8 +328,8 @@ defmodule LastKeep.Game.Sim do
         speed = Rules.kit(hero.hero).speed * speed_mult(state)
         dx = mx * speed * 0.05
         dy = my * speed * 0.05
-        {x, y} = slide(state, hero.x, hero.y, dx, dy, hero.r, false)
-        {x, y} = clamp_map(x, y, 1000)
+        {x, y} = slide(state, hero.x, hero.y, dx, dy, hero.r, %{ignore: hero.id})
+        {x, y} = clamp_map(x, y, Rules.map_radius())
         facing = facing_of(hero, player.input, x, y)
         put_entity(state, %{hero | x: x, y: y, facing: facing})
       else
@@ -368,7 +378,8 @@ defmodule LastKeep.Game.Sim do
         state = maybe_skill(state, player, state.entities[hero.id], :q)
         state = maybe_skill(state, player, state.entities[hero.id], :e)
         state = maybe_skill(state, player, state.entities[hero.id], :r)
-        maybe_feed(state, player, state.entities[hero.id])
+        state = maybe_feed(state, player, state.entities[hero.id])
+        maybe_raise(state, player, state.entities[hero.id])
       else
         state
       end
@@ -541,7 +552,8 @@ defmodule LastKeep.Game.Sim do
   defp cast(state, player, hero, slot, %{kind: :dash} = ability) do
     hero = start_cd(state, hero, slot, ability.cd)
     {dx, dy} = aim_dir(hero, player.input)
-    {x, y} = dash_to(state, hero, dx * ability.dist, dy * ability.dist)
+    pass_monsters = hero.hero == :warrior
+    {x, y} = dash_to(state, hero, dx * ability.dist, dy * ability.dist, pass_monsters)
     state = put_entity(state, %{hero | x: x, y: y})
 
     if ability.damage > 0 do
@@ -698,7 +710,7 @@ defmodule LastKeep.Game.Sim do
       have >= limit ->
         refuse(state, x, y, "Too many")
 
-      dist > Rules.kit(hero.hero).range ->
+      dist > Rules.build_range(hero.hero, state.town) ->
         refuse(state, x, y, "Too far")
 
       hypot(x, y) < state.keep.r + 28 ->
@@ -973,19 +985,47 @@ defmodule LastKeep.Game.Sim do
     step = speed * 0.05
     nx = monster.x + dx * step
     ny = monster.y + dy * step
+    opts = %{ignore: monster.id, keep_pad: -6.0}
 
     cond do
-      not blocked?(state, nx, ny, monster.r) ->
+      not body_blocked?(state, nx, ny, monster.r, opts) ->
         put_entity(state, %{monster | x: nx, y: ny})
 
-      not blocked?(state, nx, monster.y, monster.r) and abs(nx - monster.x) > 0.2 ->
+      not body_blocked?(state, nx, monster.y, monster.r, opts) and abs(nx - monster.x) > 0.2 ->
         put_entity(state, %{monster | x: nx})
 
-      not blocked?(state, monster.x, ny, monster.r) and abs(ny - monster.y) > 0.2 ->
+      not body_blocked?(state, monster.x, ny, monster.r, opts) and abs(ny - monster.y) > 0.2 ->
         put_entity(state, %{monster | y: ny})
 
       true ->
-        chew_wall(state, monster)
+        case sidestep(state, monster, tx, ty, dx, dy, step, opts) do
+          {:ok, sx, sy} -> put_entity(state, %{monster | x: sx, y: sy})
+          :blocked -> chew_wall(state, monster)
+        end
+    end
+  end
+
+  defp sidestep(state, monster, tx, ty, dx, dy, step, opts) do
+    px = -dy
+    py = dx
+    current = hypot(tx - monster.x, ty - monster.y)
+
+    closer =
+      for sign <- [1.0, -1.0],
+          nx = monster.x + px * sign * step,
+          ny = monster.y + py * sign * step,
+          not body_blocked?(state, nx, ny, monster.r, opts),
+          dist = hypot(tx - nx, ty - ny),
+          dist < current,
+          do: {nx, ny, dist}
+
+    case closer do
+      [] ->
+        :blocked
+
+      options ->
+        {nx, ny, _} = Enum.min_by(options, fn {_x, _y, dist} -> dist end)
+        {:ok, nx, ny}
     end
   end
 
@@ -1130,8 +1170,7 @@ defmodule LastKeep.Game.Sim do
     end)
   end
 
-  defp spawn_ring(1, i), do: 136 + rem(i * 11, 12)
-  defp spawn_ring(_wave, i), do: 108 + rem(i * 11, 18)
+  defp spawn_ring(wave, i), do: Rules.spawn_distance(wave, i)
 
   defp clear_wave(state) do
     {hints, rng} = Waves.plan(state.wave + 1, state.rng)
@@ -1316,27 +1355,18 @@ defmodule LastKeep.Game.Sim do
     end)
   end
 
-  defp blocked?(state, x, y, radius) do
-    Enum.any?(blockers(state), fn building ->
-      hypot(building.x - x, building.y - y) < building.r + radius
-    end)
-  end
-
-  defp slide(state, x, y, dx, dy, radius, solid_keep?) do
+  defp slide(state, x, y, dx, dy, radius, opts) do
     nx = x + dx
     ny = y + dy
 
     cond do
-      solid_keep? and hypot(nx, ny) < state.keep.r + radius ->
-        {x, y}
-
-      not blocked?(state, nx, ny, radius) ->
+      not body_blocked?(state, nx, ny, radius, opts) ->
         {nx, ny}
 
-      not blocked?(state, nx, y, radius) and abs(dx) > 0.2 ->
+      not body_blocked?(state, nx, y, radius, opts) and abs(dx) > 0.2 ->
         {nx, y}
 
-      not blocked?(state, x, ny, radius) and abs(dy) > 0.2 ->
+      not body_blocked?(state, x, ny, radius, opts) and abs(dy) > 0.2 ->
         {x, ny}
 
       true ->
@@ -1344,13 +1374,97 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
-  defp dash_to(state, hero, dx, dy) do
-    steps = 6
+  defp body_blocked?(state, x, y, radius, opts) do
+    ignore = Map.get(opts, :ignore)
+    pass_keep = Map.get(opts, :pass_keep, false)
+    pass_heroes = Map.get(opts, :pass_heroes, false)
+    pass_monsters = Map.get(opts, :pass_monsters, false)
+    keep_pad = Map.get(opts, :keep_pad, 0.0)
 
-    Enum.reduce(1..steps, {hero.x, hero.y}, fn _, {x, y} ->
-      slide(state, x, y, dx / steps, dy / steps, hero.r, false)
-    end)
-    |> then(fn {x, y} -> clamp_map(x, y, 1000) end)
+    (not pass_keep and hypot(x, y) < state.keep.r + radius + keep_pad) or
+      Enum.any?(blockers(state), fn building ->
+        hypot(building.x - x, building.y - y) < building.r + radius
+      end) or
+      (not pass_heroes and
+         Enum.any?(heroes(state), fn hero ->
+           hero.alive and hero.id != ignore and
+             hypot(hero.x - x, hero.y - y) < hero.r + radius
+         end)) or
+      (not pass_monsters and
+         Enum.any?(monsters(state), fn monster ->
+           monster.id != ignore and hypot(monster.x - x, monster.y - y) < monster.r + radius
+         end))
+  end
+
+  defp dash_to(state, hero, dx, dy, pass_monsters) do
+    steps = 8
+    opts = %{ignore: hero.id, pass_monsters: pass_monsters}
+
+    {x, y} =
+      Enum.reduce(1..steps, {hero.x, hero.y}, fn _, {x, y} ->
+        slide(state, x, y, dx / steps, dy / steps, hero.r, opts)
+      end)
+
+    {x, y} = clamp_map(x, y, Rules.map_radius())
+
+    if pass_monsters do
+      nudge_clear(state, hero, x, y, dx, dy)
+    else
+      {x, y}
+    end
+  end
+
+  defp nudge_clear(state, hero, x, y, dx, dy) do
+    opts = %{ignore: hero.id}
+
+    if not body_blocked?(state, x, y, hero.r, opts) do
+      {x, y}
+    else
+      {ux, uy} = norm(dx, dy)
+
+      Enum.reduce_while(1..16, {x, y}, fn i, acc ->
+        {nx, ny} = clamp_map(x + ux * i * 10, y + uy * i * 10, Rules.map_radius())
+
+        if body_blocked?(state, nx, ny, hero.r, opts) do
+          {:cont, acc}
+        else
+          {:halt, {nx, ny}}
+        end
+      end)
+    end
+  end
+
+  defp maybe_raise(state, player, hero) do
+    if edged?(player, :raise), do: try_raise(state, player, hero), else: state
+  end
+
+  defp try_raise(state, _player, hero) do
+    rank = state.town
+    near = hypot(hero.x, hero.y) <= state.keep.r + hero.r + 36
+
+    cond do
+      rank >= Rules.town_rank_cap() ->
+        refuse(state, hero.x, hero.y, "The keep is as high as it goes")
+
+      not near ->
+        refuse(state, hero.x, hero.y, "Stand by the keep")
+
+      not afford?(state, Rules.keep_upgrade_cost(rank)) ->
+        cost = Rules.keep_upgrade_cost(rank)
+
+        reason =
+          if state.resources.wood < cost.wood, do: "Not enough wood", else: "Not enough gold"
+
+        refuse(state, hero.x, hero.y, reason)
+
+      true ->
+        cost = Rules.keep_upgrade_cost(rank)
+
+        state
+        |> pay(cost)
+        |> Map.update!(:town, &(&1 + 1))
+        |> event(%{type: "raise", x: 0.0, y: 0.0, amount: rank + 1})
+    end
   end
 
   defp clamp_map(x, y, radius) do
@@ -1450,6 +1564,7 @@ defmodule LastKeep.Game.Sim do
       r: truthy(field(payload, :r)),
       f: truthy(field(payload, :f)),
       place: truthy(field(payload, :place)),
+      raise: truthy(field(payload, :raise)),
       build: parse_build(field(payload, :build))
     }
   end
