@@ -9,8 +9,7 @@ export function heroKinds() {
 export function heroParts(kind) {
   const source = partsFor(kind)
   const parts = source.map((part) => ({ ...part }))
-  parts.voxelCount = source.voxelCount
-  return parts
+  return Object.assign(parts, { voxelCount: source.voxelCount })
 }
 
 export function heroSignature(kind) {
