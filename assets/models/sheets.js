@@ -92,6 +92,21 @@ export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
   const skyHex = rgbOf(colors.sky).map((channel) => channel.toString(16).padStart(2, "0")).join("")
   if (groundHex !== grass.hex) problems.push(`yard ground #${groundHex} is not the grass token #${grass.hex}`)
   if (skyHex !== skyMedian) problems.push(`sky color #${skyHex} is not the concept sky median #${skyMedian}`)
+  const path = cited.find((token) => token.name === "path")
+  const stone = cited.find((token) => token.name === "stone")
+  if (!path || !stone) {
+    problems.push("STYLE.md is missing the path or stone token")
+  } else if (colors.plaza == null || colors.ring == null) {
+    problems.push("yard plaza color is missing")
+  } else {
+    const plazaHex = rgbOf(colors.plaza).map((channel) => channel.toString(16).padStart(2, "0")).join("")
+    const ringHex = rgbOf(colors.ring).map((channel) => channel.toString(16).padStart(2, "0")).join("")
+    if (plazaHex !== grass.hex) problems.push(`yard plaza #${plazaHex} is not the grass token #${grass.hex}`)
+    if (!(colorDist(plazaHex, path.hex) > colorDist(plazaHex, grass.hex))) {
+      problems.push(`yard plaza #${plazaHex} is closer to the path than to the grass`)
+    }
+    if (ringHex !== stone.hex) problems.push(`yard ring #${ringHex} is not the stone token #${stone.hex}`)
+  }
   const skyRgb = rgbOf(skyMedian)
   const roofRgb = rgbOf(roof.hex)
   for (const name of ["day", "dusk", "night"]) {

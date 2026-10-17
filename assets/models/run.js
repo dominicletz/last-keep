@@ -36,7 +36,7 @@ import {
   renderParts,
   stackHorizontal
 } from "./raster.js"
-import { groundColor, skyColor } from "../js/scene.js"
+import { groundColor, pathColor, plazaColor, ringColor, skyColor } from "../js/scene.js"
 import { citationProblems, loadSheet, sceneColorProblems } from "./sheets.js"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
@@ -82,7 +82,10 @@ export function checkModels({ writeGolden = false } = {}) {
     problems.push(
       ...sceneColorProblems(styleSource, sheets["theme.jpg"], cited, galleryRigs, {
         ground: groundColor,
-        sky: skyColor
+        sky: skyColor,
+        plaza: plazaColor,
+        path: pathColor,
+        ring: ringColor
       })
     )
   }

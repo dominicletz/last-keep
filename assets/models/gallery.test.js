@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { heroParts } from "../js/heroes.js"
-import { groundColor, skyColor, yardLight } from "../js/scene.js"
+import { groundColor, pathColor, plazaColor, ringColor, skyColor, yardLight } from "../js/scene.js"
 import { checkModels, heroColorProblems, heroHeightProblems, heroPixelFloor, repoRoot } from "./run.js"
 import { conceptProblems, coverageProblems, fitSlack, iouLimit, keepStoneProblems, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
 import { galleryRigs, maskBounds, maskIou } from "./raster.js"
@@ -89,9 +89,24 @@ test("the gallery sky and the yard ground stay on the concept moss and dusk", ()
   const markdown = fs.readFileSync(path.join(repoRoot(), "STYLE.md"), "utf8")
   const { cited } = styleTables(markdown)
   assert.deepEqual(
-    sceneColorProblems(markdown, theme, cited, galleryRigs, { ground: groundColor, sky: skyColor }),
+    sceneColorProblems(markdown, theme, cited, galleryRigs, {
+      ground: groundColor,
+      sky: skyColor,
+      plaza: plazaColor,
+      path: pathColor,
+      ring: ringColor
+    }),
     []
   )
+  const dirtPlaza = sceneColorProblems(markdown, theme, cited, galleryRigs, {
+    ground: groundColor,
+    sky: skyColor,
+    plaza: pathColor,
+    path: pathColor,
+    ring: ringColor
+  })
+  assert.ok(dirtPlaza.some((line) => line.includes("yard plaza")))
+  assert.ok(dirtPlaza.some((line) => line.includes("closer to the path")))
   const roof = cited.find((token) => token.name === "thatch")
   const brick = {
     day: { bg: [0x8a, 0x40, 0x30] },
@@ -99,7 +114,13 @@ test("the gallery sky and the yard ground stay on the concept moss and dusk", ()
     night: { bg: [0x14, 0x0e, 0x12] }
   }
   const drifted = cited.map((token) => (token.name === "grass" ? { ...token, hex: roof.hex } : token))
-  const problems = sceneColorProblems(markdown, theme, drifted, brick, { ground: groundColor, sky: skyColor })
+  const problems = sceneColorProblems(markdown, theme, drifted, brick, {
+    ground: groundColor,
+    sky: skyColor,
+    plaza: plazaColor,
+    path: pathColor,
+    ring: ringColor
+  })
   assert.ok(problems.some((line) => line.includes("closer to the thatch roof")))
   assert.ok(problems.some((line) => line.includes("day gallery background")))
 })
