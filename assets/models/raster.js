@@ -46,9 +46,9 @@ export const galleryRigs = {
 
 export const lightNames = ["day", "dusk", "night"]
 
-export function gameFrame() {
-  const frame = frameFor(1280, 800, 0)
-  const dist = cameraDistance(0)
+export function gameFrame(rank = 0) {
+  const frame = frameFor(1280, 800, rank)
+  const dist = cameraDistance(rank)
   const camera = new THREE.OrthographicCamera(frame.left, frame.right, frame.top, frame.bottom, 0.1, 2400)
   camera.position.set(dist, dist * 0.9, dist)
   camera.lookAt(0, 0, 0)
@@ -57,12 +57,79 @@ export function gameFrame() {
   return { frame, camera }
 }
 
-export function renderParts(parts, light) {
+export function renderParts(parts, light, rank = 0) {
+  const { frame, camera } = gameFrame(rank)
+  return paint(parts, light, camera, frame.bufferWidth, frame.bufferHeight)
+}
+
+// Close-ups frame the mesh from the game camera angle. The figure is this
+// many internal pixels tall, inside the 64–96 band.
+export const closeupFigure = 80
+
+export function renderCloseup(parts, light) {
+  const vertices = verticesOf(parts)
+  const center = centroid(vertices)
+  const probe = lookCamera(center, 40, 40)
+  const span = projectSpan(vertices, probe, 160, 160)
+  const worldPerPx = 80 / 160
+  const worldH = Math.max(1, span.h * worldPerPx)
+  const worldW = Math.max(1, span.w * worldPerPx)
+  const pad = 8
+  const figH = closeupFigure
+  const figW = Math.max(1, Math.round((worldW * figH) / worldH))
+  const width = figW + pad * 2
+  const height = figH + pad * 2
+  const halfH = (worldH * height) / (2 * figH)
+  const halfW = halfH * (width / height)
+  const shiftX = ((span.minX + span.maxX) / 2 - 80) * worldPerPx
+  const shiftY = ((span.minY + span.maxY) / 2 - 80) * worldPerPx
+  const camera = lookCamera(center, halfW, halfH)
+  camera.left += shiftX
+  camera.right += shiftX
+  camera.top -= shiftY
+  camera.bottom -= shiftY
+  camera.updateProjectionMatrix()
+  return paint(parts, light, camera, width, height)
+}
+
+function lookCamera(center, halfW, halfH) {
+  const dist = cameraDistance(0)
+  const camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, 2400)
+  camera.position.set(center[0] + dist, center[1] + dist * 0.9, center[2] + dist)
+  camera.lookAt(center[0], center[1], center[2])
+  camera.updateProjectionMatrix()
+  camera.updateMatrixWorld(true)
+  return camera
+}
+
+function verticesOf(parts) {
+  const vertices = []
+  for (const part of parts) {
+    for (const face of facesOf(part)) {
+      for (const point of face.poly) vertices.push(point)
+    }
+  }
+  return vertices
+}
+
+function projectSpan(vertices, camera, width, height) {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const point of vertices) {
+    const projected = project(camera, width, height, point)
+    if (projected.x < minX) minX = projected.x
+    if (projected.y < minY) minY = projected.y
+    if (projected.x > maxX) maxX = projected.x
+    if (projected.y > maxY) maxY = projected.y
+  }
+  return { minX, minY, maxX, maxY, w: maxX - minX, h: maxY - minY }
+}
+
+function paint(parts, light, camera, width, height) {
   const rig = galleryRigs[light]
   if (!rig) throw new Error(`unknown light ${light}`)
-  const { frame, camera } = gameFrame()
-  const width = frame.bufferWidth
-  const height = frame.bufferHeight
   const rgb = new Uint8Array(width * height * 3)
   const mask = new Uint8Array(width * height)
   for (let i = 0; i < width * height; i++) {
@@ -183,6 +250,24 @@ export function cropMask(image, pad = 6) {
     rgb.set(image.rgb.subarray(src, src + width * 3), y * width * 3)
   }
   return { rgb, width, height }
+}
+
+export function maskBounds(image) {
+  let minX = image.width
+  let minY = image.height
+  let maxX = -1
+  let maxY = -1
+  for (let i = 0; i < image.mask.length; i++) {
+    if (!image.mask[i]) continue
+    const x = i % image.width
+    const y = (i / image.width) | 0
+    if (x < minX) minX = x
+    if (y < minY) minY = y
+    if (x > maxX) maxX = x
+    if (y > maxY) maxY = y
+  }
+  if (maxX < 0) return { width: 0, height: 0 }
+  return { width: maxX - minX + 1, height: maxY - minY + 1 }
 }
 
 export function maskArea(mask) {

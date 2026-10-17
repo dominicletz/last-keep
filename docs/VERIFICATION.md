@@ -98,3 +98,8 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 - The stone token moved from the brown shaft at 636,124 (`#554034`) to the lit belfry block at 672,143 (`#654e41`). Course `#453a32` and joint `#2c2a2a` are the greyer block and the mortar in that same crop. The keep roof stays thatch.
 - The keep shaft and its foot are stacked courses. Stone bands are twice the joint and the course, and the odd courses step in. `keepStoneProblems` fails when the body's dominant color is more than 18 from that stone, when the body has fewer than three tones, or when the roof is not thatch. The tower still grows at each rank. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 figure readability
+
+- A 1280×800 window used to be 427×267 (`pixelSize` 3). It is now 640×400 (`pixelSize` 2). The yard frustum is unchanged, so rank 4 still pulls back. `heroHeightProblems` requires every hero's day-raster height to be at least 24 internal pixels at rank 0 and at rank 4. The engineer is the short one, at 47 and 32. Meshes were not scaled, because the farmer brim is already 24 against a horizontal limit of 28.
+- Heroes and monsters have a dusk close-up framed on the mesh, 80px tall, and `compare.png` places it beside the concept crop. The portrait is that close-up. `gallery.test.js` locks the band 64–96 and the 24px floor. This does not change the simulation. The coverage floor stays 69.

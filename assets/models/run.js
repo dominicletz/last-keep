@@ -20,17 +20,19 @@ import {
 } from "./registry.js"
 import {
   blitCrop,
-  cropMask,
   decodePng,
   encodePng,
   galleryRigs,
   lightNames,
+  closeupFigure,
   maskArea,
+  maskBounds,
   maskIou,
   meanLuma,
   missingConcept,
   nightContrast,
   pixelDiff,
+  renderCloseup,
   renderParts,
   stackHorizontal
 } from "./raster.js"
@@ -95,6 +97,8 @@ export function checkModels({ writeGolden = false } = {}) {
       rendered = first
       problems.push(...silhouetteProblems(listed, first))
       problems.push(...nightLightProblems(listed, first))
+      problems.push(...heroHeightProblems(listed))
+      problems.push(...closeupProblems(first))
     } catch (error) {
       problems.push(`render threw: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -142,6 +146,8 @@ function readThreshold() {
   return parsed.pixels
 }
 
+const figureFamilies = new Set(["hero", "monster"])
+
 export function renderGallery(listed, sheets) {
   return listed.map((model) => {
     const frames = {}
@@ -150,10 +156,13 @@ export function renderGallery(listed, sheets) {
     const concept = image
       ? blitCrop(image, model.concept.crop, frames.day.width, frames.day.height)
       : missingConcept(frames.day.width, frames.day.height)
+    const close = figureFamilies.has(model.family) ? renderCloseup(model.parts, "dusk") : null
     const panels = lightNames.map((light) => frames[light])
+    if (close) panels.push(placeOn(close, close.width, frames.day.height, galleryRigs.dusk.bg))
     panels.push(concept)
     const sheet = stackHorizontal(panels)
-    const portrait = model.family === "hero" ? cropMask(frames.dusk) : null
+    const portrait = close
+    const compare = close ? stackHorizontal([close, conceptBeside(image, model.concept.crop, close.height)]) : null
     return {
       id: model.id,
       family: model.family,
@@ -161,6 +170,8 @@ export function renderGallery(listed, sheets) {
       minArea: model.minArea,
       frames,
       conceptFrame: concept,
+      closeup: close,
+      compare,
       sheet,
       portrait,
       area: maskArea(frames.dusk.mask),
@@ -171,6 +182,66 @@ export function renderGallery(listed, sheets) {
       }
     }
   })
+}
+
+function conceptBeside(image, crop, height) {
+  if (!image) return missingConcept(height, height)
+  const width = Math.max(1, Math.round((crop.w * height) / crop.h))
+  return blitCrop(image, crop, width, height)
+}
+
+function placeOn(image, width, height, bg) {
+  const rgb = new Uint8Array(width * height * 3)
+  for (let i = 0; i < width * height; i++) {
+    rgb[i * 3] = bg[0]
+    rgb[i * 3 + 1] = bg[1]
+    rgb[i * 3 + 2] = bg[2]
+  }
+  const x0 = Math.max(0, Math.floor((width - image.width) / 2))
+  const y0 = Math.max(0, Math.floor((height - image.height) / 2))
+  const copyW = Math.min(image.width, width)
+  const copyH = Math.min(image.height, height)
+  for (let y = 0; y < copyH; y++) {
+    const src = (y * image.width) * 3
+    rgb.set(image.rgb.subarray(src, src + copyW * 3), ((y0 + y) * width + x0) * 3)
+  }
+  return { rgb, width, height }
+}
+
+export const heroPixelFloor = 24
+
+export function heroHeightProblems(listed) {
+  const problems = []
+  for (const model of listed) {
+    if (model.family !== "hero") continue
+    for (const rank of [0, 4]) {
+      const height = maskBounds(renderParts(model.parts, "day", rank)).height
+      if (height < heroPixelFloor) {
+        problems.push(`${model.id} rank ${rank} is ${height}px tall, below ${heroPixelFloor}`)
+      }
+    }
+  }
+  return problems
+}
+
+function closeupProblems(rendered) {
+  const problems = []
+  for (const row of rendered) {
+    if (!figureFamilies.has(row.family)) continue
+    if (!row.closeup) {
+      problems.push(`${row.id} has no close-up`)
+      continue
+    }
+    const height = maskBounds(row.closeup).height
+    if (height < 64 || height > 96) {
+      problems.push(`${row.id} close-up is ${height}px tall, outside 64–96`)
+    }
+    if (!row.portrait || pixelDiff(row.portrait.rgb, row.closeup.rgb) !== 0) {
+      problems.push(`${row.id} portrait is not the close-up`)
+    }
+    if (!row.compare) problems.push(`${row.id} has no concept comparison`)
+  }
+  return problems
 }
 
 function nightLightProblems(listed, rendered) {
@@ -212,7 +283,7 @@ function silhouetteProblems(listed, rendered) {
         `${row.id} lights are not ordered night < dusk < day (${row.luma.night.toFixed(2)}, ${row.luma.dusk.toFixed(2)}, ${row.luma.day.toFixed(2)})`
       )
     }
-    if (!row.portrait && row.family === "hero") problems.push(`${row.id} has no dusk portrait`)
+    if (!row.portrait && figureFamilies.has(row.family)) problems.push(`${row.id} has no close-up portrait`)
   }
   const families = ["hero", "monster", "building", "prop"]
   for (const family of families) {
@@ -240,6 +311,10 @@ function galleryDiff(first, second) {
     }
     if (pixelDiff(a.sheet.rgb, b.sheet.rgb) !== 0) problems.push(`${a.id} sheet`)
     if (pixelDiff(a.conceptFrame.rgb, b.conceptFrame.rgb) !== 0) problems.push(`${a.id} concept`)
+    if (Boolean(a.closeup) !== Boolean(b.closeup)) problems.push(`${a.id} close-up`)
+    if (a.closeup && pixelDiff(a.closeup.rgb, b.closeup.rgb) !== 0) problems.push(`${a.id} close-up`)
+    if (Boolean(a.compare) !== Boolean(b.compare)) problems.push(`${a.id} compare`)
+    if (a.compare && pixelDiff(a.compare.rgb, b.compare.rgb) !== 0) problems.push(`${a.id} compare`)
     if (Boolean(a.portrait) !== Boolean(b.portrait)) problems.push(`${a.id} portrait`)
     if (a.portrait && pixelDiff(a.portrait.rgb, b.portrait.rgb) !== 0) problems.push(`${a.id} portrait`)
   }
@@ -255,6 +330,8 @@ function writeGallery(dir, rendered, present, includeIndex) {
     for (const light of lightNames) fs.writeFileSync(path.join(folder, `${light}.png`), encodePng(row.frames[light]))
     fs.writeFileSync(path.join(folder, "sheet.png"), encodePng(row.sheet))
     fs.writeFileSync(path.join(folder, "concept.png"), encodePng(row.conceptFrame))
+    if (row.closeup) fs.writeFileSync(path.join(folder, "closeup.png"), encodePng(row.closeup))
+    if (row.compare) fs.writeFileSync(path.join(folder, "compare.png"), encodePng(row.compare))
     if (row.portrait) fs.writeFileSync(path.join(folder, "portrait.png"), encodePng(row.portrait))
   }
   const manifest = {
@@ -289,6 +366,8 @@ function goldenProblems(dir, rendered, threshold) {
     for (const light of lightNames) expected.add(`${row.id}/${light}.png`)
     expected.add(`${row.id}/sheet.png`)
     expected.add(`${row.id}/concept.png`)
+    if (row.closeup) expected.add(`${row.id}/closeup.png`)
+    if (row.compare) expected.add(`${row.id}/compare.png`)
     if (row.portrait) expected.add(`${row.id}/portrait.png`)
   }
   if (!fs.existsSync(dir)) return ["test/gallery is missing"]
@@ -300,12 +379,29 @@ function goldenProblems(dir, rendered, threshold) {
     if (!expected.has(file)) problems.push(`unexpected golden ${file}`)
   }
   for (const row of rendered) {
-    for (const name of [...lightNames.map((light) => `${light}.png`), "sheet.png", "concept.png", ...(row.portrait ? ["portrait.png"] : [])]) {
+    for (const name of [
+      ...lightNames.map((light) => `${light}.png`),
+      "sheet.png",
+      "concept.png",
+      ...(row.closeup ? ["closeup.png"] : []),
+      ...(row.compare ? ["compare.png"] : []),
+      ...(row.portrait ? ["portrait.png"] : [])
+    ]) {
       const file = path.join(dir, row.id, name)
       if (!fs.existsSync(file)) continue
       const decoded = decodePng(fs.readFileSync(file))
       const current =
-        name === "sheet.png" ? row.sheet : name === "concept.png" ? row.conceptFrame : name === "portrait.png" ? row.portrait : row.frames[name.slice(0, -4)]
+        name === "sheet.png"
+          ? row.sheet
+          : name === "concept.png"
+            ? row.conceptFrame
+            : name === "closeup.png"
+              ? row.closeup
+              : name === "compare.png"
+                ? row.compare
+                : name === "portrait.png"
+                  ? row.portrait
+                  : row.frames[name.slice(0, -4)]
       const diff = pixelDiff(decoded.rgb, current.rgb)
       if (diff > threshold) problems.push(`${row.id}/${name} differs by ${diff} pixels (threshold ${threshold})`)
     }
@@ -376,15 +472,14 @@ export function galleryHtml(rendered, present, prefix) {
       const concept = here
         ? `<img src="${prefix}${row.id}/concept.png" alt="${row.id} concept crop of ${row.concept.figure}">`
         : `<p class="miss">Concept slot for ${row.concept.sheet} (${row.concept.figure}) is empty. That sheet is not in the repo.</p>`
-      const portrait =
-        row.family === "hero"
-          ? `<img src="${prefix}${row.id}/portrait.png" alt="${row.id} dusk portrait">`
-          : ""
+      const near = row.compare
+        ? `<img class="near" src="${prefix}${row.id}/compare.png" alt="${row.id} close-up beside the concept">`
+        : ""
       return `<article id="${row.id}">
 <h2>${row.id}</h2>
 <p>${row.family}. Figure ${row.concept.figure} on ${row.concept.sheet} at ${crop}. Silhouette ${row.area} pixels. Night ${round(row.luma.night)}, dusk ${round(row.luma.dusk)}, day ${round(row.luma.day)}.</p>
-<img src="${prefix}${row.id}/sheet.png" alt="${row.id} day, dusk, night, and concept slot">
-${portrait}
+${near}
+<img src="${prefix}${row.id}/sheet.png" alt="${row.id} day, dusk, night, close-up, and concept slot">
 ${concept}
 </article>`
     })
@@ -398,13 +493,14 @@ ${concept}
 body { margin: 0; background: #140e12; color: #f3e6cf; font: 16px/1.45 sans-serif; }
 main { padding: 24px; max-width: 1100px; }
 img { image-rendering: pixelated; background: #1a140f; max-width: 100%; height: auto; display: block; margin: 8px 0; }
+img.near { height: 384px; width: auto; max-width: none; }
 .miss { border: 1px solid #6a4a30; padding: 12px; }
 </style>
 </head>
 <body>
 <main>
 <h1>Gallery</h1>
-<p><code>npm run models</code> wrote these frames at game zoom through the pixel path. The pictures on this page are the goldens in <code>test/gallery/</code>. CI uploads the same bytes as <code>artifacts/gallery/</code>. A second run has to match. The concept sheets are ${conceptSheets.map((sheet) => `${sheet} (${present[sheet] ? "present" : "not in the repo"})`).join(", ")}. Do not invent a substitute sheet.</p>
+<p><code>npm run models</code> wrote these frames at game zoom through the pixel path. Heroes and monsters also have a close-up, about ${closeupFigure}px tall, and the portrait card is that close-up. The pictures on this page are the goldens in <code>test/gallery/</code>. CI uploads the same bytes as <code>artifacts/gallery/</code>. A second run has to match. The concept sheets are ${conceptSheets.map((sheet) => `${sheet} (${present[sheet] ? "present" : "not in the repo"})`).join(", ")}. Do not invent a substitute sheet.</p>
 ${articles}
 </main>
 </body>

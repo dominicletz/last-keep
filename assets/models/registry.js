@@ -66,64 +66,64 @@ function building(id, r, minArea, frame, parts, figure = id) {
 // measured dusk mask). A shrink below it fails. It also has to stay at least
 // half of whatever the current render measures.
 const REGISTRY = [
-  hero("warrior", 519, crop(24, 158, 268, 412)),
-  hero("mage", 418, crop(312, 124, 196, 448)),
-  hero("scout", 293, crop(524, 100, 216, 480)),
-  hero("farmer", 718, crop(752, 98, 250, 480)),
-  hero("engineer", 344, crop(1016, 158, 224, 432)),
-  monster("goblin", 16, 304, crop(16, 328, 236, 246), [
+  hero("warrior", 1160, crop(24, 158, 268, 412)),
+  hero("mage", 917, crop(312, 124, 196, 448)),
+  hero("scout", 632, crop(524, 100, 216, 480)),
+  hero("farmer", 1529, crop(752, 98, 250, 480)),
+  hero("engineer", 774, crop(1016, 158, 224, 432)),
+  monster("goblin", 16, 682, crop(16, 328, 236, 246), [
     box("body", 20, 14, 14, 0, 9, 0, 0x676f3c),
     box("head", 12, 10, 12, 0, 20, 0, 0x676f3c),
     box("ear", 10, 4, 4, -14, 22, 0, 0x676f3c),
     box("ear", 10, 4, 4, 14, 22, 0, 0x676f3c)
   ]),
-  monster("skeleton", 13, 129, crop(260, 328, 260, 246), [
+  monster("skeleton", 13, 293, crop(260, 328, 260, 246), [
     box("ribs", 8, 20, 5, 0, 14, 0, 0x908b8a),
     box("skull", 6, 6, 6, 0, 28, 0, 0x908b8a),
     box("arm", 2, 16, 2, -6, 16, 0, 0x908b8a),
     box("arm", 2, 16, 2, 6, 16, 0, 0x908b8a)
   ]),
-  monster("wolf", 13, 199, crop(760, 340, 270, 245), [
+  monster("wolf", 13, 445, crop(760, 340, 270, 245), [
     box("body", 26, 8, 10, 0, 7, 0, 0x6e6767),
     box("head", 8, 8, 8, 14, 12, 0, 0x6e6767),
     box("snout", 6, 4, 4, 20, 11, 0, 0x6e6767),
     box("tail", 10, 3, 3, -16, 10, 0, 0x6e6767)
   ]),
-  monster("troll", 22, 836, crop(524, 292, 226, 286), [
+  monster("troll", 22, 1884, crop(524, 292, 226, 286), [
     box("body", 32, 30, 22, 0, 18, 0, 0x70724d),
     box("head", 16, 14, 16, 0, 40, 0, 0x70724d),
     box("arm", 10, 22, 10, -20, 24, 0, 0x70724d),
     box("arm", 10, 22, 10, 20, 24, 0, 0x70724d)
   ], "ogre"),
-  monster("boss", 34, 1066, crop(1000, 70, 275, 520), [
+  monster("boss", 34, 2402, crop(1000, 70, 275, 520), [
     box("body", 36, 40, 24, 0, 26, 0, 0x4a464c),
     box("head", 16, 14, 16, 0, 52, 0, 0x4a464c),
     cone("horn", 8, 20, 8, -18, 66, 0, 0x3a264d),
     cone("horn", 8, 20, 8, 18, 66, 0, 0x3a264d)
   ], "dark rider"),
-  building("wall", 16, 250, crop(160, 280, 250, 220), palisadeParts(), "palisade"),
-  building("tower", 16, 473, crop(590, 36, 120, 130), [
+  building("wall", 16, 571, crop(160, 280, 250, 220), palisadeParts(), "palisade"),
+  building("tower", 16, 1028, crop(590, 36, 120, 130), [
     box("shaft", 18, 32, 18, 0, 16, 0, STONE),
     box("merlon", 6, 6, 6, -8, 34, 0, STONE),
     box("merlon", 6, 6, 6, 8, 34, 0, STONE),
     box("flame", 5, 6, 5, 0, 38, 0, FLAME)
   ], "stone tower"),
-  building("trap", 15, 212, crop(520, 490, 100, 90), [box("trap", 22, 6, 22, 0, 3, 0, HIDE)], "ground torch"),
-  building("field", 16, 260, crop(740, 300, 250, 140), wheatParts(), "wheat"),
-  building("forge", 18, 413, crop(500, 190, 200, 150), [
+  building("trap", 15, 480, crop(520, 490, 100, 90), [box("trap", 22, 6, 22, 0, 3, 0, HIDE)], "ground torch"),
+  building("field", 16, 574, crop(740, 300, 250, 140), wheatParts(), "wheat"),
+  building("forge", 18, 928, crop(500, 190, 200, 150), [
     box("wall", 26, 16, 22, 0, 8, 0, STONE),
     cone("roof", 32, 14, 28, 0, 22, 0, THATCH),
     box("door", 8, 10, 3, 0, 5, 12, PALISADE),
     box("flame", 5, 6, 5, 8, 18, 8, TORCH)
   ], "lit house"),
-  building("mage_tower", 18, 419, crop(470, 330, 160, 140), [
+  building("mage_tower", 18, 952, crop(470, 330, 160, 140), [
     box("shaft", 16, 34, 16, 0, 17, 0, ROBE),
     cone("cap", 20, 12, 20, 0, 40, 0, DUSK),
     box("gem", 5, 5, 5, 0, 48, 0, GEM)
   ], "spell light"),
-  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 6583, null),
-  entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 307, pineParts()),
-  entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "pine trunk", crop: crop(1080, 160, 180, 260) }, 97, null)
+  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 11930, null),
+  entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 682, pineParts()),
+  entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "pine trunk", crop: crop(1080, 160, 180, 260) }, 220, null)
 ]
 
 function pineParts() {
