@@ -135,7 +135,8 @@ async function expectGoblinsOnYard(page) {
   })
   const edgeLabels = await page.locator("[data-hints]").innerText()
   expect(edgeLabels).not.toMatch(/goblin \d/)
-  await expect(page.locator("[data-clock]")).toContainText("Frenzy")
+  const { waveClock } = await import("../assets/js/hud.js")
+  await expect(page.locator("[data-clock]")).toHaveText(waveClock)
   await expect(page.locator("[data-wave]")).toHaveText("Wave 1")
 }
 

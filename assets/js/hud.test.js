@@ -1,6 +1,24 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { bonusCopy, callAnchor, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, showReason, waveLabel } from "./hud.js"
+import { bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, showReason, waveClock, waveLabel } from "./hud.js"
+
+test("a place event clears the armed build once per tick", () => {
+  const snap = { tick: 5, events: [{ type: "place" }] }
+  const first = consumePlace(snap, null)
+  assert.deepEqual(first, { clear: true, seenTick: 5 })
+  assert.deepEqual(consumePlace(snap, first.seenTick), { clear: false, seenTick: 5 })
+  assert.deepEqual(consumePlace({ tick: 6, events: [] }, first.seenTick), { clear: false, seenTick: 5 })
+})
+
+test("the wave clock counts down to frenzy and then says they are faster", () => {
+  assert.equal(clockText({ phase: "wave", phase_ms: 58000 }), "Frenzy in 58s")
+  assert.equal(clockText({ phase: "wave", phase_ms: 1000, enraged: true }), "Frenzied. They are faster")
+  assert.equal(clockText({ hold: true, phase: "build", phase_ms: 1000 }), "Waiting to start")
+  assert.equal(clockText({ phase: "build", phase_ms: 10000 }), "Night in 10s")
+  assert.match(clockText({ phase: "wave", phase_ms: 58000 }), waveClock)
+  assert.match(clockText({ phase: "wave", phase_ms: 1000, enraged: true }), waveClock)
+  assert.doesNotMatch(clockText({ phase: "build", phase_ms: 10000 }), waveClock)
+})
 
 test("the wave label is one number and does not say next", () => {
   assert.equal(waveLabel(1), "Wave 1")

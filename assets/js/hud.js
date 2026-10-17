@@ -8,6 +8,24 @@ const RELIC = {
 
 const PLURAL = { goblin: "goblins", wolf: "wolves", troll: "trolls", boss: "bosses" }
 
+export const waveClock = /^(Frenzy in \d+s|Frenzied\. They are faster)$/
+
+// A place event clears the armed build once per snapshot tick.
+// Refreshing that same snapshot must not cancel the next arm.
+export function consumePlace(snap, seenTick) {
+  const placed = (snap.events || []).some((ev) => ev.type === "place")
+  if (!placed || snap.tick === seenTick) return { clear: false, seenTick }
+  return { clear: true, seenTick: snap.tick }
+}
+
+export function clockText(snap) {
+  if (!snap || snap.hold) return "Waiting to start"
+  const seconds = Math.ceil((Number(snap.phase_ms) || 0) / 1000)
+  if (snap.phase === "build") return `Night in ${seconds}s`
+  if (snap.enraged) return "Frenzied. They are faster"
+  return `Frenzy in ${seconds}s`
+}
+
 export function waveLabel(shown) {
   const wave = Math.max(1, Number(shown) || 1)
   return `Wave ${wave}`
