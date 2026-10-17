@@ -197,7 +197,10 @@ function start(code, seat, ui) {
     }
     send()
   })
-  window.addEventListener("keyup", (event) => keys.delete(event.code))
+  window.addEventListener("keyup", (event) => {
+    keys.delete(event.code)
+    send()
+  })
 
   ui.hud.addEventListener("click", (event) => {
     const button = event.target.closest("button")
