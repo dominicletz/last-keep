@@ -38,6 +38,7 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-065 | PR #25 after-shot, assets warrior mage scout farmer engineer | graphics | high | The warrior close-up was a brown block. The concept warrior is grey steel plate, a helmet, a blue shield with a gold cross, and a silver sword. Bodies now use the concept colors: warrior light grey plate and blue shield, mage deep blue with gold trim, scout forest green, farmer straw and denim, engineer leather. Day light no longer clips that grey to orange. | done in PR #26 | `heroColorProblems`, `a brown warrior close-up fails the concept palette` |
 | LK-066 | PR #25 after-shot, asset town | graphics | high | The town plaza was a flat orange-brown octagon. The concept ground is mossy green grass with dirt paths and stone. The plaza fill is the grass token, the ring is the stone token, and the cross stays the path token. | done in PR #27 | `sceneColorProblems`, `the gallery sky and the yard ground stay on the concept moss and dusk` |
 | LK-067 | PR #25 after-shot, asset keep | graphics | high | The live keep was the same brown read as a single shaft. The masonry courses are the in-game mesh, not only the gallery. The body is the shadowed belfry block, the lighter course is the lit face, and the mortar stays. The page reports those three colors. | done in PR #28 | `townLook.keepColors`, `twoPlayerNight` |
+| LK-068 | PR #25 after-shot, asset hud | graphics | high | The HUD was a stack of opaque panels: the wave box, the relic panel, the resource box, the roster, the ability bar, and the build bar. Those slots are edge captions. A fill above 0.35, a border of 2px or more, or a combined box of 105000px or more fails. | done in PR #29 | `assertDiegeticHud`, `twoPlayerNight` |
 
 ## Open
 
@@ -72,7 +73,6 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-047 | Lux, round 4 room ZT4PJ2 | graphics | medium | An edge call stops short of the roster and is right-aligned there. Guarded by `callAnchor` in `hud.test.js` and `twoPlayerNight`. `playtests/round-4/shots/15-Ada.png` | done |
 | LK-048 | Ada, round 4 room ZT4PJ2 | gameplay | medium | Raise the keep is inert while gold is short and it is painted like a live button. A click in room ZT4PJ2 did not spend wood or gold. Round 5 room ME475J still paints it live at gold 3. | open |
 | LK-060 | Ada, round 5 room ME475J | gameplay | low | A wave-1 pair can straddle the 45-degree call bucket and the yard says "goblin" twice instead of "2 goblins". `playtests/round-5/shots/06-Ada.png` | open |
-| LK-068 | PR #25 after-shot, asset hud | graphics | high | The HUD is still a stack of panels: the top-left text box, the relics panel, the resource box, the roster, the ability bar, and the build bar. This is the diegetic UI pass. | open |
 
 ## Fidelity
 

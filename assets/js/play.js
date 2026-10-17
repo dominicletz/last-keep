@@ -417,13 +417,17 @@ function hudMarkup() {
   const builds = BUILD.map((kind) => `<button type="button" class="build" data-build="${kind}">${BUILD_LABEL[kind]}</button>`).join("")
   return `
     <div class="hud-top">
-      <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-score>Score 0</div><div data-next></div><div data-build-reason hidden></div></div>
-      <button type="button" data-start hidden>Start the night</button>
-      <div class="chip bonuses" data-bonuses><div data-forge></div><div data-spire></div><div data-relics></div></div>
-      <div class="chip" data-stock></div>
-      <button type="button" data-raise>Raise the keep</button>
-      <button type="button" data-copy>Copy invite</button>
-      <div class="sound"><button type="button" data-mute>Sound</button><input type="range" min="0" max="100" value="70" data-volume aria-label="Volume"></div>
+      <div class="readout">
+        <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-score>Score 0</div><div data-next></div><div data-build-reason hidden></div></div>
+        <div class="chip bonuses" data-bonuses><div data-forge></div><div data-spire></div><div data-relics></div></div>
+        <div class="chip tally" data-stock></div>
+      </div>
+      <div class="actions">
+        <button type="button" data-start hidden>Start the night</button>
+        <button type="button" data-raise>Raise the keep</button>
+        <button type="button" data-copy>Copy invite</button>
+        <div class="sound"><button type="button" data-mute>Sound</button><input type="range" min="0" max="100" value="70" data-volume aria-label="Volume"></div>
+      </div>
     </div>
     <div class="hint-layer" data-hints></div>
     <div class="hint-layer"><div data-you hidden></div></div>

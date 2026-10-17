@@ -24,7 +24,7 @@ node e2e/playtest/cli.js stop playtests/live
 
 Unset `BASE_URL` for a local server. Set it to `https://agentyard.letz.tw` to play the deployed game. The local Chrome path is `CHROME_PATH`.
 
-`e2e/playtest.spec.js` is the harness check: five heroes, one roster, and a warrior who walks.
+`e2e/playtest.spec.js` is the harness check: five heroes, one roster, and a warrior who walks. The HUD captions (wave, relics, resources, roster, abilities, builds) should read on the yard without a stack of panels.
 
 ## Specialists
 

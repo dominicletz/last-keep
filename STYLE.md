@@ -107,3 +107,7 @@ A hero's on-screen height is the day-raster mask at 1280 by 800. The floor is 24
 Heroes and monsters get one day close-up. The camera uses the game angle and frames the mesh so the figure is 80 internal pixels tall, inside 64 to 96. Day light is neutral, so a grey plate stays grey instead of baking to brown. `compare.png` puts that close-up beside the concept crop at the same height. The portrait card is the close-up. A hero's dominant close-up colors have to sit near colors that occupy that hero's concept crop.
 
 Do not merge a model that skipped a step.
+
+## HUD
+
+Wave, relics, resources, the roster, ability keys, and build keys are captions along the edge of the yard. They do not sit on opaque panels. The actions (start, raise, invite, sound) stay buttons, smaller than the old cards. `assertDiegeticHud` is the check.
