@@ -45,3 +45,11 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - `heroes.test.js` requires those five signatures. `bodies.test.js` requires the pair offset. `hud.test.js` requires an edge call to stop short of the roster box and the build ring to follow the armed reach.
 - CI fails a flaky Playwright pass, and it fails if `assets/js/audio.js` contains a remote URL.
 - This pass does not change the Elixir simulation. The coverage floor stays 68.
+
+## 2026-10-17 empty rooms
+
+- A room used to keep running the simulation for ten minutes after the last browser disconnected. The deploy smoke opens a room per scenario, so those sims were still ticking when the five-player walk started and that walk hung for the full 150 seconds.
+- An empty room now freezes the sim on the next tick. If a player had connected, the process terminates after 4 seconds, which is long enough to reload and short enough that the supervisor count is back to baseline before the next scenario. The supervisor does not start that room again. A room nobody ever opened lasts 60 seconds.
+- `an empty room stops ticking and the room count returns to baseline` disconnects the only player, requires the tick to stop, requires a reconnect in that window to keep the room, then requires the process to be gone within 2 seconds and `Rooms.count/0` to equal the count from before the room existed.
+- Coverage measured by `mix test --cover` is 69.48%. The floor in `mix.exs` is 69.
+- A hidden join field that kept focus swallowed every movement push, so the five-player walk could sit at travel 0 while the page was still answering. `isTypingTarget` ignores a field inside `[hidden]`, and focusing the window blurs that field. The walk still has to pass 20.

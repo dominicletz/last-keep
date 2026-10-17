@@ -8,6 +8,19 @@ export function seatFromQuery(search) {
   return { name, hero }
 }
 
+const NON_TEXT = new Set(["range", "radio", "checkbox", "button", "submit", "hidden", "file", "image"])
+
+// A hidden join field can stay focused after the form closes, and after a
+// window is brought forward. That focus used to swallow every movement push.
+export function isTypingTarget(node) {
+  if (!node || !node.tagName) return false
+  const tag = node.tagName
+  const text = tag === "TEXTAREA" || (tag === "INPUT" && !NON_TEXT.has(node.type))
+  if (!text || node.disabled) return false
+  if (typeof node.closest === "function" && node.closest("[hidden]")) return false
+  return true
+}
+
 export function axes(keys) {
   // The camera sits on the +x +z diagonal, so W moves toward the top of the screen.
   const f = Math.SQRT1_2

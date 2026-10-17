@@ -25,6 +25,11 @@ defmodule LastKeep.Game.Rooms do
     Registry.lookup(LastKeep.Game.Registry, code) != []
   end
 
+  def count do
+    %{active: active} = DynamicSupervisor.count_children(LastKeep.Game.Supervisor)
+    active
+  end
+
   def enlist(code, attrs) do
     token = token(attrs[:token])
 
