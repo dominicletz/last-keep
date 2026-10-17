@@ -1,19 +1,18 @@
 const SKIN = 0xd99b64
 const STEEL = 0xd8cfc3
+const ARMOR = 0xb5afaa
+const DEEP = 0x142a48
+const FOREST = 0x374a26
+const JERKIN = 0x472a17
 const WOOD = 0x8e755b
-const ROBE = 0x3e6dab
 const DUSK = 0x5d505b
 const GEM = 0x23d9f3
-const HOOD = 0x88a05b
 const STRAW = 0xe5b268
 const DENIM = 0x3a4a60
 const CLOTH = 0xe6ccad
-const APRON = 0x4c3d27
 const SHIELD = 0x38516f
-const PINE = 0x353e27
 const LEATHER = 0x261e0e
 const PALISADE = 0x795237
-const PLATE = 0x4a464c
 const GOLD = 0xd99e66
 
 const HEROES = ["warrior", "mage", "scout", "farmer", "engineer"]
@@ -41,15 +40,15 @@ function partsFor(kind) {
     return [
       box("boot", 6, 4, 8, -4, 2, 1, LEATHER),
       box("boot", 6, 4, 8, 4, 2, 1, LEATHER),
-      box("leg", 6, 10, 7, -4, 9, 0, APRON),
-      box("leg", 6, 10, 7, 4, 9, 0, APRON),
-      box("torso", 14, 14, 9, 0, 20, 0, STEEL),
-      box("shoulders", 26, 6, 12, 0, 28, 0, PLATE, true),
-      box("pauldron", 8, 6, 8, -12, 30, 0, STEEL),
-      box("pauldron", 8, 6, 8, 12, 30, 0, STEEL),
+      box("leg", 6, 10, 7, -4, 9, 0, ARMOR),
+      box("leg", 6, 10, 7, 4, 9, 0, ARMOR),
+      box("torso", 14, 14, 9, 0, 20, 0, ARMOR),
+      box("shoulders", 26, 6, 12, 0, 28, 0, ARMOR, true),
+      box("pauldron", 8, 6, 8, -12, 30, 0, ARMOR),
+      box("pauldron", 8, 6, 8, 12, 30, 0, ARMOR),
       box("head", 7, 7, 7, 0, 35, 1, SKIN),
-      box("helm", 9, 7, 9, 0, 41, 1, STEEL),
-      box("crest", 3, 6, 8, 0, 47, 0, STEEL),
+      box("helm", 9, 7, 9, 0, 41, 1, ARMOR),
+      box("crest", 3, 6, 8, 0, 47, 0, ARMOR),
       box("cape", 10, 22, 3, 0, 22, -6, DUSK),
       box("shield", 4, 22, 16, -16, 20, 3, SHIELD, true),
       box("cross", 2, 12, 2, -16, 21, 11, GOLD),
@@ -60,13 +59,13 @@ function partsFor(kind) {
   }
   if (kind === "mage") {
     return [
-      box("hem", 20, 6, 14, 0, 3, 0, DUSK),
-      box("robe", 12, 28, 9, 0, 18, 0, ROBE, true),
+      box("hem", 20, 6, 14, 0, 3, 0, DEEP),
+      box("robe", 12, 28, 9, 0, 18, 0, DEEP, true),
       box("trim", 14, 3, 4, 0, 16, 5, GOLD),
-      box("hood", 10, 10, 10, 0, 34, 1, DUSK),
+      box("hood", 10, 10, 10, 0, 34, 1, DEEP),
       box("head", 6, 6, 6, 0, 34, 3, SKIN),
-      box("brim", 16, 2, 16, 0, 40, 0, DUSK),
-      cone("hat", 10, 18, 10, 0, 50, 0, DUSK, true),
+      box("brim", 16, 2, 16, 0, 40, 0, DEEP),
+      cone("hat", 10, 18, 10, 0, 50, 0, DEEP, true),
       box("staff", 2, 44, 2, 12, 22, 2, WOOD, true),
       box("gem", 5, 6, 5, 12, 46, 2, GEM)
     ]
@@ -75,10 +74,10 @@ function partsFor(kind) {
     return [
       box("boot", 5, 4, 6, -3, 2, 1, LEATHER),
       box("boot", 5, 4, 6, 3, 2, 1, LEATHER),
-      box("legs", 8, 12, 6, 0, 10, 0, PINE),
-      box("cloak", 8, 20, 4, 0, 22, -3, HOOD),
+      box("legs", 8, 12, 6, 0, 10, 0, FOREST),
+      box("cloak", 8, 20, 4, 0, 22, -3, FOREST),
       box("head", 6, 6, 6, 0, 30, 1, SKIN),
-      box("hood", 11, 14, 11, 0, 36, 1, HOOD, true),
+      box("hood", 11, 14, 11, 0, 36, 1, FOREST, true),
       box("bow", 3, 28, 6, 9, 20, 2, WOOD, true),
       box("string", 1, 24, 1, 11, 20, 2, STEEL),
       box("quiver", 4, 14, 4, -6, 22, -4, PALISADE)
@@ -88,9 +87,9 @@ function partsFor(kind) {
     return [
       box("boot", 6, 4, 8, -4, 2, 1, LEATHER),
       box("boot", 6, 4, 8, 4, 2, 1, LEATHER),
-      box("legs", 12, 10, 8, 0, 9, 0, APRON),
-      box("torso", 13, 12, 8, 0, 19, 0, CLOTH),
-      box("apron", 14, 16, 3, 0, 16, 5, APRON, true),
+      box("legs", 12, 10, 8, 0, 9, 0, JERKIN),
+      box("torso", 13, 12, 8, 0, 19, 0, JERKIN),
+      box("apron", 14, 16, 3, 0, 16, 5, JERKIN, true),
       box("head", 7, 7, 7, 0, 30, 1, SKIN),
       box("cap", 9, 5, 9, 0, 36, 0, LEATHER),
       box("goggles", 10, 3, 3, 0, 31, 5, STEEL),

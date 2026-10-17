@@ -37,10 +37,12 @@ test("each hero builds a distinct mesh signature", () => {
 test("each hero wears the prop from the hero sheet", () => {
   const color = (kind, name) => heroParts(kind).find((part) => part.name === name).color
   assert.equal(color("warrior", "shield"), 0x38516f)
+  assert.equal(color("warrior", "torso"), 0xb5afaa)
   assert.equal(color("mage", "gem"), 0x23d9f3)
-  assert.equal(color("scout", "hood"), 0x88a05b)
+  assert.equal(color("mage", "robe"), 0x142a48)
+  assert.equal(color("scout", "hood"), 0x374a26)
   assert.equal(color("farmer", "brim"), 0xe5b268)
-  assert.equal(color("engineer", "apron"), 0x4c3d27)
+  assert.equal(color("engineer", "apron"), 0x472a17)
   for (const kind of heroKinds()) {
     assert.ok(horizontalRadius(heroParts(kind)) <= 14 * fitSlack, kind)
   }

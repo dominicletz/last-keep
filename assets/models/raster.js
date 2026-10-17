@@ -20,8 +20,8 @@ function scaleRgb(hex, factor) {
 export const galleryRigs = {
   day: {
     bg: rgbOf(skyColor),
-    ambient: [0.62, 0.56, 0.48],
-    key: [0.5, 0.42, 0.3],
+    ambient: [0.56, 0.56, 0.58],
+    key: [0.46, 0.46, 0.48],
     keyDir: normalize([0.45, 1, 0.2]),
     point: null,
     emission: 0.12

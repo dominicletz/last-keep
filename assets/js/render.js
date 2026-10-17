@@ -11,7 +11,7 @@ import { keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { bodyPixel } from "./paint.js"
-import { groundColor, skyColor } from "./scene.js"
+import { groundColor, skyColor, yardLight } from "./scene.js"
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -32,10 +32,10 @@ export function createView(stage) {
   let viewFrame = opening
   let townRank = 0
 
-  scene.add(new THREE.HemisphereLight(0xffb070, 0x24361c, 1.15))
-  const ambient = new THREE.AmbientLight(0xffd2a4, 1.55)
+  scene.add(new THREE.HemisphereLight(yardLight.sky, yardLight.ground, yardLight.hemisphere))
+  const ambient = new THREE.AmbientLight(yardLight.ambient, yardLight.ambientLevel)
   scene.add(ambient)
-  const sun = new THREE.DirectionalLight(0xffa050, 2.6)
+  const sun = new THREE.DirectionalLight(yardLight.sun, yardLight.sunLevel)
   sun.castShadow = true
   sun.shadow.mapSize.set(256, 256)
   sun.shadow.bias = -0.0008
