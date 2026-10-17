@@ -16,6 +16,17 @@ defmodule LastKeep.Game.InteractionsTest do
     %{doc: doc, source: source}
   end
 
+  test "the six concept monsters are in the graph", %{doc: doc} do
+    assert doc["monsters"] == Enum.map(Rules.monsters(), &Atom.to_string/1)
+
+    for kind <- doc["monsters"] do
+      assert Enum.any?(doc["edges"], fn edge ->
+               edge["from"] == kind and edge["status"] == "implemented"
+             end),
+             "#{kind} has no implemented edge"
+    end
+  end
+
   test "every hero in Rules.heroes/0 is in the graph", %{doc: doc} do
     assert doc["heroes"] == Enum.map(Rules.heroes(), &Atom.to_string/1)
   end

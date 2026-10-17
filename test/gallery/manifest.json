@@ -178,6 +178,24 @@
       "conceptPresent": true
     },
     {
+      "id": "bat",
+      "family": "monster",
+      "area": 396,
+      "minArea": 280,
+      "day": 61.24,
+      "dusk": 31.39,
+      "night": 24.17,
+      "sheet": "monsters.jpg",
+      "figure": "bat",
+      "crop": [
+        408,
+        68,
+        260,
+        96
+      ],
+      "conceptPresent": true
+    },
+    {
       "id": "boss",
       "family": "monster",
       "area": 3003,

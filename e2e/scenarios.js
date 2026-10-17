@@ -404,6 +404,7 @@ async function twoPlayerNight(browser) {
   expect(town.keep).not.toContain("battlement")
   expect(town.keep).toContain("course")
   expect(town.keepColors).toEqual(expect.arrayContaining([0x4b3c33, 0x654e41, 0x2c2a2a]))
+  expect(town.bestiary).toEqual(["goblin", "skeleton", "wolf", "troll", "bat", "boss"])
   const forest = await page.evaluate(() => window.__lastKeep.forestLook)
   expect(forest.trunks).toBe(70)
   expect(forest.wood).toBe(0)

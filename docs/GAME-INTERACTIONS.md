@@ -54,6 +54,12 @@ flowchart LR
   mage -->|spells| monsters
   scout -->|mark and reveal| monsters
   monsters -->|bite| keep
+  goblin -->|first night| keep
+  skeleton -->|tougher bite| keep
+  wolf -->|fast bite| keep
+  troll -->|ogre bite| keep
+  bat -->|winged bite| keep
+  boss -->|dark rider slam| keep
   boss -->|drop one relic| relics
   relics -->|heartwood| keep
 

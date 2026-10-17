@@ -1,6 +1,7 @@
 defmodule LastKeep.Game.SimTest do
   use ExUnit.Case, async: true
 
+  alias LastKeep.Game.Rules
   alias LastKeep.Game.Sim
   alias LastKeep.Game.Snapshot
   alias LastKeep.Game.Waves
@@ -132,6 +133,30 @@ defmodule LastKeep.Game.SimTest do
     assert state.wave == 1
     assert Sim.monsters(state) != []
     assert length(Sim.monsters(state)) == Enum.sum(Enum.map(hints, & &1.count))
+  end
+
+  test "the six concept monsters are in the nights" do
+    assert Rules.monsters() == [:goblin, :skeleton, :wolf, :troll, :bat, :boss]
+    assert Rules.bounty(:bat) == 2
+
+    state = Sim.spawn_monster(Sim.new("KEEP01", seed: 1), %{kind: :bat, x: 220, y: 0, wave: 6})
+    [bat] = Sim.monsters(state)
+    assert bat.kind == :bat
+    assert bat.r == 12
+    assert bat.speed > Rules.monster(:goblin).speed
+
+    rng = :rand.seed_s(:exsss, {3, 4, 5})
+
+    kinds =
+      Enum.flat_map(1..12, fn wave ->
+        {groups, _} = Waves.plan(wave, rng)
+        Enum.map(groups, & &1.kind)
+      end)
+
+    assert Enum.sort(Enum.uniq(kinds)) == [:bat, :boss, :goblin, :skeleton, :troll, :wolf]
+    {one, _} = Waves.plan(1, rng)
+    assert Enum.map(one, & &1.kind) == [:goblin]
+    assert Enum.map(one, & &1.count) == [2]
   end
 
   test "every fifth wave is an elite or a boss" do

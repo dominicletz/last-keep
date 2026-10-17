@@ -119,3 +119,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-17 hero colors
 
 - Warrior plate is the lit grey `#b5afaa` from heroes.jpg at 184,186, not the shadow `#494745`. The mage robe stays deep blue, the scout cloak forest green, the farmer hat straw with denim, and the engineer apron leather. The day close-up is the portrait. `heroColorProblems` fails when a dominant close-up color is outside that hero's concept crop, including a brown warrior body. Gallery day light and the in-game sun are neutral, so the grey is not clipped to orange. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 monster kinds
+
+- The concept sheet's six bodies are goblin, skeleton, wolf, the ogre (sim kind `troll`), bat, and the dark rider (sim kind `boss`). The bat is a small winged biter with a bounty of 2. Nights 1 through 12 plan every kind, and night 1 stays two goblins. The live mesh is that kind's gallery model, including the dark rider, and a bat is drawn up off the ground. `townLook.bestiary` lists the six. This changes the simulation. The coverage floor stays 69.

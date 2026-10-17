@@ -6,7 +6,7 @@ const RELIC = {
   granary: "Granary makes fields feed more."
 }
 
-const PLURAL = { goblin: "goblins", wolf: "wolves", troll: "trolls", boss: "bosses" }
+const PLURAL = { goblin: "goblins", wolf: "wolves", troll: "trolls", bat: "bats", boss: "bosses" }
 
 export const waveClock = /^(Frenzy in \d+s|Frenzied\. They are faster)$/
 

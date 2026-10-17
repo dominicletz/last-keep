@@ -17,6 +17,7 @@
       "consumers": ["tower", "forge", "mage_tower", "keep"]
     }
   ],
+  "monsters": ["goblin", "skeleton", "wolf", "troll", "bat", "boss"],
   "buildings": [
     {"id": "wall", "purpose": "Blocks a monster until the wall breaks, so the bite never reaches the keep."},
     {"id": "tower", "purpose": "Shoots the nearest monster and spends wood and gold to cover a side the heroes are not on."},
@@ -58,6 +59,12 @@
     {"from": "mage_tower", "to": "mage", "via": "A standing spire raises mage damage and shortens mage cooldowns.", "status": "implemented", "rule": "defp cd_mult"},
     {"from": "monsters", "to": "keep", "via": "A monster in reach of the keep bites it. A boss slam hits harder.", "status": "implemented", "rule": "defp strike"},
     {"from": "monsters", "to": "warrior", "via": "A monster that is closer to a hero than to the keep bites the hero.", "status": "implemented", "rule": "defp monster_target"},
+    {"from": "goblin", "to": "keep", "via": "A goblin is the wave-1 biter. It is slower and softer on the first night.", "status": "implemented", "rule": "def monster(:goblin)"},
+    {"from": "skeleton", "to": "keep", "via": "A skeleton is a tougher biter than a goblin.", "status": "implemented", "rule": "def monster(:skeleton)"},
+    {"from": "wolf", "to": "keep", "via": "A wolf is the fast biter from the concept sheet.", "status": "implemented", "rule": "def monster(:wolf)"},
+    {"from": "troll", "to": "keep", "via": "The troll is the concept ogre: a large slow biter.", "status": "implemented", "rule": "def monster(:troll)"},
+    {"from": "bat", "to": "keep", "via": "A bat is the small winged biter. It still pays a bounty when it dies.", "status": "implemented", "rule": "def monster(:bat)"},
+    {"from": "boss", "to": "keep", "via": "The boss is the dark rider. Its slam hits the keep harder.", "status": "implemented", "rule": "def monster(:boss)"},
     {"from": "boss", "to": "relic", "via": "Killing a boss adds one relic the party does not already hold.", "status": "implemented", "rule": "defp maybe_relic"},
     {"from": "relic", "to": "keep", "via": "Heartwood raises the keep's maximum health.", "status": "implemented", "rule": "defp grow_keep"},
     {"from": "relic", "to": "warrior", "via": "Whetstone adds damage and swiftness adds move speed.", "status": "implemented", "rule": "defp speed_mult"},

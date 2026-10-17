@@ -42,6 +42,7 @@ All of these fail the command:
 - A hero's day-raster height at 1280×800 is under 24 internal pixels at town rank 0 or at town rank 4.
 - A hero or monster close-up is missing, its figure is outside 64–96 internal pixels, or its portrait is not that close-up.
 - A hero's dominant close-up colors are outside the colors that occupy that hero's concept crop. A brown warrior plate fails this. The day light stays neutral so grey plate is not clipped to orange.
+- A Rules monster has no gallery model. The six are goblin, skeleton, wolf, troll (the ogre), bat, and boss (the dark rider).
 - Two kinds in the same family have a silhouette intersection-over-union at or above 0.85. They must read as different bodies.
 - The mesh bounds do not fit the gameplay collider for that kind. The fit slack is 2.
 - A Rules kind has no model, no `STYLE.md` entry, or no concept mapping.
