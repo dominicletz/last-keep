@@ -22,16 +22,19 @@ import {
   cropMask,
   decodePng,
   encodePng,
+  galleryRigs,
   lightNames,
   maskArea,
   maskIou,
   meanLuma,
   missingConcept,
+  nightContrast,
   pixelDiff,
   renderParts,
   stackHorizontal
 } from "./raster.js"
-import { citationProblems, loadSheet } from "./sheets.js"
+import { groundColor, skyColor } from "../js/scene.js"
+import { citationProblems, loadSheet, sceneColorProblems } from "./sheets.js"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
 
@@ -71,6 +74,14 @@ export function checkModels({ writeGolden = false } = {}) {
     }
   }
   problems.push(...citationProblems(cited, sheets))
+  if (sheets["theme.jpg"]) {
+    problems.push(
+      ...sceneColorProblems(styleSource, sheets["theme.jpg"], cited, galleryRigs, {
+        ground: groundColor,
+        sky: skyColor
+      })
+    )
+  }
 
   let rendered = []
   if (problems.length === 0) {
@@ -81,6 +92,7 @@ export function checkModels({ writeGolden = false } = {}) {
       if (drift.length > 0) problems.push(...drift.map((item) => `second run differed: ${item}`))
       rendered = first
       problems.push(...silhouetteProblems(listed, first))
+      problems.push(...nightLightProblems(listed, first))
     } catch (error) {
       problems.push(`render threw: ${error instanceof Error ? error.message : String(error)}`)
     }
@@ -157,6 +169,32 @@ export function renderGallery(listed, sheets) {
       }
     }
   })
+}
+
+function nightLightProblems(listed, rendered) {
+  const problems = []
+  const key = new Set(
+    listed
+      .filter((model) => model.parts.some((part) => part.color === 0xeea821 || part.color === 0xf5751e))
+      .map((model) => model.id)
+  )
+  for (const row of rendered) {
+    if (!key.has(row.id)) continue
+    const stats = nightContrast(row.frames.night)
+    const floor = row.id === "keep" ? { max: 80, warm: 8, lift: 4 } : { max: 55, warm: 1, lift: 2 }
+    if (stats.max < floor.max) {
+      problems.push(`${row.id} night max luma ${stats.max.toFixed(1)} is below ${floor.max}`)
+    }
+    if (stats.warm < floor.warm) {
+      problems.push(`${row.id} night has ${stats.warm} warm torch pixels, below ${floor.warm}`)
+    }
+    if (stats.mean < stats.bg + floor.lift) {
+      problems.push(
+        `${row.id} night body luma ${stats.mean.toFixed(1)} does not read above the sky ${stats.bg.toFixed(1)}`
+      )
+    }
+  }
+  return problems
 }
 
 function silhouetteProblems(listed, rendered) {

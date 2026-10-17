@@ -28,6 +28,93 @@ export function medianHex(sheet, region) {
     .join("")
 }
 
+export function sceneRegions(markdown) {
+  const regions = {}
+  for (const line of markdown.split("\n")) {
+    const row = line.match(/^\| (ground|sky) \| (theme\.jpg) \| (\d+),(\d+),(\d+),(\d+) \|/)
+    if (!row) continue
+    regions[row[1]] = {
+      sheet: row[2],
+      region: { x: Number(row[3]), y: Number(row[4]), w: Number(row[5]), h: Number(row[6]) }
+    }
+  }
+  return regions
+}
+
+function rgbOf(hex) {
+  const value = typeof hex === "string" ? Number.parseInt(hex, 16) : hex
+  return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
+}
+
+function colorDist(a, b) {
+  const left = Array.isArray(a) ? a : rgbOf(a)
+  const right = Array.isArray(b) ? b : rgbOf(b)
+  return Math.hypot(left[0] - right[0], left[1] - right[1], left[2] - right[2])
+}
+
+function chroma(rgb) {
+  const sum = rgb[0] + rgb[1] + rgb[2]
+  if (sum === 0) return [0, 0, 0]
+  return [rgb[0] / sum, rgb[1] / sum, rgb[2] / sum]
+}
+
+function chromaDist(a, b) {
+  const left = chroma(a)
+  const right = chroma(b)
+  return Math.hypot(left[0] - right[0], left[1] - right[1], left[2] - right[2])
+}
+
+// Ground must be the moss, not the thatch roof. Gallery skies must be shades of the dusk sky.
+export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
+  const problems = []
+  const regions = sceneRegions(markdown)
+  if (!regions.ground || !regions.sky) {
+    problems.push("STYLE.md does not cite a ground region and a sky region")
+    return problems
+  }
+  const groundMedian = medianHex(sheet, regions.ground.region)
+  const skyMedian = medianHex(sheet, regions.sky.region)
+  const grass = cited.find((token) => token.name === "grass")
+  const roof = cited.find((token) => token.name === "thatch")
+  if (!grass || !roof) {
+    problems.push("STYLE.md is missing the grass or thatch token")
+    return problems
+  }
+  const grassGround = colorDist(grass.hex, groundMedian)
+  const grassRoof = colorDist(grass.hex, roof.hex)
+  if (grassGround > 18) {
+    problems.push(`grass #${grass.hex} is ${grassGround.toFixed(1)} away from the concept ground #${groundMedian}`)
+  }
+  if (!(grassRoof > grassGround)) {
+    problems.push(`grass #${grass.hex} is closer to the thatch roof #${roof.hex} than to the concept ground #${groundMedian}`)
+  }
+  const groundHex = rgbOf(colors.ground).map((channel) => channel.toString(16).padStart(2, "0")).join("")
+  const skyHex = rgbOf(colors.sky).map((channel) => channel.toString(16).padStart(2, "0")).join("")
+  if (groundHex !== grass.hex) problems.push(`yard ground #${groundHex} is not the grass token #${grass.hex}`)
+  if (skyHex !== skyMedian) problems.push(`sky color #${skyHex} is not the concept sky median #${skyMedian}`)
+  const skyRgb = rgbOf(skyMedian)
+  const roofRgb = rgbOf(roof.hex)
+  for (const name of ["day", "dusk", "night"]) {
+    const bg = rigs[name] && rigs[name].bg
+    if (!bg) {
+      problems.push(`${name} gallery background is missing`)
+      continue
+    }
+    const towardSky = chromaDist(bg, skyRgb)
+    const towardRoof = chromaDist(bg, roofRgb)
+    if (towardSky > 0.04) {
+      problems.push(`${name} gallery background mix is ${towardSky.toFixed(3)} away from the concept sky`)
+    }
+    if (!(towardRoof > towardSky)) {
+      problems.push(`${name} gallery background is closer to the roof than to the sky`)
+    }
+  }
+  if (rigs.day && colorDist(rigs.day.bg, skyRgb) > 1) {
+    problems.push("day gallery background is not the concept sky")
+  }
+  return problems
+}
+
 export function citationProblems(cited, sheets) {
   const problems = []
   if (!cited.length) problems.push("STYLE.md palette has no cited tokens")

@@ -38,10 +38,19 @@ A model spec names a token. It does not paste a fresh hex. Lighting may darken a
 | stone | #554034 | theme.jpg | 636,124,8,8 | keep and tower stone |
 | thatch | #43382e | theme.jpg | 660,230,8,8 | keep roof |
 | wheat | #976122 | theme.jpg | 872,364,8,8 | crop field |
-| grass | #292b10 | theme.jpg | 460,374,8,8 | ground |
+| grass | #374115 | theme.jpg | 648,408,8,8 | ground |
 | path | #5e4529 | theme.jpg | 610,400,8,8 | dirt path |
 | palisade | #795237 | theme.jpg | 390,458,8,8 | palisade and keep door |
 | flame | #eea821 | theme.jpg | 658,172,8,8 | brazier and window |
+
+## Scene
+
+The yard ground is the grass token, sampled from the moss in the clearing. The old patch at 460,374 was a shadow, and the gallery sky was a brick fill that was not on the sheet. Day uses the sky median below. Dusk and night are darker shades of that sky, not the thatch roof. The check fails when the grass token is closer to the roof than to this moss, or when a gallery background's mix is not this sky.
+
+| role | sheet | region |
+| --- | --- | --- |
+| ground | theme.jpg | 648,408,8,8 |
+| sky | theme.jpg | 24,0,8,8 |
 
 ## Kinds
 

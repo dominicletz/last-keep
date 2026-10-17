@@ -11,6 +11,7 @@ import { keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { bodyPixel } from "./paint.js"
+import { groundColor, skyColor } from "./scene.js"
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -22,8 +23,8 @@ export function createView(stage) {
   stage.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x8a4030)
-  scene.fog = new THREE.Fog(0x8a4030, 900, 2400)
+  scene.background = new THREE.Color(skyColor)
+  scene.fog = new THREE.Fog(skyColor, 900, 2400)
 
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
   const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
@@ -61,7 +62,7 @@ export function createView(stage) {
 
   const ground = new THREE.Mesh(
     new THREE.CircleGeometry(1900, 8),
-    mat(0x292b10)
+    mat(groundColor)
   )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
