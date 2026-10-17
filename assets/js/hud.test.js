@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { bonusCopy, ignoreFocusClick, nextLine, placementReason, raiseLabel, reasonOpen, showReason, waveLabel } from "./hud.js"
+import { bonusCopy, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud.js"
 
 test("the wave label is one number and does not say next", () => {
   assert.equal(waveLabel(1), "Wave 1")
@@ -50,4 +50,17 @@ test("forge, spire, and relics are explained", () => {
 test("raising the keep names the wood and gold it costs", () => {
   assert.equal(raiseLabel({ wood: 24, gold: 8, rank: 1 }), "Raise the keep  24 wood 8 gold")
   assert.equal(raiseLabel(null), "The keep is as high as it goes")
+  assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 2 }), false)
+  assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }), true)
+  assert.equal(raiseReady(null, { wood: 48, gold: 8 }), false)
+})
+
+test("offscreen monsters in one direction share a counted call", () => {
+  const calls = edgeCalls([
+    { kind: "goblin", x: 600, y: 40 },
+    { kind: "goblin", x: 640, y: -20 },
+    { kind: "skeleton", x: -500, y: 30 }
+  ])
+  const labels = calls.map((call) => call.label).sort()
+  assert.deepEqual(labels, ["2 goblins", "skeleton"])
 })

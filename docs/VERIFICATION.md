@@ -29,3 +29,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - `e2e/playtest.spec.js` joins five specialists and still requires the warrior to walk, the name, the next line, and the invite button inside 1280px.
 - `GET /health` returns `{"ok": true}`. The deploy waits on `https://agentyard.letz.tw/health` before `npx playwright test`. The smoke assertions are unchanged.
 - Coverage measured by `mix test --cover` is 68.11%. The floor in `mix.exs` is 68. The next round may raise 68. It may not lower it.
+
+## 2026-10-17 specialist round 3
+
+- `cull.test.js` requires a monster whose normalized device coordinate is outside the camera, or whose depth is outside the near and far planes, to be left undrawn. Heroes and monsters both use that check before the frame is drawn.
+- `hud.test.js` requires two goblins in one direction to share the call "2 goblins", and requires the raise control to stay inert until wood and gold both cover the cost.
+- `e2e/playtest.spec.js` requires the invite button, the raise button, and the roster to sit inside 1280×800 and to keep their boxes apart. The warrior still has to walk.
+- This pass does not change the Elixir simulation. The coverage floor stays 68.

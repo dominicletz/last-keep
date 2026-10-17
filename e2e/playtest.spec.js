@@ -23,8 +23,16 @@ test("five specialists share one room and the warrior can walk", async ({ browse
   await expect(ada.locator("[data-you]")).toHaveText("Ada")
   await expect(ada.locator("[data-next]")).toContainText("2 goblins")
   const copy = await ada.locator("[data-copy]").boundingBox()
-  expect(copy.x).toBeGreaterThan(0)
-  expect(copy.x + copy.width).toBeLessThanOrEqual(1280)
+  const raise = await ada.locator("[data-raise]").boundingBox()
+  const roster = await ada.locator("[data-roster]").boundingBox()
+  for (const box of [copy, raise, roster]) {
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.y).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(1280)
+    expect(box.y + box.height).toBeLessThanOrEqual(800)
+  }
+  expect(overlaps(copy, roster)).toBe(false)
+  expect(overlaps(raise, roster)).toBe(false)
   const before = await readState(ada)
   await keyInPage(ada, "KeyW", true)
   try {
@@ -43,3 +51,7 @@ test("five specialists share one room and the warrior can walk", async ({ browse
   expect((await readState(ada)).hold).toBe(true)
   await party.close()
 })
+
+function overlaps(a, b) {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
+}

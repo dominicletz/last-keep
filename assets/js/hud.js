@@ -54,6 +54,34 @@ export function raiseLabel(upgrade) {
   return `Raise the keep  ${upgrade.wood} wood ${upgrade.gold} gold`
 }
 
+export function raiseReady(upgrade, resources) {
+  if (!upgrade) return false
+  return (resources?.wood ?? 0) >= upgrade.wood && (resources?.gold ?? 0) >= upgrade.gold
+}
+
+export function edgeCalls(monsters) {
+  const groups = new Map()
+  for (const monster of monsters || []) {
+    if (!Number.isFinite(monster?.x) || !Number.isFinite(monster?.y)) continue
+    const bucket = Math.round(Math.atan2(monster.y, monster.x) / (Math.PI / 4))
+    const current = groups.get(bucket) || { x: 0, y: 0, kind: monster.kind, count: 0, mixed: false }
+    current.x += monster.x
+    current.y += monster.y
+    current.count += 1
+    if (current.count > 1 && current.kind !== monster.kind) current.mixed = true
+    groups.set(bucket, current)
+  }
+  return [...groups.values()].map((row) => {
+    const kind = row.mixed ? "monster" : row.kind
+    const word = row.count === 1 ? kind : row.mixed ? "monsters" : PLURAL[kind] || `${kind}s`
+    return {
+      x: row.x / row.count,
+      y: row.y / row.count,
+      label: row.count === 1 ? word : `${row.count} ${word}`
+    }
+  })
+}
+
 export function bonusCopy(snap) {
   return {
     forge: snap?.forge

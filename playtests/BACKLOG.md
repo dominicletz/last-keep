@@ -54,5 +54,12 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-037 | Bram, round 1 | graphics | low | The invite button used to end past the window. The top bar now stays inside 1280px. Guarded by `e2e/playtest.spec.js`. `playtests/round-1/shots/01-Bram.png` | done |
 | LK-038 | Ada, Lux, Bram, Pip, round 1 | graphics | high | The yard did not say which body was yours. Your name now sits on your figure, in the You line, and on your roster row. Guarded by `e2e/playtest.spec.js`. | done |
 | LK-039 | Pip, round 1 | gameplay | medium | "Next goblin 2" did not read as a count. The line now says "Next: 2 goblins". Guarded by `assets/js/hud.test.js`. | done |
+| LK-040 | Lux, round 3 room 64MLX4 | graphics | high | Monsters past the camera drew as giant red slabs across the top bar. Heroes and monsters whose center is outside the camera are left undrawn. Guarded by `assets/js/cull.test.js`. `playtests/round-3/shots/08-Ada.png` | done |
+| LK-041 | Lux, round 3 room 64MLX4 | graphics | high | Raise the keep pushed Copy invite into the roster. The roster sits in the corner and the top bar keeps its boxes apart. Guarded by `e2e/playtest.spec.js`. `playtests/round-3/shots/03-Ada.png` | done |
+| LK-042 | Ada, round 3 room 64MLX4 | gameplay | high | Two offscreen goblins read as the single word "goblin", so the yard looked empty until they were biting. One direction now shares a counted call. Guarded by `assets/js/hud.test.js` "offscreen monsters in one direction share a counted call". `playtests/round-3/shots/03-Ada.png` | done |
+| LK-043 | Ada, round 3 room 64MLX4 | gameplay | medium | Raise the keep stayed pressable at gold 2 when the cost was 8. The button stays disabled until wood and gold both cover the cost. Guarded by `raiseReady` in `assets/js/hud.test.js`. | done |
+| LK-044 | Lux, round 3 room 64MLX4 | graphics | medium | Two goblins at the keep edge still read as one red body, with a floating 2. The simulation already keeps them apart. `playtests/round-3/shots/04-Ada.png` | open |
+| LK-045 | Nia, round 3 room 64MLX4 | character | medium | The five heroes share one block body. Color and a weapon are the only differences, so the roster is what says who is who. `playtests/round-3/shots/01-Nia.png` | open |
+| LK-046 | Pip, round 3 room 64MLX4 | logic | low | Food is still only the number in the resource chip. The screen does not say what a feast spends it on. | open |
 
 No implemented hero is isolated. Farmer, engineer, scout, warrior, and mage each have an outgoing edge in `docs/interactions.json`.

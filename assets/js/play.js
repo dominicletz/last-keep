@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, seatFromQuery } from "./input"
-import { bonusCopy, ignoreFocusClick, nextLine, placementReason, raiseLabel, reasonOpen, showReason, waveLabel } from "./hud"
+import { bonusCopy, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const BUILD_LABEL = {
@@ -275,7 +275,7 @@ function start(code, seat, ui) {
     const raise = ui.hud.querySelector("[data-raise]")
     if (raise) {
       raise.textContent = raiseLabel(snap.upgrade)
-      raise.disabled = !snap.upgrade
+      raise.disabled = !raiseReady(snap.upgrade, snap.resources)
     }
     const start = ui.hud.querySelector("[data-start]")
     start.hidden = !snap.hold
@@ -396,8 +396,8 @@ function drawYou(ui, snap, selfId) {
 
 function drawHints(ui, snap) {
   const layer = ui.hud.querySelector("[data-hints]")
-  const offscreen = (snap.monsters || [])
-    .map((monster) => marker(ui, monster.x, monster.y, monster.kind, true))
+  const offscreen = edgeCalls(snap.monsters || [])
+    .map((call) => marker(ui, call.x, call.y, call.label, true))
     .filter(Boolean)
   layer.innerHTML = offscreen.join("")
   const next = ui.hud.querySelector("[data-next]")
