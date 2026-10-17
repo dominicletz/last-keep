@@ -4,7 +4,7 @@ export const skyColor = 0x4e4651
 export const groundColor = 0x374115
 export const pathColor = 0x5e4529
 export const plazaColor = groundColor
-export const ringColor = 0x654e41
+export const ringColor = 0x4b3c33
 
 // Daylight stays near the material color. The old sun (amber at 2.6, plus a warm
 // ambient past 1) clipped every grey to orange, so plate and stone read as brown.
