@@ -20,7 +20,7 @@ config :last_keep, LastKeepWeb.Endpoint,
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}],
   check_origin: false,
-  code_reloader: not playwright,
+  code_reloader: true,
   debug_errors: true,
   secret_key_base: "H2F6ih+IDq3ZooVfLP8MnCpwgzlIoIvwFI9KahZULYBqO0LzR6uHZgomH5u7tKY2",
   watchers: watchers
