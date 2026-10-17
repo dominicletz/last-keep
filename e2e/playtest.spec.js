@@ -13,6 +13,7 @@ test("five specialists share one room and the warrior can walk", async ({ browse
     "character"
   ])
   for (const seat of party.seats) {
+    await seat.page.bringToFront()
     await expect(seat.page.locator("[data-roster]")).toContainText("Ada")
     await expect(seat.page.locator("[data-roster]")).toContainText(seat.name)
   }
