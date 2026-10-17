@@ -30,7 +30,7 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-018 | Dominic, production VDQPTZ | graphics | medium | WASD interpolation had not been checked on a moving hero | done in PR #6 | `movementIsInterpolated`, `a position update is interpolated and does not jump` |
 | LK-019 | Dominic, production VDQPTZ | graphics | medium | An invalid placement reason stayed until the next action | done in PR #6 | `an invalid placement reason fades instead of sticking`, `invalidPlacementExplains` |
 | LK-020 | Dominic, production VDQPTZ | graphics | medium | The picture stretched when the window was not 16:9 | done in PR #6 | `squarePixels`, `frame.test.js` |
-| LK-058 | Dominic | graphics | high | The concept sheets were missing, so the gallery left the concept slot empty and the palette was copied from the builders. The sheets are `docs/concept/heroes.jpg`, `monsters.jpg`, and `theme.jpg`. Each gallery slot shows that asset's crop, and every palette token cites its sheet and region. | done | `npm run models`, `gallery.test.js` citation check |
+| LK-058 | Dominic | graphics | high | The concept sheets were missing, so the gallery left the concept slot empty and the palette was copied from the builders. The sheets are `docs/concept/heroes.jpg`, `monsters.jpg`, and `theme.jpg`. Each gallery slot shows that asset's crop, and every palette token cites its sheet and region. | done in PR #18 | `npm run models`, `gallery.test.js` citation check |
 
 ## Open
 
