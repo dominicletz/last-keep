@@ -341,6 +341,47 @@ async function assertBonuses(page) {
   expect(await page.evaluate(() => window.__lastKeep.smoothing)).toBe(true)
 }
 
+async function assertDiegeticHud(page) {
+  const report = await page.evaluate(() => {
+    const alphaOf = (color) => {
+      const match = String(color).match(/rgba?\(([^)]+)\)/)
+      if (!match) return 0
+      const parts = match[1].split(",").map((part) => Number(part.trim()))
+      return parts.length < 4 ? 1 : parts[3]
+    }
+    const nameOf = (node) => {
+      if (node.hasAttribute("data-stock")) return "stock"
+      if (node.hasAttribute("data-bonuses")) return "relics"
+      if (node.hasAttribute("data-roster")) return "roster"
+      if (node.classList.contains("skill")) return "skill"
+      if (node.classList.contains("build")) return "build"
+      if (node.classList.contains("heart")) return "heart"
+      if (node.classList.contains("chip")) return "wave"
+      return "hud"
+    }
+    const nodes = [
+      ...document.querySelectorAll(".chip, [data-bonuses], [data-stock], [data-roster], .skill, .build, .heart")
+    ]
+    const problems = []
+    let area = 0
+    for (const node of nodes) {
+      const style = getComputedStyle(node)
+      const box = node.getBoundingClientRect()
+      area += box.width * box.height
+      const alpha = alphaOf(style.backgroundColor)
+      const border = parseFloat(style.borderTopWidth) || 0
+      const name = nameOf(node)
+      if (alpha > 0.35) problems.push(`${name} fill`)
+      if (border >= 2) problems.push(`${name} border`)
+    }
+    return { area: Math.round(area), count: nodes.length, problems }
+  })
+  expect(report.count).toBe(15)
+  expect(report.problems).toEqual([])
+  // The same slots on opaque panels covered 150656px at 1280×800.
+  expect(report.area).toBeLessThan(105000)
+}
+
 async function twoPlayerNight(browser) {
   const errors = []
   const host = await createHost(browser, "Bob", "warrior")
@@ -374,6 +415,7 @@ async function twoPlayerNight(browser) {
   await expect(page.locator('[data-build="wall"]')).toContainText("8 wood")
   await expect(page.locator("[data-score]")).toHaveText("Score 0")
   await assertBonuses(page)
+  await assertDiegeticHud(page)
   await page.screenshot({ path: shot("coop-host.png") })
   await friend.screenshot({ path: shot("coop-guest.png") })
 
