@@ -268,7 +268,7 @@ export function createView(stage) {
 
       if (me) bearer = { x: me.x, z: me.y, range: me.range || bearer.range }
 
-      sync("hero", drawn.heroes, (row) => heroMesh(row, selfId))
+      sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
 
       liveMonsters = snap.monsters || []
 
@@ -472,7 +472,7 @@ export function createView(stage) {
     mesh.position.set(pose.x + spread.x, mesh.userData.lift || 0, pose.z + spread.z)
   }
 
-  function heroMesh(row, selfId) {
+  function buildHero(row, selfId) {
     const sig = heroSignature(row.hero)
     const group = new THREE.Group()
     for (const piece of sig.parts) group.add(pieceMesh(piece))
