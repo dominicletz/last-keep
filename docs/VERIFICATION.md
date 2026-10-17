@@ -127,3 +127,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-17 day, dusk, and night
 
 - The yard stays on the neutral day rig while the party is waiting and through most of the build. The last eight seconds of the build are dusk. A wave, a frenzy, and a fallen keep are night, and night is darker than dusk, which is darker than day. `window.__lastKeep.light` reports the name. The day sun is still the neutral yard light, so grey plate is not clipped. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 hero picker portraits
+
+- The five picker cards show the day close-up from `test/gallery/<hero>/portrait.png`, served at `/images/portraits/<hero>.png`. `createHost` requires five images, each between 64 and 128 pixels tall. This does not change the simulation. The coverage floor stays 69.

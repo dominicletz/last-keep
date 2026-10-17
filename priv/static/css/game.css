@@ -90,18 +90,31 @@ input[type="text"], input:not([type="radio"]) {
 
 .hero-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.5rem;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
 }
 
 .hero-card {
   border: 3px solid #3a2a20;
-  padding: 0.55rem;
+  padding: 0.35rem;
   background: #140f0c;
-  min-height: 7.5rem;
+  min-height: 0;
 }
 
 .hero-card:has(input:checked) { border-color: var(--gold); }
+
+.hero-card img.portrait {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 72px;
+  object-fit: contain;
+  object-position: bottom;
+  margin: 0.1rem 0 0.25rem;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #1a140f;
+}
 
 .hero-card input { margin-bottom: 0.35rem; }
 

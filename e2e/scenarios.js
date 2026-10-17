@@ -21,6 +21,10 @@ async function createHost(browser, name, hero) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
   await page.goto(gameUrl("/"))
+  await page.waitForFunction(() => {
+    const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
+    return imgs.length === 5 && imgs.every((img) => img.complete && img.naturalHeight >= 64 && img.naturalHeight <= 128)
+  })
   await page.locator("#player-name").fill(name)
   await page.locator(`input[value="${hero}"]`).check()
   await page.locator("#create-button").click()
