@@ -14,6 +14,17 @@ export const yardProps = ["keep", "tree", "scenery"]
 
 const HERO_RADIUS = 14
 const TREE_RADIUS = 16
+const STONE = 0x554034
+const THATCH = 0x43382e
+const PALISADE = 0x795237
+const FLAME = 0xeea821
+const WHEAT = 0x976122
+const TORCH = 0xf5751e
+const WOOD = 0x8e755b
+const ROBE = 0x3e6dab
+const GEM = 0x23d9f3
+const HIDE = 0x4d433b
+const DUSK = 0x5d505b
 
 function box(name, w, h, d, x, y, z, color) {
   return { name, shape: "box", w, h, d, x, y, z, color }
@@ -86,22 +97,27 @@ const REGISTRY = [
     cone("horn", 8, 20, 8, -18, 66, 0, 0x3a264d),
     cone("horn", 8, 20, 8, 18, 66, 0, 0x3a264d)
   ], "dark rider"),
-  building("wall", 16, 369, crop(160, 280, 250, 220), [box("wall", 30, 22, 12, 0, 11, 0, 0x795237)], "palisade"),
-  building("tower", 16, 615, crop(590, 36, 120, 130), [
-    box("tower", 22, 36, 22, 0, 18, 0, 0x554034),
-    box("flame", 6, 6, 6, 0, 40, 0, 0xeea821)
+  building("wall", 16, 250, crop(160, 280, 250, 220), palisadeParts(), "palisade"),
+  building("tower", 16, 473, crop(590, 36, 120, 130), [
+    box("shaft", 18, 32, 18, 0, 16, 0, STONE),
+    box("merlon", 6, 6, 6, -8, 34, 0, STONE),
+    box("merlon", 6, 6, 6, 8, 34, 0, STONE),
+    box("flame", 5, 6, 5, 0, 38, 0, FLAME)
   ], "stone tower"),
-  building("trap", 15, 212, crop(520, 490, 100, 90), [box("trap", 22, 6, 22, 0, 3, 0, 0x4d433b)], "ground torch"),
-  building("field", 16, 278, crop(740, 300, 250, 140), [box("field", 30, 2, 30, 0, 1, 0, 0x976122)], "wheat"),
-  building("forge", 18, 612, crop(500, 190, 200, 150), [box("forge", 28, 24, 28, 0, 12, 0, 0xf5751e)], "lit house"),
-  building("mage_tower", 18, 806, crop(470, 330, 160, 140), [box("spire", 26, 40, 26, 0, 20, 0, 0x3e6dab)], "spell light"),
-  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 3217, [
-    box("base", 70, 28, 70, 0, 14, 0, 0x554034),
-    box("tower", 28, 70, 28, 0, 48, 0, 0x554034),
-    cone("roof", 44, 28, 44, 0, 92, 0, 0x43382e),
-    box("door", 16, 18, 4, 0, 10, 36, 0x795237),
-    box("window", 6, 8, 4, 0, 58, 14, 0xeea821)
-  ]),
+  building("trap", 15, 212, crop(520, 490, 100, 90), [box("trap", 22, 6, 22, 0, 3, 0, HIDE)], "ground torch"),
+  building("field", 16, 260, crop(740, 300, 250, 140), wheatParts(), "wheat"),
+  building("forge", 18, 413, crop(500, 190, 200, 150), [
+    box("wall", 26, 16, 22, 0, 8, 0, STONE),
+    cone("roof", 32, 14, 28, 0, 22, 0, THATCH),
+    box("door", 8, 10, 3, 0, 5, 12, PALISADE),
+    box("flame", 5, 6, 5, 8, 18, 8, TORCH)
+  ], "lit house"),
+  building("mage_tower", 18, 419, crop(470, 330, 160, 140), [
+    box("shaft", 16, 34, 16, 0, 17, 0, ROBE),
+    cone("cap", 20, 12, 20, 0, 40, 0, DUSK),
+    box("gem", 5, 5, 5, 0, 48, 0, GEM)
+  ], "spell light"),
+  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 3447, null),
   entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 244, [
     prism("trunk", 3, 4, 12, 5, 0, 6, 0, 0x8e755b),
     cone("crown", 28, 28, 28, 0, 24, 0, 0x353e27, 5)
@@ -109,10 +125,53 @@ const REGISTRY = [
   entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "pine trunk", crop: crop(1080, 160, 180, 260) }, 97, null)
 ]
 
+function palisadeParts() {
+  const parts = [-12, -6, 0, 6, 12].map((x) => box("post", 4, 24, 4, x, 12, 0, PALISADE))
+  parts.push(box("rail", 28, 3, 3, 0, 18, 0, WOOD))
+  parts.push(box("flame", 3, 5, 3, 12, 26, 0, FLAME))
+  return parts
+}
+
+function wheatParts() {
+  const parts = [box("soil", 28, 2, 28, 0, 1, 0, HIDE)]
+  for (const [x, z] of [
+    [-8, -8],
+    [-8, 8],
+    [0, 0],
+    [8, -8],
+    [8, 8]
+  ]) {
+    parts.push(cone("stalk", 3, 14, 3, x, 9, z, WHEAT))
+  }
+  return parts
+}
+
+// Rank 0 is the gallery keep. Each raise adds a course of stone.
+// Rank 2 grows battlements. Rank 4 flies a banner.
+export function keepParts(rank = 0) {
+  const step = Math.max(0, Math.min(4, rank | 0))
+  const towerH = 70 + step * 14
+  const towerY = 28 + towerH / 2
+  const roofY = 28 + towerH + 8
+  const parts = [
+    box("base", 70, 28, 70, 0, 14, 0, STONE),
+    box("tower", 28, towerH, 28, 0, towerY, 0, STONE),
+    cone("roof", 44, 22, 44, 0, roofY, 0, THATCH),
+    box("door", 16, 18, 4, 0, 10, 36, PALISADE),
+    box("window", 6, 8, 4, 0, towerY, 16, FLAME),
+    box("brazier", 8, 4, 8, 22, 30, 22, HIDE),
+    box("flame", 4, 8, 4, 22, 36, 22, FLAME)
+  ]
+  if (step >= 2) parts.push(box("battlement", 36, 6, 8, 0, 28 + towerH - 4, 16, STONE))
+  if (step >= 4) parts.push(box("banner", 3, 16, 3, 0, roofY + 18, 0, PALISADE))
+  return parts
+}
+
 export function models() {
   const look = sceneryForest()
   return REGISTRY.map((model) => {
     if (model.family === "hero") return { ...model, parts: heroParts(model.id) }
+    if (model.id === "keep") return { ...model, parts: keepParts(0) }
     if (model.id === "scenery") {
       return {
         ...model,
