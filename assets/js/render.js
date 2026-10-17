@@ -10,6 +10,7 @@ import { heroSignature } from "./heroes"
 import { modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
+import { bodyPixel } from "./paint.js"
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -437,13 +438,9 @@ export function createView(stage) {
     const height = Math.min(size, canvas.height - sy0)
     const buf = new Uint8Array(width * height * 4)
     gl.readPixels(sx0, Math.max(0, canvas.height - (sy0 + height)), width, height, gl.RGBA, gl.UNSIGNED_BYTE, buf)
-    const block = { data: buf }
     let count = 0
-    for (let i = 0; i < block.data.length; i += 4) {
-      const r = block.data[i]
-      const g = block.data[i + 1]
-      const b = block.data[i + 2]
-      if (r > 150 && r > g + 40 && r > b + 20) count += 1
+    for (let i = 0; i < buf.length; i += 4) {
+      if (bodyPixel(buf[i], buf[i + 1], buf[i + 2])) count += 1
     }
     return count
   }

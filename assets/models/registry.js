@@ -8,7 +8,7 @@ export const fitSlack = 2
 // Same-family silhouettes at or above this IoU fail. They have to read apart.
 export const iouLimit = 0.85
 
-export const conceptSheets = ["lk_heroes.jpg", "lk_theme.jpg", "lk_monsters.jpg"]
+export const conceptSheets = ["heroes.jpg", "monsters.jpg", "theme.jpg"]
 
 export const yardProps = ["keep", "tree", "scenery"]
 
@@ -31,78 +31,82 @@ function entry(id, family, collider, concept, minArea, parts) {
   return { id, family, collider, concept, minArea, parts }
 }
 
-function hero(id, minArea) {
-  return entry(id, "hero", { r: HERO_RADIUS }, { sheet: "lk_heroes.jpg", figure: id }, minArea, null)
+function crop(x, y, w, h) {
+  return { x, y, w, h }
 }
 
-function monster(id, r, minArea, parts) {
-  return entry(id, "monster", { r }, { sheet: "lk_monsters.jpg", figure: id }, minArea, parts)
+function hero(id, minArea, frame) {
+  return entry(id, "hero", { r: HERO_RADIUS }, { sheet: "heroes.jpg", figure: id, crop: frame }, minArea, null)
 }
 
-function building(id, r, minArea, parts, figure = id) {
-  return entry(id, "building", { r }, { sheet: "lk_theme.jpg", figure }, minArea, parts)
+function monster(id, r, minArea, frame, parts, figure = id) {
+  return entry(id, "monster", { r }, { sheet: "monsters.jpg", figure, crop: frame }, minArea, parts)
+}
+
+function building(id, r, minArea, frame, parts, figure = id) {
+  return entry(id, "building", { r }, { sheet: "theme.jpg", figure, crop: frame }, minArea, parts)
 }
 
 // minArea is the recorded silhouette floor at game zoom (about 80% of the
 // measured dusk mask). A shrink below it fails. It also has to stay at least
 // half of whatever the current render measures.
 const REGISTRY = [
-  hero("warrior", 499),
-  hero("mage", 418),
-  hero("scout", 293),
-  hero("farmer", 718),
-  hero("engineer", 297),
-  monster("goblin", 16, 304, [
-    box("body", 20, 14, 14, 0, 9, 0, 0xff3a22),
-    box("head", 12, 10, 12, 0, 20, 0, 0xff3a22),
-    box("ear", 10, 4, 4, -14, 22, 0, 0xff3a22),
-    box("ear", 10, 4, 4, 14, 22, 0, 0xff3a22)
+  hero("warrior", 499, crop(24, 158, 268, 412)),
+  hero("mage", 418, crop(312, 124, 196, 448)),
+  hero("scout", 293, crop(524, 100, 216, 480)),
+  hero("farmer", 718, crop(752, 98, 250, 480)),
+  hero("engineer", 297, crop(1016, 158, 224, 432)),
+  monster("goblin", 16, 304, crop(16, 328, 236, 246), [
+    box("body", 20, 14, 14, 0, 9, 0, 0x676f3c),
+    box("head", 12, 10, 12, 0, 20, 0, 0x676f3c),
+    box("ear", 10, 4, 4, -14, 22, 0, 0x676f3c),
+    box("ear", 10, 4, 4, 14, 22, 0, 0x676f3c)
   ]),
-  monster("skeleton", 13, 129, [
-    box("ribs", 8, 20, 5, 0, 14, 0, 0xe8e0d0),
-    box("skull", 6, 6, 6, 0, 28, 0, 0xe8e0d0),
-    box("arm", 2, 16, 2, -6, 16, 0, 0xe8e0d0),
-    box("arm", 2, 16, 2, 6, 16, 0, 0xe8e0d0)
+  monster("skeleton", 13, 129, crop(260, 328, 260, 246), [
+    box("ribs", 8, 20, 5, 0, 14, 0, 0x908b8a),
+    box("skull", 6, 6, 6, 0, 28, 0, 0x908b8a),
+    box("arm", 2, 16, 2, -6, 16, 0, 0x908b8a),
+    box("arm", 2, 16, 2, 6, 16, 0, 0x908b8a)
   ]),
-  monster("wolf", 13, 199, [
-    box("body", 26, 8, 10, 0, 7, 0, 0x2c3344),
-    box("head", 8, 8, 8, 14, 12, 0, 0x2c3344),
-    box("snout", 6, 4, 4, 20, 11, 0, 0x2c3344),
-    box("tail", 10, 3, 3, -16, 10, 0, 0x2c3344)
+  monster("wolf", 13, 199, crop(760, 340, 270, 245), [
+    box("body", 26, 8, 10, 0, 7, 0, 0x6e6767),
+    box("head", 8, 8, 8, 14, 12, 0, 0x6e6767),
+    box("snout", 6, 4, 4, 20, 11, 0, 0x6e6767),
+    box("tail", 10, 3, 3, -16, 10, 0, 0x6e6767)
   ]),
-  monster("troll", 22, 836, [
-    box("body", 32, 30, 22, 0, 18, 0, 0x2f6a32),
-    box("head", 16, 14, 16, 0, 40, 0, 0x2f6a32),
-    box("arm", 10, 22, 10, -20, 24, 0, 0x2f6a32),
-    box("arm", 10, 22, 10, 20, 24, 0, 0x2f6a32)
+  monster("troll", 22, 836, crop(524, 292, 226, 286), [
+    box("body", 32, 30, 22, 0, 18, 0, 0x70724d),
+    box("head", 16, 14, 16, 0, 40, 0, 0x70724d),
+    box("arm", 10, 22, 10, -20, 24, 0, 0x70724d),
+    box("arm", 10, 22, 10, 20, 24, 0, 0x70724d)
+  ], "ogre"),
+  monster("boss", 34, 1066, crop(1000, 70, 275, 520), [
+    box("body", 36, 40, 24, 0, 26, 0, 0x4a464c),
+    box("head", 16, 14, 16, 0, 52, 0, 0x4a464c),
+    cone("horn", 8, 20, 8, -18, 66, 0, 0x3a264d),
+    cone("horn", 8, 20, 8, 18, 66, 0, 0x3a264d)
+  ], "dark rider"),
+  building("wall", 16, 369, crop(160, 280, 250, 220), [box("wall", 30, 22, 12, 0, 11, 0, 0x795237)], "palisade"),
+  building("tower", 16, 615, crop(590, 36, 120, 130), [
+    box("tower", 22, 36, 22, 0, 18, 0, 0x554034),
+    box("flame", 6, 6, 6, 0, 40, 0, 0xeea821)
+  ], "stone tower"),
+  building("trap", 15, 212, crop(520, 490, 100, 90), [box("trap", 22, 6, 22, 0, 3, 0, 0x4d433b)], "ground torch"),
+  building("field", 16, 278, crop(740, 300, 250, 140), [box("field", 30, 2, 30, 0, 1, 0, 0x976122)], "wheat"),
+  building("forge", 18, 612, crop(500, 190, 200, 150), [box("forge", 28, 24, 28, 0, 12, 0, 0xf5751e)], "lit house"),
+  building("mage_tower", 18, 806, crop(470, 330, 160, 140), [box("spire", 26, 40, 26, 0, 20, 0, 0x3e6dab)], "spell light"),
+  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 3217, [
+    box("base", 70, 28, 70, 0, 14, 0, 0x554034),
+    box("tower", 28, 70, 28, 0, 48, 0, 0x554034),
+    cone("roof", 44, 28, 44, 0, 92, 0, 0x43382e),
+    box("door", 16, 18, 4, 0, 10, 36, 0x795237),
+    box("window", 6, 8, 4, 0, 58, 14, 0xeea821)
   ]),
-  monster("boss", 34, 1066, [
-    box("body", 36, 40, 24, 0, 26, 0, 0x6a3a8a),
-    box("head", 16, 14, 16, 0, 52, 0, 0x6a3a8a),
-    cone("horn", 8, 20, 8, -18, 66, 0, 0x6a3a8a),
-    cone("horn", 8, 20, 8, 18, 66, 0, 0x6a3a8a)
+  entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 244, [
+    prism("trunk", 3, 4, 12, 5, 0, 6, 0, 0x8e755b),
+    cone("crown", 28, 28, 28, 0, 24, 0, 0x353e27, 5)
   ]),
-  building("wall", 16, 369, [box("wall", 30, 22, 12, 0, 11, 0, 0x6b4228)]),
-  building("tower", 16, 615, [
-    box("tower", 22, 36, 22, 0, 18, 0, 0x6e675c),
-    box("flame", 6, 6, 6, 0, 40, 0, 0xffb15a)
-  ]),
-  building("trap", 15, 212, [box("trap", 22, 6, 22, 0, 3, 0, 0x8a8174)]),
-  building("field", 16, 278, [box("field", 30, 2, 30, 0, 1, 0, 0xc6b04a)]),
-  building("forge", 18, 612, [box("forge", 28, 24, 28, 0, 12, 0, 0xa84828)]),
-  building("mage_tower", 18, 806, [box("spire", 26, 40, 26, 0, 20, 0, 0x3a4f86)], "mage tower"),
-  entry("keep", "prop", { r: 54 }, { sheet: "lk_theme.jpg", figure: "keep" }, 3217, [
-    box("base", 70, 28, 70, 0, 14, 0, 0x6e675c),
-    box("tower", 28, 70, 28, 0, 48, 0, 0x7d756a),
-    cone("roof", 44, 28, 44, 0, 92, 0, 0x8a3d2f),
-    box("door", 16, 18, 4, 0, 10, 36, 0x3a2418),
-    box("window", 6, 8, 4, 0, 58, 14, 0xffb15a)
-  ]),
-  entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "lk_theme.jpg", figure: "harvestable tree" }, 244, [
-    prism("trunk", 3, 4, 12, 5, 0, 6, 0, 0x5a3a22),
-    cone("crown", 28, 28, 28, 0, 24, 0, 0x2f6a3c, 5)
-  ]),
-  entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "lk_theme.jpg", figure: "scenery trunk" }, 97, null)
+  entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "pine trunk", crop: crop(1080, 160, 180, 260) }, 97, null)
 ]
 
 export function models() {
@@ -198,16 +202,26 @@ function atoms(source, pattern) {
 
 export function styleTables(markdown) {
   const tokens = new Map()
+  const cited = []
   const kinds = new Map()
   for (const line of markdown.split("\n")) {
-    const token = line.match(/^\| ([a-z][a-z0-9-]*) \| #([0-9a-f]{6}) \|/)
-    if (token && token[1] !== "token") tokens.set(token[2], token[1])
-    const kind = line.match(/^\| ([a-z][a-z0-9_]*) \| (hero|monster|building|prop) \| (lk_(?:heroes|theme|monsters)\.jpg) \| ([^|]+) \|/)
+    const token = line.match(/^\| ([a-z][a-z0-9-]*) \| #([0-9a-f]{6}) \| ((?:heroes|monsters|theme)\.jpg) \| (\d+),(\d+),(\d+),(\d+) \|/)
+    if (token && token[1] !== "token") {
+      const region = { x: Number(token[4]), y: Number(token[5]), w: Number(token[6]), h: Number(token[7]) }
+      tokens.set(token[2], token[1])
+      cited.push({ name: token[1], hex: token[2], sheet: token[3], region })
+    }
+    const kind = line.match(/^\| ([a-z][a-z0-9_]*) \| (hero|monster|building|prop) \| ((?:heroes|monsters|theme)\.jpg) \| ([^|]+?) \| (\d+),(\d+),(\d+),(\d+) \|/)
     if (kind && kind[1] !== "id") {
-      kinds.set(kind[1], { family: kind[2], sheet: kind[3], figure: kind[4].trim() })
+      kinds.set(kind[1], {
+        family: kind[2],
+        sheet: kind[3],
+        figure: kind[4].trim(),
+        crop: { x: Number(kind[5]), y: Number(kind[6]), w: Number(kind[7]), h: Number(kind[8]) }
+      })
     }
   }
-  return { tokens, kinds }
+  return { tokens, cited, kinds }
 }
 
 export function coverageProblems(listed, rules) {
@@ -248,6 +262,18 @@ export function paletteProblems(listed, tokens) {
   return problems
 }
 
+export function uncitedPaletteProblems(markdown) {
+  const problems = []
+  for (const line of markdown.split("\n")) {
+    const cited = line.match(/^\| ([a-z][a-z0-9-]*) \| #([0-9a-f]{6}) \| ((?:heroes|monsters|theme)\.jpg) \| (\d+),(\d+),(\d+),(\d+) \|/)
+    const loose = line.match(/^\| ([a-z][a-z0-9-]*) \| #([0-9a-f]{6}) \|/)
+    if (loose && loose[1] !== "token" && !cited) {
+      problems.push(`palette token ${loose[1]} does not cite a sheet and region`)
+    }
+  }
+  return problems
+}
+
 export function styleProblems(listed, kinds) {
   const problems = []
   for (const model of listed) {
@@ -260,6 +286,10 @@ export function styleProblems(listed, kinds) {
     if (row.sheet !== model.concept.sheet || row.figure !== model.concept.figure) {
       problems.push(`${model.id} concept mapping disagrees with STYLE.md`)
     }
+    const crop = model.concept.crop
+    if (!row.crop || !crop || row.crop.x !== crop.x || row.crop.y !== crop.y || row.crop.w !== crop.w || row.crop.h !== crop.h) {
+      problems.push(`${model.id} crop disagrees with STYLE.md`)
+    }
   }
   for (const id of kinds.keys()) {
     if (!listed.some((model) => model.id === id)) problems.push(`STYLE.md lists ${id}, which has no model`)
@@ -271,7 +301,8 @@ export function conceptProblems(listed) {
   const problems = []
   for (const model of listed) {
     const concept = model.concept
-    if (!concept || !conceptSheets.includes(concept.sheet) || !String(concept.figure || "").trim()) {
+    const frame = concept && concept.crop
+    if (!concept || !conceptSheets.includes(concept.sheet) || !String(concept.figure || "").trim() || !frame || !(frame.w > 0) || !(frame.h > 0)) {
       problems.push(`${model.id} has no concept mapping`)
     }
   }

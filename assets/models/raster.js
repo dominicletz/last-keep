@@ -96,6 +96,35 @@ export function stackHorizontal(images) {
   return { rgb, width, height }
 }
 
+// Nearest-neighbor crop, letterboxed on the soil ground from the theme sheet.
+export function blitCrop(sheet, crop, destW, destH) {
+  const rgb = new Uint8Array(destW * destH * 3)
+  for (let i = 0; i < destW * destH; i++) {
+    rgb[i * 3] = 0x08
+    rgb[i * 3 + 1] = 0x0c
+    rgb[i * 3 + 2] = 0x0e
+  }
+  const scale = Math.min(destW / crop.w, destH / crop.h)
+  const drawW = Math.max(1, Math.floor(crop.w * scale))
+  const drawH = Math.max(1, Math.floor(crop.h * scale))
+  const originX = Math.floor((destW - drawW) / 2)
+  const originY = Math.floor((destH - drawH) / 2)
+  for (let y = 0; y < drawH; y++) {
+    const sy = Math.min(crop.h - 1, Math.floor(y / scale))
+    for (let x = 0; x < drawW; x++) {
+      const sx = Math.min(crop.w - 1, Math.floor(x / scale))
+      const srcX = Math.min(sheet.width - 1, Math.max(0, crop.x + sx))
+      const srcY = Math.min(sheet.height - 1, Math.max(0, crop.y + sy))
+      const src = (srcY * sheet.width + srcX) * 4
+      const offset = ((originY + y) * destW + (originX + x)) * 3
+      rgb[offset] = sheet.data[src]
+      rgb[offset + 1] = sheet.data[src + 1]
+      rgb[offset + 2] = sheet.data[src + 2]
+    }
+  }
+  return { rgb, width: destW, height: destH }
+}
+
 export function missingConcept(width, height) {
   const rgb = new Uint8Array(width * height * 3)
   for (let y = 0; y < height; y++) {

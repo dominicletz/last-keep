@@ -2,7 +2,7 @@
 
 Inside `twoPlayerNight`, read these functions in `e2e/scenarios.js`:
 
-- `expectGoblinsOnYard` — at least two monsters, each `onScreen`, `redNear` above 8 on one of them, no `goblin N` edge label, clock contains `Frenzy`, label is `Wave 1`.
+- `expectGoblinsOnYard` — at least two monsters, each `onScreen`, `redNear` above 8 on one of them (red hide or the dark rim), no `goblin N` edge label, the clock matches `waveClock` (`Frenzy in Ns` or `Frenzied. They are faster`), label is `Wave 1`.
 - `fight` — both browsers hold WASD and click. The mage also presses `KeyQ`.
 - `assertCombat` — the log has a hit with an amount and a death, the Fireball kind was in a snapshot, a boom was recorded, `[data-fx]` showed a digit and `Slain` at a real screen position, and the digit's float-up animation is running.
 - `movementIsInterpolated` — hold W and compare `rendered` with `self`. The gap is visible and stays inside one tick.

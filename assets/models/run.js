@@ -14,9 +14,11 @@ import {
   radiusProblems,
   rulesFrom,
   styleProblems,
-  styleTables
+  styleTables,
+  uncitedPaletteProblems
 } from "./registry.js"
 import {
+  blitCrop,
   cropMask,
   decodePng,
   encodePng,
@@ -29,6 +31,7 @@ import {
   renderParts,
   stackHorizontal
 } from "./raster.js"
+import { citationProblems, loadSheet } from "./sheets.js"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
 
@@ -43,27 +46,37 @@ export function checkModels({ writeGolden = false } = {}) {
   const simSource = fs.readFileSync(path.join(root, "lib/last_keep/game/sim.ex"), "utf8")
   const styleSource = fs.readFileSync(path.join(root, "STYLE.md"), "utf8")
   const rules = rulesFrom(rulesSource)
-  const { tokens, kinds } = styleTables(styleSource)
+  const { tokens, cited, kinds } = styleTables(styleSource)
   problems.push(...coverageProblems(listed, rules))
   problems.push(...paletteProblems(listed, tokens))
   problems.push(...styleProblems(listed, kinds))
   problems.push(...conceptProblems(listed))
   problems.push(...fitProblems(listed))
   problems.push(...radiusProblems(listed, rulesSource, simSource))
+  problems.push(...uncitedPaletteProblems(styleSource))
   if (!styleSource.includes("fit slack is 2")) problems.push("STYLE.md does not record fit slack 2")
   if (!styleSource.includes("pixel threshold is 0")) problems.push("STYLE.md does not record pixel threshold 0")
   if (!styleSource.includes("0.85")) problems.push("STYLE.md does not record the silhouette IoU limit")
 
   const present = {}
+  const sheets = {}
   for (const sheet of conceptSheets) {
-    present[sheet] = fs.existsSync(path.join(root, "docs/concept", sheet))
+    const file = path.join(root, "docs/concept", sheet)
+    present[sheet] = fs.existsSync(file)
+    if (!present[sheet]) continue
+    try {
+      sheets[sheet] = loadSheet(file)
+    } catch (error) {
+      problems.push(`${sheet} did not decode: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
+  problems.push(...citationProblems(cited, sheets))
 
   let rendered = []
   if (problems.length === 0) {
     try {
-      const first = renderGallery(listed, present)
-      const second = renderGallery(listed, present)
+      const first = renderGallery(listed, sheets)
+      const second = renderGallery(listed, sheets)
       const drift = galleryDiff(first, second)
       if (drift.length > 0) problems.push(...drift.map((item) => `second run differed: ${item}`))
       rendered = first
@@ -78,7 +91,7 @@ export function checkModels({ writeGolden = false } = {}) {
     writeGallery(artifactDir, rendered, present, true)
     const again = fs.mkdtempSync(path.join(os.tmpdir(), "lk-gallery-"))
     try {
-      writeGallery(again, renderGallery(listed, present), present, true)
+      writeGallery(again, renderGallery(listed, sheets), present, true)
       const written = directoryDiff(artifactDir, again)
       if (written.length > 0) problems.push(...written.map((item) => `artifacts/gallery differed: ${item}`))
     } finally {
@@ -115,15 +128,16 @@ function readThreshold() {
   return parsed.pixels
 }
 
-export function renderGallery(listed, present) {
+export function renderGallery(listed, sheets) {
   return listed.map((model) => {
     const frames = {}
     for (const light of lightNames) frames[light] = renderParts(model.parts, light)
-    const concept = present[model.concept.sheet]
-      ? { note: "present" }
+    const image = sheets[model.concept.sheet]
+    const concept = image
+      ? blitCrop(image, model.concept.crop, frames.day.width, frames.day.height)
       : missingConcept(frames.day.width, frames.day.height)
     const panels = lightNames.map((light) => frames[light])
-    panels.push(concept.rgb ? concept : missingConcept(frames.day.width, frames.day.height))
+    panels.push(concept)
     const sheet = stackHorizontal(panels)
     const portrait = model.family === "hero" ? cropMask(frames.dusk) : null
     return {
@@ -132,6 +146,7 @@ export function renderGallery(listed, present) {
       concept: model.concept,
       minArea: model.minArea,
       frames,
+      conceptFrame: concept,
       sheet,
       portrait,
       area: maskArea(frames.dusk.mask),
@@ -184,6 +199,7 @@ function galleryDiff(first, second) {
       if (pixelDiff(a.frames[light].rgb, b.frames[light].rgb) !== 0) problems.push(`${a.id} ${light}`)
     }
     if (pixelDiff(a.sheet.rgb, b.sheet.rgb) !== 0) problems.push(`${a.id} sheet`)
+    if (pixelDiff(a.conceptFrame.rgb, b.conceptFrame.rgb) !== 0) problems.push(`${a.id} concept`)
     if (Boolean(a.portrait) !== Boolean(b.portrait)) problems.push(`${a.id} portrait`)
     if (a.portrait && pixelDiff(a.portrait.rgb, b.portrait.rgb) !== 0) problems.push(`${a.id} portrait`)
   }
@@ -198,6 +214,7 @@ function writeGallery(dir, rendered, present, includeIndex) {
     fs.mkdirSync(folder, { recursive: true })
     for (const light of lightNames) fs.writeFileSync(path.join(folder, `${light}.png`), encodePng(row.frames[light]))
     fs.writeFileSync(path.join(folder, "sheet.png"), encodePng(row.sheet))
+    fs.writeFileSync(path.join(folder, "concept.png"), encodePng(row.conceptFrame))
     if (row.portrait) fs.writeFileSync(path.join(folder, "portrait.png"), encodePng(row.portrait))
   }
   const manifest = {
@@ -216,6 +233,7 @@ function writeGallery(dir, rendered, present, includeIndex) {
       night: round(row.luma.night),
       sheet: row.concept.sheet,
       figure: row.concept.figure,
+      crop: [row.concept.crop.x, row.concept.crop.y, row.concept.crop.w, row.concept.crop.h],
       conceptPresent: Boolean(present[row.concept.sheet])
     }))
   }
@@ -230,6 +248,7 @@ function goldenProblems(dir, rendered, threshold) {
   for (const row of rendered) {
     for (const light of lightNames) expected.add(`${row.id}/${light}.png`)
     expected.add(`${row.id}/sheet.png`)
+    expected.add(`${row.id}/concept.png`)
     if (row.portrait) expected.add(`${row.id}/portrait.png`)
   }
   if (!fs.existsSync(dir)) return ["test/gallery is missing"]
@@ -241,11 +260,12 @@ function goldenProblems(dir, rendered, threshold) {
     if (!expected.has(file)) problems.push(`unexpected golden ${file}`)
   }
   for (const row of rendered) {
-    for (const name of [...lightNames.map((light) => `${light}.png`), "sheet.png", ...(row.portrait ? ["portrait.png"] : [])]) {
+    for (const name of [...lightNames.map((light) => `${light}.png`), "sheet.png", "concept.png", ...(row.portrait ? ["portrait.png"] : [])]) {
       const file = path.join(dir, row.id, name)
       if (!fs.existsSync(file)) continue
       const decoded = decodePng(fs.readFileSync(file))
-      const current = name === "sheet.png" ? row.sheet : name === "portrait.png" ? row.portrait : row.frames[name.slice(0, -4)]
+      const current =
+        name === "sheet.png" ? row.sheet : name === "concept.png" ? row.conceptFrame : name === "portrait.png" ? row.portrait : row.frames[name.slice(0, -4)]
       const diff = pixelDiff(decoded.rgb, current.rgb)
       if (diff > threshold) problems.push(`${row.id}/${name} differs by ${diff} pixels (threshold ${threshold})`)
     }
@@ -277,6 +297,7 @@ function manifestText(rendered) {
       night: round(row.luma.night),
       sheet: row.concept.sheet,
       figure: row.concept.figure,
+      crop: [row.concept.crop.x, row.concept.crop.y, row.concept.crop.w, row.concept.crop.h],
       conceptPresent: Boolean(present[row.concept.sheet])
     }))
   }
@@ -311,8 +332,9 @@ export function galleryHtml(rendered, present, prefix) {
   const articles = rendered
     .map((row) => {
       const here = Boolean(present[row.concept.sheet])
+      const crop = `${row.concept.crop.x},${row.concept.crop.y},${row.concept.crop.w},${row.concept.crop.h}`
       const concept = here
-        ? `<img src="../docs/concept/${row.concept.sheet}" alt="concept sheet ${row.concept.sheet}">`
+        ? `<img src="${prefix}${row.id}/concept.png" alt="${row.id} concept crop of ${row.concept.figure}">`
         : `<p class="miss">Concept slot for ${row.concept.sheet} (${row.concept.figure}) is empty. That sheet is not in the repo.</p>`
       const portrait =
         row.family === "hero"
@@ -320,7 +342,7 @@ export function galleryHtml(rendered, present, prefix) {
           : ""
       return `<article id="${row.id}">
 <h2>${row.id}</h2>
-<p>${row.family}. Figure ${row.concept.figure} on ${row.concept.sheet}. Silhouette ${row.area} pixels. Night ${round(row.luma.night)}, dusk ${round(row.luma.dusk)}, day ${round(row.luma.day)}.</p>
+<p>${row.family}. Figure ${row.concept.figure} on ${row.concept.sheet} at ${crop}. Silhouette ${row.area} pixels. Night ${round(row.luma.night)}, dusk ${round(row.luma.dusk)}, day ${round(row.luma.day)}.</p>
 <img src="${prefix}${row.id}/sheet.png" alt="${row.id} day, dusk, night, and concept slot">
 ${portrait}
 ${concept}

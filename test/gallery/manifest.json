@@ -10,9 +10,9 @@
     "rank": 0
   },
   "conceptPresent": {
-    "lk_heroes.jpg": false,
-    "lk_theme.jpg": false,
-    "lk_monsters.jpg": false
+    "heroes.jpg": true,
+    "monsters.jpg": true,
+    "theme.jpg": true
   },
   "assets": [
     {
@@ -20,228 +20,342 @@
       "family": "hero",
       "area": 624,
       "minArea": 499,
-      "day": 93.93,
-      "dusk": 42.83,
-      "night": 16.21,
-      "sheet": "lk_heroes.jpg",
+      "day": 85.4,
+      "dusk": 39,
+      "night": 14.99,
+      "sheet": "heroes.jpg",
       "figure": "warrior",
-      "conceptPresent": false
+      "crop": [
+        24,
+        158,
+        268,
+        412
+      ],
+      "conceptPresent": true
     },
     {
       "id": "mage",
       "family": "hero",
       "area": 523,
       "minArea": 418,
-      "day": 48.96,
-      "dusk": 22.08,
-      "night": 9.12,
-      "sheet": "lk_heroes.jpg",
+      "day": 74.21,
+      "dusk": 33.78,
+      "night": 13.45,
+      "sheet": "heroes.jpg",
       "figure": "mage",
-      "conceptPresent": false
+      "crop": [
+        312,
+        124,
+        196,
+        448
+      ],
+      "conceptPresent": true
     },
     {
       "id": "scout",
       "family": "hero",
       "area": 367,
       "minArea": 293,
-      "day": 38.64,
-      "dusk": 18.23,
-      "night": 7.54,
-      "sheet": "lk_heroes.jpg",
+      "day": 96.84,
+      "dusk": 44.94,
+      "night": 18.26,
+      "sheet": "heroes.jpg",
       "figure": "scout",
-      "conceptPresent": false
+      "crop": [
+        524,
+        100,
+        216,
+        480
+      ],
+      "conceptPresent": true
     },
     {
       "id": "farmer",
       "family": "hero",
       "area": 898,
       "minArea": 718,
-      "day": 147.32,
-      "dusk": 61.59,
-      "night": 16.34,
-      "sheet": "lk_heroes.jpg",
+      "day": 150.53,
+      "dusk": 62.98,
+      "night": 16.44,
+      "sheet": "heroes.jpg",
       "figure": "farmer",
-      "conceptPresent": false
+      "crop": [
+        752,
+        98,
+        250,
+        480
+      ],
+      "conceptPresent": true
     },
     {
       "id": "engineer",
       "family": "hero",
       "area": 372,
       "minArea": 297,
-      "day": 117.03,
-      "dusk": 54.24,
-      "night": 21.22,
-      "sheet": "lk_heroes.jpg",
+      "day": 99.61,
+      "dusk": 45.45,
+      "night": 17.32,
+      "sheet": "heroes.jpg",
       "figure": "engineer",
-      "conceptPresent": false
+      "crop": [
+        1016,
+        158,
+        224,
+        432
+      ],
+      "conceptPresent": true
     },
     {
       "id": "goblin",
       "family": "monster",
       "area": 380,
       "minArea": 304,
-      "day": 76.06,
-      "dusk": 39.94,
-      "night": 15,
-      "sheet": "lk_monsters.jpg",
+      "day": 79.42,
+      "dusk": 36.37,
+      "night": 13.97,
+      "sheet": "monsters.jpg",
       "figure": "goblin",
-      "conceptPresent": false
+      "crop": [
+        16,
+        328,
+        236,
+        246
+      ],
+      "conceptPresent": true
     },
     {
       "id": "skeleton",
       "family": "monster",
       "area": 162,
       "minArea": 129,
-      "day": 159.96,
-      "dusk": 77.12,
-      "night": 34.03,
-      "sheet": "lk_monsters.jpg",
+      "day": 99.46,
+      "dusk": 47.89,
+      "night": 21.2,
+      "sheet": "monsters.jpg",
       "figure": "skeleton",
-      "conceptPresent": false
+      "crop": [
+        260,
+        328,
+        260,
+        246
+      ],
+      "conceptPresent": true
     },
     {
       "id": "wolf",
       "family": "monster",
       "area": 249,
       "minArea": 199,
-      "day": 39.14,
-      "dusk": 17.83,
-      "night": 7.29,
-      "sheet": "lk_monsters.jpg",
+      "day": 81.36,
+      "dusk": 37.68,
+      "night": 15.19,
+      "sheet": "monsters.jpg",
       "figure": "wolf",
-      "conceptPresent": false
+      "crop": [
+        760,
+        340,
+        270,
+        245
+      ],
+      "conceptPresent": true
     },
     {
       "id": "troll",
       "family": "monster",
       "area": 1045,
       "minArea": 836,
-      "day": 65.15,
-      "dusk": 28.74,
-      "night": 10.75,
-      "sheet": "lk_monsters.jpg",
-      "figure": "troll",
-      "conceptPresent": false
+      "day": 81.84,
+      "dusk": 37.73,
+      "night": 14.16,
+      "sheet": "monsters.jpg",
+      "figure": "ogre",
+      "crop": [
+        524,
+        292,
+        226,
+        286
+      ],
+      "conceptPresent": true
     },
     {
       "id": "boss",
       "family": "monster",
       "area": 1333,
       "minArea": 1066,
-      "day": 54,
-      "dusk": 24.78,
-      "night": 8.47,
-      "sheet": "lk_monsters.jpg",
-      "figure": "boss",
-      "conceptPresent": false
+      "day": 50.81,
+      "dusk": 22.43,
+      "night": 7.6,
+      "sheet": "monsters.jpg",
+      "figure": "dark rider",
+      "crop": [
+        1000,
+        70,
+        275,
+        520
+      ],
+      "conceptPresent": true
     },
     {
       "id": "wall",
       "family": "building",
       "area": 462,
       "minArea": 369,
-      "day": 55.19,
-      "dusk": 26.29,
-      "night": 9.53,
-      "sheet": "lk_theme.jpg",
-      "figure": "wall",
-      "conceptPresent": false
+      "day": 66.66,
+      "dusk": 31.14,
+      "night": 11.41,
+      "sheet": "theme.jpg",
+      "figure": "palisade",
+      "crop": [
+        160,
+        280,
+        250,
+        220
+      ],
+      "conceptPresent": true
     },
     {
       "id": "tower",
       "family": "building",
       "area": 769,
       "minArea": 615,
-      "day": 80.27,
-      "dusk": 36.56,
-      "night": 13.52,
-      "sheet": "lk_theme.jpg",
-      "figure": "tower",
-      "conceptPresent": false
+      "day": 55.27,
+      "dusk": 25.48,
+      "night": 9.22,
+      "sheet": "theme.jpg",
+      "figure": "stone tower",
+      "crop": [
+        590,
+        36,
+        120,
+        130
+      ],
+      "conceptPresent": true
     },
     {
       "id": "trap",
       "family": "building",
       "area": 265,
       "minArea": 212,
-      "day": 111.36,
-      "dusk": 49.75,
-      "night": 18.6,
-      "sheet": "lk_theme.jpg",
-      "figure": "trap",
-      "conceptPresent": false
+      "day": 58.98,
+      "dusk": 26.27,
+      "night": 10.04,
+      "sheet": "theme.jpg",
+      "figure": "ground torch",
+      "crop": [
+        520,
+        490,
+        100,
+        90
+      ],
+      "conceptPresent": true
     },
     {
       "id": "field",
       "family": "building",
       "area": 348,
       "minArea": 278,
-      "day": 161.56,
-      "dusk": 73.48,
-      "night": 28.76,
-      "sheet": "lk_theme.jpg",
-      "figure": "field",
-      "conceptPresent": false
+      "day": 97.81,
+      "dusk": 45.41,
+      "night": 17.3,
+      "sheet": "theme.jpg",
+      "figure": "wheat",
+      "crop": [
+        740,
+        300,
+        250,
+        140
+      ],
+      "conceptPresent": true
     },
     {
       "id": "forge",
       "family": "building",
       "area": 765,
       "minArea": 612,
-      "day": 72.76,
-      "dusk": 33.1,
-      "night": 9.57,
-      "sheet": "lk_theme.jpg",
-      "figure": "forge",
-      "conceptPresent": false
+      "day": 110.74,
+      "dusk": 50.72,
+      "night": 14.43,
+      "sheet": "theme.jpg",
+      "figure": "lit house",
+      "crop": [
+        500,
+        190,
+        200,
+        150
+      ],
+      "conceptPresent": true
     },
     {
       "id": "mage_tower",
       "family": "building",
       "area": 1008,
       "minArea": 806,
-      "day": 58.21,
-      "dusk": 25.1,
-      "night": 8.82,
-      "sheet": "lk_theme.jpg",
-      "figure": "mage tower",
-      "conceptPresent": false
+      "day": 76.41,
+      "dusk": 32.51,
+      "night": 11.51,
+      "sheet": "theme.jpg",
+      "figure": "spell light",
+      "crop": [
+        470,
+        330,
+        160,
+        140
+      ],
+      "conceptPresent": true
     },
     {
       "id": "keep",
       "family": "prop",
       "area": 4022,
       "minArea": 3217,
-      "day": 79.37,
-      "dusk": 33.53,
-      "night": 8.2,
-      "sheet": "lk_theme.jpg",
+      "day": 51.97,
+      "dusk": 21.89,
+      "night": 5.39,
+      "sheet": "theme.jpg",
       "figure": "keep",
-      "conceptPresent": false
+      "crop": [
+        548,
+        28,
+        188,
+        230
+      ],
+      "conceptPresent": true
     },
     {
       "id": "tree",
       "family": "prop",
       "area": 305,
       "minArea": 244,
-      "day": 71.95,
-      "dusk": 32.38,
-      "night": 12.88,
-      "sheet": "lk_theme.jpg",
-      "figure": "harvestable tree",
-      "conceptPresent": false
+      "day": 50.28,
+      "dusk": 23.49,
+      "night": 9.21,
+      "sheet": "theme.jpg",
+      "figure": "pine",
+      "crop": [
+        0,
+        500,
+        180,
+        210
+      ],
+      "conceptPresent": true
     },
     {
       "id": "scenery",
       "family": "prop",
       "area": 122,
       "minArea": 97,
-      "day": 95,
-      "dusk": 46.67,
-      "night": 21.3,
-      "sheet": "lk_theme.jpg",
-      "figure": "scenery trunk",
-      "conceptPresent": false
+      "day": 50.6,
+      "dusk": 24.53,
+      "night": 11.53,
+      "sheet": "theme.jpg",
+      "figure": "pine trunk",
+      "crop": [
+        1080,
+        160,
+        180,
+        260
+      ],
+      "conceptPresent": true
     }
   ]
 }

@@ -24,7 +24,9 @@ The registry covers every hero from `Rules.heroes/0`, every monster kind the sim
 
 Each asset writes a contact sheet at game zoom through the pixel path, in day, dusk, and night light, under `artifacts/gallery/<id>/`. `docs/gallery.html` links the committed frames in `test/gallery/`. Hero portraits are the dusk crop of the hero sheets. CI uploads `artifacts/gallery/` as an artifact.
 
-A side-by-side frame places the concept crop from `docs/concept/` next to the in-game render. The concept files are `lk_heroes.jpg`, `lk_theme.jpg`, and `lk_monsters.jpg`. If a sheet is not in the repo, the slot stays empty and the page says so. Do not invent a substitute. A mapping that names any other file fails.
+A side-by-side frame places the concept crop from `docs/concept/` next to the in-game render. The concept files are `heroes.jpg`, `monsters.jpg`, and `theme.jpg`. The fourth panel is that crop, nearest-neighbor and letterboxed. `docs/gallery.html` links `concept.png`. If a sheet is not in the repo, the slot stays empty and the page says so. Do not invent a substitute. A mapping that names any other file fails.
+
+Every palette token cites one of those sheets and an `x,y,w,h` region. The hex has to equal the jpeg-js lower median of that patch. A token with no citation, a region outside the sheet, or a hex that is not that median fails. A hand-exported PNG is still not a pass.
 
 ## Checks
 
@@ -32,6 +34,7 @@ All of these fail the command:
 
 - The render throws or the sheet is empty.
 - A material color is not a `STYLE.md` palette token. Tolerance is zero on the spec, before lighting.
+- A palette token does not cite `heroes.jpg`, `monsters.jpg`, or `theme.jpg` and a region, or the jpeg-js median of that region is not the cited hex.
 - At game zoom the silhouette is empty or its pixel area is below the minimum recorded for that kind. The recorded minimum also has to stay at least half the measured area.
 - Two kinds in the same family have a silhouette intersection-over-union at or above 0.85. They must read as different bodies.
 - The mesh bounds do not fit the gameplay collider for that kind. The fit slack is 2.

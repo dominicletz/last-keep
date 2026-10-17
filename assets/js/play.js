@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, isTypingTarget, seatFromQuery } from "./input"
-import { bonusCopy, callAnchor, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
+import { bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
@@ -119,6 +119,7 @@ function start(code, seat, ui) {
   const fx = []
   const seen = { kinds: [], labels: [], log: [] }
   let reasonEntry = { text: "", until: 0 }
+  let placeTick = null
   let focused = document.hasFocus()
   const audio = createConductor({ storage: window.localStorage })
   const unlockAudio = () => audio.unlock()
@@ -342,7 +343,9 @@ function start(code, seat, ui) {
     start.hidden = !snap.hold
     start.disabled = !me?.host
     start.textContent = me?.host ? "Start the night" : "Waiting for the host"
-    if ((snap.events || []).some((ev) => ev.type === "place")) {
+    const placed = consumePlace(snap, placeTick)
+    placeTick = placed.seenTick
+    if (placed.clear) {
       build = null
       armed = null
     }
@@ -432,14 +435,6 @@ function hudMarkup() {
       <div class="roster" data-roster></div>
     </div>
   `
-}
-
-function clockText(snap) {
-  if (snap.hold) return "Waiting to start"
-  const seconds = Math.ceil(snap.phase_ms / 1000)
-  if (snap.phase === "build") return `Night in ${seconds}s`
-  if (snap.enraged) return "Frenzied. They are faster"
-  return `Frenzy in ${seconds}s`
 }
 
 function drawYou(ui, snap, selfId) {

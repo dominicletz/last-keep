@@ -1,6 +1,19 @@
-const SKIN = 0xf0d2b0
-const STEEL = 0xd8d2c4
-const WOOD = 0x6b4228
+const SKIN = 0xd99b64
+const STEEL = 0xd8cfc3
+const WOOD = 0x8e755b
+const ROBE = 0x3e6dab
+const DUSK = 0x5d505b
+const GEM = 0x23d9f3
+const HOOD = 0x88a05b
+const STRAW = 0xe5b268
+const DENIM = 0x3a4a60
+const CLOTH = 0xe6ccad
+const APRON = 0x4c3d27
+const SHIELD = 0x38516f
+const PINE = 0x353e27
+const LEATHER = 0x261e0e
+const PALISADE = 0x795237
+const PLATE = 0x4a464c
 
 const HEROES = ["warrior", "mage", "scout", "farmer", "engineer"]
 
@@ -25,56 +38,56 @@ export function heroSignature(kind) {
 function partsFor(kind) {
   if (kind === "warrior") {
     return [
-      box("boots", 14, 4, 10, 0, 2, 0, 0x3a342c),
-      box("legs", 14, 8, 9, 0, 8, 0, 0x4a4038),
-      box("torso", 16, 12, 10, 0, 18, 0, 0x8e99a6),
-      box("shoulders", 30, 7, 14, 0, 25, 0, 0x6e7580, true),
+      box("boots", 14, 4, 10, 0, 2, 0, LEATHER),
+      box("legs", 14, 8, 9, 0, 8, 0, APRON),
+      box("torso", 16, 12, 10, 0, 18, 0, STEEL),
+      box("shoulders", 30, 7, 14, 0, 25, 0, PLATE, true),
       box("head", 8, 8, 8, 0, 33, 0, SKIN),
-      box("helm", 10, 6, 10, 0, 40, 0, 0xb0b6be),
-      box("shield", 5, 18, 14, -18, 18, 2, 0x8a3d2f, true),
+      box("helm", 10, 6, 10, 0, 40, 0, STEEL),
+      box("shield", 5, 18, 14, -18, 18, 2, SHIELD, true),
       box("sword", 3, 22, 3, 16, 20, 0, STEEL)
     ]
   }
   if (kind === "mage") {
     return [
-      box("hem", 22, 4, 16, 0, 2, 0, 0x1d3558),
-      box("robe", 14, 24, 10, 0, 15, 0, 0x2c4f86, true),
+      box("hem", 22, 4, 16, 0, 2, 0, DUSK),
+      box("robe", 14, 24, 10, 0, 15, 0, ROBE, true),
       box("head", 7, 7, 7, 0, 30, 0, SKIN),
-      box("brim", 18, 2, 18, 0, 34, 0, 0x1a2744),
-      cone("hat", 12, 16, 12, 0, 43, 0, 0x1a2744, true),
+      box("brim", 18, 2, 18, 0, 34, 0, DUSK),
+      cone("hat", 12, 16, 12, 0, 43, 0, DUSK, true),
       box("staff", 2, 36, 2, 14, 18, 0, WOOD, true),
-      box("gem", 4, 4, 4, 14, 38, 0, 0x7ec8ff)
+      box("gem", 4, 4, 4, 14, 38, 0, GEM)
     ]
   }
   if (kind === "scout") {
     return [
-      box("legs", 8, 10, 6, 0, 5, 0, 0x243628),
-      box("cloak", 10, 16, 5, 0, 16, -2, 0x1c3a24),
+      box("legs", 8, 10, 6, 0, 5, 0, PINE),
+      box("cloak", 10, 16, 5, 0, 16, -2, HOOD),
       box("head", 7, 7, 7, 0, 26, 0, SKIN),
-      box("hood", 12, 12, 12, 0, 33, 1, 0x14281c, true),
+      box("hood", 12, 12, 12, 0, 33, 1, HOOD, true),
       box("bow", 3, 26, 8, 10, 18, 0, WOOD, true),
-      box("quiver", 4, 12, 4, -6, 18, -3, 0x6b4228)
+      box("quiver", 4, 12, 4, -6, 18, -3, PALISADE)
     ]
   }
   if (kind === "engineer") {
     return [
-      box("boots", 12, 4, 10, 0, 2, 0, 0x3a3028),
-      box("legs", 12, 8, 8, 0, 8, 0, 0x4a4038),
-      box("torso", 14, 12, 9, 0, 17, 0, 0x8a5a32),
-      box("apron", 16, 14, 4, 0, 14, 6, 0xc4a574, true),
+      box("boots", 12, 4, 10, 0, 2, 0, LEATHER),
+      box("legs", 12, 8, 8, 0, 8, 0, APRON),
+      box("torso", 14, 12, 9, 0, 17, 0, CLOTH),
+      box("apron", 16, 14, 4, 0, 14, 6, APRON, true),
       box("head", 8, 7, 8, 0, 28, 0, SKIN),
-      box("goggles", 10, 3, 4, 0, 30, 4, 0xd8d2c4),
+      box("goggles", 10, 3, 4, 0, 30, 4, STEEL),
       box("hammer", 14, 5, 5, 16, 20, 0, STEEL, true),
       box("handle", 3, 16, 3, 12, 14, 0, WOOD),
-      box("satchel", 8, 8, 7, -2, 14, -7, 0x5a4030)
+      box("satchel", 8, 8, 7, -2, 14, -7, PALISADE)
     ]
   }
   return [
-    box("legs", 12, 8, 8, 0, 4, 0, 0x5a6a32),
-    box("torso", 14, 12, 9, 0, 14, 0, 0xc4a15a),
+    box("legs", 12, 8, 8, 0, 4, 0, PALISADE),
+    box("torso", 14, 12, 9, 0, 14, 0, DENIM),
     box("head", 8, 7, 8, 0, 24, 0, SKIN),
-      box("brim", 44, 3, 44, 0, 30, 0, 0xd6b25a, true),
-    box("crown", 10, 6, 10, 0, 34, 0, 0xc6a04a),
+    box("brim", 44, 3, 44, 0, 30, 0, STRAW, true),
+    box("crown", 10, 6, 10, 0, 34, 0, STRAW),
     box("fork", 3, 30, 3, 14, 16, 2, WOOD, true)
   ]
 }
