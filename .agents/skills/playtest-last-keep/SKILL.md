@@ -30,11 +30,17 @@ Unset `BASE_URL` for a local server. Set it to `https://agentyard.letz.tw` to pl
 
 They share one room. The hero is only the seat they play.
 
-1. Gameplay, Ada, warrior, host. Starts the night. Judges whether a minute of play is readable, fair, and worth another minute. Reads `docs/GAME-INTERACTIONS.md`.
-2. Graphics, Lux, mage. Judges whether bodies, buildings, the yard, and the night read at a glance.
+1. Gameplay, Ada, warrior, host. Starts the night. Judges whether a minute of play is readable, fair, and worth another minute. Reads `docs/GAME-INTERACTIONS.md` and the UI principles in `STYLE.md`. A new number on the chrome is a finding. A resource, a cooldown, or a clock that could have been a thing in the world is a finding. Cite LK-049 if it is the queued diegetic pass, instead of opening a duplicate.
+2. Graphics, Lux, mage. Judges whether bodies, buildings, the yard, and the night read at a glance, against `STYLE.md`. Diegetic first, spatial when a world marker is clearer, meta rare, non-diegetic only for the invite, mute, and the fallen score. After the gallery exists, score fidelity in the asset review below.
 3. Music and sound, Bram, engineer. Judges what is heard. Name the day loop, the night loop, the horn, the clear, and the hit, kill, build, keep, and fall cues if they play. If the build is silent, the report says so. Mute and volume should survive a reload.
 4. Game logic, Pip, scout. Cross-checks the screenshot against the saved snapshot and against `docs/GAME-INTERACTIONS.md`. A planned edge is a finding. Screen and state that disagree are a finding.
-5. Character design, Nia, farmer. Judges whether each hero and monster reads as that character, and whether the roster says who is who.
+5. Character design, Nia, farmer. Judges whether each hero and monster reads as that character, and whether the roster says who is who. The lobby cards in LK-057 are the queued portrait pass. Until those cards exist, say the picker is still text, and do not open a second copy of LK-057.
+
+## Asset review
+
+Run this after the five sections, once `artifacts/gallery/` exists. Before that, note that the gallery is still LK-058 and do not invent scores.
+
+Graphics and Character design score each asset from 1 to 5 against the concept crop on the side-by-side sheet. File every gap in `playtests/BACKLOG.md` with the asset id. Append the score to the Fidelity table. A lower score than the previous row for that asset needs a reason in the table. The next implementation edits the model spec, regenerates, and re-scores. It does not paint the gallery by hand.
 
 ## Report
 

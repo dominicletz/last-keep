@@ -58,6 +58,17 @@ Examples:
 Medieval fighting archetypes (warriors, mages, rangers and similar) are still
 to be combined with these roles.
 
+## UI principles
+
+The screen is mostly diegetic, in the spirit of Kingdom Two Crowns. A sack of coins, not a gold number. Spatial markers stay where a world-space cue is clearer. Meta overlays are rare. Non-diegetic chrome is the leftover.
+
+- Diegetic. It exists in the world. Coins in a pouch on the hero, logs and food stacked by the keep, cracks and fire on the stone, a darker sky for the coming night.
+- Spatial. A marker in the world when a label would be worse. The build-range ring, the placement ghost, an offscreen wave call, the hero's name on the figure. Building costs belong here as coin and log icons over the ghost.
+- Meta. A light touch on the screen about the body. A vignette when health is low. Do not reach for it first.
+- Non-diegetic. Only what cannot live in the world: the invite link, mute and volume, and the score after the keep falls.
+
+`STYLE.md` names the palette and the asset loop. `assets/js/ui.js` is the list of non-diegetic slots. That list may shrink. It may not grow.
+
 ## Visual style
 
 - Pixel art rendered from low-poly 3D models at low resolution, upscaled with
@@ -73,6 +84,8 @@ to be combined with these roles.
 
 ## Next steps
 
-1. Write a style guide (palette, lighting, pixel density, UI tone).
-2. Draft images for monsters, heroes, and the overall theme.
-3. Only after that: implementation planning.
+Playtest round 5 finishes the audio and silhouette build. The theming round starts after it, in this order.
+
+1. The asset pipeline and the verification loop in `STYLE.md`. That pull request does not sculpt the town.
+2. The town kit, heroes, monsters, and lighting, generated from that pipeline.
+3. The diegetic UI pass, and hero portrait cards taken from the gallery renders.

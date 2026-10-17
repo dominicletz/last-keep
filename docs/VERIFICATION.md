@@ -45,3 +45,9 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - `heroes.test.js` requires those five signatures. `bodies.test.js` requires the pair offset. `hud.test.js` requires an edge call to stop short of the roster box and the build ring to follow the armed reach.
 - CI fails a flaky Playwright pass, and it fails if `assets/js/audio.js` contains a remote URL.
 - This pass does not change the Elixir simulation. The coverage floor stays 68.
+
+## 2026-10-17 theming plan
+
+- `ui.test.js` locks the non-diegetic HUD at 28 names. `assertHudBudget` in `twoPlayerNight` requires the live page to show the 27 slots that are not the fallen screen, and it fails on unclassified HUD text. The next theming change may remove a name. It may not add one.
+- `fidelity.test.js` reads the Fidelity table in `playtests/BACKLOG.md`. A later score for the same asset may be lower only with a reason.
+- The theming round is queued behind playtest round 5. Its first pull request is the model pipeline in `STYLE.md` and `.agents/skills/verify-assets/SKILL.md`. The town kit comes after that pipeline exists. The coverage floor stays 68.

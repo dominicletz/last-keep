@@ -4,6 +4,7 @@ import { loadScores } from "./landing"
 import { axes, seatFromQuery } from "./input"
 import { bonusCopy, callAnchor, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
 import { createConductor } from "./audio"
+import { LIVE_NON_DIEGETIC, NON_DIEGETIC } from "./ui"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const BUILD_LABEL = {
@@ -118,6 +119,7 @@ function start(code, seat, ui) {
   let reasonEntry = { text: "", until: 0 }
   let focused = document.hasFocus()
   const audio = createConductor({ storage: window.localStorage })
+  window.__lastKeepUi = { nonDiegetic: NON_DIEGETIC, liveNonDiegetic: LIVE_NON_DIEGETIC }
   const unlockAudio = () => audio.unlock()
   window.addEventListener("pointerdown", unlockAudio)
   window.addEventListener("keydown", unlockAudio)
@@ -401,28 +403,30 @@ function hudMarkup() {
   ]
     .map(
       ([key, label]) =>
-        `<div class="skill" data-skill="${key}"><b>${label}</b><small data-skill-name="${key}"></small><div class="cool"></div></div>`
+        `<div class="skill" data-skill="${key}" data-nd="skill-${key}"><b>${label}</b><small data-skill-name="${key}"></small><div class="cool"></div></div>`
     )
     .join("")
-  const builds = BUILD.map((kind) => `<button type="button" class="build" data-build="${kind}">${BUILD_LABEL[kind]}</button>`).join("")
+  const builds = BUILD.map(
+    (kind) => `<button type="button" class="build" data-build="${kind}" data-nd="build-${kind}">${BUILD_LABEL[kind]}</button>`
+  ).join("")
   return `
     <div class="hud-top">
-      <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-score>Score 0</div><div data-next></div><div data-build-reason hidden></div></div>
-      <button type="button" data-start hidden>Start the night</button>
-      <div class="chip bonuses" data-bonuses><div data-forge></div><div data-spire></div><div data-relics></div></div>
-      <div class="chip" data-stock></div>
-      <button type="button" data-raise>Raise the keep</button>
-      <button type="button" data-copy>Copy invite</button>
-      <div class="sound"><button type="button" data-mute>Sound</button><input type="range" min="0" max="100" value="70" data-volume aria-label="Volume"></div>
+      <div class="chip"><b data-wave data-nd="wave">Wave</b><div data-clock data-nd="clock"></div><div data-score data-nd="score">Score 0</div><div data-next data-nd="next"></div><div data-build-reason data-nd="build-reason" hidden></div></div>
+      <button type="button" data-start data-nd="start" hidden>Start the night</button>
+      <div class="chip bonuses" data-bonuses><div data-forge data-nd="forge"></div><div data-spire data-nd="spire"></div><div data-relics data-nd="relics"></div></div>
+      <div class="chip" data-stock data-nd="stock"></div>
+      <button type="button" data-raise data-nd="raise">Raise the keep</button>
+      <button type="button" data-copy data-nd="copy">Copy invite</button>
+      <div class="sound"><button type="button" data-mute data-nd="mute">Sound</button><input type="range" min="0" max="100" value="70" data-volume data-nd="volume" aria-label="Volume"></div>
     </div>
-    <div class="hint-layer" data-hints></div>
-    <div class="hint-layer"><div data-you hidden></div></div>
-    <div class="hint-layer" data-fx></div>
+    <div class="hint-layer" data-hints data-ui="spatial"></div>
+    <div class="hint-layer" data-ui="spatial"><div data-you data-ui="spatial" hidden></div></div>
+    <div class="hint-layer" data-fx data-ui="spatial"></div>
     <div class="hud-bottom">
-      <div class="heart"><div>You <span data-hp></span></div><div class="meter"><span data-heart style="width:100%"></span></div><div>Keep <span data-keep></span></div></div>
+      <div class="heart"><div data-nd="hp">You <span data-hp></span></div><div class="meter"><span data-heart style="width:100%"></span></div><div data-nd="keep">Keep <span data-keep></span></div></div>
       <div class="skills">${skills}</div>
       <div class="builds">${builds}</div>
-      <div class="roster" data-roster></div>
+      <div class="roster" data-roster data-nd="roster"></div>
     </div>
   `
 }
@@ -543,7 +547,7 @@ function showOver(ui, snap) {
   ui.overlay.hidden = false
   ui.overlay.dataset.score = String(snap.score)
   ui.overlay.innerHTML = `
-    <div class="panel">
+    <div class="panel" data-nd="fallen">
       <h2>The keep has fallen</h2>
       <p>Wave ${snap.wave}. Survived ${snap.waves_survived}. ${snap.kills} kills. Score ${snap.score}.</p>
       <p><button type="button" data-restart>New keep</button></p>
