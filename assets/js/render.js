@@ -5,6 +5,7 @@ import { frameFor } from "./frame"
 import { poseAt } from "./motion"
 import { sceneryForest } from "./scenery"
 import { zoomFor } from "./town"
+import { monsterVisible } from "./cull"
 
 const HERO_COLOR = {
   warrior: 0x8e99a6,
@@ -46,6 +47,7 @@ export function createView(stage) {
 
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
   const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
+  const probe = new THREE.Vector3()
   let viewFrame = opening
   let townRank = 0
 
@@ -540,6 +542,11 @@ export function createView(stage) {
     const heroMesh = heroKey ? meshes.get(heroKey) : null
     if (heroMesh && window.__lastKeep) {
       window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
+    }
+    for (const [key, mesh] of meshes) {
+      if (!key.startsWith("monster:") && !key.startsWith("hero:")) continue
+      probe.set(mesh.position.x, 16, mesh.position.z).project(camera)
+      mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
     }
     renderer.render(scene, camera)
     requestAnimationFrame(frame)
