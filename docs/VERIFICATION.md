@@ -104,6 +104,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - A 1280×800 window used to be 427×267 (`pixelSize` 3). It is now 640×400 (`pixelSize` 2). The yard frustum is unchanged, so rank 4 still pulls back. `heroHeightProblems` requires every hero's day-raster height to be at least 24 internal pixels at rank 0 and at rank 4. The engineer is the short one, at 47 and 32. Meshes were not scaled, because the farmer brim is already 24 against a horizontal limit of 28.
 - Heroes and monsters have a dusk close-up framed on the mesh, 80px tall, and `compare.png` places it beside the concept crop. The portrait is that close-up. `gallery.test.js` locks the band 64–96 and the 24px floor. This does not change the simulation. The coverage floor stays 69.
 
+## 2026-10-17 live keep
+
+- The in-game keep is `keepParts`, the same mesh as the gallery. `window.__lastKeep.townLook.keepColors` includes the shadowed stone `#4b3c33`, the lit course `#654e41`, and the mortar `#2c2a2a`. The two-player night requires all three, plus a course part. The stone token moved from the warm lit face at 672,143 to the shadowed block at 648,120, and that lit face is now the course. This does not change the simulation. The coverage floor stays 69.
+
 ## 2026-10-17 plaza ground
 
 - The yard disc stays moss. The plaza octagon is that same grass token, with a stone ring from the belfry token and the dirt cross still on the path token. `sceneColorProblems` fails a plaza that is not grass, and one that is closer to the path token than to the grass. This does not change the simulation. The coverage floor stays 69.

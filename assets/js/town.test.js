@@ -20,10 +20,10 @@ test("the keep tower grows a course of stone at each rank", () => {
     assert.ok(parts.some((part) => part.name === "pine" && part.color === 0x353e27))
     const courses = parts.filter((part) => part.name === "course")
     assert.ok(courses.length >= 8)
+    assert.ok(courses.some((part) => part.color === 0x4b3c33))
     assert.ok(courses.some((part) => part.color === 0x654e41))
-    assert.ok(courses.some((part) => part.color === 0x453a32))
     assert.ok(courses.some((part) => part.color === 0x2c2a2a))
-    assert.equal(parts.find((part) => part.name === "tower").color, 0x654e41)
+    assert.equal(parts.find((part) => part.name === "tower").color, 0x4b3c33)
   }
   assert.deepEqual(
     modelParts("keep").map((part) => part.name),
@@ -39,7 +39,7 @@ test("the yard kit is a palisade, wheat, a stone tower, and a thatched house", (
   assert.equal(modelParts("tower").filter((part) => part.name === "merlon").length, 2)
   const forge = modelParts("forge")
   assert.ok(forge.some((part) => part.name === "roof" && part.color === 0x43382e))
-  assert.ok(forge.some((part) => part.color === 0x654e41))
+  assert.ok(forge.some((part) => part.color === 0x4b3c33))
 })
 
 test("each keep rank pulls the camera back and widens the yard", () => {

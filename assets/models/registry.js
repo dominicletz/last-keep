@@ -14,8 +14,8 @@ export const yardProps = ["keep", "tree", "scenery"]
 
 const HERO_RADIUS = 14
 const TREE_RADIUS = 16
-const STONE = 0x654e41
-const COURSE = 0x453a32
+const STONE = 0x4b3c33
+const COURSE = 0x654e41
 const JOINT = 0x2c2a2a
 const THATCH = 0x43382e
 const PALISADE = 0x795237
@@ -156,15 +156,15 @@ function wheatParts() {
   return parts
 }
 
-// Stacked courses. Stone bands are twice the joint and the greyer course,
+// Stacked courses. Mortar separates the shadowed stone from the lit course,
 // and the odd courses step in so the blocks read at game zoom.
 function shellCourses(height, bottom, width, depth) {
   const parts = []
   const pattern = [
-    { h: 12, color: STONE },
+    { h: 8, color: STONE },
     { h: 6, color: JOINT },
-    { h: 12, color: STONE },
-    { h: 6, color: COURSE }
+    { h: 8, color: COURSE },
+    { h: 6, color: JOINT }
   ]
   let y = bottom
   let i = 0

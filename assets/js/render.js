@@ -421,6 +421,7 @@ export function createView(stage) {
         townLook: {
           rank: townRank,
           keep: keepParts(townRank).map((part) => part.name),
+          keepColors: [...new Set(keepParts(townRank).map((part) => part.color))],
           plaza: plazaColor,
           path: true
         },

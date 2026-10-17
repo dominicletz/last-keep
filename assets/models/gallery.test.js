@@ -131,13 +131,13 @@ test("the keep body stays near the belfry stone and is not one brown tone", () =
   const { cited } = styleTables(markdown)
   const stone = cited.find((token) => token.name === "stone")
   assert.equal(medianHex(theme, stone.region), stone.hex)
-  assert.equal(stone.hex, "654e41")
+  assert.equal(stone.hex, "4b3c33")
   const listed = [
     {
       id: "keep",
       concept: { crop: { x: 548, y: 28, w: 188, h: 230 } },
       parts: [
-        { name: "tower", w: 32, h: 104, d: 32, color: 0x554034 },
+        { name: "tower", w: 32, h: 104, d: 32, color: 0x8a5a32 },
         { name: "roof", w: 46, h: 26, d: 46, color: 0x43382e }
       ]
     }
@@ -145,9 +145,9 @@ test("the keep body stays near the belfry stone and is not one brown tone", () =
   const flat = keepStoneProblems(listed, cited)
   assert.ok(flat.some((line) => line.includes("away from stone")))
   assert.ok(flat.some((line) => line.includes("does not vary")))
-  listed[0].parts[0].color = 0x654e41
+  listed[0].parts[0].color = 0x4b3c33
   listed[0].parts.push(
-    { name: "course", w: 20, h: 8, d: 4, color: 0x453a32 },
+    { name: "course", w: 20, h: 8, d: 4, color: 0x654e41 },
     { name: "course", w: 20, h: 8, d: 4, color: 0x2c2a2a }
   )
   assert.deepEqual(keepStoneProblems(listed, cited), [])
