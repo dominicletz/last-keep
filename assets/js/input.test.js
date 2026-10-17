@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, seatFromQuery } from "./input.js"
+import { axes, isTypingTarget, seatFromQuery } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -17,6 +17,18 @@ test("the seat name is trimmed to 16 characters", () => {
   const seat = seatFromQuery("?name=ABCDEFGHIJKLMNOPQRSTUVWXYZ&hero=mage")
   assert.equal(seat.name, "ABCDEFGHIJKLMNOP")
   assert.equal(seat.hero, "mage")
+})
+
+test("a hidden or non-text field does not count as typing", () => {
+  const hidden = { tagName: "INPUT", type: "text", disabled: false, closest: () => ({}) }
+  const visible = { tagName: "INPUT", type: "text", disabled: false, closest: () => null }
+  const range = { tagName: "INPUT", type: "range", disabled: false, closest: () => null }
+  const radio = { tagName: "INPUT", type: "radio", disabled: false, closest: () => null }
+  assert.equal(isTypingTarget(hidden), false)
+  assert.equal(isTypingTarget(visible), true)
+  assert.equal(isTypingTarget(range), false)
+  assert.equal(isTypingTarget(radio), false)
+  assert.equal(isTypingTarget(null), false)
 })
 
 test("W moves toward the top of the isometric view", () => {

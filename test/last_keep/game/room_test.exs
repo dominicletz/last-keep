@@ -87,4 +87,61 @@ defmodule LastKeep.Game.RoomTest do
     Enum.each(1..3, fn _ -> Room.step(code) end)
     assert length(Highscores.list()) == 1
   end
+
+  test "an empty room stops ticking and the room count returns to baseline" do
+    baseline = Rooms.count()
+    {:ok, code} = Rooms.create(idle_ms: 800, lobby_ms: 800, seed: 4)
+
+    {:ok, token, _id, snap} =
+      Rooms.enlist(code, %{
+        name: "Ada",
+        hero: :warrior,
+        token: "token-token-token",
+        connected: true
+      })
+
+    assert Rooms.exists?(code)
+    assert Rooms.count() == baseline + 1
+    Room.disconnect(code, token)
+
+    frozen = stable_tick(code)
+    assert frozen <= snap.tick + 3
+    {:ok, _id, _generation, _snap} = Room.connect(code, token)
+    Process.sleep(250)
+    assert Rooms.exists?(code)
+    assert Room.snapshot(code).tick > frozen
+
+    Room.disconnect(code, token)
+    deadline = System.monotonic_time(:millisecond) + 2_000
+    until(fn -> not Rooms.exists?(code) end, deadline)
+
+    refute Rooms.exists?(code)
+    assert Rooms.count() == baseline
+  end
+
+  defp stable_tick(code, left \\ 6) do
+    first = Room.snapshot(code).tick
+    Process.sleep(100)
+    second = Room.snapshot(code).tick
+
+    cond do
+      second == first -> first
+      left == 0 -> flunk("empty room kept ticking, last tick #{second}")
+      true -> stable_tick(code, left - 1)
+    end
+  end
+
+  defp until(fun, deadline) do
+    cond do
+      fun.() ->
+        :ok
+
+      System.monotonic_time(:millisecond) > deadline ->
+        flunk("room did not stop within 2 seconds")
+
+      true ->
+        Process.sleep(40)
+        until(fun, deadline)
+    end
+  end
 end

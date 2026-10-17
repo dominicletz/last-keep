@@ -1,7 +1,7 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
-import { axes, seatFromQuery } from "./input"
+import { axes, isTypingTarget, seatFromQuery } from "./input"
 import { bonusCopy, callAnchor, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
@@ -41,11 +41,11 @@ export function bootPlay(code) {
   })
 
   if (saved) {
-    join.hidden = true
+    concealJoin(join)
     start(code, saved, ui)
   } else if (queried) {
     prefill(join, queried.name, queried.hero)
-    join.hidden = true
+    concealJoin(join)
     const token = crypto.randomUUID().replaceAll("-", "")
     enter(code, { token, name: queried.name, hero: queried.hero }, ui)
   } else {
@@ -78,7 +78,7 @@ async function enter(code, seat, ui) {
     const stored = { token: body.token, name: seat.name.trim(), hero: seat.hero }
     localStorage.setItem("lastkeep-name", stored.name)
     localStorage.setItem(`lastkeep:${code}`, JSON.stringify(stored))
-    ui.join.hidden = true
+    concealJoin(ui.join)
     start(code, stored, ui)
   } catch (_err) {
     ui.join.hidden = false
@@ -90,6 +90,8 @@ async function enter(code, seat, ui) {
 function start(code, seat, ui) {
   ui.hud.hidden = false
   ui.hud.innerHTML = hudMarkup()
+  releaseHiddenFocus()
+  window.addEventListener("focus", releaseHiddenFocus)
   const socket = new Socket("/socket")
   socket.connect()
   const channel = socket.channel(`game:${code}`, { token: seat.token, name: seat.name, hero: seat.hero })
@@ -240,6 +242,9 @@ function start(code, seat, ui) {
     send()
   })
   window.addEventListener("keyup", (event) => {
+    // Blur and other synthetic keyups are not a finger leaving the key.
+    // The test hold releases through __lastKeepTest.hold, which deletes the code.
+    if (!event.isTrusted) return
     keys.delete(event.code)
     send()
   })
@@ -267,6 +272,7 @@ function start(code, seat, ui) {
   })
 
   function send() {
+    releaseHiddenFocus()
     if (!joined || !selfId || typing()) return
     const move = axes(keys)
     input.mx = move.x
@@ -562,14 +568,20 @@ function readSeat(code) {
   }
 }
 
-function typing(event) {
+function concealJoin(join) {
+  join.hidden = true
+  releaseHiddenFocus()
+}
+
+function releaseHiddenFocus() {
   const active = document.activeElement
-  const tag = active && active.tagName
-  if (tag === "TEXTAREA" || (tag === "INPUT" && active.type !== "range")) {
-    if (event) event.stopPropagation()
-    return true
-  }
-  return false
+  if (active && active.closest && active.closest("[hidden]")) active.blur()
+}
+
+function typing(event) {
+  if (!isTypingTarget(document.activeElement)) return false
+  if (event) event.stopPropagation()
+  return true
 }
 
 function heroLabel(hero) {
