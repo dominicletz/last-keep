@@ -185,7 +185,6 @@ input[type="text"], input:not([type="radio"]) {
   justify-content: flex-start;
   gap: 0.35rem;
   width: 100%;
-  padding-right: 12rem;
   box-sizing: border-box;
 }
 .readout {
@@ -211,7 +210,7 @@ input[type="text"], input:not([type="radio"]) {
   box-shadow: 2px 2px 0 #0a0705;
   font-size: 0.78rem;
 }
-.roster { position: absolute; top: 0.6rem; right: 0.6rem; z-index: 4; }
+.roster { z-index: 4; }
 .hud-bottom { align-items: flex-end; justify-content: space-between; width: 100%; }
 
 .chip, .roster, .heart {
@@ -239,6 +238,49 @@ input[type="text"], input:not([type="radio"]) {
   color: var(--muted);
 }
 .tally { color: var(--gold); font-size: 0.88rem; }
+.world-pin {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, -120%);
+  max-width: 16rem;
+  pointer-events: none;
+}
+.heart.world-pin { transform: translate(-50%, 10px); max-width: 9rem; }
+.roster.world-pin { transform: translate(0, 0); max-width: 11rem; }
+.sacks {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+.sack {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  width: 4.6rem;
+  min-height: 3.5rem;
+  box-sizing: border-box;
+  padding: 1.25rem 0.35rem 0.55rem;
+  text-align: center;
+  color: #f6e6c4;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  text-shadow: 1px 1px 0 #1a1008;
+  background-color: transparent;
+  border: 0;
+  border-radius: 46% 46% 42% 42%;
+  background-image:
+    radial-gradient(ellipse 34% 18% at 50% 14%, #f0d7a4 0 46%, #6b4424 50% 70%, transparent 74%),
+    radial-gradient(ellipse 86% 70% at 50% 68%, #e0b070 0 18%, #a56b38 42%, #6a4124 78%, #3d2616 100%);
+  box-shadow: 0 3px 0 #2a1810;
+}
+.hint-arrow.beacon { color: #f0d090; }
 .roster {
   flex-direction: column;
   align-items: stretch;

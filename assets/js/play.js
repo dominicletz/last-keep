@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, isTypingTarget, seatFromQuery } from "./input"
-import { bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, showReason, waveLabel } from "./hud"
+import { KEEP_SIGN, RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, showReason, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
@@ -317,7 +317,7 @@ function start(code, seat, ui) {
     }
     wave.textContent = label
     clock.textContent = snap.phase === "over" ? "Fallen" : clockText(snap)
-    stock.textContent = `Wood ${snap.resources.wood}  Food ${snap.resources.food}  Gold ${snap.resources.gold}`
+    drawSacks(stock, snap.resources)
     const heart = ui.hud.querySelector("[data-heart]")
     const hp = ui.hud.querySelector("[data-hp]")
     const names = SKILL_NAME[me?.hero] || SKILL_NAME.warrior
@@ -383,6 +383,7 @@ function start(code, seat, ui) {
         return `<div class="who ${mine} ${player.connected ? "" : "off"}"><span>${escapeHtml(player.name)}</span><span>${escapeHtml(heroLabel(player.hero))}</span><div class="meter"><span style="width:${width}%"></span></div></div>`
       })
       .join("")
+    drawWorld(ui, snap, selfId)
     drawHints(ui, snap)
     drawYou(ui, snap, selfId)
     drawFx(ui, snap, fx, seen)
@@ -411,17 +412,12 @@ function hudMarkup() {
   ]
     .map(
       ([key, label]) =>
-        `<div class="skill" data-skill="${key}"><b>${label}</b><small data-skill-name="${key}"></small><div class="cool"></div></div>`
+        `<div class="skill" data-chrome data-skill="${key}"><b>${label}</b><small data-skill-name="${key}"></small><div class="cool"></div></div>`
     )
     .join("")
-  const builds = BUILD.map((kind) => `<button type="button" class="build" data-build="${kind}">${BUILD_LABEL[kind]}</button>`).join("")
+  const builds = BUILD.map((kind) => `<button type="button" class="build" data-chrome data-build="${kind}">${BUILD_LABEL[kind]}</button>`).join("")
   return `
     <div class="hud-top">
-      <div class="readout">
-        <div class="chip"><b data-wave>Wave</b><div data-clock></div><div data-score>Score 0</div><div data-next></div><div data-build-reason hidden></div></div>
-        <div class="chip bonuses" data-bonuses><div data-forge></div><div data-spire></div><div data-relics></div></div>
-        <div class="chip tally" data-stock></div>
-      </div>
       <div class="actions">
         <button type="button" data-start hidden>Start the night</button>
         <button type="button" data-raise>Raise the keep</button>
@@ -430,39 +426,92 @@ function hudMarkup() {
       </div>
     </div>
     <div class="hint-layer" data-hints></div>
-    <div class="hint-layer"><div data-you hidden></div></div>
+    <div class="hint-layer">
+      <div data-you hidden></div>
+      <div class="chip world-pin" data-world><b data-wave>Wave</b><div data-clock></div><div data-score>Score 0</div><div data-next></div><div>Keep <span data-keep></span></div><div data-build-reason hidden></div></div>
+      <div class="bonuses world-pin" data-bonuses data-world><div data-forge></div><div data-spire></div><div data-relics></div></div>
+      <div class="sacks" data-stock data-world></div>
+      <div class="heart world-pin" data-world><div>You <span data-hp></span></div><div class="meter"><span data-heart style="width:100%"></span></div></div>
+      <div class="roster world-pin" data-roster data-world></div>
+    </div>
     <div class="hint-layer" data-fx></div>
     <div class="hud-bottom">
-      <div class="heart"><div>You <span data-hp></span></div><div class="meter"><span data-heart style="width:100%"></span></div><div>Keep <span data-keep></span></div></div>
       <div class="skills">${skills}</div>
       <div class="builds">${builds}</div>
-      <div class="roster" data-roster></div>
     </div>
   `
+}
+
+function drawSacks(stock, resources) {
+  if (!stock) return
+  const marks = sackLine(resources)
+  const html = marks.map((mark) => `<div class="sack" data-sack="${mark.key}">${escapeHtml(mark.text)}</div>`).join("")
+  if (stock.dataset.drawn !== html) {
+    stock.innerHTML = html
+    stock.dataset.drawn = html
+  }
+}
+
+function screenPoint(ui, worldX, worldY) {
+  const point = ui.view.project ? ui.view.project(worldX, worldY) : null
+  if (!point || point.behind || !ui.view.canvas) return null
+  const rect = ui.view.canvas.getBoundingClientRect()
+  const hud = ui.hud.getBoundingClientRect()
+  return {
+    left: rect.left - hud.left + (point.x * 0.5 + 0.5) * rect.width,
+    top: rect.top - hud.top + (-point.y * 0.5 + 0.5) * rect.height
+  }
+}
+
+function pin(node, spot, dy = 0) {
+  if (!node) return
+  if (!spot) {
+    node.hidden = true
+    return
+  }
+  node.hidden = false
+  node.style.left = `${spot.left}px`
+  node.style.top = `${spot.top + dy}px`
+}
+
+function drawWorld(ui, snap, selfId) {
+  const stock = ui.hud.querySelector("[data-stock]")
+  for (const mark of sackLine(snap.resources)) {
+    pin(stock?.querySelector(`[data-sack="${mark.key}"]`), screenPoint(ui, mark.x, mark.y))
+  }
+  const sign = ui.hud.querySelector("[data-clock]")?.closest("[data-world]")
+  pin(sign, screenPoint(ui, KEEP_SIGN.x, KEEP_SIGN.y))
+  pin(ui.hud.querySelector("[data-bonuses]"), screenPoint(ui, RELIC_SIGN.x, RELIC_SIGN.y))
+  const me = (snap.players || []).find((player) => player.id === selfId)
+  pin(ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
+  const party = rosterAnchor(snap.players)
+  pin(ui.hud.querySelector("[data-roster]"), screenPoint(ui, party.x, party.y))
 }
 
 function drawYou(ui, snap, selfId) {
   const label = ui.hud.querySelector("[data-you]")
   const me = (snap.players || []).find((player) => player.id === selfId)
-  const point = me && ui.view.project ? ui.view.project(me.x, me.y) : null
-  if (!label || !me || !point || point.behind) {
+  const spot = me ? screenPoint(ui, me.x, me.y) : null
+  if (!label || !spot) {
     if (label) label.hidden = true
     return
   }
-  const rect = ui.view.canvas.getBoundingClientRect()
-  const hud = ui.hud.getBoundingClientRect()
   label.hidden = false
   label.textContent = me.name
-  label.style.left = `${rect.left - hud.left + (point.x * 0.5 + 0.5) * rect.width}px`
-  label.style.top = `${rect.top - hud.top + (-point.y * 0.5 + 0.5) * rect.height - 28}px`
+  label.style.left = `${spot.left}px`
+  label.style.top = `${spot.top - 28}px`
 }
 
 function drawHints(ui, snap) {
   const layer = ui.hud.querySelector("[data-hints]")
+  const beacons =
+    snap.phase === "build"
+      ? hintBeacons(snap.hints).map((row) => marker(ui, row.x, row.y, row.label, false, " beacon"))
+      : []
   const offscreen = edgeCalls(snap.monsters || [])
     .map((call) => marker(ui, call.x, call.y, call.label, true))
     .filter(Boolean)
-  layer.innerHTML = offscreen.join("")
+  layer.innerHTML = [...beacons, ...offscreen].filter(Boolean).join("")
   const next = ui.hud.querySelector("[data-next]")
   const hints = snap.hints || []
   next.textContent = nextLine(snap.phase, hints)
@@ -515,7 +564,7 @@ function drawFx(ui, snap, fx, seen) {
   }
 }
 
-function marker(ui, worldX, worldY, label, onlyOffscreen) {
+function marker(ui, worldX, worldY, label, onlyOffscreen, extra = "") {
   const point = ui.view.project(worldX, worldY)
   const x = point.x * 0.5 + 0.5
   const y = -point.y * 0.5 + 0.5
@@ -528,7 +577,7 @@ function marker(ui, worldX, worldY, label, onlyOffscreen) {
   const left = anchor.left * hud.width - (layerBox.left - hud.left)
   const top = anchor.top * hud.height - (layerBox.top - hud.top)
   const end = anchor.end ? " end" : ""
-  return `<div class="hint-arrow${end}" style="left:${left}px;top:${top}px">${label}</div>`
+  return `<div class="hint-arrow${extra}${end}" style="left:${left}px;top:${top}px">${label}</div>`
 }
 
 function rosterNorm(ui, hud) {
