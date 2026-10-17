@@ -8,5 +8,5 @@
     "moduleResolution": "nodenext",
     "strict": false
   },
-  "include": ["js/input.js", "js/present.js", "js/hud.js", "js/motion.js", "js/elite.js", "js/frame.js", "js/town.js", "js/scenery.js", "js/cull.js", "js/audio.js", "js/heroes.js", "js/bodies.js"]
+  "include": ["js/input.js", "js/present.js", "js/hud.js", "js/motion.js", "js/elite.js", "js/frame.js", "js/town.js", "js/scenery.js", "js/cull.js", "js/audio.js", "js/heroes.js", "js/bodies.js", "js/ui.js", "js/fidelity.js"]
 }

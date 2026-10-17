@@ -351,6 +351,7 @@ async function twoPlayerNight(browser) {
   watch(friend, "guest", errors)
 
   await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("LLL"))
+  await assertHudBudget(page)
   await expect(page.locator("[data-roster]")).toContainText("Warrior")
   await expect(friend.locator("[data-roster]")).toContainText("Mage")
   await expect(page.locator("[data-clock]")).toHaveText("Waiting to start")
@@ -517,6 +518,32 @@ async function joinFromForm(browser) {
   expect(errors, errors.join("\n")).toEqual([])
   await context.close()
   await host.context.close()
+}
+
+async function assertHudBudget(page) {
+  const report = await page.evaluate(() => {
+    const ui = window.__lastKeepUi
+    const found = [...document.querySelectorAll("#hud [data-nd]")].map((node) => node.getAttribute("data-nd"))
+    const root = document.querySelector("#hud")
+    const loose = []
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+    let node = walker.nextNode()
+    while (node) {
+      const text = node.textContent.trim()
+      if (text && !node.parentElement.closest("[data-nd], [data-ui]")) loose.push(text.slice(0, 40))
+      node = walker.nextNode()
+    }
+    return {
+      found,
+      allowed: ui.nonDiegetic,
+      live: ui.liveNonDiegetic,
+      loose
+    }
+  })
+  expect(report.loose).toEqual([])
+  expect(report.allowed).toHaveLength(28)
+  expect([...report.found].sort()).toEqual([...report.live].sort())
+  expect(report.found).not.toContain("fallen")
 }
 
 async function buildRangeRing(page) {

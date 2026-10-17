@@ -8,6 +8,8 @@ pstack is the workflow for this repo. The skills are installed under `.agents/sk
 
 Before you say a change is done, run `.agents/skills/verify-last-keep/SKILL.md`. That skill is the definition of done. It drives two real browsers against the running game. A green `mix test --cover` is not a substitute.
 
+`STYLE.md` is the art direction and the asset loop. The loop is generate, render the gallery, verify, review against `docs/concept/`, file backlog items, regenerate. `.agents/skills/verify-assets/SKILL.md` is the check. The first pull request of the theming round (LK-058, after playtest round 5) builds that pipeline. It does not author the town kit. Later pulls build the town, heroes, monsters, and lighting through the pipeline, then the diegetic UI and the hero portrait cards. Do not start that round during round 5.
+
 Every change ships with tests. A simulation change needs an ExUnit test. A browser change needs a scenario in `e2e/scenarios.js` and the spec that calls it. The verification skill points at that file. Do not describe a check only in prose.
 
 ## Interactions
@@ -53,7 +55,7 @@ npm ci
 npx playwright test
 ```
 
-`mix test --cover` covers room membership, reconnect, combat, wave plans, the interaction graph, the HTTP API, a channel with three clients, and a warrior who clears wave 1. The coverage floor is 62, from a measured total of 62.90%. Tests that touch the room supervisor are `async: false` because the registry is a single process.
+`mix test --cover` covers room membership, reconnect, combat, wave plans, the interaction graph, the HTTP API, a channel with three clients, and a warrior who clears wave 1. The coverage floor is 68. The measured total is 68.11% in `docs/VERIFICATION.md`. The next round may raise 68. It may not lower it. Tests that touch the room supervisor are `async: false` because the registry is a single process.
 
 `npx playwright test` is the browser proof. The scenarios are `e2e/scenarios.js`, called from `e2e/coop.spec.js`. The run uses a 1280 by 800 viewport. It joins two players, ignores the click that only focuses the window, refuses an illegal wall without spending wood, places a legal wall, and fights wave 1 until a goblin dies on screen with a damage number. Set `BASE_URL` to point it at a deployed site. Unset `BASE_URL` for a local run. CI and the deploy workflow both run it.
 

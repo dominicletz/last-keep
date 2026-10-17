@@ -142,6 +142,15 @@ On screen the five heroes do not share a body. A warrior reads as broad shoulder
 
 The night has its own sound. Day and building play one loop, the wave plays another, a horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. Nothing is loaded from another host.
 
+## UI principles
+
+The same four kinds as `CONCEPT.md` and `STYLE.md`. Diegetic by default.
+
+- Diegetic. Wood, food, and gold are piles and a coin pouch the hero can see. The keep's health is cracks, smoke, and fire. A hero's health is posture and blood, with at most a small bar on the figure. The night arrives as the sky, the sun, the moon, and the horn.
+- Spatial. The build ring, the placement ghost, an offscreen call, and a name on the figure. A building's cost is icons on the ghost, not a line in the corner.
+- Meta. A low-health vignette, and little else.
+- Non-diegetic. The invite, mute and volume, and the fallen score. The live list is `assets/js/ui.js`. A new slot fails the budget check.
+
 ## Empty roles
 
 No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, and gold has a producer and a consumer. The test fails if that stops being true.
