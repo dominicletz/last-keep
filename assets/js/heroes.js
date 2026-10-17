@@ -8,8 +8,12 @@ export function heroKinds() {
   return HEROES.slice()
 }
 
+export function heroParts(kind) {
+  return partsFor(kind).map((part) => ({ ...part }))
+}
+
 export function heroSignature(kind) {
-  const parts = partsFor(kind)
+  const parts = heroParts(kind)
   return {
     kind,
     parts,

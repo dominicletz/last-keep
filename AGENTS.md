@@ -14,6 +14,10 @@ Every change ships with tests. A simulation change needs an ExUnit test. A brows
 
 `docs/GAME-INTERACTIONS.md` is the source of truth for how roles, the keep, buildings, resources, monsters, elites, bosses, and relics touch. `docs/interactions.json` is the graph the test reads. `test/last_keep/game/interactions_test.exs` fails when a hero from `Rules.heroes/0` is missing, a resource has no producer or no consumer, a building has no cost or no purpose, or an edge is neither implemented in the simulation source nor marked planned. Gameplay and game-logic playtests review that page. The playtest roster is `.agents/skills/playtest-last-keep/SKILL.md`.
 
+## Models
+
+`STYLE.md` is the art loop. `npm run models` is the check, and `.agents/skills/verify-assets/SKILL.md` is the definition of that check. The command reads `assets/models/`, renders every Rules kind and yard prop at game zoom under day, dusk, and night, and fails unless the second run matches `test/gallery/`. `docs/gallery.html` shows those frames beside the concept slot. The concept sheets are `docs/concept/lk_heroes.jpg`, `lk_theme.jpg`, and `lk_monsters.jpg`. They are not in the repo. Do not invent a substitute. The first theming pull request is this pipeline. It does not author the town kit.
+
 ## Verification ratchet
 
 Each round adds a test for every backlog item it closes and links that test from `playtests/BACKLOG.md`. It updates `.agents/skills/verify-last-keep` and `.agents/skills/playtest-last-keep` with what the round taught. CI fails on browser console errors, reports coverage, and keeps a floor that only rises. The changelog is `docs/VERIFICATION.md`. A post-deploy smoke runs the same Playwright suite. Do not skip or loosen a check.

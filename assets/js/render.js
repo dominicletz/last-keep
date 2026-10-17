@@ -7,25 +7,9 @@ import { sceneryForest } from "./scenery"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
+import { modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
-
-const MONSTER_COLOR = {
-  goblin: 0xff3a22,
-  skeleton: 0xe8e0d0,
-  wolf: 0x2c3344,
-  troll: 0x2f6a32,
-  boss: 0x6a3a8a
-}
-
-const BUILDING_COLOR = {
-  wall: 0x6b4228,
-  tower: 0x6e675c,
-  trap: 0x8a8174,
-  field: 0xc6b04a,
-  forge: 0xa84828,
-  mage_tower: 0x3a4f86
-}
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -125,12 +109,12 @@ export function createView(stage) {
     const look = sceneryForest()
     const dummy = new THREE.Object3D()
     if (look.parts.includes("trunk")) {
-      const trunk = new THREE.CylinderGeometry(3.2, 4.6, 28, 5)
+      const trunk = new THREE.CylinderGeometry(look.radiusTop, look.radiusBottom, look.height, look.segments)
       const trunks = new THREE.InstancedMesh(trunk, mat(look.trunk), look.count)
       for (let i = 0; i < look.count; i++) {
         const angle = i * 2.4
         const dist = 300 + (i % 8) * 36
-        dummy.position.set(Math.cos(angle) * dist, 14, Math.sin(angle) * dist)
+        dummy.position.set(Math.cos(angle) * dist, look.height / 2, Math.sin(angle) * dist)
         dummy.scale.setScalar(0.85 + (i % 3) * 0.2)
         dummy.rotation.set(0, angle, 0)
         dummy.updateMatrix()
@@ -144,27 +128,11 @@ export function createView(stage) {
 
   function makeKeep() {
     const group = new THREE.Group()
-    const base = box(70, 28, 70, 0x6e675c, 0, 14, 0)
-    const tower = box(28, 70, 28, 0x7d756a, 0, 48, 0)
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(22, 28, 4), mat(0x8a3d2f))
-    roof.position.y = 92
-    roof.castShadow = true
-    const door = box(16, 18, 4, 0x3a2418, 0, 10, 36)
-    const window = box(6, 8, 4, 0xffb15a, 0, 58, 14)
-    window.material = mat(0xffb15a, 0xff7a2a)
-    group.add(base, tower, roof, door, window)
+    for (const piece of modelParts("keep")) group.add(pieceMesh(piece))
     const torch = new THREE.PointLight(0xff9a3c, 8, 160)
     torch.position.set(20, 24, 30)
     group.add(torch)
     return group
-  }
-
-  function box(w, h, d, color, x, y, z) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color))
-    mesh.position.set(x, y, z)
-    mesh.castShadow = true
-    mesh.receiveShadow = true
-    return mesh
   }
 
   function sync(kind, rows, build) {
@@ -328,35 +296,9 @@ export function createView(stage) {
 
       sync("monster", drawn.monsters, (row) => monsterMesh(row))
 
-      sync("building", drawn.buildings, (row) => {
-        const group = new THREE.Group()
-        if (row.kind === "wall") group.add(boxMesh(30, 22, 12, BUILDING_COLOR.wall, 11))
-        else if (row.kind === "tower") {
-          group.add(boxMesh(22, 36, 22, BUILDING_COLOR.tower, 18))
-          const flame = new THREE.Mesh(new THREE.BoxGeometry(6, 6, 6), mat(0xffb15a, 0xff6a1a))
-          flame.position.y = 40
-          group.add(flame)
-        } else if (row.kind === "trap") group.add(boxMesh(22, 6, 22, BUILDING_COLOR.trap, 3))
-        else if (row.kind === "field") {
-          const patch = new THREE.Mesh(new THREE.BoxGeometry(30, 2, 30), mat(BUILDING_COLOR.field))
-          patch.position.y = 1
-          group.add(patch)
-        } else if (row.kind === "forge") group.add(boxMesh(28, 24, 28, BUILDING_COLOR.forge, 12))
-        else group.add(boxMesh(26, 40, 26, BUILDING_COLOR.mage_tower, 20))
-        return group
-      })
+      sync("building", drawn.buildings, (row) => groupFrom(modelParts(row.kind)))
 
-      sync("tree", snap.trees || [], () => {
-        const group = new THREE.Group()
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 12, 5), mat(0x5a3a22))
-        trunk.position.y = 6
-        trunk.castShadow = true
-        const crown = new THREE.Mesh(new THREE.ConeGeometry(14, 28, 5), mat(0x2f6a3c))
-        crown.position.y = 24
-        crown.castShadow = true
-        group.add(trunk, crown)
-        return group
-      })
+      sync("tree", snap.trees || [], () => groupFrom(modelParts("tree")))
 
       sync("shot", snap.projectiles || [], (row) => {
         const fire = row.kind === "fireball" || row.kind === "meteor"
@@ -555,11 +497,19 @@ export function createView(stage) {
     return group
   }
 
+  function groupFrom(parts) {
+    const group = new THREE.Group()
+    for (const piece of parts) group.add(pieceMesh(piece))
+    return group
+  }
+
   function pieceMesh(piece) {
     const geometry =
       piece.shape === "cone"
-        ? new THREE.ConeGeometry(piece.w / 2, piece.h, 4)
-        : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
+        ? new THREE.ConeGeometry(piece.w / 2, piece.h, piece.segments || 4)
+        : piece.shape === "prism"
+          ? new THREE.CylinderGeometry(piece.rt, piece.rb, piece.h, piece.segments || 5)
+          : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
     const mesh = new THREE.Mesh(geometry, mat(piece.color))
     mesh.position.set(piece.x, piece.y, piece.z)
     mesh.castShadow = true
@@ -605,17 +555,28 @@ export function createView(stage) {
     else if (look === "lean") mesh = leanMesh()
     else if (look === "spiked") mesh = spikedMesh()
     else {
-      const scale = row.kind === "troll" ? 2.1 : row.kind === "wolf" ? 1.7 : 2.2
-      const emissive = row.kind === "goblin" ? 0x6a1408 : 0x000000
-      mesh = figure(MONSTER_COLOR[row.kind] || 0xff3a22, scale, null, emissive)
-      if (row.kind === "wolf") mesh.scale.z = 1.6
+      const bounds = modelBounds(row.kind)
+      mesh = groupFrom(modelParts(row.kind))
+      mesh.userData.span = bounds
+      mesh.userData.face = true
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 2), mat(0x1a100c))
+      const fill = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 2), mat(0x7ea35a))
+      plate.position.y = bounds.height + 4
+      fill.position.set(0, bounds.height + 4, 1.2)
+      mesh.add(plate, fill)
+      mesh.userData.hp = fill
+      mesh.userData.bar = plate
     }
     const spread = monsterSpread(row.id)
     mesh.userData.spread = spread
     mesh.userData.role = "monster"
     const scale = mesh.userData.bodyScale || 1
-    const rim = new THREE.Mesh(new THREE.BoxGeometry(15 * scale, 22 * scale, 11 * scale), outlineMat)
-    rim.position.y = 14 * scale
+    const span = mesh.userData.span
+    const rim = new THREE.Mesh(
+      span ? new THREE.BoxGeometry(span.w, span.h, span.d) : new THREE.BoxGeometry(15 * scale, 22 * scale, 11 * scale),
+      outlineMat
+    )
+    rim.position.y = span ? span.y : 14 * scale
     mesh.add(rim)
     if (spread.bar && mesh.userData.hp && mesh.userData.bar) {
       mesh.userData.hp.position.y += spread.bar

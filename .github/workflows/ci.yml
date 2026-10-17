@@ -36,6 +36,13 @@ jobs:
       - run: mix assets.build
       - run: mix test --cover
       - run: npm test --prefix assets
+      - run: npm run models
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gallery
+          path: artifacts/gallery/
+          if-no-files-found: warn
       - name: audio stays on the page
         run: |
           if grep -nE "https?://" assets/js/audio.js; then
