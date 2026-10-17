@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, seatFromQuery } from "./input"
-import { bonusCopy, ignoreFocusClick, nextLine, placementReason, reasonOpen, showReason, waveLabel } from "./hud"
+import { bonusCopy, ignoreFocusClick, nextLine, placementReason, raiseLabel, reasonOpen, showReason, waveLabel } from "./hud"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const BUILD_LABEL = {
@@ -99,6 +99,7 @@ function start(code, seat, ui) {
     ay: 0,
     attack: false,
     place: false,
+    raise: false,
     q: false,
     e: false,
     r: false,
@@ -213,6 +214,11 @@ function start(code, seat, ui) {
       refresh()
     }
     if (button.dataset.start !== undefined && !button.disabled) channel.push("start", {})
+    if (button.dataset.raise !== undefined && !button.disabled) {
+      input.raise = true
+      send()
+      input.raise = false
+    }
   })
 
   function send() {
@@ -262,6 +268,11 @@ function start(code, seat, ui) {
         const seconds = left > 0 ? ` ${Math.ceil(left / 1000)}s` : ""
         label.textContent = `${names[key]}${seconds}`
       }
+    }
+    const raise = ui.hud.querySelector("[data-raise]")
+    if (raise) {
+      raise.textContent = raiseLabel(snap.upgrade)
+      raise.disabled = !snap.upgrade
     }
     const start = ui.hud.querySelector("[data-start]")
     start.hidden = !snap.hold
@@ -341,6 +352,7 @@ function hudMarkup() {
       <button type="button" data-start hidden>Start the night</button>
       <div class="chip bonuses" data-bonuses><div data-forge></div><div data-spire></div><div data-relics></div></div>
       <div class="chip" data-stock></div>
+      <button type="button" data-raise>Raise the keep</button>
       <button type="button" data-copy>Copy invite</button>
     </div>
     <div class="hint-layer" data-hints></div>

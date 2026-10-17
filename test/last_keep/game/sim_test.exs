@@ -232,21 +232,52 @@ defmodule LastKeep.Game.SimTest do
     assert gap >= a.r + b.r - 0.1
   end
 
-  test "wave 1 goblins spawn on the visible field" do
+  test "wave 1 goblins spawn well outside the yard" do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
     state = Sim.tick(state)
 
     assert state.wave == 1
-    assert Sim.monsters(state) != []
-
     assert length(Sim.monsters(state)) == 2
 
     for monster <- Sim.monsters(state) do
       dist = :math.sqrt(monster.x * monster.x + monster.y * monster.y)
-      assert dist > 130
-      assert dist < 155
+      assert dist > 600
+      assert dist < 680
       assert monster.speed < 30
       assert monster.damage <= 2
+    end
+  end
+
+  test "wave 2 does not spawn in the yard" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
+    state = Sim.tick(state)
+
+    state = %{
+      state
+      | entities: Map.reject(state.entities, fn {_id, entity} -> entity.type == :monster end)
+    }
+
+    state = Sim.tick(state)
+    assert match?({:build, _}, state.phase)
+
+    state =
+      Enum.reduce_while(1..800, state, fn _, state ->
+        state = Sim.tick(state)
+
+        if state.wave == 2 and match?({:wave, _}, state.phase) do
+          {:halt, state}
+        else
+          {:cont, state}
+        end
+      end)
+
+    assert state.wave == 2
+    assert Sim.monsters(state) != []
+
+    for monster <- Sim.monsters(state) do
+      dist = :math.sqrt(monster.x * monster.x + monster.y * monster.y)
+      assert dist > 740
+      assert dist < 900
     end
   end
 
@@ -523,6 +554,216 @@ defmodule LastKeep.Game.SimTest do
     hd(Sim.monsters(state))
   end
 
+  test "a gap in a long wall lets goblins through one at a time" do
+    state = Sim.new("KEEP01", seed: 1)
+
+    state =
+      Enum.reduce(-45..44, state, fn i, state ->
+        y = if i < 0, do: -40 + (i + 1) * 28, else: 40 + i * 28
+        Sim.spawn_building(state, %{kind: :wall, x: 320, y: y})
+      end)
+
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 400, y: 0, hp: 400, wave: 2})
+    state = Enum.reduce(1..160, state, fn _, state -> Sim.tick(state) end)
+    [alone] = Sim.monsters(state)
+    assert alone.x < 280
+    assert abs(alone.y) < 48
+
+    state = Sim.new("KEEP01", seed: 1)
+
+    state =
+      Enum.reduce(-45..44, state, fn i, state ->
+        y = if i < 0, do: -40 + (i + 1) * 28, else: 40 + i * 28
+        Sim.spawn_building(state, %{kind: :wall, x: 320, y: y})
+      end)
+
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 460, y: 0, hp: 400, wave: 2})
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 400, y: 0, hp: 400, wave: 2})
+
+    {state, crowded} =
+      Enum.reduce(1..220, {state, 0}, fn _, {state, crowded} ->
+        state = Sim.tick(state)
+
+        in_gap =
+          Enum.count(Sim.monsters(state), fn monster ->
+            monster.x < 340 and monster.x > 300 and abs(monster.y) < 24
+          end)
+
+        {state, max(crowded, in_gap)}
+      end)
+
+    [a, b] = Sim.monsters(state)
+    gap = :math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2)
+    assert gap >= a.r + b.r - 0.1
+    assert abs(a.y) < 48
+    assert abs(b.y) < 48
+    assert a.x < 290
+    assert b.x < 290
+    assert crowded <= 1
+  end
+
+  test "heroes and monsters stop on each other, and only the warrior dash passes" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    {:ok, state} = Sim.join(state, player("lux", :mage))
+
+    state =
+      Enum.reduce(1..80, state, fn _, state ->
+        ada = hero(state, "ada")
+        lux = hero(state, "lux")
+        {mx, my} = dir(ada.x - lux.x, ada.y - lux.y)
+
+        state
+        |> Sim.input("lux", %{"mx" => mx, "my" => my, "ax" => ada.x, "ay" => ada.y})
+        |> Sim.tick()
+      end)
+
+    ada = hero(state, "ada")
+    lux = hero(state, "lux")
+    assert :math.sqrt((ada.x - lux.x) ** 2 + (ada.y - lux.y) ** 2) >= ada.r + lux.r - 0.5
+
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: ada.x + 48, y: ada.y, hp: 400, wave: 2})
+
+    state =
+      Enum.reduce(1..30, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => 1, "my" => 0, "ax" => ada.x + 80, "ay" => ada.y})
+        |> Sim.tick()
+      end)
+
+    warrior = hero(state, "ada")
+    [goblin] = Sim.monsters(state)
+
+    assert :math.sqrt((warrior.x - goblin.x) ** 2 + (warrior.y - goblin.y) ** 2) >=
+             warrior.r + goblin.r - 0.5
+
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: ada.x + 50, y: ada.y, hp: 400, wave: 2})
+
+    state =
+      push(state, "ada", %{"q" => true, "ax" => ada.x + 200, "ay" => ada.y})
+      |> Sim.tick()
+
+    dasher = hero(state, "ada")
+    [body] = Sim.monsters(state)
+    assert dasher.x > body.x + body.r
+
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("pip", :scout))
+    pip = hero(state, "pip")
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: pip.x + 40, y: pip.y, hp: 400, wave: 2})
+
+    state =
+      push(state, "pip", %{"q" => true, "ax" => pip.x + 200, "ay" => pip.y})
+      |> Sim.tick()
+
+    scout = hero(state, "pip")
+    [blocked] = Sim.monsters(state)
+    assert scout.x < blocked.x
+
+    assert :math.sqrt((scout.x - blocked.x) ** 2 + (scout.y - blocked.y) ** 2) >=
+             scout.r + blocked.r - 0.5
+  end
+
+  test "the keep is solid and a monster bites it from the edge" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+
+    state =
+      Enum.reduce(1..40, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => -1, "my" => 0})
+        |> Sim.tick()
+      end)
+
+    ada = hero(state, "ada")
+    assert :math.sqrt(ada.x * ada.x + ada.y * ada.y) >= state.keep.r + ada.r - 0.5
+
+    state = Sim.new("KEEP01", seed: 1, keep_hp: 900)
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 240, y: 0, hp: 500, wave: 2})
+    state = Enum.reduce(1..220, state, fn _, state -> Sim.tick(state) end)
+    [biter] = Sim.monsters(state)
+    dist = :math.sqrt(biter.x * biter.x + biter.y * biter.y)
+    assert dist >= state.keep.r + biter.r - 8
+    assert state.keep.hp < 900
+  end
+
+  test "raising the keep spends wood and gold and widens the town" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    state = %{state | resources: %{state.resources | wood: 200, gold: 80}}
+
+    state =
+      push(state, "ada", %{"raise" => true})
+      |> Sim.tick()
+
+    assert state.town == 0
+    assert state.resources.wood == 200
+    assert Enum.any?(state.events, &(&1.type == "deny"))
+
+    state =
+      Enum.reduce(1..20, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => -1, "my" => 0, "raise" => false})
+        |> Sim.tick()
+      end)
+
+    state =
+      state
+      |> Sim.input("ada", %{"raise" => true, "mx" => 0, "my" => 0})
+      |> Sim.tick()
+
+    assert state.town == 1
+    assert state.resources.wood == 176
+    assert state.resources.gold == 72
+    snap = Snapshot.render(state)
+    assert snap.town == 1
+    assert snap.camera == 186
+    assert snap.dirt == 190
+    assert_in_delta snap.view_scale, 1.12, 0.000_1
+    assert snap.upgrade.wood == 36
+    assert hd(snap.players).range == 228
+
+    ada = hero(state, "ada")
+
+    state =
+      push(state, "ada", %{
+        "build" => "wall",
+        "place" => true,
+        "ax" => ada.x + 190,
+        "ay" => ada.y
+      })
+      |> Sim.tick()
+
+    assert Enum.any?(buildings(state), &(&1.kind == :wall))
+
+    state =
+      Enum.reduce(1..3, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"raise" => false})
+        |> Sim.tick()
+        |> Sim.input("ada", %{"raise" => true})
+        |> Sim.tick()
+      end)
+
+    assert state.town == 4
+    assert Snapshot.render(state).upgrade == nil
+
+    state =
+      state
+      |> Sim.input("ada", %{"raise" => false})
+      |> Sim.tick()
+      |> Sim.input("ada", %{"raise" => true})
+      |> Sim.tick()
+
+    assert state.town == 4
+  end
+
   defp place_wall(hero) do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 400)
     {:ok, state} = Sim.join(state, player("ada", hero))
@@ -600,6 +841,11 @@ defmodule LastKeep.Game.SimTest do
         })
         |> Sim.tick()
     end
+  end
+
+  defp dir(dx, dy) do
+    length = max(:math.sqrt(dx * dx + dy * dy), 0.001)
+    {dx / length, dy / length}
   end
 
   defp player(id, hero), do: %{id: id, name: id, hero: hero, connected: true}

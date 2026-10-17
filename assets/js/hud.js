@@ -49,6 +49,11 @@ export function placementReason(me, aim, resources) {
   return ""
 }
 
+export function raiseLabel(upgrade) {
+  if (!upgrade) return "The keep is as high as it goes"
+  return `Raise the keep  ${upgrade.wood} wood ${upgrade.gold} gold`
+}
+
 export function bonusCopy(snap) {
   return {
     forge: snap?.forge

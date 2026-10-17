@@ -3,10 +3,11 @@ const path = require("path")
 const { createHost, joinQuery } = require("../scenarios")
 
 const PARTY = [
-  { name: "Ada", hero: "warrior", persona: "tank" },
-  { name: "Lux", hero: "mage", persona: "mage" },
-  { name: "Bram", hero: "engineer", persona: "builder" },
-  { name: "Pip", hero: "scout", persona: "casual" }
+  { name: "Ada", hero: "warrior", persona: "gameplay" },
+  { name: "Lux", hero: "mage", persona: "graphics" },
+  { name: "Bram", hero: "engineer", persona: "music" },
+  { name: "Pip", hero: "scout", persona: "logic" },
+  { name: "Nia", hero: "farmer", persona: "character" }
 ]
 
 async function openParty(browser, options = {}) {

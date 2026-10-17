@@ -1,10 +1,17 @@
 const { test, expect } = require("@playwright/test")
 const { openParty, act, readState } = require("./playtest/room")
 
-test("four heroes share one room and the warrior can walk", async ({ browser }) => {
+test("five specialists share one room and the warrior can walk", async ({ browser }) => {
   const party = await openParty(browser)
   const names = party.seats.map((seat) => seat.name)
-  expect(names).toEqual(["Ada", "Lux", "Bram", "Pip"])
+  expect(names).toEqual(["Ada", "Lux", "Bram", "Pip", "Nia"])
+  expect(party.seats.map((seat) => seat.persona)).toEqual([
+    "gameplay",
+    "graphics",
+    "music",
+    "logic",
+    "character"
+  ])
   for (const seat of party.seats) {
     await expect(seat.page.locator("[data-roster]")).toContainText("Ada")
     await expect(seat.page.locator("[data-roster]")).toContainText(seat.name)

@@ -15,6 +15,12 @@ defmodule LastKeepWeb.Router do
   end
 
   scope "/", LastKeepWeb do
+    pipe_through :api
+
+    get "/health", HealthController, :show
+  end
+
+  scope "/", LastKeepWeb do
     pipe_through :browser
 
     get "/", PageController, :home

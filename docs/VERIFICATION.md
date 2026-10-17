@@ -17,3 +17,15 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - `e2e/playtest.spec.js` joins four heroes, requires the warrior to walk, requires the name Ada on the figure, the You line, and the roster row, requires the next line to say "2 goblins", and requires the invite button to end inside the 1280px window.
 - `assets/js/hud.test.js` requires "Next: 2 goblins" and "Next: 1 wolf".
 - "two goblins that share a spot step apart" requires the gap to be at least the sum of their radii.
+
+## 2026-10-17 bodies, town, and readiness
+
+- "a gap in a long wall lets goblins through one at a time" requires one goblin through the slot and two goblins filed through with at most one in the slot.
+- "heroes and monsters stop on each other, and only the warrior dash passes" requires hero-hero and hero-monster separation, a warrior dash past the body, and a scout dash that stops.
+- "the keep is solid and a monster bites it from the edge" requires the hero outside the keep and a bite that lands from outside.
+- "wave 1 goblins spawn well outside the yard" requires the ring between 600 and 680. "wave 2 does not spawn in the yard" requires the next ring between 740 and 900 on the tick the wave starts.
+- "raising the keep spends wood and gold and widens the town" requires a refuse away from the keep, a paid rank, a wider build, and a stop at rank 4.
+- `town.test.js` and `frame.test.js` require the camera, dirt, and frustum to grow with rank. `scenery.test.js` requires the outer ring to be bare trunks with no wood. `hud.test.js` requires the raise button to name its cost.
+- `e2e/playtest.spec.js` joins five specialists and still requires the warrior to walk, the name, the next line, and the invite button inside 1280px.
+- `GET /health` returns `{"ok": true}`. The deploy waits on `https://agentyard.letz.tw/health` before `npx playwright test`. The smoke assertions are unchanged.
+- Coverage measured by `mix test --cover` is 68.11%. The floor in `mix.exs` is 68. The next round may raise 68. It may not lower it.

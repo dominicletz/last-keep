@@ -57,11 +57,16 @@ flowchart LR
   boss -->|drop one relic| relics
   relics -->|heartwood| keep
 
-  monsters -.->|planned: bodies block| monsters
-  warrior -.->|planned: dash passes through| monsters
-  keep -.->|planned: solid obstacle| warrior
-  wood -.->|planned: upgrade the keep| keep
-  keep -.->|planned: wider town and camera| wall
+  monsters -->|bodies block| monsters
+  warrior -->|dash passes through| monsters
+  keep -->|solid obstacle| warrior
+  wood -->|upgrade the keep| keep
+  gold -->|upgrade the keep| keep
+  keep -->|wider town and camera| wall
+
+  relics -.->|planned: elites drop one too| monsters
+  spire -.->|planned: unlock spells| mage
+  wall -.->|planned: the town grows itself| keep
 ```
 
 ## Roles
@@ -98,7 +103,7 @@ Produces: the melee answer to a monster that has reached the yard, a short guard
 
 Who depends on it: the keep, when something is already inside the walls. Without a warrior the party still kills at range, but the body in the yard is gone and kills pay less gold.
 
-Monsters that overlap push apart, so two goblins cannot stand inside one body. They still do not block a path. A hero still walks through another hero or a monster, and a wall line still cannot squeeze a pack into a gap. The warrior's dash is the planned exception that will pass through monsters once bodies block. Today `slide` and `chase` stop only for buildings.
+Monsters that overlap push apart, and a monster also stops when the next step would enter another monster, a living hero, a wall, or the keep. A gap in a wall that fits one body and not two makes the pack file through. A hero stops on another hero and on a monster. The warrior's dash is the pass through a monster. A scout dash still stops. Walls, heroes, and the keep still stop the warrior dash.
 
 ### Mage
 
@@ -112,9 +117,9 @@ Who depends on it: the warrior who would otherwise meet the whole pack in melee.
 
 The keep is the loss condition. Monsters bite it when they are closer to it than to a hero. Walls take that bite instead while they stand. Food spent beside the keep restores its health. Heartwood raises its maximum. When its health hits zero the run is over.
 
-The keep is not a solid obstacle yet. `slide` has a flag for it, and every caller passes false, so heroes and monsters walk through the castle and bite it from inside. The planned edge makes the footprint solid: heroes stop at the wall, and monsters attack from the edge.
+The keep is solid. A hero stops at the wall. A monster stops at the edge and bites from there. A monster that is already inside still bites.
 
-A keep upgrade is planned, not built. It spends wood and gold from gathering and fields, with no card pick. Each rank widens the radius in which the party can place buildings and pulls the camera back, so the town and the view grow together.
+Raising the keep spends wood and gold. The button is on the bar, and the hero has to stand beside the keep. There is no card pick. Rank 0 costs 24 wood and 8 gold. Each rank adds 12 wood and 6 gold, and the keep stops at rank 4. The build radius becomes the wider of the hero's kit range and 180 plus 48 per rank. The camera pulls back by 36 per rank, the dirt disc grows by 40, and the view scale grows by 0.12.
 
 ### Buildings
 
@@ -131,13 +136,13 @@ A keep upgrade is planned, not built. It spends wood and gold from gathering and
 
 Goblins, skeletons, wolves, and trolls walk at the keep or at the nearest hero and bite. Elites change that body: fast lunges, armored hits take less, enraged bites harder and sooner. A boss slams the keep harder. Killing any monster pays gold. Killing a boss also grants one relic the party does not hold: heartwood, whetstone, swiftness, banner, or granary.
 
-Wave 1 is two slower, softer goblins from one direction, spawned about 136 to 147 units from the origin. Later nights spawn closer, about 108 to 125, then add directions, skeletons, wolves, trolls, elites, and bosses. Heroes stand near radius 120, so the first goblins arrive in the yard immediately. Pushing the spawn ring out and enlarging the map, while keeping the walk time fair, is planned. It is not in the simulation yet.
+Wave 1 is two slower, softer goblins from one direction, spawned about 620 to 659 units from the origin. Later nights spawn farther, about 760 to 839, then add directions, skeletons, wolves, trolls, elites, and bosses. Heroes stand near radius 120. The map clamps at 1800. A wave-1 goblin still has time to reach the keep inside the minute.
 
 ## Empty roles
 
 No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, and gold has a producer and a consumer. The test fails if that stops being true.
 
-Trees with wood are entities. A living hero standing on one chops it, and the tree leaves the world when the wood is gone. The client also draws a ring of trees that are not entities. They have no wood, so they cannot be chopped. They read as dead trees. Making them obviously scenery, or making them real trees, is planned.
+Trees with wood are entities. A living hero standing on one chops it, and the tree leaves the world when the wood is gone. Those trees are drawn with a green crown. The client also draws a ring of bare grey trunks. That ring is not an entity. It has no crown and no wood, so it cannot be chopped. `Rules.scenery_ring/0` says so.
 
 ## Planned, not in the simulation
 
@@ -145,9 +150,4 @@ Dotted arrows in the graph are these edges. They are `planned` in `interactions.
 
 - Elites do not drop relics. Only a boss does.
 - The spire does not unlock new spells. It only buffs the mage's damage and cooldowns.
-- There is no city-growth layer. The party places each building by hand. The keep upgrade above is the first step of that idea, and it is not built either.
-- Monsters push apart when they overlap. They still do not block a path, heroes do not block heroes, and heroes do not block monsters. A wall cannot funnel a pack yet.
-- The warrior dash does not pass through monsters, because monsters are not obstacles.
-- The keep is not solid.
-- Spawn distance and the map size are still the current rings.
-- The decorative tree ring is not a resource.
+- There is no city-growth layer beyond the keep upgrade. The party still places each building by hand.
