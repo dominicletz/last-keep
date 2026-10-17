@@ -43,7 +43,7 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-026 | Dominic manual | logic | high | Monsters push apart when they overlap (`defp separate_monsters`, test "two goblins that share a spot step apart"). They still do not block a path, so a wall line cannot funnel them. | open |
 | LK-027 | Dominic manual | logic | high | Heroes walk through each other and through monsters. Bodies should block. The warrior dash is the exception that passes through monsters. | open |
 | LK-028 | Dominic manual | logic | high | The keep can be walked into. It should be solid for heroes and monsters, and monsters should bite it from the edge. | open |
-| LK-029 | Dominic manual | gameplay | high | Monsters spawn on top of the yard. Push the spawn ring out, enlarge the map, and keep the time to reach the keep fair. | open |
+| LK-029 | Dominic manual | gameplay | high | Monsters spawn on top of the yard. Round 2 cleared wave 1 with the keep at 900, then wave 2's pack was already in the yard and the keep fell. Push the spawn ring out, enlarge the map, and keep the time to reach the keep fair. | open |
 | LK-030 | Dominic manual | gameplay/graphics | medium | A ring of trees is only scenery. Players cannot chop it. Make those trees harvestable, or draw them so they are obviously not wood, and say which in the interaction doc. | open |
 | LK-031 | Dominic manual | gameplay | high | No keep upgrade. Spending wood and gold should enlarge the buildable town and pull the camera back, with no card pick. | open |
 | LK-032 | Bram, round 1 | gameplay | high | After one wall the corner said "Too far" and a pale dot sat on the grass. No build range was drawn on the yard, and the trap never landed. `playtests/round-1/shots/02-Bram.png` | open |
