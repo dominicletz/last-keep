@@ -26,6 +26,7 @@ COPY config ./config
 COPY lib ./lib
 COPY priv ./priv
 COPY assets/js ./assets/js
+COPY assets/models ./assets/models
 
 RUN mix assets.deploy \
     && mix compile \

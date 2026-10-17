@@ -70,3 +70,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - `docs/concept/heroes.jpg`, `monsters.jpg`, and `theme.jpg` are the reference sheets. Each gallery contact sheet ends with that asset's crop. `docs/gallery.html` links `concept.png`.
 - `STYLE.md` hexes are the jpeg-js lower median of the cited 8×8 patch. A token with no sheet and region, a region outside the sheet, or a hex that is not that median fails `npm run models`.
 - This pass recolors the existing meshes to those tokens. It does not change the Elixir simulation. The coverage floor stays 69.
+
+## 2026-10-17 production image
+
+- `Dockerfile.prod` copies `assets/models` with `assets/js`. The client imports `models/registry.js`, and the image build failed esbuild without that copy. `image.test.js` walks the bundle and fails when a copied directory is missing. This does not change the simulation. The coverage floor stays 69.
