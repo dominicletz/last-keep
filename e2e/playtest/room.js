@@ -62,9 +62,25 @@ async function readState(page) {
       keep: game.keep || null,
       self: game.self || null,
       monsters: (game.monsters || []).length,
+      monsterBodies: (game.monsters || []).map((monster) => ({
+        id: monster.id,
+        kind: monster.kind,
+        spreadX: monster.spreadX,
+        spreadZ: monster.spreadZ,
+        onScreen: monster.onScreen
+      })),
       buildings: game.buildings ?? null,
       kills: game.kills ?? null,
-      hud: text("[data-stock]")
+      hud: text("[data-stock]"),
+      audio: game.audio || null,
+      figures: (game.figures || []).map((figure) => ({
+        hero: figure.hero,
+        marks: figure.marks,
+        bounds: figure.bounds,
+        parts: figure.parts
+      })),
+      rangeRing: game.rangeRing || null,
+      mute: text("[data-mute]")
     }
   })
 }

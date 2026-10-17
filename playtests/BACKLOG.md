@@ -62,7 +62,19 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | LK-045 | Nia, round 3 room 64MLX4 | character | medium | Warrior, mage, scout, farmer, and engineer each build a different body. Guarded by `heroes.test.js` and `heroSilhouettes`. `playtests/round-3/shots/01-Nia.png` | done |
 | LK-046 | Pip, round 3 room 64MLX4 | logic | low | Food is still only the number in the resource chip. The screen does not say what a feast spends it on. | open |
 | LK-047 | Lux, round 4 room ZT4PJ2 | graphics | medium | An edge call stops short of the roster and is right-aligned there. Guarded by `callAnchor` in `hud.test.js` and `twoPlayerNight`. `playtests/round-4/shots/15-Ada.png` | done |
-| LK-048 | Ada, round 4 room ZT4PJ2 | gameplay | medium | Raise the keep is inert while gold is short and it is painted like a live button. A click in room ZT4PJ2 did not spend wood or gold. | open |
+| LK-048 | Ada, round 4 room ZT4PJ2 | gameplay | medium | Raise the keep is inert while gold is short and it is painted like a live button. A click in room ZT4PJ2 did not spend wood or gold. Round 5 room ME475J still paints it live at gold 3. | open |
 | LK-060 | Ada, round 5 room ME475J | gameplay | low | A wave-1 pair can straddle the 45-degree call bucket and the yard says "goblin" twice instead of "2 goblins". `playtests/round-5/shots/06-Ada.png` | open |
+
+## Fidelity
+
+Scores are 1 to 5 against the concept sheets. A later row for the same area may be lower only when Reason is non-empty. Round 5 is the before-theming baseline.
+
+| asset | date | score | reason |
+| --- | --- | --- | --- |
+| mood | 2026-10-17 | 1 | Olive daylight. The sheet is dusk, dark pines, and warm torchlight. |
+| town | 2026-10-17 | 2 | A box keep, a dirt octagon, and one torch. No stone tower, thatch, crops, or palisade. |
+| heroes | 2026-10-17 | 2 | Five props match the roles. The meshes are still blocks. |
+| monsters | 2026-10-17 | 2 | A red goblin and skeletons in the pile. No ogre, wolf, bat, or dark rider. |
+| ui | 2026-10-17 | 2 | The ring, the calls, and the name tags are in the world. Stock, clock, and score are panels. |
 
 No implemented hero is isolated. Farmer, engineer, scout, warrior, and mage each have an outgoing edge in `docs/interactions.json`.
