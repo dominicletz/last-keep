@@ -28,16 +28,19 @@ defmodule LastKeep.Game.Waves do
       else
         dirs = min(2 + div(wave - 1, 2), 6)
 
-        for i <- 0..(dirs - 1) do
-          kind = kind_for(wave, i)
+        regular =
+          for i <- 0..(dirs - 1) do
+            kind = kind_for(wave, i)
 
-          %{
-            angle: angle + i * 2 * :math.pi() / dirs,
-            kind: kind,
-            count: count_for(wave, kind),
-            elite: elite
-          }
-        end
+            %{
+              angle: angle + i * 2 * :math.pi() / dirs,
+              kind: kind,
+              count: count_for(wave, kind),
+              elite: elite
+            }
+          end
+
+        regular ++ showcase(wave)
       end
 
     {groups, rng}
@@ -54,6 +57,19 @@ defmodule LastKeep.Game.Waves do
   end
 
   def elite(_wave), do: nil
+
+  defp showcase(2), do: [%{angle: 0.5, kind: :wolf, count: 1, elite: nil}]
+
+  defp showcase(3) do
+    [
+      %{angle: 1.2, kind: :troll, count: 1, elite: nil},
+      %{angle: 2.4, kind: :bat, count: 2, elite: nil}
+    ]
+  end
+
+  defp showcase(4), do: [%{angle: 3.4, kind: :boss, count: 1, elite: nil}]
+
+  defp showcase(_wave), do: []
 
   defp kind_for(wave, i) do
     cond do

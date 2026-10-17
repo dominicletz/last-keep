@@ -11,6 +11,7 @@ const GOBLIN = 0x676f3c
 const TORCH = 0xf5751e
 const WOOD = 0x8e755b
 const BONE = 0x908b8a
+const RIB = 0xb2ada6
 const WOLF = 0x6e6767
 const OGRE = 0x70724d
 const HIDE = 0x4d433b
@@ -77,7 +78,8 @@ export function goblinVoxels() {
     fill(-6, 15, 0, -5, 17, 0, "ear", GOBLIN)
     fill(5, 15, 0, 6, 17, 0, "ear", GOBLIN)
     fill(-4, 8, 1, -3, 11, 2, "arm", GOBLIN)
-    fill(4, 1, 1, 5, 16, 2, "spear", WOOD)
+    fill(4, 2, 0, 7, 18, 3, "spear", WOOD)
+    fill(5, 17, 0, 8, 21, 3, "head", STEEL)
     fill(4, 17, 1, 5, 19, 2, "tip", STEEL)
     fill(4, 20, 1, 5, 23, 2, "flame", TORCH)
   })
@@ -156,22 +158,22 @@ export function engineerVoxels() {
 }
 
 export function skeletonVoxels() {
-  return carve(1.4, ({ fill, put }) => {
+  return carve(2.15, ({ fill, put }) => {
     fill(-1, 0, 0, 0, 2, 1, "boot", BONE)
     fill(1, 0, 0, 2, 2, 1, "boot", BONE)
-    fill(-1, 3, 0, 0, 10, 0, "leg", BONE)
-    fill(1, 3, 0, 2, 10, 0, "leg", BONE)
-    fill(-2, 11, 0, 2, 11, 1, "hip", BONE)
-    fill(-2, 13, 0, 2, 13, 1, "ribs", BONE)
-    fill(-2, 15, 0, 2, 15, 1, "ribs", BONE)
-    fill(-2, 17, 0, 2, 17, 1, "ribs", BONE)
-    fill(0, 12, 0, 0, 18, 0, "spine", BONE)
-    fill(-4, 14, 0, -3, 18, 0, "arm", BONE)
-    fill(3, 14, 0, 4, 18, 0, "arm", BONE)
-    fill(4, 8, 1, 5, 16, 1, "sword", STEEL)
-    fill(-2, 19, -1, 2, 22, 2, "skull", BONE)
-    put(-1, 21, 2, "eye", TORCH)
-    put(1, 21, 2, "eye", TORCH)
+    fill(-1, 3, 0, 0, 8, 0, "leg", BONE)
+    fill(1, 3, 0, 2, 8, 0, "leg", BONE)
+    fill(-2, 9, -1, 2, 10, 1, "hip", BONE)
+    fill(-4, 11, 2, 4, 12, 2, "ribs", RIB)
+    fill(-4, 17, 2, 4, 18, 2, "ribs", RIB)
+    fill(-4, 23, 2, 4, 24, 2, "ribs", RIB)
+    fill(0, 11, 0, 0, 22, 0, "spine", BONE)
+    fill(-5, 14, 0, -4, 20, 0, "arm", BONE)
+    fill(4, 14, 0, 5, 20, 0, "arm", BONE)
+    fill(5, 8, 1, 6, 18, 1, "sword", STEEL)
+    fill(-2, 26, -1, 2, 29, 2, "skull", BONE)
+    put(-1, 28, 2, "eye", TORCH)
+    put(1, 28, 2, "eye", TORCH)
   })
 }
 

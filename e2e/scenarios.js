@@ -395,6 +395,25 @@ async function assertDiegeticHud(page) {
   expect(report.area).toBeLessThan(105000)
 }
 
+async function paradeShowsEveryKind(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior")
+  const page = host.page
+  watch(page, "host", errors)
+  await page.evaluate(() => window.__lastKeepTest.parade())
+  await page.waitForFunction(() => {
+    const kinds = new Set((window.__lastKeep.monsters || []).map((monster) => monster.kind))
+    return ["goblin", "skeleton", "wolf", "troll", "bat", "boss"].every((kind) => kinds.has(kind))
+  })
+  const onScreen = await page.evaluate(() =>
+    (window.__lastKeep.monsters || []).filter((monster) => monster.onScreen).map((monster) => monster.kind)
+  )
+  expect(new Set(onScreen)).toEqual(new Set(["goblin", "skeleton", "wolf", "troll", "bat", "boss"]))
+  await page.screenshot({ path: shot("parade.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
 async function twoPlayerNight(browser) {
   const errors = []
   const host = await createHost(browser, "Bob", "warrior")
@@ -527,6 +546,12 @@ async function movementIsInterpolated(page) {
   expect(travel).toBeGreaterThan(20)
   expect(sawBlend).toBe(true)
   expect(maxGap).toBeLessThan(14)
+  const wave = await page.locator(".chip").boundingBox()
+  const view = page.viewportSize()
+  expect(wave.x).toBeGreaterThanOrEqual(0)
+  expect(wave.y).toBeGreaterThanOrEqual(0)
+  expect(wave.x + wave.width).toBeLessThanOrEqual(view.width + 1)
+  expect(wave.y + wave.height).toBeLessThanOrEqual(view.height + 1)
 }
 
 async function squarePixels(browser) {
@@ -712,5 +737,6 @@ module.exports = {
   joinFromForm,
   squarePixels,
   scoreList,
-  heroSilhouettes
+  heroSilhouettes,
+  paradeShowsEveryKind
 }

@@ -157,6 +157,18 @@ defmodule LastKeep.Game.SimTest do
     {one, _} = Waves.plan(1, rng)
     assert Enum.map(one, & &1.kind) == [:goblin]
     assert Enum.map(one, & &1.count) == [2]
+
+    {two, _} = Waves.plan(2, rng)
+    assert Enum.any?(two, &(&1.kind == :wolf))
+    {three, _} = Waves.plan(3, rng)
+    assert Enum.any?(three, &(&1.kind == :troll))
+    assert Enum.any?(three, &(&1.kind == :bat))
+    {four, _} = Waves.plan(4, rng)
+    assert Enum.any?(four, &(&1.kind == :boss))
+
+    parade = Sim.parade(Sim.new("KEEP01", seed: 1))
+    kinds = parade |> Sim.monsters() |> Enum.map(& &1.kind) |> Enum.sort()
+    assert kinds == [:bat, :boss, :goblin, :skeleton, :troll, :wolf]
   end
 
   test "every fifth wave is an elite or a boss" do

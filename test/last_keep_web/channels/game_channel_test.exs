@@ -49,6 +49,24 @@ defmodule LastKeepWeb.GameChannelTest do
     assert length(Room.snapshot(code).players) == 3
   end
 
+  test "a scripted parade spawns each kind when the browser suite asks" do
+    {:ok, code} = Rooms.create(auto_tick: false, seed: 1)
+    {:ok, token, _public_id, _snap} = Rooms.enlist(code, %{name: "Ada", hero: :warrior})
+
+    {:ok, _reply, socket} =
+      LastKeepWeb.UserSocket
+      |> socket("user:ada", %{})
+      |> subscribe_and_join(LastKeepWeb.GameChannel, "game:" <> code, %{"token" => token})
+
+    System.put_env("PLAYWRIGHT", "1")
+    on_exit(fn -> System.delete_env("PLAYWRIGHT") end)
+    ref = push(socket, "parade", %{})
+    assert_reply ref, :ok
+    snap = Room.snapshot(code)
+    kinds = snap.monsters |> Enum.map(& &1.kind) |> Enum.sort()
+    assert kinds == ["bat", "boss", "goblin", "skeleton", "troll", "wolf"]
+  end
+
   test "an unknown token cannot take a hero" do
     {:ok, code} = Rooms.create(auto_tick: false, seed: 1)
 

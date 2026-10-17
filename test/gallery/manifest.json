@@ -108,11 +108,11 @@
     {
       "id": "goblin",
       "family": "monster",
-      "area": 846,
+      "area": 1044,
       "minArea": 682,
-      "day": 83.48,
-      "dusk": 48.47,
-      "night": 44.5,
+      "day": 94.97,
+      "dusk": 51.1,
+      "night": 45.95,
       "sheet": "monsters.jpg",
       "figure": "goblin",
       "crop": [
@@ -126,11 +126,11 @@
     {
       "id": "skeleton",
       "family": "monster",
-      "area": 324,
-      "minArea": 293,
-      "day": 109.16,
-      "dusk": 55.81,
-      "night": 47.19,
+      "area": 1044,
+      "minArea": 835,
+      "day": 114.2,
+      "dusk": 58.6,
+      "night": 51.43,
       "sheet": "monsters.jpg",
       "figure": "skeleton",
       "crop": [

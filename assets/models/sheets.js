@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import jpeg from "jpeg-js"
+import { cycleLight, duskFrame, hueGap, hueOf, litGround, lumaOf } from "../js/scene.js"
 
 // Palette hexes are the jpeg-js lower median of the cited patch.
 // Sort each channel and take index (length - 1) >> 1. Do not use another decoder.
@@ -31,7 +32,7 @@ export function medianHex(sheet, region) {
 export function sceneRegions(markdown) {
   const regions = {}
   for (const line of markdown.split("\n")) {
-    const row = line.match(/^\| (ground|sky) \| (theme\.jpg) \| (\d+),(\d+),(\d+),(\d+) \|/)
+    const row = line.match(/^\| (ground|sky|horizon) \| (theme\.jpg) \| (\d+),(\d+),(\d+),(\d+) \|/)
     if (!row) continue
     regions[row[1]] = {
       sheet: row[2],
@@ -68,8 +69,8 @@ function chromaDist(a, b) {
 export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
   const problems = []
   const regions = sceneRegions(markdown)
-  if (!regions.ground || !regions.sky) {
-    problems.push("STYLE.md does not cite a ground region and a sky region")
+  if (!regions.ground || !regions.sky || !regions.horizon) {
+    problems.push("STYLE.md does not cite a ground region, a sky region, and a horizon region")
     return problems
   }
   const groundMedian = medianHex(sheet, regions.ground.region)
@@ -90,8 +91,16 @@ export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
   }
   const groundHex = rgbOf(colors.ground).map((channel) => channel.toString(16).padStart(2, "0")).join("")
   const skyHex = rgbOf(colors.sky).map((channel) => channel.toString(16).padStart(2, "0")).join("")
+  const groundLuma = lumaOf(...rgbOf(colors.ground))
   if (groundHex !== grass.hex) problems.push(`yard ground #${groundHex} is not the grass token #${grass.hex}`)
+  if (groundLuma < 90) problems.push(`yard ground luma ${groundLuma.toFixed(1)} is dark olive`)
   if (skyHex !== skyMedian) problems.push(`sky color #${skyHex} is not the concept sky median #${skyMedian}`)
+  const dayField = litGround(colors.ground, cycleLight.day)
+  if (dayField.luma < 90 || dayField.hue < 55 || dayField.hue > 95) {
+    problems.push(`day field luma ${dayField.luma.toFixed(1)} hue ${dayField.hue.toFixed(1)} is dark olive`)
+  }
+  const horizonMedian = medianHex(sheet, regions.horizon.region)
+  problems.push(...duskMoodProblems(sheet, colors.ground, horizonMedian))
   const path = cited.find((token) => token.name === "path")
   const stone = cited.find((token) => token.name === "stone")
   if (!path || !stone) {
@@ -128,6 +137,52 @@ export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
     problems.push("day gallery background is not the concept sky")
   }
   return problems
+}
+
+// The in-game dusk frame has to share the theme sheet's warm hue, stay at
+// least as bright as that sheet, and carry a torch. Dark olive fails.
+function duskMoodProblems(sheet, ground, horizonMedian) {
+  const problems = []
+  const background = rgbOf(cycleLight.dusk.background)
+    .map((channel) => channel.toString(16).padStart(2, "0"))
+    .join("")
+  if (background !== horizonMedian) {
+    problems.push(`dusk sky #${background} is not the concept horizon #${horizonMedian}`)
+  }
+  const frame = duskFrame(ground, cycleLight.dusk)
+  const mean = sheetMean(sheet)
+  if (hueGap(frame.hue, mean.hue) > 18) {
+    problems.push(`dusk frame hue ${frame.hue.toFixed(1)} is ${hueGap(frame.hue, mean.hue).toFixed(1)} from the theme hue ${mean.hue.toFixed(1)}`)
+  }
+  if (frame.luma < mean.luma) {
+    problems.push(`dusk frame luma ${frame.luma.toFixed(1)} is below the theme luma ${mean.luma.toFixed(1)}`)
+  }
+  if (frame.max < 160) problems.push(`dusk torch luma ${frame.max.toFixed(1)} is dim`)
+  const duskField = litGround(ground, cycleLight.dusk)
+  if (duskField.luma < 50 || duskField.hue > 55) {
+    problems.push(`dusk field luma ${duskField.luma.toFixed(1)} hue ${duskField.hue.toFixed(1)} is murky olive`)
+  }
+  return problems
+}
+
+function sheetMean(sheet) {
+  let sr = 0
+  let sg = 0
+  let sb = 0
+  let count = 0
+  for (let y = 0; y < sheet.height; y += 4) {
+    for (let x = 0; x < sheet.width; x += 4) {
+      const offset = (y * sheet.width + x) * 4
+      sr += sheet.data[offset]
+      sg += sheet.data[offset + 1]
+      sb += sheet.data[offset + 2]
+      count += 1
+    }
+  }
+  const r = sr / count
+  const g = sg / count
+  const b = sb / count
+  return { r, g, b, luma: lumaOf(r, g, b), hue: hueOf(r, g, b) }
 }
 
 export function citationProblems(cited, sheets) {
