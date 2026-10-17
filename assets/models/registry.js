@@ -25,6 +25,8 @@ const ROBE = 0x3e6dab
 const GEM = 0x23d9f3
 const HIDE = 0x4d433b
 const DUSK = 0x5d505b
+const PINE = 0x353e27
+const GRASS = 0x292b10
 
 function box(name, w, h, d, x, y, z, color) {
   return { name, shape: "box", w, h, d, x, y, z, color }
@@ -118,12 +120,18 @@ const REGISTRY = [
     box("gem", 5, 5, 5, 0, 48, 0, GEM)
   ], "spell light"),
   entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 3447, null),
-  entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 244, [
-    prism("trunk", 3, 4, 12, 5, 0, 6, 0, 0x8e755b),
-    cone("crown", 28, 28, 28, 0, 24, 0, 0x353e27, 5)
-  ]),
+  entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 307, pineParts()),
   entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "pine trunk", crop: crop(1080, 160, 180, 260) }, 97, null)
 ]
+
+function pineParts() {
+  return [
+    prism("trunk", 2.2, 4.4, 16, 5, 0, 8, 0, WOOD),
+    cone("bough", 30, 14, 30, 0, 16, 0, GRASS, 6),
+    cone("bough", 22, 16, 22, 0, 28, 0, PINE, 6),
+    cone("bough", 12, 14, 12, 0, 40, 0, PINE, 5)
+  ]
+}
 
 function palisadeParts() {
   const parts = [-12, -6, 0, 6, 12].map((x) => box("post", 4, 24, 4, x, 12, 0, PALISADE))

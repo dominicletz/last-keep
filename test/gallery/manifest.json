@@ -324,11 +324,11 @@
     {
       "id": "tree",
       "family": "prop",
-      "area": 305,
-      "minArea": 244,
-      "day": 50.28,
-      "dusk": 23.49,
-      "night": 9.21,
+      "area": 384,
+      "minArea": 307,
+      "day": 45.32,
+      "dusk": 20.48,
+      "night": 7.48,
       "sheet": "theme.jpg",
       "figure": "pine",
       "crop": [

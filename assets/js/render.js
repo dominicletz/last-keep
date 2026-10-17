@@ -3,7 +3,7 @@ import { present } from "./present"
 import { eliteLook } from "./elite"
 import { frameFor } from "./frame"
 import { poseAt } from "./motion"
-import { sceneryForest } from "./scenery"
+import { sceneryForest, scenerySlots } from "./scenery"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
@@ -111,24 +111,34 @@ export function createView(stage) {
   applyFrame()
   window.addEventListener("resize", applyFrame)
 
+  const forestLook = forestState()
+
   function forest() {
     const look = sceneryForest()
+    const slots = scenerySlots()
+    if (!look.parts.includes("trunk") || slots.length === 0) return
     const dummy = new THREE.Object3D()
-    if (look.parts.includes("trunk")) {
-      const trunk = new THREE.CylinderGeometry(look.radiusTop, look.radiusBottom, look.height, look.segments)
-      const trunks = new THREE.InstancedMesh(trunk, mat(look.trunk), look.count)
-      for (let i = 0; i < look.count; i++) {
-        const angle = i * 2.4
-        const dist = 300 + (i % 8) * 36
-        dummy.position.set(Math.cos(angle) * dist, look.height / 2, Math.sin(angle) * dist)
-        dummy.scale.setScalar(0.85 + (i % 3) * 0.2)
-        dummy.rotation.set(0, angle, 0)
-        dummy.updateMatrix()
-        trunks.setMatrixAt(i, dummy.matrix)
-      }
-      trunks.castShadow = false
-      trunks.receiveShadow = false
-      scene.add(trunks)
+    const trunk = new THREE.CylinderGeometry(look.radiusTop, look.radiusBottom, look.height, look.segments)
+    const trunks = new THREE.InstancedMesh(trunk, mat(look.trunk), slots.length)
+    slots.forEach((slot, i) => {
+      dummy.position.set(slot.x, slot.y, slot.z)
+      dummy.scale.set(slot.scale, slot.scale, slot.scale)
+      dummy.rotation.set(0, 0, 0)
+      dummy.updateMatrix()
+      trunks.setMatrixAt(i, dummy.matrix)
+    })
+    trunks.castShadow = false
+    trunks.receiveShadow = false
+    scene.add(trunks)
+  }
+
+  function forestState() {
+    const look = sceneryForest()
+    return {
+      trunks: scenerySlots().length,
+      wood: look.wood,
+      crowns: look.parts.includes("crown") || look.parts.includes("bough"),
+      treeBoughs: modelParts("tree").filter((part) => part.name === "bough").length
     }
   }
 
@@ -406,6 +416,7 @@ export function createView(stage) {
           keep: keepParts(townRank).map((part) => part.name),
           path: true
         },
+        forestLook,
         rendered: heroMesh ? { x: heroMesh.position.x, z: heroMesh.position.z } : null,
         frame: {
           aspect: camera.right / camera.top,
