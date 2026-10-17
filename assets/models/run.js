@@ -37,6 +37,7 @@ import {
   stackHorizontal
 } from "./raster.js"
 import { groundColor, pathColor, plazaColor, ringColor, skyColor } from "../js/scene.js"
+import { detailFloor, detailProblems } from "./voxels.js"
 import { citationProblems, loadSheet, sceneColorProblems } from "./sheets.js"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
@@ -64,6 +65,9 @@ export function checkModels({ writeGolden = false } = {}) {
   if (!styleSource.includes("fit slack is 2")) problems.push("STYLE.md does not record fit slack 2")
   if (!styleSource.includes("pixel threshold is 0")) problems.push("STYLE.md does not record pixel threshold 0")
   if (!styleSource.includes("0.85")) problems.push("STYLE.md does not record the silhouette IoU limit")
+  if (!styleSource.includes(`voxel detail floor is ${detailFloor}`)) {
+    problems.push(`STYLE.md does not record voxel detail floor ${detailFloor}`)
+  }
 
   const present = {}
   const sheets = {}
@@ -101,6 +105,7 @@ export function checkModels({ writeGolden = false } = {}) {
       problems.push(...silhouetteProblems(listed, first))
       problems.push(...nightLightProblems(listed, first))
       problems.push(...heroHeightProblems(listed))
+      problems.push(...detailProblems(listed))
       problems.push(...closeupProblems(first))
       if (sheets["heroes.jpg"]) problems.push(...heroColorProblems(listed, sheets["heroes.jpg"]))
     } catch (error) {
