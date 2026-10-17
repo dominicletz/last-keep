@@ -89,3 +89,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 - The grass token moved from the shadow at 460,374 to the moss at 648,408. It was not the thatch roof. The gallery day background is that sky median, and dusk and night are darker shades of it. `sceneColorProblems` fails a ground token closer to the roof than to the moss, and a gallery sky whose mix is not the concept sky.
 - The rank-0 keep is a taller stone tower with a lit belfry, merlons, two timber houses, and pines behind it. Flame and torch colors emit. A night keep has to stay brighter than its sky, with a warm window. `nightLightProblems` locks that. The tower still grows at each rank. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 hero sheet
+
+- The warrior carries a shield and a sword, the mage a robe, a pointed hat, and a gemmed staff, the scout a hood and a bow, the farmer a straw brim and a pitchfork, and the engineer an apron, a hammer, and logs. `heroes.test.js` locks those marks, the prop colors, and the collider fit. This does not change the simulation. The coverage floor stays 69.
