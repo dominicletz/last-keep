@@ -1,0 +1,247 @@
+{
+  "threshold": 0,
+  "fitSlack": 2,
+  "iouLimit": 0.85,
+  "zoom": {
+    "css": [
+      1280,
+      800
+    ],
+    "rank": 0
+  },
+  "conceptPresent": {
+    "lk_heroes.jpg": false,
+    "lk_theme.jpg": false,
+    "lk_monsters.jpg": false
+  },
+  "assets": [
+    {
+      "id": "warrior",
+      "family": "hero",
+      "area": 624,
+      "minArea": 499,
+      "day": 93.93,
+      "dusk": 42.83,
+      "night": 16.21,
+      "sheet": "lk_heroes.jpg",
+      "figure": "warrior",
+      "conceptPresent": false
+    },
+    {
+      "id": "mage",
+      "family": "hero",
+      "area": 523,
+      "minArea": 418,
+      "day": 48.96,
+      "dusk": 22.08,
+      "night": 9.12,
+      "sheet": "lk_heroes.jpg",
+      "figure": "mage",
+      "conceptPresent": false
+    },
+    {
+      "id": "scout",
+      "family": "hero",
+      "area": 367,
+      "minArea": 293,
+      "day": 38.64,
+      "dusk": 18.23,
+      "night": 7.54,
+      "sheet": "lk_heroes.jpg",
+      "figure": "scout",
+      "conceptPresent": false
+    },
+    {
+      "id": "farmer",
+      "family": "hero",
+      "area": 898,
+      "minArea": 718,
+      "day": 147.32,
+      "dusk": 61.59,
+      "night": 16.34,
+      "sheet": "lk_heroes.jpg",
+      "figure": "farmer",
+      "conceptPresent": false
+    },
+    {
+      "id": "engineer",
+      "family": "hero",
+      "area": 372,
+      "minArea": 297,
+      "day": 117.03,
+      "dusk": 54.24,
+      "night": 21.22,
+      "sheet": "lk_heroes.jpg",
+      "figure": "engineer",
+      "conceptPresent": false
+    },
+    {
+      "id": "goblin",
+      "family": "monster",
+      "area": 380,
+      "minArea": 304,
+      "day": 76.06,
+      "dusk": 39.94,
+      "night": 15,
+      "sheet": "lk_monsters.jpg",
+      "figure": "goblin",
+      "conceptPresent": false
+    },
+    {
+      "id": "skeleton",
+      "family": "monster",
+      "area": 162,
+      "minArea": 129,
+      "day": 159.96,
+      "dusk": 77.12,
+      "night": 34.03,
+      "sheet": "lk_monsters.jpg",
+      "figure": "skeleton",
+      "conceptPresent": false
+    },
+    {
+      "id": "wolf",
+      "family": "monster",
+      "area": 249,
+      "minArea": 199,
+      "day": 39.14,
+      "dusk": 17.83,
+      "night": 7.29,
+      "sheet": "lk_monsters.jpg",
+      "figure": "wolf",
+      "conceptPresent": false
+    },
+    {
+      "id": "troll",
+      "family": "monster",
+      "area": 1045,
+      "minArea": 836,
+      "day": 65.15,
+      "dusk": 28.74,
+      "night": 10.75,
+      "sheet": "lk_monsters.jpg",
+      "figure": "troll",
+      "conceptPresent": false
+    },
+    {
+      "id": "boss",
+      "family": "monster",
+      "area": 1333,
+      "minArea": 1066,
+      "day": 54,
+      "dusk": 24.78,
+      "night": 8.47,
+      "sheet": "lk_monsters.jpg",
+      "figure": "boss",
+      "conceptPresent": false
+    },
+    {
+      "id": "wall",
+      "family": "building",
+      "area": 462,
+      "minArea": 369,
+      "day": 55.19,
+      "dusk": 26.29,
+      "night": 9.53,
+      "sheet": "lk_theme.jpg",
+      "figure": "wall",
+      "conceptPresent": false
+    },
+    {
+      "id": "tower",
+      "family": "building",
+      "area": 769,
+      "minArea": 615,
+      "day": 80.27,
+      "dusk": 36.56,
+      "night": 13.52,
+      "sheet": "lk_theme.jpg",
+      "figure": "tower",
+      "conceptPresent": false
+    },
+    {
+      "id": "trap",
+      "family": "building",
+      "area": 265,
+      "minArea": 212,
+      "day": 111.36,
+      "dusk": 49.75,
+      "night": 18.6,
+      "sheet": "lk_theme.jpg",
+      "figure": "trap",
+      "conceptPresent": false
+    },
+    {
+      "id": "field",
+      "family": "building",
+      "area": 348,
+      "minArea": 278,
+      "day": 161.56,
+      "dusk": 73.48,
+      "night": 28.76,
+      "sheet": "lk_theme.jpg",
+      "figure": "field",
+      "conceptPresent": false
+    },
+    {
+      "id": "forge",
+      "family": "building",
+      "area": 765,
+      "minArea": 612,
+      "day": 72.76,
+      "dusk": 33.1,
+      "night": 9.57,
+      "sheet": "lk_theme.jpg",
+      "figure": "forge",
+      "conceptPresent": false
+    },
+    {
+      "id": "mage_tower",
+      "family": "building",
+      "area": 1008,
+      "minArea": 806,
+      "day": 58.21,
+      "dusk": 25.1,
+      "night": 8.82,
+      "sheet": "lk_theme.jpg",
+      "figure": "mage tower",
+      "conceptPresent": false
+    },
+    {
+      "id": "keep",
+      "family": "prop",
+      "area": 4022,
+      "minArea": 3217,
+      "day": 79.37,
+      "dusk": 33.53,
+      "night": 8.2,
+      "sheet": "lk_theme.jpg",
+      "figure": "keep",
+      "conceptPresent": false
+    },
+    {
+      "id": "tree",
+      "family": "prop",
+      "area": 305,
+      "minArea": 244,
+      "day": 71.95,
+      "dusk": 32.38,
+      "night": 12.88,
+      "sheet": "lk_theme.jpg",
+      "figure": "harvestable tree",
+      "conceptPresent": false
+    },
+    {
+      "id": "scenery",
+      "family": "prop",
+      "area": 122,
+      "minArea": 97,
+      "day": 95,
+      "dusk": 46.67,
+      "night": 21.3,
+      "sheet": "lk_theme.jpg",
+      "figure": "scenery trunk",
+      "conceptPresent": false
+    }
+  ]
+}

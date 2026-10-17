@@ -2,7 +2,8 @@
   "name": "last-keep-e2e",
   "private": true,
   "scripts": {
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "models": "node assets/models/build.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1"

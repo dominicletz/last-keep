@@ -28,6 +28,9 @@ last_keep-*.tar
 # Ignore assets that are produced by build tools.
 /priv/static/assets/
 
+# Gallery frames from `npm run models`. The goldens live in test/gallery/.
+/artifacts/
+
 # Ignore digested assets cache.
 /priv/static/cache_manifest.json
 

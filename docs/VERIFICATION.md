@@ -57,3 +57,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - Blurring that field from a focus listener moved focus onto the next hidden control and the listener ran again. The page stopped answering, so the walk's poll and the build-ring wait sat until the 150 second test timeout. `blurHiddenFocus` blurs once and will not re-enter. Concealing the join form also sets `inert`, so the browser cannot focus it. `blurring a hidden field does not chase focus` covers the re-entry. The walk still has to pass 20.
 - Headless Chrome keeps every page visible, so five shadow maps never gave the page a turn and the walk evaluate did not return. Scenery no longer casts shadows, the shadow map is 256, and a page with no recent key or click paints at 4Hz. The five-player walk measures an idle seat and requires fewer than 12 paints in one second. The warrior still has to travel more than 20.
 - `five abandoned rooms stop and the count returns to baseline` opens five rooms, disconnects each, and requires every process to be gone within 2 seconds with `Rooms.count/0` back at the count from before they existed.
+
+## 2026-10-17 asset pipeline
+
+- `npm run models` renders every hero, monster, building, and yard prop at the 1280×800 rank-0 pixel buffer, in day, dusk, and night. A second run has to match the first. A frame that differs from `test/gallery/` fails. The pixel threshold is 0.
+- The same command rejects a material color that is not a `STYLE.md` token, a silhouette under the recorded minimum, a same-family intersection-over-union at or above 0.85, a mesh past twice its gameplay radius, and a Rules kind with no model, no style row, or no concept mapping.
+- `fidelity.test.js` keeps the round-5 scores and fails a later lower score with an empty reason.
+- The concept sheets are not in the repo. The gallery says so. This pass does not change the Elixir simulation. The coverage floor stays 69.
