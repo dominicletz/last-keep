@@ -7,7 +7,23 @@ defmodule LastKeep.Game.Room do
   alias LastKeep.Game.Sim
   alias LastKeep.Game.Snapshot
 
-  @idle_ms 600_000
+  # A closed browser used to leave the sim ticking for ten minutes. Smoke and
+  # playtests open a room per scenario, so those abandoned sims stacked on the
+  # box and the next room's inputs stalled. An empty room freezes the sim at
+  # once. After a player has connected, it terminates a few seconds later so a
+  # reload can rejoin. A room that nobody ever opened lasts @lobby_ms.
+  @empty_ms 4_000
+  @lobby_ms 60_000
+
+  def child_spec(opts) do
+    code = Keyword.fetch!(opts, :code)
+
+    %{
+      id: {__MODULE__, code},
+      start: {__MODULE__, :start_link, [opts]},
+      restart: :transient
+    }
+  end
 
   def start_link(opts) do
     code = Keyword.fetch!(opts, :code)
@@ -36,8 +52,20 @@ defmodule LastKeep.Game.Room do
   @impl true
   def init(opts) do
     sim = Sim.new(Keyword.fetch!(opts, :code), opts)
-    if Keyword.get(opts, :auto_tick, true), do: schedule()
-    {:ok, %{sim: sim, scored: false, empty_since: System.monotonic_time(:millisecond)}}
+
+    state = %{
+      sim: sim,
+      scored: false,
+      empty_since: System.monotonic_time(:millisecond),
+      saw_connection: false,
+      empty_ms: Keyword.get(opts, :idle_ms, @empty_ms),
+      lobby_ms: Keyword.get(opts, :lobby_ms, @lobby_ms),
+      auto_tick: Keyword.get(opts, :auto_tick, true),
+      timer: nil
+    }
+
+    state = if Keyword.get(opts, :auto_tick, true), do: schedule_tick(state), else: state
+    {:ok, state}
   end
 
   @impl true
@@ -45,8 +73,8 @@ defmodule LastKeep.Game.Room do
     case Sim.join(state.sim, attrs) do
       {:ok, sim} ->
         player = sim.players[attrs.id]
-        state = %{state | sim: sim, empty_since: nil}
-        {:reply, {:ok, player.public_id, Snapshot.render(sim)}, state}
+        state = note_presence(%{state | sim: sim})
+        {:reply, {:ok, player.public_id, Snapshot.render(sim)}, follow_presence(state)}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
@@ -71,8 +99,10 @@ defmodule LastKeep.Game.Room do
 
         player = %{sim.players[id] | generation: generation}
         sim = %{sim | players: Map.put(sim.players, id, player)}
-        state = %{state | sim: sim, empty_since: nil}
-        {:reply, {:ok, player.public_id, generation, Snapshot.render(sim)}, state}
+        state = note_presence(%{state | sim: sim})
+
+        {:reply, {:ok, player.public_id, generation, Snapshot.render(sim)},
+         follow_presence(state)}
     end
   end
 
@@ -108,15 +138,31 @@ defmodule LastKeep.Game.Room do
 
   @impl true
   def handle_info(:tick, state) do
-    state = advance(state)
+    state = advance(%{state | timer: nil})
+    state = note_presence(state)
 
-    case idle(state) do
-      {:stop, state} ->
-        {:stop, :normal, state}
+    if connected?(state) do
+      {:noreply, schedule_tick(%{state | empty_since: nil})}
+    else
+      case park(state) do
+        {:stop, state} -> {:stop, :normal, state}
+        state -> {:noreply, state}
+      end
+    end
+  end
 
-      state ->
-        schedule()
-        {:noreply, state}
+  def handle_info(:reap, state) do
+    state = note_presence(%{state | timer: nil})
+
+    cond do
+      connected?(state) ->
+        {:noreply, schedule_tick(%{state | empty_since: nil})}
+
+      true ->
+        case park(state) do
+          {:stop, state} -> {:stop, :normal, state}
+          state -> {:noreply, state}
+        end
     end
   end
 
@@ -141,22 +187,38 @@ defmodule LastKeep.Game.Room do
     end
   end
 
-  defp idle(state) do
-    connected = Enum.any?(state.sim.players, fn {_id, player} -> player.connected end)
+  defp connected?(state) do
+    Enum.any?(state.sim.players, fn {_id, player} -> player.connected end)
+  end
+
+  defp note_presence(state) do
+    if connected?(state), do: %{state | saw_connection: true}, else: state
+  end
+
+  # Someone is here: run the sim. A seat that has not opened the socket yet
+  # keeps the longer lobby wait, measured from this join.
+  defp follow_presence(%{auto_tick: false} = state), do: state
+
+  defp follow_presence(state) do
+    if connected?(state) do
+      schedule_tick(%{state | empty_since: nil})
+    else
+      now = System.monotonic_time(:millisecond)
+      limit = if state.saw_connection, do: state.empty_ms, else: state.lobby_ms
+      schedule_reap(%{state | empty_since: now}, limit)
+    end
+  end
+
+  defp park(state) do
     now = System.monotonic_time(:millisecond)
+    empty_since = state.empty_since || now
+    limit = if state.saw_connection, do: state.empty_ms, else: state.lobby_ms
+    waited = now - empty_since
 
-    cond do
-      connected ->
-        %{state | empty_since: nil}
-
-      state.empty_since == nil ->
-        %{state | empty_since: now}
-
-      now - state.empty_since > @idle_ms ->
-        {:stop, state}
-
-      true ->
-        state
+    if waited >= limit do
+      {:stop, %{state | empty_since: empty_since}}
+    else
+      schedule_reap(%{state | empty_since: empty_since}, limit - waited)
     end
   end
 
@@ -166,5 +228,20 @@ defmodule LastKeep.Game.Room do
 
   def topic(code), do: "room:" <> code
 
-  defp schedule, do: Process.send_after(self(), :tick, 50)
+  defp schedule_tick(state) do
+    state = cancel_timer(state)
+    %{state | timer: Process.send_after(self(), :tick, 50)}
+  end
+
+  defp schedule_reap(state, delay) do
+    state = cancel_timer(state)
+    %{state | timer: Process.send_after(self(), :reap, max(delay, 0))}
+  end
+
+  defp cancel_timer(%{timer: nil} = state), do: state
+
+  defp cancel_timer(state) do
+    Process.cancel_timer(state.timer)
+    %{state | timer: nil}
+  end
 end
