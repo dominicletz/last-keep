@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { joinFromForm, prepareProof, scoreList, squarePixels, twoPlayerNight } = require("./scenarios")
+const { heroSilhouettes, joinFromForm, prepareProof, scoreList, squarePixels, twoPlayerNight } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -18,4 +18,8 @@ test("the high score list hides scoreless runs", async ({ request }) => {
 
 test("the picture stays square when the window changes shape", async ({ browser }) => {
   await squarePixels(browser)
+})
+
+test("the five heroes stand as different bodies", async ({ browser }) => {
+  await heroSilhouettes(browser)
 })

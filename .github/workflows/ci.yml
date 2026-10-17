@@ -36,6 +36,12 @@ jobs:
       - run: mix assets.build
       - run: mix test --cover
       - run: npm test --prefix assets
+      - name: audio stays on the page
+        run: |
+          if grep -nE "https?://" assets/js/audio.js; then
+            echo "audio.js must not load a remote file"
+            exit 1
+          fi
       - run: npm run check --prefix assets
       - run: npm ci
       - run: npx playwright install chromium --with-deps

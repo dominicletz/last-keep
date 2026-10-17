@@ -225,7 +225,12 @@ input[type="text"], input:not([type="radio"]) {
   color: #ffb15a;
   font-size: 0.8rem;
   text-shadow: 2px 2px 0 #000;
+  white-space: nowrap;
 }
+.hint-arrow.end { transform: translateX(-100%); }
+.sound { display: flex; gap: 0.35rem; align-items: center; pointer-events: auto; }
+.sound button, .sound input { pointer-events: auto; }
+.sound input { width: 4.5rem; }
 .floater, .slash {
   position: absolute;
   color: #fff4d2;

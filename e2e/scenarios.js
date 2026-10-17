@@ -368,12 +368,16 @@ async function twoPlayerNight(browser) {
   await invalidPlacementExplains(page)
   await movementIsInterpolated(page)
   await placeWall(page)
+  await buildRangeRing(page)
 
   await expect(page.locator("[data-start]")).toHaveText("Start the night")
   await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
   const notes = blankNotes()
   await page.locator("[data-start]").click()
+  await assertNightAudio(page)
+  await hintsClearTheRoster(page)
   await expectGoblinsOnYard(page)
+  await assertMonsterSpread(page)
   await sample(page, notes)
   await expectGoblinsOnYard(friend)
   const sameKeep = await Promise.all([
@@ -407,6 +411,7 @@ async function twoPlayerNight(browser) {
   expect(score).toBeGreaterThanOrEqual(1000)
   await expect(page.locator("[data-score]")).toHaveText(`Score ${score}`)
   await page.screenshot({ path: shot("cleared-host.png") })
+  await assertClearedAudio(page)
   expect(errors, errors.join("\n")).toEqual([])
   await host.context.close()
   await guest.context.close()
@@ -514,6 +519,107 @@ async function joinFromForm(browser) {
   await host.context.close()
 }
 
+async function buildRangeRing(page) {
+  await pressKey(page, "Digit1")
+  await page.waitForFunction(() => window.__lastKeep.rangeRing && window.__lastKeep.rangeRing.on)
+  const ring = await page.evaluate(() => ({
+    radius: window.__lastKeep.rangeRing.radius,
+    reach: window.__lastKeep.self.range
+  }))
+  expect(ring.radius).toBe(ring.reach)
+  expect(ring.radius).toBeGreaterThan(100)
+  await pressKey(page, "Escape")
+  await page.waitForFunction(() => window.__lastKeep.rangeRing && window.__lastKeep.rangeRing.on === false)
+}
+
+async function assertNightAudio(page) {
+  await page.waitForFunction(() => (window.__lastKeep.audio?.cues || []).includes("horn"))
+  const audio = await page.evaluate(() => window.__lastKeep.audio)
+  expect(audio.cues).toContain("night")
+  expect(audio.unlocked).toBe(true)
+  expect(audio.loop).toBe("night")
+}
+
+async function hintsClearTheRoster(page) {
+  await page.waitForFunction(() => document.querySelectorAll(".hint-arrow").length > 0)
+  const overlap = await page.evaluate(() => {
+    const roster = document.querySelector("[data-roster]").getBoundingClientRect()
+    return [...document.querySelectorAll(".hint-arrow")].some((node) => {
+      const box = node.getBoundingClientRect()
+      return box.left < roster.right && box.right > roster.left && box.top < roster.bottom && box.bottom > roster.top
+    })
+  })
+  expect(overlap).toBe(false)
+}
+
+async function assertMonsterSpread(page) {
+  const gap = await page.evaluate(() => {
+    const rows = window.__lastKeep.monsters || []
+    let best = 0
+    for (let i = 0; i < rows.length; i += 1) {
+      for (let j = i + 1; j < rows.length; j += 1) {
+        best = Math.max(best, Math.hypot(rows[i].spreadX - rows[j].spreadX, rows[i].spreadZ - rows[j].spreadZ))
+      }
+    }
+    return best
+  })
+  expect(gap).toBeGreaterThanOrEqual(16)
+}
+
+async function assertClearedAudio(page) {
+  const cues = await page.evaluate(() => window.__lastKeep.audio.cues)
+  expect(cues).toEqual(expect.arrayContaining(["horn", "sting", "hit", "kill", "build", "day"]))
+  const fallen = await page.evaluate(() =>
+    window.__lastKeepTest.hear({ tick: 500000, phase: "over", keep: { hp: 0, max: 900 }, events: [] })
+  )
+  expect(fallen).toContain("fall")
+  await page.evaluate(() => {
+    window.__lastKeepTest.volume(0.35)
+    window.__lastKeepTest.mute(true)
+  })
+  await page.reload()
+  await page.waitForFunction(
+    () => window.__lastKeep?.audio?.muted === true && Math.abs(window.__lastKeep.audio.volume - 0.35) < 0.001
+  )
+  await expect(page.locator("[data-mute]")).toHaveText("Muted")
+  await page.evaluate(() => window.__lastKeepTest.mute(false))
+}
+
+async function heroSilhouettes(browser) {
+  const errors = []
+  const party = [
+    ["Ada", "warrior"],
+    ["Lux", "mage"],
+    ["Bram", "engineer"],
+    ["Pip", "scout"],
+    ["Nia", "farmer"]
+  ]
+  const host = await createHost(browser, party[0][0], party[0][1])
+  watch(host.page, "host", errors)
+  const code = await host.page.evaluate(() => document.body.dataset.code)
+  const seats = [host]
+  for (const [name, hero] of party.slice(1)) {
+    const seat = await joinQuery(browser, code, name, hero)
+    watch(seat.page, name, errors)
+    seats.push(seat)
+  }
+  await host.page.waitForFunction(() => (window.__lastKeep.figures || []).length >= 5)
+  const figures = await host.page.evaluate(() => window.__lastKeep.figures)
+  expect(figures.map((figure) => figure.hero).sort()).toEqual(["engineer", "farmer", "mage", "scout", "warrior"])
+  const keys = figures.map(
+    (figure) => `${figure.marks.join("+")}|${figure.bounds.w}x${figure.bounds.h}x${figure.bounds.d}|${figure.parts}`
+  )
+  expect(new Set(keys).size).toBe(5)
+  for (const figure of figures) {
+    expect(figure.parts).toBeGreaterThanOrEqual(5)
+    expect(figure.marks.length).toBeGreaterThan(0)
+    expect(figure.bounds.h).toBeGreaterThanOrEqual(30)
+  }
+  await host.page.screenshot({ path: shot("heroes-host.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  for (const seat of seats) await seat.context.close()
+}
+
 async function scoreList(request) {
   const response = await request.get("/api/highscores")
   expect(response.ok()).toBeTruthy()
@@ -533,5 +639,6 @@ module.exports = {
   twoPlayerNight,
   joinFromForm,
   squarePixels,
-  scoreList
+  scoreList,
+  heroSilhouettes
 }

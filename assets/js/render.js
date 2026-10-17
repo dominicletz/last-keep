@@ -6,14 +6,9 @@ import { poseAt } from "./motion"
 import { sceneryForest } from "./scenery"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
-
-const HERO_COLOR = {
-  warrior: 0x8e99a6,
-  mage: 0x2c4f86,
-  scout: 0x2f6a3a,
-  farmer: 0xc4a15a,
-  engineer: 0x8a5a32
-}
+import { heroSignature } from "./heroes"
+import { monsterSpread } from "./bodies"
+import { rangeRingState } from "./hud"
 
 const MONSTER_COLOR = {
   goblin: 0xff3a22,
@@ -105,6 +100,16 @@ export function createView(stage) {
   ghost.position.y = 11
   ghost.visible = false
   scene.add(ghost)
+  const rangeRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.9, 1, 8),
+    new THREE.MeshBasicMaterial({ color: 0xf0c14a, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+  )
+  rangeRing.rotation.x = -Math.PI / 2
+  rangeRing.position.y = 0.45
+  rangeRing.visible = false
+  scene.add(rangeRing)
+  const outlineMat = new THREE.MeshLambertMaterial({ color: 0x140c0a, side: THREE.BackSide })
+  let bearer = { x: 0, z: 0, range: 160 }
   const raycaster = new THREE.Raycaster()
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   const focus = new THREE.Vector3()
@@ -173,8 +178,7 @@ export function createView(stage) {
         scene.add(mesh)
       }
       remember(key, row.x, row.y)
-      const pose = smoothed(key)
-      mesh.position.set(pose.x, mesh.userData.lift || 0, pose.z)
+      placeMesh(key, mesh)
       if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
       if (mesh.userData.hp) {
         const ratio = row.max ? row.hp / row.max : 1
@@ -206,7 +210,9 @@ export function createView(stage) {
     fill.position.set(0, 36 * scale, 1.2)
     group.add(plate, fill)
     group.userData.hp = fill
+    group.userData.bar = plate
     group.userData.face = true
+    group.userData.bodyScale = scale
     return group
   }
 
@@ -260,19 +266,9 @@ export function createView(stage) {
 
       const drawn = present(snap)
 
-      sync("hero", drawn.heroes, (row) => {
-        const weapon = new THREE.Mesh(new THREE.BoxGeometry(4, 16, 4), mat(0xd8d2c4))
-        weapon.position.set(10, 14, 0)
-        weapon.castShadow = true
-        const mesh = figure(HERO_COLOR[row.hero] || 0x888888, row.hero === "warrior" ? 1.15 : 1, weapon)
-        mesh.userData.role = "hero"
-        if (row.id === selfId) {
-          const plate = new THREE.Mesh(new THREE.BoxGeometry(28, 1.2, 28), mat(0xf0c14a))
-          plate.position.y = 0.6
-          mesh.add(plate)
-        }
-        return mesh
-      })
+      if (me) bearer = { x: me.x, z: me.y, range: me.range || bearer.range }
+
+      sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
 
       liveMonsters = snap.monsters || []
 
@@ -336,14 +332,31 @@ export function createView(stage) {
       })
       const monsters = (snap.monsters || []).map((monster) => {
         const point = new THREE.Vector3(monster.x, 16, monster.y).project(camera)
+        const body = meshes.get(`monster:${monster.id}`)
+        const spread = body?.userData.spread || { x: 0, z: 0 }
         return {
           id: monster.id,
           kind: monster.kind,
           x: monster.x,
           y: monster.y,
+          spreadX: spread.x,
+          spreadZ: spread.z,
+          drawX: body ? body.position.x : null,
+          drawZ: body ? body.position.z : null,
           onScreen: Math.abs(point.x) < 0.72 && Math.abs(point.y) < 0.62 && point.z < 1
         }
       })
+      const figures = []
+      for (const [key, mesh] of meshes) {
+        if (!key.startsWith("hero:") || !mesh.userData.hero) continue
+        figures.push({
+          id: key.slice(5),
+          hero: mesh.userData.hero,
+          parts: mesh.userData.parts,
+          marks: mesh.userData.marks,
+          bounds: mesh.userData.bounds
+        })
+      }
       heroKey = me ? `hero:${me.id}` : null
       const heroMesh = heroKey ? meshes.get(heroKey) : null
       window.__lastKeep = {
@@ -369,6 +382,8 @@ export function createView(stage) {
         attackCd: me?.cds?.attack || 0,
         cds: me?.cds || null,
         monsters,
+        figures,
+        rangeRing: rangeRingState(rangeRing.visible, bearer.range),
         buildings: (snap.buildings || []).length,
         projectiles: snap.projectiles || [],
         relics: snap.relics || [],
@@ -390,6 +405,13 @@ export function createView(stage) {
     },
     ghost(kind, x, z, ok) {
       ghost.visible = !!kind
+      const ring = rangeRingState(!!kind, bearer.range)
+      rangeRing.visible = ring.on
+      if (ring.on) {
+        rangeRing.position.set(bearer.x, 0.45, bearer.z)
+        rangeRing.scale.setScalar(ring.radius)
+      }
+      if (window.__lastKeep) window.__lastKeep.rangeRing = ring
       if (!kind) return
       ghost.position.set(x, 11, z)
       ghost.material.color.set(ok ? 0x7ea35a : 0xc84b3a)
@@ -444,6 +466,52 @@ export function createView(stage) {
     return poseAt(tracks.get(key), performance.now(), 45)
   }
 
+  function placeMesh(key, mesh) {
+    const pose = smoothed(key)
+    const spread = mesh.userData.spread || { x: 0, z: 0 }
+    mesh.position.set(pose.x + spread.x, mesh.userData.lift || 0, pose.z + spread.z)
+  }
+
+  function buildHero(row, selfId) {
+    const sig = heroSignature(row.hero)
+    const group = new THREE.Group()
+    for (const piece of sig.parts) group.add(pieceMesh(piece))
+    const top = sig.bounds.h + 4
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(Math.max(22, sig.bounds.w * 0.45), 3, 2), mat(0x1a100c))
+    const fill = new THREE.Mesh(new THREE.BoxGeometry(Math.max(20, sig.bounds.w * 0.4), 2, 2), mat(0x7ea35a))
+    plate.position.y = top
+    fill.position.set(0, top, 1.2)
+    group.add(plate, fill)
+    group.userData.hp = fill
+    group.userData.face = true
+    group.userData.role = "hero"
+    group.userData.hero = row.hero
+    group.userData.parts = sig.parts.length
+    group.userData.marks = sig.marks.slice()
+    group.userData.bounds = sig.bounds
+    if (row.id === selfId) {
+      const gold = new THREE.Mesh(
+        new THREE.BoxGeometry(sig.bounds.w + 4, 1.2, Math.min(sig.bounds.d, 22) + 4),
+        mat(0xf0c14a)
+      )
+      gold.position.y = 0.6
+      group.add(gold)
+    }
+    return group
+  }
+
+  function pieceMesh(piece) {
+    const geometry =
+      piece.shape === "cone"
+        ? new THREE.ConeGeometry(piece.w / 2, piece.h, 4)
+        : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
+    const mesh = new THREE.Mesh(geometry, mat(piece.color))
+    mesh.position.set(piece.x, piece.y, piece.z)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    return mesh
+  }
+
   function applyFrame() {
     const rect = stage.getBoundingClientRect()
     const next = frameFor(rect.width || stage.clientWidth || 480, rect.height || stage.clientHeight || 270, townRank)
@@ -487,7 +555,17 @@ export function createView(stage) {
       mesh = figure(MONSTER_COLOR[row.kind] || 0xff3a22, scale, null, emissive)
       if (row.kind === "wolf") mesh.scale.z = 1.6
     }
+    const spread = monsterSpread(row.id)
+    mesh.userData.spread = spread
     mesh.userData.role = "monster"
+    const scale = mesh.userData.bodyScale || 1
+    const rim = new THREE.Mesh(new THREE.BoxGeometry(15 * scale, 22 * scale, 11 * scale), outlineMat)
+    rim.position.y = 14 * scale
+    mesh.add(rim)
+    if (spread.bar && mesh.userData.hp && mesh.userData.bar) {
+      mesh.userData.hp.position.y += spread.bar
+      mesh.userData.bar.position.y += spread.bar
+    }
     return mesh
   }
 
@@ -523,11 +601,7 @@ export function createView(stage) {
 
   function frame() {
     const now = performance.now()
-    for (const [key, mesh] of meshes) {
-      const pose = smoothed(key)
-      mesh.position.x = pose.x
-      mesh.position.z = pose.z
-    }
+    for (const [key, mesh] of meshes) placeMesh(key, mesh)
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
       const burst = bursts[i]
       const age = (now - burst.at) / 520

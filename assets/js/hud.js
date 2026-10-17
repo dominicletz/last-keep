@@ -82,6 +82,30 @@ export function edgeCalls(monsters) {
   })
 }
 
+export function callAnchor(x, y, roster) {
+  let left = clamp(x, 0.06, 0.94)
+  let top = clamp(y, 0.08, 0.88)
+  if (roster && roster.right > roster.left && roster.bottom > roster.top) {
+    const covers =
+      left >= roster.left - 0.02 &&
+      left <= roster.right + 0.02 &&
+      top >= roster.top - 0.02 &&
+      top <= roster.bottom + 0.02
+    if (covers) left = roster.left - 0.03
+  }
+  return { left: clamp(left, 0.04, 0.96), top: clamp(top, 0.06, 0.9), end: left > 0.5 }
+}
+
+export function rangeRingState(armed, range) {
+  const radius = Number(range) || 0
+  const on = !!armed && radius > 0
+  return { on, radius: on ? radius : 0 }
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, Number(value) || 0))
+}
+
 export function bonusCopy(snap) {
   return {
     forge: snap?.forge

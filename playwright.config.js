@@ -9,6 +9,7 @@ module.exports = defineConfig({
   workers: process.env.CI ? 1 : undefined,
   outputDir: "tmp/playwright-output",
   retries: process.env.CI ? 1 : 0,
+  failOnFlakyTests: !!process.env.CI,
   use: {
     baseURL,
     viewport: { width: 1280, height: 800 },

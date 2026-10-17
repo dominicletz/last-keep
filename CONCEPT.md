@@ -64,6 +64,12 @@ to be combined with these roles.
   sharp pixels.
 - Limited color palette with hard shadows.
 - Inspired by Kingdom Two Crowns.
+- Each hero is a different body at game zoom: warrior shoulders and shield,
+  mage robe and hat, scout hood and bow, farmer straw brim and fork, engineer
+  apron and hammer. A pair of monsters keeps two outlines and two bars.
+- Sound is synthesized in the browser. Day and night are separate loops. A horn,
+  a clear, and the hit, kill, build, keep-bite, and fall cues are oscillators,
+  not samples, and nothing is fetched from a CDN.
 
 ## Next steps
 
