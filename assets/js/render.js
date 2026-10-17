@@ -7,7 +7,7 @@ import { sceneryForest } from "./scenery"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
-import { modelBounds, modelParts } from "../models/registry.js"
+import { keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { bodyPixel } from "./paint.js"
@@ -61,20 +61,25 @@ export function createView(stage) {
 
   const ground = new THREE.Mesh(
     new THREE.CircleGeometry(1900, 8),
-    mat(0x4f7a3a)
+    mat(0x292b10)
   )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   scene.add(ground)
 
-  const dirt = new THREE.Mesh(new THREE.CircleGeometry(150, 8), mat(0x8d6844))
+  const dirt = new THREE.Mesh(new THREE.CircleGeometry(150, 8), mat(0x5e4529))
   dirt.rotation.x = -Math.PI / 2
   dirt.position.y = 0.2
   dirt.receiveShadow = true
   scene.add(dirt)
+  const pathNS = new THREE.Mesh(new THREE.BoxGeometry(18, 0.45, 280), mat(0x5e4529))
+  pathNS.position.y = 0.4
+  const pathEW = new THREE.Mesh(new THREE.BoxGeometry(280, 0.45, 18), mat(0x5e4529))
+  pathEW.position.y = 0.35
+  scene.add(pathNS, pathEW)
 
   forest()
-  const keep = makeKeep()
+  let keep = makeKeep(0)
   scene.add(keep)
 
   const meshes = new Map()
@@ -127,11 +132,12 @@ export function createView(stage) {
     }
   }
 
-  function makeKeep() {
+  function makeKeep(rank) {
     const group = new THREE.Group()
-    for (const piece of modelParts("keep")) group.add(pieceMesh(piece))
-    const torch = new THREE.PointLight(0xff9a3c, 8, 160)
-    torch.position.set(20, 24, 30)
+    group.userData.rank = rank
+    for (const piece of keepParts(rank)) group.add(pieceMesh(piece))
+    const torch = new THREE.PointLight(0xeea821, 8, 180)
+    torch.position.set(22, 40, 22)
     group.add(torch)
     return group
   }
@@ -279,6 +285,14 @@ export function createView(stage) {
       focus.set(anchorX, 0, anchorZ)
       const dist = zoom.camera
       dirt.scale.setScalar(zoom.dirt / 150)
+      const pathSpan = zoom.dirt / 150
+      pathNS.scale.set(1, 1, pathSpan)
+      pathEW.scale.set(pathSpan, 1, 1)
+      if (keep.userData.rank !== townRank) {
+        scene.remove(keep)
+        keep = makeKeep(townRank)
+        scene.add(keep)
+      }
       camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
       camera.lookAt(focus.x, 0, focus.z)
       sun.position.set(focus.x + 90, 200, focus.z + 30)
@@ -387,6 +401,11 @@ export function createView(stage) {
         mageTower: !!snap.mage_tower,
         shownWave: snap.shown_wave,
         smoothing: true,
+        townLook: {
+          rank: townRank,
+          keep: keepParts(townRank).map((part) => part.name),
+          path: true
+        },
         rendered: heroMesh ? { x: heroMesh.position.x, z: heroMesh.position.z } : null,
         frame: {
           aspect: camera.right / camera.top,

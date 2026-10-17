@@ -74,3 +74,9 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-17 production image
 
 - `Dockerfile.prod` copies `assets/models` with `assets/js`. The client imports `models/registry.js`, and the image build failed esbuild without that copy. `image.test.js` walks the bundle and fails when a copied directory is missing. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-17 town kit
+
+- The keep is a stone tower with a thatch roof, a door, and a brazier. `keepParts(rank)` adds a course of stone at each rank, battlements from rank 2, and a banner at rank 4. The live page reports that on `window.__lastKeep.townLook`.
+- Walls are five palisade posts and a torch. Fields are wheat stalks. The forge is a stone house with a thatch roof. The yard ground is the grass token and the dirt paths are the path token.
+- `town.test.js` locks the ranks and the kit. The two-player night requires a rank-0 keep with a roof and a brazier, and no battlement yet. This does not change the simulation. The coverage floor stays 69.
