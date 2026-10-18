@@ -3,15 +3,16 @@ import test from "node:test"
 import { fitSlack, horizontalRadius, modelParts } from "../models/registry.js"
 import { sceneryForest, scenerySlots } from "./scenery.js"
 
-test("the outer ring is bare trunks with no wood", () => {
+test("the outer ring is stumps and felled logs with no wood", () => {
   const look = sceneryForest()
-  assert.deepEqual(look.parts, ["trunk"])
+  assert.deepEqual(look.parts, ["stump", "log"])
   assert.equal(look.wood, 0)
   assert.equal(look.parts.includes("crown"), false)
+  assert.equal(look.parts.includes("bough"), false)
   assert.ok(look.count > 0)
 })
 
-test("seventy bare trunks stand in three rings behind the layered pines", () => {
+test("seventy stumps and felled logs stand in three rings behind the layered pines", () => {
   const look = sceneryForest()
   assert.equal(look.count, 70)
   assert.equal(
@@ -19,6 +20,7 @@ test("seventy bare trunks stand in three rings behind the layered pines", () => 
     70
   )
   const dists = look.layers.map((layer) => layer.dist)
+  assert.deepEqual(dists, [320, 430, 560])
   assert.deepEqual(
     dists,
     [...dists].sort((a, b) => a - b)
@@ -35,9 +37,12 @@ test("seventy bare trunks stand in three rings behind the layered pines", () => 
   assert.ok(tree.some((part) => part.name === "trunk" && part.color === 0x8e755b))
   assert.ok(horizontalRadius(tree) <= 16 * fitSlack)
   const scenery = modelParts("scenery")
+  assert.ok(scenery.some((part) => part.name === "stump"))
+  assert.ok(scenery.some((part) => part.name === "log"))
   assert.equal(
     scenery.some((part) => part.name === "bough" || part.name === "crown"),
     false
   )
-  assert.ok(scenery.every((part) => part.color === look.trunk))
+  assert.ok(scenery.every((part) => part.color === 0x8e755b))
+  assert.ok(horizontalRadius(scenery) <= look.radiusBottom * fitSlack)
 })

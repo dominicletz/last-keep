@@ -270,11 +270,11 @@
     {
       "id": "field",
       "family": "building",
-      "area": 718,
-      "minArea": 574,
-      "day": 65.79,
-      "dusk": 32.63,
-      "night": 23.24,
+      "area": 980,
+      "minArea": 784,
+      "day": 68.34,
+      "dusk": 34.77,
+      "night": 26,
       "sheet": "theme.jpg",
       "figure": "wheat",
       "crop": [
@@ -360,18 +360,36 @@
     {
       "id": "scenery",
       "family": "prop",
-      "area": 276,
-      "minArea": 220,
-      "day": 50.21,
-      "dusk": 25.88,
-      "night": 21.64,
+      "area": 316,
+      "minArea": 253,
+      "day": 94.84,
+      "dusk": 47.81,
+      "night": 37.25,
       "sheet": "theme.jpg",
-      "figure": "pine trunk",
+      "figure": "felled wood",
       "crop": [
         1080,
         160,
         180,
         260
+      ],
+      "conceptPresent": true
+    },
+    {
+      "id": "house",
+      "family": "town",
+      "area": 1271,
+      "minArea": 1017,
+      "day": 78.45,
+      "dusk": 39.01,
+      "night": 31.67,
+      "sheet": "theme.jpg",
+      "figure": "cottage",
+      "crop": [
+        500,
+        150,
+        180,
+        160
       ],
       "conceptPresent": true
     }

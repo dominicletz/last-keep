@@ -12,7 +12,9 @@ export function detailCount(model) {
 export function detailProblems(models, floor = detailFloor) {
   const problems = []
   for (const model of models || []) {
-    if (model.family !== "hero" && model.family !== "monster") continue
+    const counted =
+      model.family === "hero" || model.family === "monster" || model.id === "house" || model.id === "field"
+    if (!counted) continue
     const count = detailCount(model)
     if (count < floor) problems.push(`${model.id} detail ${count} is below ${floor}`)
   }

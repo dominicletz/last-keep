@@ -14,6 +14,9 @@ import {
   litYard,
   mossColor,
   patchStats,
+  plazaColor,
+  plazaSides,
+  ringColor,
   skyColor,
   yardLight
 } from "./scene.js"
@@ -73,4 +76,12 @@ test("the day field is moss and dusk is a cool field with a warm pool", () => {
   assert.ok(cycleLight.dusk.pool >= 4000)
   assert.ok(cycleLight.night.pool > cycleLight.dusk.pool)
   assert.equal(litGround(0xd8cfc3, cycleLight.day).g, litGround(0xd8cfc3, yardLight).g)
+})
+
+test("the plaza is round grass with a stone curb", () => {
+  assert.equal(plazaSides, 48)
+  assert.ok(plazaSides >= 24)
+  assert.equal(plazaColor, 0x5c642f)
+  assert.equal(plazaColor, groundColor)
+  assert.equal(ringColor, 0x4b3c33)
 })
