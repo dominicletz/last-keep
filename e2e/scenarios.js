@@ -1874,7 +1874,10 @@ async function sixSeatMatch(browser) {
         await fight(false)
         await page.evaluate(() => window.__lastKeepTest.home())
         for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
-        if (sawWave && row.phase === "build" && row.monsters === 0 && row.projectiles === 0 && row.geometries > 0) {
+        const shots = row.census?.byRole?.shot || 0
+        // The snapshot can already list zero projectiles while the last paint
+        // still holds the bolt. That one mesh made the later scene look larger.
+        if (sawWave && row.phase === "build" && row.monsters === 0 && row.projectiles === 0 && shots === 0 && row.geometries > 0) {
           if (!builds.has(row.shownWave)) {
             const sample = { ...row }
             delete sample.paints
