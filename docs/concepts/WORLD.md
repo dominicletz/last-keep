@@ -82,7 +82,7 @@ Elixir owns this. The channel parses input and calls `Sim`. It does not decide b
 
 ## What the client draws
 
-The camera still follows the hero. `clamp_map` uses 7200 only once heroes can walk the generated land. Before that slice, the clamp stays 1800.
+The camera still follows the hero. The walk clamp is 7200.
 
 The client draws chunks that arrived in the snapshot and culls with the same frustum check monsters already use. It does not build a mesh for a hidden chunk.
 
@@ -96,11 +96,11 @@ Night 1 is two goblins. The keep is the loss. Food still heals the keep from bes
 
 ## How a slice proves itself
 
-The concept slice is this page, the planned edges, and the backlog rows. `mix test` still passes. The simulation does not change. The coverage floor stays 74.
+The concept page is this document. Generation and exploration have landed. The walk clamp is 7200, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. The resource slice and the performance slice are still planned. The coverage floor is 77.
 
-The generation slice adds `World.generate/1`. One test builds two worlds from seed 3 and requires equal biomes, blockers, and points of interest. One test requires the keep disc clear. One test flood-fills from the origin and requires every point of interest on the fill. One test requires each symmetry disagreement fraction to be at least 0.35. These tests call `World`, which is the interface a later tick will call.
+The generation slice adds `World.generate/1`. One test builds two worlds from seed 3 and requires equal biomes, blockers, and points of interest. One test requires the keep disc clear. One test flood-fills from the origin and requires every point of interest on the fill. One test requires each symmetry disagreement fraction to be at least 0.35.
 
-The exploration slice wires `world` into `State` and raises the walk clamp to 7200. A server test opens a chest at a known coordinate and requires gold to rise by 24 once, and a second open to add nothing. A server test breaks one portal and requires the next wave plan to omit that portal's bearing, with night 1 still two goblins when two portals remain. A browser scenario walks a hero to a chest and reads the new gold. Another walks to a portal, breaks it, and reads a wave that does not spawn on that bearing.
+The exploration slice wires `world` into `State` and raises the walk clamp to 7200. A server test opens a chest at a known coordinate and requires gold to rise by 24 once, and a second open to add nothing. A server test breaks one portal and requires the next wave plan to omit that portal's bearing, with night 1 still two goblins when two portals remain. A browser scenario walks a hero to a chest and reads the new gold, breaks a portal, and reads a wave that does not spawn on that bearing.
 
 The resource slice adds stone, `Rules.cap(:stone)` of 200, and the meadow check on sow. A farmer sow on pine fails and spends nothing. An engineer at a quarry gains stone faster than a warrior at the same node. A stone wall pays 8 stone and 4 wood and has 280 health. The interaction test's resource list gains `stone` in this slice, not before, because `Rules.cap/1` has to exist.
 
