@@ -622,9 +622,9 @@ async function twoPlayerNight(browser) {
       ground: grade.ground,
       stone,
       pine,
-      // Height 18 is the cape hem. Dusk cloth there is saturated, and the
-      // cuirass at 40 is the steel the floor is about.
-      plate: game.sampleWorld(hero.x, 40, hero.y)
+      // The card is 32 world units. Height 40 is above it and reads dusk
+      // saturation 0.60. The steel on the card is height 18.
+      plate: game.sampleWorld(hero.x, 18, hero.y)
     }
   }, undefined, { timeout: 8_000, polling: 400 })
   const duskMood = await duskHandle.jsonValue()
