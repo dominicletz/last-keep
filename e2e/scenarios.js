@@ -1,6 +1,7 @@
 const { expect } = require("@playwright/test")
 const fs = require("fs")
 const path = require("path")
+const { clearanceVia, keysToward, walkHitsKeep } = require("./steer")
 
 const proofDir = path.join("tmp", "verify-artifacts")
 
@@ -1423,18 +1424,6 @@ async function assertPhoneClear(page) {
   }
 }
 
-function keysToward(me, goal) {
-  const dx = goal.x - me.x
-  const dy = goal.y - me.y
-  // The join ring and the keep sit north of y=-165. A drift into that band
-  // stops the body on a guest, so the southern goal wins until the lane is back.
-  if (me.y > -165 && goal.y < -160) return ["KeyW", "KeyD"]
-  if (Math.abs(dx) > 28) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
-  if (Math.abs(dy) > 18) return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
-  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
-  return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
-}
-
 async function steer(page, goal, done, timeout, label) {
   const deadline = Date.now() + timeout
   let last = null
@@ -1680,56 +1669,24 @@ async function scoreList(request) {
   }
 }
 
-function segmentHitsKeep(ax, ay, bx, by) {
-  const dx = bx - ax
-  const dy = by - ay
-  const len2 = dx * dx + dy * dy
-  if (len2 < 1) return Math.hypot(ax, ay) < 90
-  const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2))
-  return Math.hypot(ax + dx * t, ay + dy * t) < 90
-}
-
 async function steerPast(page, goal, done, timeout, label) {
-  // One detour is not enough. The straight walk uses diagonal keys, clips the
-  // keep, and sits on the west face near x 73.5 for the rest of the budget.
-  // A far portal still gets the whole wait. Only a pin on the keep spends a slice.
-  const deadline = Date.now() + timeout
-  let orbits = 0
-  let lastError = null
-  while (Date.now() < deadline) {
-    const left = deadline - Date.now()
-    const me = await page.evaluate(() => window.__lastKeep.self)
-    const pinned = me && Math.hypot(me.x, me.y) < 160 && segmentHitsKeep(me.x, me.y, goal.x, goal.y)
-    if (pinned) {
-      if (orbits >= 6) break
-      orbits += 1
-      const ang = Math.atan2(me.y, me.x)
-      const spin = (orbits % 2 === 0 ? 1 : -1) * (1.15 + orbits * 0.18)
-      const via = { x: Math.cos(ang + spin) * 320, y: Math.sin(ang + spin) * 320 }
+  const me = await page.evaluate(() => window.__lastKeep.self)
+  if (me && walkHitsKeep(me, goal)) {
+    const around = Date.now() + 20_000
+    for (let hop = 0; hop < 4; hop += 1) {
+      const here = await page.evaluate(() => window.__lastKeep.self)
+      if (!here || !walkHitsKeep(here, goal)) break
+      const left = around - Date.now()
+      if (left <= 0) break
+      const via = clearanceVia(here, goal)
       try {
-        await steer(
-          page,
-          via,
-          (state) => !segmentHitsKeep(state.x, state.y, goal.x, goal.y) && Math.hypot(state.x, state.y) > 160,
-          Math.min(left, 8_000),
-          `${label} around the keep`
-        )
+        await steer(page, via, (state) => !walkHitsKeep(state, goal), Math.min(left, 5_000), `${label} around the keep`)
       } catch (error) {
-        lastError = error
+        if (!String(error && error.message).includes("around the keep")) throw error
       }
-      continue
-    }
-    try {
-      return await steer(page, goal, done, Math.min(left, 6_000), label)
-    } catch (error) {
-      lastError = error
-      const now = await page.evaluate(() => window.__lastKeep.self)
-      const stuck = now && Math.hypot(now.x, now.y) < 160 && segmentHitsKeep(now.x, now.y, goal.x, goal.y)
-      if (!stuck && left <= 6_000) throw error
     }
   }
-  if (lastError) throw lastError
-  throw new Error(`${label} timed out`)
+  await steer(page, goal, done, timeout, label)
 }
 
 async function exploreLand(browser) {
