@@ -171,7 +171,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 ## 2026-10-18 the wave line clears the sacks
 
-- The wave line stays a world pin. When that pin would cover a sack, the relic lines, the heart, the roster, the name, a call, or a bar, it takes the nearest spot that misses them and still sits inside the window. `assertWaveClear` checks the waiting yard and the walk. This does not change the simulation. The coverage floor stays 69.
+- The wave line stays a world pin. When that pin would cover a sack, the relic lines, the heart, the roster, the name, a call, or the raise, skill, and build controls, it takes the nearest spot that misses them and still sits inside the window. `assertWaveClear` checks the waiting yard and the walk. This does not change the simulation. The coverage floor stays 69.
 
 ## 2026-10-18 the palisade reads as a wall
 

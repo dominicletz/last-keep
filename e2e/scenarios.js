@@ -724,7 +724,7 @@ async function assertWaveClear(page) {
     if (!chip || chip.width <= 0 || chip.height <= 0) return ["missing"]
     const view = { width: window.innerWidth, height: window.innerHeight }
     if (chip.left < 0 || chip.top < 0 || chip.right > view.width + 1 || chip.bottom > view.height + 1) return ["window"]
-    return [...document.querySelectorAll(".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .hud-top, .hud-bottom")]
+    return [...document.querySelectorAll(".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .actions, .skills, .builds")]
       .filter((node) => !node.hidden && node.getBoundingClientRect().width > 0)
       .filter((node) => {
         const box = node.getBoundingClientRect()

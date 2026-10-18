@@ -202,7 +202,9 @@ test("the wave line seats clear of the sacks", () => {
     { left: 470, top: 300, right: 560, bottom: 370 },
     { left: 560, top: 360, right: 650, bottom: 430 },
     { left: 400, top: 380, right: 490, bottom: 450 },
-    { left: 600, top: 470, right: 720, bottom: 510 }
+    { left: 600, top: 470, right: 720, bottom: 510 },
+    { left: 10, top: 10, right: 626, bottom: 52 },
+    { left: 0, top: 762, right: 1280, bottom: 790 }
   ]
   const spot = { left: 640, top: 420 }
   const home = visiblePin(spot, view, box)

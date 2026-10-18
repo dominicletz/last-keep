@@ -552,16 +552,17 @@ function seatWave(ui, snap, selfId) {
 function obstacleRects(ui, hudBox) {
   const rects = []
   for (const node of ui.hud.querySelectorAll(
-    ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .hud-top, .hud-bottom"
+    ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .actions, .skills, .builds"
   )) {
     if (node.hidden) continue
     const box = node.getBoundingClientRect()
     if (box.width <= 0 || box.height <= 0) continue
+    const pad = 8
     rects.push({
-      left: box.left - hudBox.left,
-      top: box.top - hudBox.top,
-      right: box.right - hudBox.left,
-      bottom: box.bottom - hudBox.top
+      left: box.left - hudBox.left - pad,
+      top: box.top - hudBox.top - pad,
+      right: box.right - hudBox.left + pad,
+      bottom: box.bottom - hudBox.top + pad
     })
   }
   return rects
