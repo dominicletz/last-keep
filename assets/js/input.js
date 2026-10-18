@@ -110,6 +110,27 @@ export function keysToward(dx, dy, slack = 42) {
   return best.keys
 }
 
+// KeyA+KeyW is due west. On the keep face that step has no slide, so the body
+// sits at x 73.5. Inside the face, walk the tangent until the goal is outward.
+export function keysAround(x, y, goalX, goalY) {
+  const dx = goalX - x
+  const dy = goalY - y
+  if (y > -165 && goalY < -160) return ["KeyW", "KeyD"]
+  const keep = Math.hypot(x, y)
+  if (keep < 100 && keep > 1) {
+    const tx = -y / keep
+    const ty = x / keep
+    const outward = (x * dx + y * dy) / keep
+    if (outward < 40) {
+      const sign = tx * dx + ty * dy >= 0 ? 1 : -1
+      return keysToward(sign * tx, sign * ty, 0)
+    }
+  }
+  // The chest counts inside 30. The eight-way stop used to be 42, which
+  // left the body short of the chest for the whole wait.
+  return keysToward(dx, dy, 12)
+}
+
 export function axes(keys) {
   // The camera sits on the +x +z diagonal, so W moves toward the top of the screen.
   const f = Math.SQRT1_2

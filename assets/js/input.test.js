@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input.js"
+import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -109,6 +109,16 @@ test("W moves toward the top of the isometric view", () => {
   assert.ok(move.x < 0)
   assert.ok(move.y < 0)
   assert.ok(Math.abs(move.x - move.y) < 1e-9)
+})
+
+test("the keep face slides instead of holding due west", () => {
+  const stuck = keysAround(73.5, 0, -400, 80)
+  assert.notDeepEqual(stuck, ["KeyA", "KeyW"])
+  assert.deepEqual(stuck, ["KeyS", "KeyA"])
+  assert.deepEqual(keysAround(73.5, 0, 400, 0), ["KeyD", "KeyS"])
+  assert.deepEqual(keysAround(0, -100, 40, -400), ["KeyW", "KeyD"])
+  assert.deepEqual(keysAround(200, 0, -400, 0), ["KeyA", "KeyW"])
+  assert.ok(keysAround(0, 200, 0, 230).length > 0)
 })
 
 test("held diagonals stay unit length", () => {

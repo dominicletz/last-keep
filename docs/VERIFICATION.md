@@ -363,3 +363,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 the chest detour steps off the face
 
 - CI on the swing pin failed `exploreLand` at x 73.5, y 0. The offset via still had `|dx|` above 28, and `keysToward` treats that as due west, so the hero never left the face. The via now shares x. The hop ends when the cardinal step misses the keep body, radius 54 plus the hero radius 14. The detour stays inside 20 seconds. The chest wait stays 45 seconds and the portal wait stays 70 seconds. `e2e/steer.test.js` walks that face and the spawn to a chest. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 the chest walk leaves the keep face
+
+- Deploy of fbd8803 failed `exploreLand` with the host at x 73.5, y 0. KeyA+KeyW is due west, and that step has no y, so the body cannot slide off the keep. `keysAround` walks the tangent while the hero is inside 100 of the keep and the goal is still inward. The eight-way stop is 12, inside the chest radius of 30. A goal on the far side of the face still walks straight. The southern lane past the join ring stays KeyW+KeyD. The chest wait stays 45 seconds and the portal wait stays 70 seconds. The phone timeout stays 150s. This does not change the simulation. The coverage floor stays 77.
