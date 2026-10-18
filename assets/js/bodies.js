@@ -1,6 +1,9 @@
+// Bone is the monster-sheet token. A scale above 1 is the rim at the gameplay
+// camera. The bat and the rider already wore that rim. The others were a
+// one-pixel dark that never left the body.
 export function monsterRim(kind) {
   if (kind === "bat" || kind === "boss") return { color: 0x908b8a, scale: 1.2 }
-  return { color: 0x140c0a, scale: 1 }
+  return { color: 0x908b8a, scale: 1.15 }
 }
 
 export function monsterSpread(id) {

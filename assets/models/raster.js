@@ -1,5 +1,6 @@
 import * as THREE from "three"
 import { deflateSync, inflateSync } from "node:zlib"
+import { lockInk, lockedPalette, styleHexes } from "../js/art_score.js"
 import { cameraDistance } from "../js/town.js"
 import { frameFor } from "../js/frame.js"
 import { skyColor } from "../js/scene.js"
@@ -203,8 +204,18 @@ function paint(parts, light, camera, width, height) {
     for (let i = 1; i < poly.length - 1; i++) fillTriangle(rgb, mask, width, height, poly[0], poly[i], poly[i + 1], face.color)
   }
   if (parts.some((part) => part.hold > 0)) traceRim(rgb, mask, width, height)
+  if (parts.some((part) => part.paletteLock)) {
+    const locked = lockInk(rgb, width, height, mask, figurePalette)
+    rgb.set(locked)
+  }
   return { rgb, mask, width, height }
 }
+
+const figurePalette = lockedPalette(styleHexes)
+
+// A close-up is about 80px. The yard figure is under 40. The rim is one
+// gameplay pixel, so the close-up crop stays the sheet.
+export const gameplayRimPx = 48
 
 function drawBillboard(rgb, mask, width, height, camera, part, gain) {
   const image = part.image
@@ -217,6 +228,7 @@ function drawBillboard(rgb, mask, width, height, camera, part, gain) {
   const y0 = Math.min(head.y, foot.y)
   const maxX = Math.ceil(x0 + pxW)
   const maxY = Math.ceil(y0 + pxH)
+  const drawn = []
   for (let y = Math.floor(y0); y < maxY; y++) {
     if (y < 0 || y >= height) continue
     const sy = Math.min(image.h - 1, Math.max(0, Math.floor(((y + 0.5 - y0) * image.h) / pxH)))
@@ -230,7 +242,35 @@ function drawBillboard(rgb, mask, width, height, camera, part, gain) {
       rgb[d * 3] = Math.round(image.rgb[s * 3] * gain)
       rgb[d * 3 + 1] = Math.round(image.rgb[s * 3 + 1] * gain)
       rgb[d * 3 + 2] = Math.round(image.rgb[s * 3 + 2] * gain)
+      drawn.push(d)
     }
+  }
+  const rim = part.rim
+  if (!rim || pxH > gameplayRimPx || !(rim.scale > 1)) return
+  const extra = Math.max(1, Math.round((pxH * (rim.scale - 1)) / 2))
+  const color = [(rim.color >> 16) & 255, (rim.color >> 8) & 255, rim.color & 255]
+  let edge = drawn
+  for (let step = 0; step < extra; step++) {
+    const next = []
+    const seen = new Uint8Array(width * height)
+    for (const index of edge) seen[index] = 1
+    for (const index of edge) {
+      const x = index % width
+      const y = (index / width) | 0
+      const neighbors = [index - 1, index + 1, index - width, index + width]
+      for (const n of neighbors) {
+        if (n < 0 || n >= width * height || seen[n] || mask[n]) continue
+        const nx = n % width
+        if (Math.abs(nx - x) > 1) continue
+        seen[n] = 1
+        mask[n] = 1
+        rgb[n * 3] = color[0]
+        rgb[n * 3 + 1] = color[1]
+        rgb[n * 3 + 2] = color[2]
+        next.push(n)
+      }
+    }
+    edge = next
   }
 }
 

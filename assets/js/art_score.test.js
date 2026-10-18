@@ -11,7 +11,9 @@ import {
   lockedPalette,
   noiseCap,
   noiseEnergy,
+  readability,
   scoreFrame,
+  styleHexes,
   valueFloor,
   valueStructure
 } from "./art_score.js"
@@ -44,6 +46,36 @@ test("the town crop clears the block and edge floors and matches itself", () => 
   const self = scoreFrame(town, town, palette)
   assert.equal(self.ssim, 1)
   assert.equal(self.iou, 1)
+})
+
+test("the style hex list is the cited token order", () => {
+  assert.deepEqual(styleHexes, [...tokens.keys()])
+})
+
+test("readability is the ink height and the silhouette gap against the ground", () => {
+  const width = 8
+  const height = 10
+  const rgb = new Uint8Array(width * height * 3)
+  const ground = new Uint8Array(width * height * 3)
+  const mask = new Uint8Array(width * height)
+  for (let i = 0; i < width * height; i++) {
+    ground[i * 3] = 200
+    ground[i * 3 + 1] = 200
+    ground[i * 3 + 2] = 200
+  }
+  for (let y = 2; y < 8; y++) {
+    for (let x = 2; x < 6; x++) {
+      const i = y * width + x
+      mask[i] = 1
+      rgb[i * 3] = 20
+      rgb[i * 3 + 1] = 20
+      rgb[i * 3 + 2] = 20
+    }
+  }
+  const read = readability({ rgb, width, height, mask }, { rgb: ground, width, height })
+  assert.equal(read.height, 6)
+  const gap = Math.abs(0.2126 * 20 + 0.7152 * 20 + 0.0722 * 20 - (0.2126 * 200 + 0.7152 * 200 + 0.0722 * 200))
+  assert.ok(Math.abs(read.contrast - gap) < 1e-6, read.contrast)
 })
 
 test("the gallery keep still misses the pipeline floors", () => {
@@ -91,7 +123,7 @@ test("each hero close-up holds its pipeline score in day, dusk, and night", () =
 
 // Measured on the player-camera close-up. Block clears 8 except the bat, whose
 // wings are broad flats. SSIM and IoU clear 0.35 and 0.55 except where a row
-// is lower. Membership stays under 0.05 until the palette lock lands.
+// is lower. Membership is the on-palette share and the pipeline floor is 0.98.
 const monsterFloors = {
   goblin: { block: 14, ssim: 0.85, iou: 0.74 },
   skeleton: { block: 14, ssim: 0.7, iou: 0.77 },
@@ -117,7 +149,7 @@ test("each monster close-up holds its pipeline score in day, dusk, and night", (
       assert.ok(score.blockP25 >= floor.block, `${id} ${light} block ${score.blockP25}`)
       assert.ok(score.ssim >= floor.ssim, `${id} ${light} ssim ${score.ssim}`)
       assert.ok(score.iou >= floor.iou, `${id} ${light} iou ${score.iou}`)
-      assert.ok(score.membership < 0.05, `${id} ${light} membership ${score.membership}`)
+      assert.ok(score.membership >= 0.98, `${id} ${light} on-palette membership ${score.membership}`)
     }
   }
 })

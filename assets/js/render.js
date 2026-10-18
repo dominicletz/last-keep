@@ -1138,7 +1138,10 @@ export function createView(stage) {
     anim.moving = step > 0.4
     mesh.userData.pose = anim
     const frame = sheetRow(picture, anim, performance.now())
-    card.material.map.offset.set(column / picture.directions, 1 - (frame + 1) / picture.frames)
+    const offsetX = column / picture.directions
+    const offsetY = 1 - (frame + 1) / picture.frames
+    card.material.map.offset.set(offsetX, offsetY)
+    if (mesh.userData.rim) mesh.userData.rim.material.map.offset.set(offsetX, offsetY)
   }
 
   function heroCard(picture) {
@@ -1156,6 +1159,34 @@ export function createView(stage) {
     card.center.set(0.5, 0)
     card.scale.set(picture.w, picture.h, 1)
     card.position.y = 0
+    return card
+  }
+
+  function rimCard(picture, rim) {
+    const bytes = new Uint8Array(picture.atlas)
+    const red = (rim.color >> 16) & 255
+    const green = (rim.color >> 8) & 255
+    const blue = rim.color & 255
+    for (let i = 0; i < bytes.length; i += 4) {
+      if (!bytes[i + 3]) continue
+      bytes[i] = red
+      bytes[i + 1] = green
+      bytes[i + 2] = blue
+    }
+    const map = new THREE.DataTexture(bytes, picture.atlasW, picture.atlasH, THREE.RGBAFormat)
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.colorSpace = THREE.SRGBColorSpace
+    map.flipY = true
+    map.wrapS = THREE.ClampToEdgeWrapping
+    map.wrapT = THREE.ClampToEdgeWrapping
+    map.repeat.set(1 / picture.directions, 1 / picture.frames)
+    map.needsUpdate = true
+    const material = new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4, depthWrite: false })
+    const card = new THREE.Sprite(material)
+    card.center.set(0.5, 0)
+    card.scale.set(picture.w * rim.scale, picture.h * rim.scale, 1)
+    card.renderOrder = -1
     return card
   }
 
@@ -1315,8 +1346,11 @@ export function createView(stage) {
     const picture = parts.find((part) => part.shape === "billboard")
     const mesh = new THREE.Group()
     const card = heroCard(picture)
+    const rim = picture.rim && picture.rim.scale > 1 ? rimCard(picture, picture.rim) : null
+    if (rim) mesh.add(rim)
     mesh.add(card)
     mesh.userData.card = card
+    mesh.userData.rim = rim
     mesh.userData.picture = picture
     mesh.userData.parts = picture.directions * picture.frames
     mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: picture.y, height: picture.h }

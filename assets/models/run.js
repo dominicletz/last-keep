@@ -843,8 +843,8 @@ export const nightYardLift = 18
 
 // About 80% of the measured night read. The half-area rule below refuses a lower record.
 export const nightYardRead = {
-  bat: 16,
-  boss: 48
+  bat: 241,
+  boss: 485
 }
 
 export function nightYardPixels(image, floor) {
