@@ -34,11 +34,12 @@ jobs:
           push: true
           build-args: |
             MIX_ENV=prod
+            SOURCE_SHA=${{ github.sha }}
           tags: |
             ghcr.io/dominicletz/last-keep:${{ github.sha }}
             ghcr.io/dominicletz/last-keep:main
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # mode=max restored a previous commit's assets/js under the new
+          # tag. The image is small enough to build from the checkout.
 
       - name: Make GHCR package public (best effort)
         continue-on-error: true
