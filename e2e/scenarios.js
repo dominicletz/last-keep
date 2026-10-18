@@ -1154,6 +1154,16 @@ async function walkToRaise(page) {
   await steer(page, { x: 0, y: 0 }, (state) => Math.hypot(state.x, state.y) < 100, 15_000, "raise ring")
 }
 
+async function stepEastOfTheKeep(page) {
+  await steer(
+    page,
+    { x: 180, y: 0 },
+    (state) => state.x > 130 && Math.hypot(state.x, state.y) > 140,
+    15_000,
+    "east of the keep"
+  )
+}
+
 async function townGrows(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "farmer")
@@ -1213,6 +1223,7 @@ async function townGrows(browser) {
   await expect(page.locator("[data-chrome]")).toHaveCount(10)
   await expect(page.locator("[data-build]")).toHaveCount(6)
   await page.screenshot({ path: shot("town-growth-host.png") })
+  await stepEastOfTheKeep(page)
   await assertFarCaptions(page)
   expect(errors, errors.join("\n")).toEqual([])
   await host.context.close()
@@ -1510,8 +1521,9 @@ async function phoneClear(browser) {
   await page.locator("[data-raise]").click()
   await page.waitForFunction(() => window.__lastKeep.town === 1, undefined, { polling: 100 })
   await assertPhoneClear(page)
-  // The guests stand on the join ring. Walking back from the west stops on
-  // that ring, so the far pose happens after the fields and the raise.
+  // The guests stand on the join ring. The raise leaves the host on the keep
+  // face, so the far pose starts from the east again.
+  await stepEastOfTheKeep(page)
   await assertFarCaptions(page)
   await assertPhoneClear(page)
   await page.locator("[data-start]").click()
