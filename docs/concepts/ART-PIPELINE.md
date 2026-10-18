@@ -8,7 +8,7 @@ The concept sheets in `docs/concept/` are isometric pixel art. The live yard is 
 
 `heroes.jpg`, `monsters.jpg`, and `theme.jpg` are each 1280×720. They are JPEG, so a raw unique-color count is not a palette: `theme.jpg` has 64,842 distinct colors and 643 buckets when each channel is divided by 16. The painted palette is the forty tokens in `STYLE.md`. Each token is the jpeg-js lower median of a cited patch.
 
-A 48-color median cut of `theme.jpg`, after a box downscale to 320×180, reconstructs that image with a mean per-channel error of 3.10. The same error is 4.79 at 16 colors, 3.68 at 32, and 2.86 at 64. A small palette can hold the sheet. The lock below uses the named tokens and two darker steps of each token, so night can dim a color without adding a hue.
+A 48-color median cut of `theme.jpg`, after a box downscale to 320×180, reconstructs that image with a mean per-channel error of 3.10. The same error is 4.79 at 16 colors, 3.68 at 32, and 2.86 at 64. A small palette can hold the sheet. The lock below uses the named tokens and darker steps of each token, so night can dim a color without adding a hue.
 
 ## Pixel density
 
