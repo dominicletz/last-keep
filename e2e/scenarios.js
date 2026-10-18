@@ -605,7 +605,12 @@ async function twoPlayerNight(browser) {
     if (!game || game.light !== "dusk") return false
     const mood = game.frameMood()
     const ground = game.frameGround()
-    return mood.problems.length === 0 && ground.problems.length === 0
+    if (mood.problems.length || ground.problems.length) return false
+    const stone = game.sampleWorld(0, 36, 6)
+    const pine = game.sampleWorld(201, 18, 73)
+    if (!stone || !pine) return false
+    const span = Math.abs(stone.hue - pine.hue) % 360
+    return Math.min(span, 360 - span) >= 25
   }, undefined, { timeout: 8_000, polling: 400 })
   const duskMood = await page.evaluate(() => {
     const game = window.__lastKeep
@@ -1300,8 +1305,9 @@ async function assertPhoneClear(page) {
 function keysToward(me, goal) {
   const dx = goal.x - me.x
   const dy = goal.y - me.y
-  // Finish the east-west lane before turning. Turning where the errors match
-  // walks north through the house at (-108, -108) and the body stops.
+  // The join ring and the keep sit north of y=-165. A drift into that band
+  // stops the body on a guest, so the southern goal wins until the lane is back.
+  if (me.y > -165 && goal.y < -160) return ["KeyW", "KeyD"]
   if (Math.abs(dx) > 28) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
   if (Math.abs(dy) > 18) return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
   if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
@@ -1334,19 +1340,6 @@ async function steer(page, goal, done, timeout, label) {
     })
   }
   throw new Error(`${label} timed out at ${JSON.stringify(last)}`)
-}
-
-async function walkHome(page) {
-  await page.bringToFront()
-  // South of the keep, inside the sow ring. The lane stays on y of the far
-  // walk until x is near 55, so the north step misses the corner house.
-  await steer(
-    page,
-    { x: 55, y: -72 },
-    (state) => state.alive && state.x > 40 && state.y > -80 && Math.hypot(state.x, state.y) <= 104,
-    20_000,
-    "walk home"
-  )
 }
 
 async function phoneClear(browser) {
@@ -1385,9 +1378,6 @@ async function phoneClear(browser) {
     return ["Nia", "Ada", "Lux", "Bram", "Pip"].every((name) => roster.includes(name))
   })
   await assertPhoneClear(page)
-  await assertFarCaptions(page)
-  await assertPhoneClear(page)
-  await walkHome(page)
   const aims = [
     [144, 0],
     [180, 0],
@@ -1417,6 +1407,10 @@ async function phoneClear(browser) {
   await page.locator("[data-raise]").click()
   await page.waitForFunction(() => window.__lastKeep.town === 1)
   await assertPhoneClear(page)
+  // The guests stand on the join ring. Walking back from the west stops on
+  // that ring, so the far pose happens after the fields and the raise.
+  await assertFarCaptions(page)
+  await assertPhoneClear(page)
   await page.locator("[data-start]").click()
   await page.waitForFunction(() => window.__lastKeep.phase === "wave")
   await page.bringToFront()
@@ -1433,7 +1427,7 @@ async function phoneClear(browser) {
   })
   // The pack picks a fresh bearing each night. Running west meets the ones
   // that spawned there, so the call never sits on screen at the far mark.
-  const away = packX >= 0 ? -520 : 520
+  const away = packX >= here.x ? here.x - 320 : here.x + 320
   await steer(
     page,
     { x: away, y: -210 },
