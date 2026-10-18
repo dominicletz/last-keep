@@ -1564,7 +1564,25 @@ async function phoneClear(browser) {
     "goblin call away from the pack"
   )
   await assertPhoneClear(page)
-  const call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  let call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  if (!/goblin/i.test(call)) {
+    // The viewport sweep keeps the night moving, and a goblin that walks into
+    // frame takes the arrow with it. Step away again. The text still has to say goblin.
+    const again = await page.evaluate(() => window.__lastKeep.self)
+    const pack = await page.evaluate(() => {
+      const goblins = (window.__lastKeep.monsters || []).filter((row) => row.kind === "goblin")
+      return goblins.length ? goblins.reduce((sum, row) => sum + row.x, 0) / goblins.length : again.x
+    })
+    const further = pack >= again.x ? again.x - 360 : again.x + 360
+    await steer(
+      page,
+      { x: further, y: -210 },
+      (state) => state.alive && state.call && Math.hypot(state.x, state.y) > 480,
+      15_000,
+      "goblin call after the resize"
+    )
+    call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  }
   expect(call).toMatch(/goblin/i)
   expect(errors, errors.join("\n")).toEqual([])
   for (const seat of seats) await seat.context.close()
@@ -1633,29 +1651,40 @@ function segmentHitsKeep(ax, ay, bx, by) {
 }
 
 async function steerPast(page, goal, done, timeout, label) {
-  const me = await page.evaluate(() => window.__lastKeep.self)
-  if (me && segmentHitsKeep(me.x, me.y, goal.x, goal.y)) {
-    // Radius 180 can be true while the rest of the line still hits the keep.
-    // The hero then walks back into the west face and sits near x 73.5.
-    const around = Date.now() + 20_000
-    for (let hop = 0; hop < 4; hop += 1) {
-      const here = await page.evaluate(() => window.__lastKeep.self)
-      if (!here || !segmentHitsKeep(here.x, here.y, goal.x, goal.y)) break
-      const left = around - Date.now()
-      if (left <= 0) break
-      const ang = Math.atan2(goal.y - here.y, goal.x - here.x)
-      const spin = (hop % 2 === 0 ? 1 : -1) * (1.1 + hop * 0.2)
+  // One detour is not enough. The straight walk uses diagonal keys, clips the
+  // keep, and sits on the west face near x 73.5 for the rest of the budget.
+  const deadline = Date.now() + timeout
+  let lastError = null
+  for (let hop = 0; hop < 6; hop += 1) {
+    const left = deadline - Date.now()
+    if (left <= 0) break
+    const me = await page.evaluate(() => window.__lastKeep.self)
+    const pinned = me && Math.hypot(me.x, me.y) < 160 && segmentHitsKeep(me.x, me.y, goal.x, goal.y)
+    if (pinned) {
+      const ang = Math.atan2(me.y, me.x)
+      const spin = (hop % 2 === 0 ? 1 : -1) * (1.15 + hop * 0.18)
       const via = { x: Math.cos(ang + spin) * 320, y: Math.sin(ang + spin) * 320 }
-      await steer(
-        page,
-        via,
-        (state) => !segmentHitsKeep(state.x, state.y, goal.x, goal.y),
-        left,
-        `${label} around the keep`
-      )
+      try {
+        await steer(
+          page,
+          via,
+          (state) => !segmentHitsKeep(state.x, state.y, goal.x, goal.y) && Math.hypot(state.x, state.y) > 160,
+          Math.min(left, 8_000),
+          `${label} around the keep`
+        )
+      } catch (error) {
+        lastError = error
+      }
+      continue
+    }
+    try {
+      return await steer(page, goal, done, Math.min(left, 6_000), label)
+    } catch (error) {
+      lastError = error
     }
   }
-  await steer(page, goal, done, timeout, label)
+  if (lastError) throw lastError
+  throw new Error(`${label} timed out`)
 }
 
 async function exploreLand(browser) {
