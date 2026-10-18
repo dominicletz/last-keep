@@ -1432,9 +1432,22 @@ function keysToward(me, goal) {
   return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
 }
 
+function aimAroundTheKeep(me, goal, stillMs) {
+  const blocked = segmentHitsKeep(me.x, me.y, goal.x, goal.y)
+  const near = Math.hypot(me.x, me.y) < 150
+  if (!blocked && !(near && stillMs >= 480)) return goal
+  // A straight walk into the keep slides to a stop. Turn along the wall
+  // until the line to the goal misses it. A longer stall turns farther.
+  const ang = Math.atan2(me.y, me.x)
+  const turn = 0.7 + Math.min(stillMs / 800, 2.2)
+  return { x: Math.cos(ang + turn) * 240, y: Math.sin(ang + turn) * 240 }
+}
+
 async function steer(page, goal, done, timeout, label) {
   const deadline = Date.now() + timeout
   let last = null
+  let anchor = null
+  let still = 0
   try {
     while (Date.now() < deadline) {
       const state = await page.evaluate(() => {
@@ -1445,7 +1458,12 @@ async function steer(page, goal, done, timeout, label) {
       last = state
       if (state && done(state)) return state
       if (state) {
-        const keys = keysToward(state, goal)
+        if (anchor && Math.hypot(state.x - anchor.x, state.y - anchor.y) < 12) still += 80
+        else {
+          still = 0
+          anchor = { x: state.x, y: state.y }
+        }
+        const keys = keysToward(state, aimAroundTheKeep(state, goal, still))
         await page.evaluate((down) => {
           for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, down.includes(key))
         }, keys)
