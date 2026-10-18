@@ -1653,16 +1653,19 @@ function segmentHitsKeep(ax, ay, bx, by) {
 async function steerPast(page, goal, done, timeout, label) {
   // One detour is not enough. The straight walk uses diagonal keys, clips the
   // keep, and sits on the west face near x 73.5 for the rest of the budget.
+  // A far portal still gets the whole wait. Only a pin on the keep spends a slice.
   const deadline = Date.now() + timeout
+  let orbits = 0
   let lastError = null
-  for (let hop = 0; hop < 6; hop += 1) {
+  while (Date.now() < deadline) {
     const left = deadline - Date.now()
-    if (left <= 0) break
     const me = await page.evaluate(() => window.__lastKeep.self)
     const pinned = me && Math.hypot(me.x, me.y) < 160 && segmentHitsKeep(me.x, me.y, goal.x, goal.y)
     if (pinned) {
+      if (orbits >= 6) break
+      orbits += 1
       const ang = Math.atan2(me.y, me.x)
-      const spin = (hop % 2 === 0 ? 1 : -1) * (1.15 + hop * 0.18)
+      const spin = (orbits % 2 === 0 ? 1 : -1) * (1.15 + orbits * 0.18)
       const via = { x: Math.cos(ang + spin) * 320, y: Math.sin(ang + spin) * 320 }
       try {
         await steer(
@@ -1681,6 +1684,9 @@ async function steerPast(page, goal, done, timeout, label) {
       return await steer(page, goal, done, Math.min(left, 6_000), label)
     } catch (error) {
       lastError = error
+      const now = await page.evaluate(() => window.__lastKeep.self)
+      const stuck = now && Math.hypot(now.x, now.y) < 160 && segmentHitsKeep(now.x, now.y, goal.x, goal.y)
+      if (!stuck && left <= 6_000) throw error
     }
   }
   if (lastError) throw lastError
