@@ -372,13 +372,6 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - Deploy of fbd8803 failed `exploreLand` with the host at x 73.5, y 0. KeyA+KeyW is due west, and that step has no y, so the body cannot slide off the keep. `keysAround` walks the tangent while the hero is inside 100 of the keep and the goal is still inward. The eight-way stop is 12, inside the chest radius of 30. A goal on the far side of the face still walks straight. The southern lane past the join ring stays KeyW+KeyD. The chest wait stays 45 seconds and the portal wait stays 70 seconds. The phone timeout stays 150s. This does not change the simulation. The coverage floor stays 77.
 
-## 2026-10-18 value steps and ground noise
-
-- `valueStructure` posterizes a frame into four luma bands. Spread counts a band at 2% of the frame. Focal contrast is the median luma gap between the keep, heroes, and on-canvas monsters and the near ground (rows 42% to 90%). `noiseEnergy` is the mean horizontal luma step on that ground.
-- The live 640×400 camera measured spread 2, 3, 2 and focal contrast 5, 10, 5 at day, dusk, and night. Ground noise measured 8.93, 11.97, and 8.57. The concept clearing at `theme.jpg` 366,314, 48×48 is 12.43. The floors are spread 2 and focal contrast 5. The noise cap is 12. The rendered yard is already under the tile, so the fleck rate is unchanged.
-- `pictureGrade` is the thirteenth desktop scenario. It grades day while the party waits, dusk after the start, and night when the wave light is on. The match loop still does not call `readPixels`. Hero and keep silhouette readability stays the shared `readability` function, floors 20 and 60, and is wired when that function is on main.
-- This does not change the simulation. The coverage floor stays 77.
-
 ## 2026-10-18 six seats across three waves
 
 - The deploy of a40069d failed `sixSeatMatch` with the later scene at 774 and the first at 773. The later census still had one shot after the snapshot listed zero projectiles. The quiet build waits until that painted shot is gone. The budgets stay the same.
@@ -404,3 +397,10 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - The sheet branch uses the detour already on main. The via on the west face shares x, `e2e/steer.test.js` walks that face and the spawn to a chest, and the hop ends when the cardinal step misses the keep body. The chest wait stays 45 seconds and the portal wait stays 70 seconds.
 - `phoneClear` still requires the goblin call on the side opposite the pack. The steer returns on a frame where the label is up, and the next paint can be empty, so the text is polled for 4 seconds. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 value steps and ground noise
+
+- `valueStructure` posterizes a frame into four luma bands. Spread counts a band at 2% of the frame. Focal contrast is the median luma gap between the keep, heroes, and on-canvas monsters and the near ground (rows 42% to 90%). `noiseEnergy` is the mean horizontal luma step on that ground.
+- The live 640×400 camera measured spread 2, 3, 2 and focal contrast 5, 10, 5 at day, dusk, and night. Ground noise measured 8.93, 11.97, and 8.57. The concept clearing at `theme.jpg` 366,314, 48×48 is 12.43. The floors are spread 2 and focal contrast 5. The noise cap is 12. The rendered yard is already under the tile, so the fleck rate is unchanged.
+- `pictureGrade` is the thirteenth desktop scenario. It grades day while the party waits, dusk after the start, and night when the wave light is on. The match loop still does not call `readPixels`. Hero and keep silhouette readability stays the shared `readability` function, floors 20 and 60, and is wired when that function is on main.
+- This does not change the simulation. The coverage floor stays 77.
