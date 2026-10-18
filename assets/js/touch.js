@@ -1,3 +1,5 @@
+import { raiseInRange } from "./hud.js"
+
 export const STICK_RADIUS = 64
 
 const DEAD = 0.18
@@ -69,7 +71,8 @@ export function contextAction(scene) {
     const spot = legalPlot(scene)
     if (spot && canPay(scene.resources, scene.cost)) return { id: "place", kind: scene.armed, aim: spot }
   }
-  if (canRaise(scene)) return { id: "raise" }
+  if (scene.upgrade && !raiseInRange(scene.hero)) return { id: "raise", enabled: false }
+  if (canRaise(scene)) return { id: "raise", enabled: true }
   if (canFeed(scene)) return { id: "feed" }
   return null
 }
@@ -81,7 +84,7 @@ function canPay(resources, cost) {
 
 function canRaise(scene) {
   const offer = scene.upgrade
-  if (!offer) return false
+  if (!offer || !raiseInRange(scene.hero)) return false
   return (scene.resources?.wood ?? 0) >= offer.wood && (scene.resources?.gold ?? 0) >= offer.gold
 }
 

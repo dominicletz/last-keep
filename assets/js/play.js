@@ -5,7 +5,7 @@ import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, swingSeen } from "./paint"
-import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
@@ -130,6 +130,8 @@ function start(code, seat, ui) {
   const fx = []
   const seen = { kinds: [], labels: [], log: [] }
   let reasonEntry = { text: "", until: 0 }
+  let raiseHover = false
+  let raiseCue = { text: "", until: 0 }
   let placeTick = null
   let focused = document.hasFocus()
   let pinned = false
@@ -376,6 +378,9 @@ function start(code, seat, ui) {
       pad.place = true
       input.place = true
       fingers.set(event.pointerId, "place")
+    } else if (touchAction?.id === "raise" && touchAction.enabled === false) {
+      cueRaise()
+      return
     } else if (touchAction?.id === "raise") {
       pad.raise = true
       input.raise = true
@@ -469,6 +474,24 @@ function start(code, seat, ui) {
       input.raise = false
     }
   })
+  const raiseHit = ui.hud.querySelector("[data-raise-hit]")
+  function cueRaise() {
+    const meNow = (latest?.players || []).find((player) => player.id === selfId)
+    const offer = latest?.upgrade
+    const text = raiseHint(meNow, offer)
+    if (!text) return
+    raiseCue = showReason(raiseCue, text, performance.now(), 2200, true)
+    refresh()
+  }
+  raiseHit.addEventListener("pointerenter", () => {
+    raiseHover = true
+    refresh()
+  })
+  raiseHit.addEventListener("pointerleave", () => {
+    raiseHover = false
+    refresh()
+  })
+  raiseHit.addEventListener("pointerup", cueRaise)
 
   function send() {
     blurHiddenFocus(document)
@@ -601,7 +624,7 @@ function start(code, seat, ui) {
     const raise = ui.hud.querySelector("[data-raise]")
     if (raise) {
       raise.textContent = raiseLabel(snap.upgrade)
-      raise.disabled = !raiseReady(snap.upgrade, snap.resources)
+      raise.disabled = !raiseReady(snap.upgrade, snap.resources, me)
     }
     const start = ui.hud.querySelector("[data-start]")
     start.hidden = !snap.hold
@@ -621,9 +644,10 @@ function start(code, seat, ui) {
       button.classList.toggle("on", kind === armed)
     })
     const cost = armed && me?.costs ? me.costs[armed] : null
-    const preview = armed ? placementReason({ ...me, cost }, aim, snap.resources) : ""
-    const denied = (snap.events || []).find((ev) => ev.type === "deny" && ev.reason)
     const now = performance.now()
+    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, snap.upgrade) : ""
+    const preview = armed ? placementReason({ ...me, cost }, aim, snap.resources) : raiseNote
+    const denied = (snap.events || []).find((ev) => ev.type === "deny" && ev.reason)
     if (denied) reasonEntry = showReason(reasonEntry, denied.reason, now, 2200, true)
     else reasonEntry = showReason(reasonEntry, preview, now)
     const reasonNode = ui.hud.querySelector("[data-build-reason]")
@@ -688,9 +712,11 @@ function start(code, seat, ui) {
     if (!touchAction) {
       button.hidden = true
       button.textContent = ""
+      button.removeAttribute("aria-disabled")
       return
     }
     button.hidden = false
+    button.setAttribute("aria-disabled", touchAction.enabled === false ? "true" : "false")
     button.textContent = touchAction.id === "place" ? PLACE_WORD[touchAction.kind] || "Build" : touchAction.id === "raise" ? "Raise" : "Feed"
   }
 }
@@ -712,7 +738,7 @@ function hudMarkup() {
     <div class="hud-top">
       <div class="actions">
         <button type="button" data-start hidden>Start the night</button>
-        <button type="button" data-raise>Raise the keep</button>
+        <span data-raise-hit><button type="button" data-raise>Raise the keep</button></span>
         <button type="button" data-copy>Copy invite</button>
         <div class="sound"><button type="button" data-mute>Sound</button><input type="range" min="0" max="100" value="70" data-volume aria-label="Volume"></div>
       </div>

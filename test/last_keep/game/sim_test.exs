@@ -914,11 +914,31 @@ defmodule LastKeep.Game.SimTest do
     assert Jason.encode!(snap)
   end
 
-  test "a raise from the reported woods spends the purse and stakes houses" do
+  test "a raise outside the keep is refused" do
+    for {x, y} <- [{-232.0, -396.0}, {120.0, 0.0}] do
+      state = Sim.new("KEEP01", seed: 1)
+      {:ok, state} = Sim.join(state, player("ada", :warrior))
+      ada = hero(state, "ada")
+      state = put_hero(state, %{ada | x: x, y: y})
+      state = %{state | resources: %{state.resources | wood: 72, gold: 12}}
+
+      state =
+        push(state, "ada", %{"raise" => true})
+        |> Sim.tick()
+
+      assert state.town == 0
+      assert state.resources.wood == 72
+      assert state.resources.gold == 12
+      assert of_kind(state, :house) == []
+      assert Enum.any?(state.events, &(&1.type == "deny" and &1.reason == "Walk to the keep"))
+    end
+  end
+
+  test "a raise beside the keep spends the purse and stakes houses" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :warrior))
     ada = hero(state, "ada")
-    state = put_hero(state, %{ada | x: -232.0, y: -396.0})
+    state = put_hero(state, %{ada | x: 80.0, y: 0.0})
     state = %{state | resources: %{state.resources | wood: 72, gold: 12}}
 
     state =
@@ -929,7 +949,6 @@ defmodule LastKeep.Game.SimTest do
     assert state.resources.wood == 48
     assert state.resources.gold == 4
     assert length(of_kind(state, :house)) == 4
-    refute Enum.any?(state.events, &(&1.type == "deny" and &1.reason == "Stand by the keep"))
 
     snap = Snapshot.render(state)
     assert snap.town == 1
@@ -940,6 +959,8 @@ defmodule LastKeep.Game.SimTest do
   test "raising the keep spends wood and gold and widens the town" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    state = put_hero(state, %{ada | x: 80.0, y: 0.0})
     state = %{state | resources: %{state.resources | wood: 200, gold: 80}}
 
     state =

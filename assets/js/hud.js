@@ -170,9 +170,23 @@ export function raiseLabel(upgrade) {
   return `Raise the keep  ${upgrade.wood} wood ${upgrade.gold} gold`
 }
 
-export function raiseReady(upgrade, resources) {
+export const RAISE_REACH = 100
+
+export function raiseInRange(hero) {
+  const x = Number(hero?.x)
+  const y = Number(hero?.y)
+  return Number.isFinite(x) && Number.isFinite(y) && Math.hypot(x, y) < RAISE_REACH
+}
+
+export function raiseReady(upgrade, resources, hero) {
   if (!upgrade) return false
-  return (resources?.wood ?? 0) >= upgrade.wood && (resources?.gold ?? 0) >= upgrade.gold
+  if ((resources?.wood ?? 0) < upgrade.wood || (resources?.gold ?? 0) < upgrade.gold) return false
+  return raiseInRange(hero)
+}
+
+export function raiseHint(hero, upgrade) {
+  if (!upgrade || raiseInRange(hero)) return ""
+  return "Walk to the keep"
 }
 
 const CALL_GAP = Math.PI / 3.6

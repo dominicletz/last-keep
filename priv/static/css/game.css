@@ -203,7 +203,13 @@ input[type="text"], input:not([type="radio"]) {
   pointer-events: auto;
 }
 #hud [data-copy], #hud [data-start] { flex: 0 0 auto; white-space: nowrap; }
+#hud [data-raise-hit] { display: inline-flex; }
 #hud [data-raise] { flex: 0 1 auto; max-width: none; white-space: nowrap; }
+#hud [data-raise]:disabled { pointer-events: none; }
+#hud .thumb.context[aria-disabled="true"] {
+  background: #241c16;
+  color: #7a6c5c;
+}
 #hud button {
   padding: 0.22rem 0.5rem;
   border-width: 2px;
