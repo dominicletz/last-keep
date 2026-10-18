@@ -1583,9 +1583,25 @@ function segmentHitsKeep(ax, ay, bx, by) {
 async function steerPast(page, goal, done, timeout, label) {
   const me = await page.evaluate(() => window.__lastKeep.self)
   if (me && segmentHitsKeep(me.x, me.y, goal.x, goal.y)) {
-    const ang = Math.atan2(goal.y - me.y, goal.x - me.x)
-    const via = { x: Math.cos(ang + 1.1) * 260, y: Math.sin(ang + 1.1) * 260 }
-    await steer(page, via, (state) => Math.hypot(state.x, state.y) > 180, 20_000, `${label} around the keep`)
+    // Radius 180 can be true while the rest of the line still hits the keep.
+    // The hero then walks back into the west face and sits near x 73.5.
+    const around = Date.now() + 20_000
+    for (let hop = 0; hop < 4; hop += 1) {
+      const here = await page.evaluate(() => window.__lastKeep.self)
+      if (!here || !segmentHitsKeep(here.x, here.y, goal.x, goal.y)) break
+      const left = around - Date.now()
+      if (left <= 0) break
+      const ang = Math.atan2(goal.y - here.y, goal.x - here.x)
+      const spin = (hop % 2 === 0 ? 1 : -1) * (1.1 + hop * 0.2)
+      const via = { x: Math.cos(ang + spin) * 320, y: Math.sin(ang + spin) * 320 }
+      await steer(
+        page,
+        via,
+        (state) => !segmentHitsKeep(state.x, state.y, goal.x, goal.y),
+        left,
+        `${label} around the keep`
+      )
+    }
   }
   await steer(page, goal, done, timeout, label)
 }
