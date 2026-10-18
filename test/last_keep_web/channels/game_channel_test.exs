@@ -79,6 +79,26 @@ defmodule LastKeepWeb.GameChannelTest do
     refute_received {:snap, _}
   end
 
+  test "a backed-up channel remembers a swing the newest snapshot has cooled" do
+    send(
+      self(),
+      {:snap, %{tick: 2, events: [%{type: "swing"}], players: [%{cds: %{attack: 400}}]}}
+    )
+
+    send(self(), {:snap, %{tick: 14, events: [], players: [%{cds: %{attack: 0}}]}})
+
+    latest =
+      LastKeepWeb.GameChannel.coalesce_snaps(%{
+        tick: 0,
+        events: [],
+        players: [%{cds: %{attack: 0}}]
+      })
+
+    assert latest.tick == 14
+    assert latest.saw_swing
+    assert hd(latest.players).cds.attack == 0
+  end
+
   test "an unknown token cannot take a hero" do
     {:ok, code} = Rooms.create(auto_tick: false, seed: 1)
 

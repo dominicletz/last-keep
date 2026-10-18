@@ -60,25 +60,21 @@ async function untilTick(page, ticks) {
   )
 }
 
-async function peakAttackAcrossTicks(page, ticks) {
-  const start = await page.evaluate(() => window.__lastKeep.tick)
-  let peak = 0
-  let seen = start
-  while (seen - start < ticks) {
-    // A covered page does not run animation frames. The tick still arrives
-    // on the socket, and the cooldown is copied there too.
-    await page.waitForFunction((mark) => window.__lastKeep.tick > mark, seen, {
-      timeout: 15_000,
+// The cooldown is 8 ticks. A backed-up channel delivers a later snapshot
+// that has already cooled, and a 12-tick poll then reads 0. The page latches
+// saw_swing, so this wait can outlast the pulse.
+const SWING_WAIT_MS = 2_000
+
+async function swungSinceReset(page) {
+  try {
+    await page.waitForFunction(() => (window.__lastKeep.attackPeak || 0) > 0, undefined, {
+      timeout: SWING_WAIT_MS,
       polling: 100
     })
-    const row = await page.evaluate(() => ({
-      tick: window.__lastKeep.tick,
-      cd: window.__lastKeep.attackCd || 0
-    }))
-    peak = Math.max(peak, row.cd)
-    seen = row.tick
+  } catch (error) {
+    if (!/Timeout/.test(String(error && error.message))) throw error
   }
-  return peak
+  return page.evaluate(() => window.__lastKeep.attackPeak || 0)
 }
 
 async function focusClickDoesNotAttack(page) {
@@ -89,19 +85,23 @@ async function focusClickDoesNotAttack(page) {
   })
   const tag = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, spot)
   expect(tag).toBe("CANVAS")
-  await page.evaluate(() => window.__lastKeepTest.blur())
+  await page.evaluate(() => {
+    window.__lastKeep.attackPeak = 0
+    window.__lastKeepTest.blur()
+  })
   await page.mouse.click(spot.x, spot.y)
-  // Melee cooldown is 8 ticks. A 350ms wall clock can end before an idle page
-  // publishes that swing, so a real attack looks like a miss.
-  const peak = await peakAttackAcrossTicks(page, 12)
+  const peak = await swungSinceReset(page)
   expect(peak).toBe(0)
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
   // The guest window can blur the host during those ticks. Bring it back
   // and mark the game focused, then the click has to swing.
   await page.bringToFront()
-  await page.evaluate(() => window.__lastKeepTest.focus())
+  await page.evaluate(() => {
+    window.__lastKeep.attackPeak = 0
+    window.__lastKeepTest.focus()
+  })
   await page.mouse.click(spot.x, spot.y)
-  const swung = await peakAttackAcrossTicks(page, 12)
+  const swung = await swungSinceReset(page)
   expect(swung).toBeGreaterThan(0)
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
 }

@@ -67,10 +67,29 @@ defmodule LastKeepWeb.GameChannel do
 
   def coalesce_snaps(snap) do
     receive do
-      {:snap, newer} -> coalesce_snaps(newer)
+      {:snap, newer} -> coalesce_snaps(note_swing(snap, newer))
     after
       0 -> snap
     end
+  end
+
+  # The swing cooldown is 8 ticks. A push that falls behind used to drop
+  # every snapshot but the newest, and that one had already cooled to 0.
+  defp note_swing(older, newer) do
+    if swung?(older), do: Map.put(newer, :saw_swing, true), else: newer
+  end
+
+  defp swung?(%{saw_swing: true}), do: true
+
+  defp swung?(snap) do
+    Enum.any?(snap[:events] || [], fn ev ->
+      is_map(ev) and (ev[:type] == "swing" or ev["type"] == "swing")
+    end) or
+      Enum.any?(snap[:players] || [], fn player ->
+        cds = if is_map(player), do: player[:cds] || player["cds"] || %{}, else: %{}
+        attack = cds[:attack] || cds["attack"] || 0
+        is_number(attack) and attack > 0
+      end)
   end
 
   @impl true

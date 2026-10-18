@@ -113,7 +113,7 @@ defmodule LastKeep.Game.RoomTest do
   test "five abandoned rooms stop and the count returns to baseline" do
     baseline = Rooms.count()
 
-    codes =
+    seats =
       for n <- 1..5 do
         {:ok, code} = Rooms.create(idle_ms: 500, lobby_ms: 500, seed: n)
 
@@ -125,9 +125,13 @@ defmodule LastKeep.Game.RoomTest do
             connected: true
           })
 
-        Room.disconnect(code, token)
-        code
+        {code, token}
       end
+
+    # The idle clock is 500ms. Starting it inside the loop let the first
+    # room die while a heavy world was still being built.
+    for {code, token} <- seats, do: Room.disconnect(code, token)
+    codes = Enum.map(seats, &elem(&1, 0))
 
     assert Rooms.count() == baseline + 5
     deadline = System.monotonic_time(:millisecond) + 2_000
