@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, exploreLand, heroSilhouettes, joinFromForm, paradeShowsEveryKind, prepareProof, scoreList, shotsDoNotGrowGeometries, squarePixels, townGrows, twoPlayerNight } = require("./scenarios")
+const { captionsClearTheBuilds, exploreLand, heroSilhouettes, joinFromForm, matchPaintsWithoutARead, paradeShowsEveryKind, prepareProof, scoreList, shotsDoNotGrowGeometries, squarePixels, townGrows, twoPlayerNight } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -22,6 +22,10 @@ test("the picture stays square when the window changes shape", async ({ browser 
 
 test("the five heroes stand as different bodies", async ({ browser }) => {
   await heroSilhouettes(browser)
+})
+
+test("a match paints without reading the framebuffer back", async ({ browser }) => {
+  await matchPaintsWithoutARead(browser)
 })
 
 test("a scripted night puts every monster kind on the yard", async ({ browser }) => {

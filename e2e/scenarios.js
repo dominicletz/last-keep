@@ -17,9 +17,10 @@ function gameUrl(path) {
   return `${origin}${path.startsWith("/") ? path : `/${path}`}`
 }
 
-async function createHost(browser, name, hero) {
+async function createHost(browser, name, hero, prepare) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
+  if (prepare) await prepare(page)
   await page.goto(gameUrl("/"))
   await page.waitForFunction(() => {
     const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
@@ -1631,6 +1632,44 @@ async function shotsDoNotGrowGeometries(browser) {
   await context.close()
 }
 
+function countFramebufferReads(page) {
+  return page.addInitScript(() => {
+    const mark = (proto) => {
+      const orig = proto && proto.readPixels
+      if (!orig || orig.__counted) return
+      function counted(...args) {
+        window.__lastKeepReads = (window.__lastKeepReads || 0) + 1
+        return orig.apply(this, args)
+      }
+      counted.__counted = true
+      proto.readPixels = counted
+    }
+    mark(WebGLRenderingContext.prototype)
+    if (typeof WebGL2RenderingContext !== "undefined") mark(WebGL2RenderingContext.prototype)
+  })
+}
+
+async function matchPaintsWithoutARead(browser) {
+  const errors = []
+  const { context, page } = await createHost(browser, "Nia", "farmer", async (host) => {
+    watch(host, "host", errors)
+    await countFramebufferReads(host)
+  })
+  await page.waitForFunction(() => (window.__lastKeep?.renders || 0) >= 4, undefined, { timeout: 15_000 })
+  const during = await page.evaluate(() => window.__lastKeepReads || 0)
+  expect(during).toBe(0)
+  const graded = await page.evaluate(() => {
+    const me = window.__lastKeep.self
+    return window.__lastKeep.brightNear(me.x, me.y, 2)
+  })
+  expect(graded.field).toBeGreaterThan(0)
+  const after = await page.evaluate(() => window.__lastKeepReads || 0)
+  expect(after).toBeGreaterThan(during)
+  await page.screenshot({ path: shot("paint-host.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
 async function scoreList(request) {
   const response = await request.get("/api/highscores")
   expect(response.ok()).toBeTruthy()
@@ -1784,6 +1823,7 @@ module.exports = {
   scoreList,
   heroSilhouettes,
   paradeShowsEveryKind,
+  matchPaintsWithoutARead,
   shotsDoNotGrowGeometries,
   mobileTouch,
   townGrows,
