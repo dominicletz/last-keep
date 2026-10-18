@@ -1,9 +1,13 @@
-// Browser-safe hero card. The front cell is the concept crop. Eight directions
-// and four walk frames are made from that one painting. Direction 0 is the crop.
+// Browser-safe hero card. The front cell is the concept crop. Eight directions,
+// four walk frames, three attack frames, and four death frames are made from
+// that one painting. Direction 0, walk 0 is the crop.
 
 export const spriteHeight = 32
 export const spriteDirections = 8
-export const spriteFrames = 4
+export const spriteWalk = 4
+export const spriteAttack = 3
+export const spriteDeath = 4
+export const spriteFrames = spriteWalk + spriteAttack + spriteDeath
 
 // The yard shows the card at about 33 internal pixels, and the close-up frames
 // it at 80. A 160px source keeps that close-up under the likeness ceiling.
@@ -140,6 +144,73 @@ function walkOf(image) {
   return [image, shift(image, 2, true), bob(image), shift(image, -2, true)]
 }
 
+function shiftUpper(image, dx) {
+  const rgb = new Uint8Array(image.rgb.length)
+  const mask = new Uint8Array(image.mask.length)
+  const split = Math.floor(image.h * 0.55)
+  for (let y = 0; y < image.h; y++) {
+    const ox = y < split ? dx : 0
+    for (let x = 0; x < image.w; x++) {
+      const sx = x - ox
+      if (sx < 0 || sx >= image.w) continue
+      const s = y * image.w + sx
+      if (!image.mask[s]) continue
+      const d = y * image.w + x
+      mask[d] = 1
+      rgb.set(image.rgb.subarray(s * 3, s * 3 + 3), d * 3)
+    }
+  }
+  return { rgb, mask, w: image.w, h: image.h }
+}
+
+function attackOf(image) {
+  return [image, shiftUpper(image, 4), shiftUpper(image, 7)]
+}
+
+function fall(image, scaleY) {
+  const rgb = new Uint8Array(image.rgb.length)
+  const mask = new Uint8Array(image.mask.length)
+  const span = Math.max(1, image.h - 1)
+  const lean = Math.round((1 - scaleY) * image.w * 0.18)
+  for (let y = 0; y < image.h; y++) {
+    const fromBottom = (image.h - 1 - y) / span
+    if (fromBottom > scaleY) continue
+    const sy = image.h - 1 - Math.round((fromBottom / scaleY) * span)
+    const ox = Math.round(lean * (1 - fromBottom))
+    for (let x = 0; x < image.w; x++) {
+      const sx = x - ox
+      if (sy < 0 || sy >= image.h || sx < 0 || sx >= image.w) continue
+      const s = sy * image.w + sx
+      if (!image.mask[s]) continue
+      const d = y * image.w + x
+      mask[d] = 1
+      rgb.set(image.rgb.subarray(s * 3, s * 3 + 3), d * 3)
+    }
+  }
+  return { rgb, mask, w: image.w, h: image.h }
+}
+
+function deathOf(image) {
+  return [image, fall(image, 0.82), fall(image, 0.55), fall(image, 0.32)]
+}
+
+export function sheetRow(picture, pose, now) {
+  const walk = picture.walk || picture.frames
+  const attack = picture.attack || 0
+  const death = picture.death || 0
+  if (pose.dead) {
+    const started = Number.isFinite(pose.deadAt) ? pose.deadAt : now
+    const index = Math.min(Math.max(death - 1, 0), Math.floor(Math.max(0, now - started) / 160))
+    return walk + attack + index
+  }
+  if (pose.attackAt && now - pose.attackAt < attack * 140) {
+    const index = Math.min(attack - 1, Math.floor((now - pose.attackAt) / 140))
+    return walk + index
+  }
+  if (pose.moving) return Math.floor(now / 160) % walk
+  return 0
+}
+
 function paste(cellW, cellH, image) {
   const rgb = new Uint8Array(cellW * cellH * 3)
   const mask = new Uint8Array(cellW * cellH)
@@ -170,7 +241,7 @@ export function buildCard(front, kind) {
   const atlas = new Uint8Array(atlasW * atlasH * 4)
   const frames = []
   for (let dir = 0; dir < views.length; dir++) {
-    const cycle = walkOf(views[dir])
+    const cycle = [...walkOf(views[dir]), ...attackOf(views[dir]), ...deathOf(views[dir])]
     for (let frame = 0; frame < cycle.length; frame++) {
       const cell = paste(cellW, cellH, cycle[frame])
       frames.push(cell)
@@ -213,7 +284,10 @@ export function buildCard(front, kind) {
     cellW,
     cellH,
     directions: spriteDirections,
-    frames: spriteFrames
+    frames: spriteFrames,
+    walk: spriteWalk,
+    attack: spriteAttack,
+    death: spriteDeath
   }
   const parts = /** @type {any} */ ([part])
   parts.marks = MARKS[kind].slice()
