@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
-import { combineAxes, contextAction, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
+import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, partyPositions } from "./paint"
 import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatPin, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
@@ -309,8 +309,9 @@ function start(code, seat, ui) {
       input.raise = true
       fingers.set(event.pointerId, "raise")
     } else if (touchAction?.id === "feed") {
-      pad.f = true
-      fingers.set(event.pointerId, "feed")
+      const slot = padSlot("feed")
+      pad[slot] = true
+      fingers.set(event.pointerId, slot)
     }
     send()
   })

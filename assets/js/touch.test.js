@@ -1,12 +1,23 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { axes } from "./input.js"
-import { combineAxes, contextAction, snapGrid, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch.js"
+import { combineAxes, contextAction, padSlot, snapGrid, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch.js"
 
 function near(a, b) {
   assert.ok(Math.abs(a.x - b.x) < 1e-9, `${a.x} vs ${b.x}`)
   assert.ok(Math.abs(a.y - b.y) < 1e-9, `${a.y} vs ${b.y}`)
 }
+
+test("a feed press and its release share the f bit", () => {
+  const slot = padSlot("feed")
+  const pad = {}
+  pad[slot] = true
+  pad[slot] = false
+  assert.equal(slot, "f")
+  assert.equal(pad.f, false)
+  assert.equal(padSlot("place"), "place")
+  assert.equal(padSlot("raise"), "raise")
+})
 
 test("a full stick matches the WASD axes", () => {
   near(stickVector(0, -64), axes(new Set(["KeyW"])))
