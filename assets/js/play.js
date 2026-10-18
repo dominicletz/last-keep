@@ -200,8 +200,11 @@ function start(code, seat, ui) {
   }
   window.addEventListener("blur", () => {
     focused = false
+    // A blur that does not leave the document used to stick, and the next
+    // click was thrown away. Restoring only when the document is focused
+    // leaves an explicit test focus() in place on a covered page.
     window.setTimeout(() => {
-      focused = focusedAfterBlur(document.hasFocus())
+      if (focusedAfterBlur(document.hasFocus())) focused = true
     }, 0)
   })
 
