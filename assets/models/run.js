@@ -763,7 +763,7 @@ img.near { height: 384px; width: auto; max-width: none; }
 <p><code>npm run models</code> wrote these frames at game zoom through the pixel path. Heroes and monsters also have a close-up, about ${closeupFigure}px tall, and the portrait card is that close-up. The pictures on this page are the goldens in <code>test/gallery/</code>. CI uploads the same bytes as <code>artifacts/gallery/</code>. A second run has to match. The concept sheets are ${conceptSheets.map((sheet) => `${sheet} (${present[sheet] ? "present" : "not in the repo"})`).join(", ")}. Do not invent a substitute sheet.</p>
 <section id="yard">
 <h2>Yard beside the concept</h2>
-<p>The sheet is the dusk town: violet sky, dark pines, warm windows. The day swatch is the lit clearing graded to the moss at 150,192 (hue ${mood.day.hue.toFixed(1)}, luminance ${mood.day.luma.toFixed(1)}). The dusk swatch is the far field (hue ${mood.dusk.hue.toFixed(1)}). The pool swatch is the ground by the brazier (hue ${mood.pool.hue.toFixed(1)}).</p>
+<p>The sheet is the dusk town: dark pines, a violet sky, and warm windows. The day swatch is the grass token under neutral light (hue ${mood.day.hue.toFixed(1)}, luminance ${mood.day.luma.toFixed(1)}). The dusk swatch is that grass under the neutral dusk (hue ${mood.dusk.hue.toFixed(1)}). The pool swatch is the same grass in the brazier light (hue ${mood.pool.hue.toFixed(1)}). A single patch is not the grade. The frame comparison is moodProblems.</p>
 <img src="concept/theme.jpg" alt="theme.jpg, the concept the yard is graded toward">
 <div class="swatches">
 <div style="background:${swatch(mood.day)}">day ${swatch(mood.day)}</div>

@@ -1,6 +1,8 @@
 import fs from "node:fs"
 import jpeg from "jpeg-js"
-import { cycleLight, duskFrame, flameColor, hueGap, hueOf, litYard, lumaOf, mossColor, mossRegion } from "../js/scene.js"
+import { GROUND_TEX, groundPixels } from "../js/ground.js"
+import { moodOf, moodProblems } from "../js/mood.js"
+import { cycleLight, lumaOf } from "../js/scene.js"
 
 // Palette hexes are the jpeg-js lower median of the cited patch.
 // Sort each channel and take index (length - 1) >> 1. Do not use another decoder.
@@ -95,18 +97,11 @@ export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
   if (groundHex !== grass.hex) problems.push(`yard ground #${groundHex} is not the grass token #${grass.hex}`)
   if (groundLuma < 90) problems.push(`yard ground luma ${groundLuma.toFixed(1)} is dark olive`)
   if (skyHex !== skyMedian) problems.push(`sky color #${skyHex} is not the concept sky median #${skyMedian}`)
-  const dayField = litYard(colors.ground, cycleLight.day)
-  const mossMedian = medianHex(sheet, mossRegion)
-  if (mossMedian !== rgbOf(mossColor).map((channel) => channel.toString(16).padStart(2, "0")).join("")) {
-    problems.push(`moss sample #${mossMedian} is not #${rgbOf(mossColor).map((channel) => channel.toString(16).padStart(2, "0")).join("")}`)
+  for (const phase of ["day", "dusk", "night"]) {
+    const painted = moodProblems(moodOf(groundPixels(phase), GROUND_TEX, GROUND_TEX), phase)
+    for (const line of painted) problems.push(`${phase} yard ${line}`)
   }
-  const mossHue = hueOf(...rgbOf(parseInt(mossMedian, 16)))
-  if (dayField.luma < 100 || dayField.hue < 85 || dayField.hue > 100 || hueGap(dayField.hue, mossHue) > 8) {
-    problems.push(
-      `day field luma ${dayField.luma.toFixed(1)} hue ${dayField.hue.toFixed(1)} is ${hueGap(dayField.hue, mossHue).toFixed(1)} from moss hue ${mossHue.toFixed(1)}`
-    )
-  }
-  problems.push(...duskMoodProblems(colors.ground, skyMedian))
+  problems.push(...duskMoodProblems(skyMedian))
   const path = cited.find((token) => token.name === "path")
   const stone = cited.find((token) => token.name === "stone")
   if (!path || !stone) {
@@ -145,9 +140,9 @@ export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
   return problems
 }
 
-// Dusk sky is the concept violet. The far field stays cool, and the torch
-// pool sits closer to the flame than that field does.
-function duskMoodProblems(ground, skyMedian) {
+// Dusk sky clear-color stays the concept violet. The yard itself is scored
+// as a whole frame in moodProblems, not as one lavender patch.
+function duskMoodProblems(skyMedian) {
   const problems = []
   const background = rgbOf(cycleLight.dusk.background)
     .map((channel) => channel.toString(16).padStart(2, "0"))
@@ -155,18 +150,8 @@ function duskMoodProblems(ground, skyMedian) {
   if (background !== skyMedian) {
     problems.push(`dusk sky #${background} is not the concept sky #${skyMedian}`)
   }
-  const frame = duskFrame(ground, cycleLight.dusk)
-  if (frame.max < 160) problems.push(`dusk torch luma ${frame.max.toFixed(1)} is dim`)
-  const duskField = litYard(ground, cycleLight.dusk)
-  const flame = hueOf(...rgbOf(flameColor))
-  const farGap = hueGap(duskField.hue, flame)
-  const poolGap = hueGap(frame.poolHue, flame)
-  if (duskField.luma < 72 || farGap < 80) {
-    problems.push(`dusk field luma ${duskField.luma.toFixed(1)} hue ${duskField.hue.toFixed(1)} is still the orange wash`)
-  }
-  if (!(poolGap + 25 < farGap)) {
-    problems.push(`dusk pool hue ${frame.poolHue.toFixed(1)} is not warmer than the field hue ${duskField.hue.toFixed(1)}`)
-  }
+  if (cycleLight.dusk.pool < 4000) problems.push("dusk has no warm pool")
+  if (!(cycleLight.night.pool > cycleLight.dusk.pool)) problems.push("night pool is dimmer than dusk")
   return problems
 }
 

@@ -229,3 +229,8 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 - A raised house is a voxel cottage. Timber, whitewash, thatch, and a lit window vary by the snapped cell. `a house is a timber cottage with a lit window` checks the three variants. The voxel detail floor includes the house and the field. Other buildings stay exempt.
 - The plaza disc, the stone curb, and the ground disc use `plazaSides` 48. The disc is grass `#5c642f` and the curb is stone `#4b3c33`. The live page reports `plazaSides` on `townLook`.
 - The outer ring is seventy stumps and felled logs at the same three distances, with wood 0 and no crown. `townGrows` requires one house to read above the grass. The sample floor is 619, half of a measured 1238. This does not change the simulation. The coverage floor stays 74.
+
+## 2026-10-18 the frame, not the patch
+
+- A single grass patch can sit on a moss hue while the yard is a flat lime, a lavender wash, or a flat olive. `moodProblems` scores the whole frame. Contrast under 9 fails. Day lime share over 0.08 fails. Dusk cool wash over 0.25 or warm tail under 0.03 fails. `theme.jpg` passes. The live frames from that grade, saved in `assets/js/fixtures`, fail. Those floors do not go down.
+- The day ground lamp and the dusk violet lamp are gone. Dusk ambient is neutral, so stone, wood, and plate stay apart. The ground plane carries grass tufts, dirt, a dark edge, and a sunset band at dusk. A pine wall stands inside the seventy stumps. `twoPlayerNight` reads `frameMood` on the framebuffer. This does not change the simulation. The coverage floor stays 74.

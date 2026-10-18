@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { fitSlack, horizontalRadius, modelParts } from "../models/registry.js"
-import { sceneryForest, scenerySlots } from "./scenery.js"
+import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery.js"
 
 test("the outer ring is stumps and felled logs with no wood", () => {
   const look = sceneryForest()
@@ -45,4 +45,20 @@ test("seventy stumps and felled logs stand in three rings behind the layered pin
   )
   assert.ok(scenery.every((part) => part.color === 0x8e755b))
   assert.ok(horizontalRadius(scenery) <= look.radiusBottom * fitSlack)
+})
+
+test("a pine wall stands inside the bare outer ring and leaves the paths open", () => {
+  const slots = forestWallSlots()
+  assert.ok(slots.length >= 80, `wall ${slots.length}`)
+  const cardinals = [0, Math.PI / 2, Math.PI, -Math.PI / 2]
+  for (const slot of slots) {
+    const radius = Math.hypot(slot.x, slot.z)
+    assert.ok(radius > 190 && radius < 300, `radius ${radius}`)
+    for (const cardinal of cardinals) {
+      const span = Math.abs(slot.angle - cardinal) % (Math.PI * 2)
+      const gap = Math.min(span, Math.PI * 2 - span)
+      assert.ok(gap >= 0.22, `path gap ${gap}`)
+    }
+  }
+  assert.equal(scenerySlots().length, 70)
 })
