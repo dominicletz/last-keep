@@ -1009,6 +1009,7 @@ async function mobileTouch(browser) {
   await pressStick(page)
   await page.screenshot({ path: shot("mobile-landscape.png") })
   await releaseStick(page)
+  await assertFarCaptions(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await expect(page.locator("#turn")).toContainText("Rotate your device")
   await expect(page.locator("[data-turn-icon]")).toBeVisible()
@@ -1122,9 +1123,75 @@ async function townGrows(browser) {
   await expect(page.locator("[data-chrome]")).toHaveCount(10)
   await expect(page.locator("[data-build]")).toHaveCount(6)
   await page.screenshot({ path: shot("town-growth-host.png") })
+  await assertFarCaptions(page)
   expect(errors, errors.join("\n")).toEqual([])
   await host.context.close()
   await guest.context.close()
+}
+
+async function assertFarCaptions(page) {
+  await page.bringToFront()
+  await page.evaluate(() => window.__lastKeepTest.hold("KeyW", true))
+  try {
+    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -220, undefined, { timeout: 20_000 })
+  } finally {
+    await page.evaluate(() => window.__lastKeepTest.hold("KeyW", false))
+  }
+  await page.evaluate(() => {
+    window.__lastKeepTest.hold("KeyA", true)
+    window.__lastKeepTest.hold("KeyW", true)
+  })
+  try {
+    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.x < -700, undefined, { timeout: 20_000 })
+  } finally {
+    await page.evaluate(() => {
+      window.__lastKeepTest.hold("KeyA", false)
+      window.__lastKeepTest.hold("KeyW", false)
+    })
+  }
+  await expect.poll(() => page.evaluate(captionHits), { timeout: 5_000 }).toEqual([])
+  const far = await page.evaluate(() => window.__lastKeep.self)
+  expect(far.x).toBeLessThan(-700)
+}
+
+function captionHits() {
+  const shown = (selector) => {
+    const node = document.querySelector(selector)
+    if (!node || node.hidden) return null
+    const style = getComputedStyle(node)
+    if (style.display === "none" || style.visibility === "hidden") return null
+    const box = node.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return null
+    return box
+  }
+  const overlap = (a, b) => a && b && a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+  const roster = shown("[data-roster]")
+  const relic = shown("[data-bonuses]")
+  const builds = shown(".builds")
+  const skills = shown(".skills")
+  const pad = shown("[data-touch-pad]")
+  const bad = []
+  if (!roster || !relic || !builds) bad.push("missing")
+  if (overlap(roster, builds)) bad.push("roster-builds")
+  if (overlap(relic, builds)) bad.push("relic-builds")
+  if (overlap(roster, relic)) bad.push("roster-relic")
+  if (overlap(roster, skills)) bad.push("roster-skills")
+  if (overlap(relic, skills)) bad.push("relic-skills")
+  if (overlap(roster, pad)) bad.push("roster-pad")
+  if (overlap(relic, pad)) bad.push("relic-pad")
+  const me = window.__lastKeep.self
+  if (!me || me.x > -700) bad.push("near")
+  return bad
+}
+
+async function captionsClearTheBuilds(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior")
+  const page = host.page
+  watch(page, "host", errors)
+  await assertFarCaptions(page)
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
 }
 
 async function scoreList(request) {
@@ -1150,5 +1217,6 @@ module.exports = {
   heroSilhouettes,
   paradeShowsEveryKind,
   mobileTouch,
-  townGrows
+  townGrows,
+  captionsClearTheBuilds
 }

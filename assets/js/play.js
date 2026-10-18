@@ -4,7 +4,7 @@ import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, partyPositions } from "./paint"
-import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
@@ -700,25 +700,39 @@ function drawWorld(ui, snap, selfId) {
   const seated = seatSacks(spots, { width: hudBox.width, height: hudBox.height }, boxes, keep)
   seated.forEach((spot, i) => pin(nodes[i], spot))
   const me = (snap.players || []).find((player) => player.id === selfId)
-  pin(ui.hud.querySelector("[data-bonuses]"), screenPoint(ui, RELIC_SIGN.x, RELIC_SIGN.y))
   pin(ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
   const rosterNode = ui.hud.querySelector("[data-roster]")
+  const bonusNode = ui.hud.querySelector("[data-bonuses]")
   const party = rosterAnchor(snap.players)
   const rosterSpot = screenPoint(ui, party.x, party.y)
   const topBar = ui.hud.querySelector(".hud-top")?.getBoundingClientRect()
   const belowBar = topBar ? topBar.bottom - hudBox.top + 8 : 8
-  pin(
-    rosterNode,
-    rosterSpot
-      ? visiblePin(
-          rosterSpot,
-          { width: hudBox.width, height: hudBox.height },
-          { width: rosterNode?.offsetWidth || 0, height: rosterNode?.offsetHeight || 0 },
-          "corner",
-          belowBar
-        )
-      : null
+  const captions = seatCaptions(
+    {
+      spot: rosterSpot,
+      box: { width: rosterNode?.offsetWidth || 0, height: rosterNode?.offsetHeight || 0 }
+    },
+    {
+      spot: screenPoint(ui, RELIC_SIGN.x, RELIC_SIGN.y),
+      box: { width: bonusNode?.offsetWidth || 0, height: bonusNode?.offsetHeight || 0 }
+    },
+    { width: hudBox.width, height: hudBox.height },
+    controlLimit(ui, hudBox),
+    belowBar
   )
+  pin(rosterNode, captions.roster)
+  pin(bonusNode, captions.relic)
+}
+
+function controlLimit(ui, hudBox) {
+  let limit = hudBox.height - 8
+  for (const node of ui.hud.querySelectorAll(".hud-bottom, [data-touch-pad]")) {
+    if (node.hidden) continue
+    const box = node.getBoundingClientRect()
+    if (box.width <= 0 || box.height <= 0) continue
+    limit = Math.min(limit, box.top - hudBox.top - 8)
+  }
+  return limit
 }
 
 function seatWave(ui, snap, selfId) {
