@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { lerp, poseAt } from "./motion.js"
+import { lerp, nextTrack, poseAt } from "./motion.js"
 
 test("movement blends toward the latest server position", () => {
   assert.equal(lerp(0, 10, 0), 0)
@@ -21,4 +21,12 @@ test("a position update is interpolated and does not jump", () => {
     assert.ok(step > 0)
     assert.ok(step < 12)
   }
+})
+
+test("a second snapshot at the same point does not restart the blend", () => {
+  const first = nextTrack(null, 0, 0, 1000)
+  const moved = nextTrack(first, 10, 0, 1100)
+  const again = nextTrack(moved, 10, 0, 1120)
+  assert.equal(again, moved)
+  assert.ok(poseAt(again, 1122).x < 10)
 })

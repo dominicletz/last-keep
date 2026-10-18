@@ -202,6 +202,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - A feed tap writes the same pad bit it releases. `padSlot("feed")` is `f`, so the finger-up clears `pad.f` and the next keep heal can rise again. Place and raise keep their own names.
 - On a touch phone the build row is the building name and its cost, at least 44px on each side. `1 Wall` and `LMB` stay on the desktop captions. Portrait covers the viewport with the rotate card, dimmed at alpha 0.75 or more. At 844×390 the three sacks do not overlap. A desktop mouse still shows the digit and the key.
 
+## 2026-10-18 a repeated snapshot keeps the blend
+
+- Each snapshot called `remember` from the socket nudge and again from the scene sync. The second call, at the same point, set the blend's start to its target, so the body sat on the server position for the rest of the tick. `movementIsInterpolated` then saw no gap above 0.4 and failed as flaky on main. A repeat at the same target keeps the open blend. A new target still starts from the previous one. This does not change the simulation. The coverage floor stays 74.
+
 ## 2026-10-18 clicks wait on the published tick
 
 - A focus click that must not attack was sampled for 350ms of wall clock. The melee cooldown is 8 ticks, and an idle page publishes a snapshot about every 250ms, so that window can close before the swing is on the page and a real attack looks like a miss. The check now samples `attackCd` until the published tick has moved 12 steps, which covers the input interval and the whole cooldown. A click with no building waits 8 ticks before it reads wood. The deny line waits until the node hides, instead of sleeping 2600ms. This does not change the simulation. The coverage floor stays 74.

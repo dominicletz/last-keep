@@ -2,7 +2,7 @@ import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
 import { cameraFocus, drawDue, frameFor } from "./frame"
-import { poseAt } from "./motion"
+import { nextTrack, poseAt } from "./motion"
 import { sceneryForest, scenerySlots } from "./scenery"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -642,13 +642,7 @@ export function createView(stage) {
 
   function remember(key, x, z) {
     const prev = tracks.get(key)
-    tracks.set(key, {
-      fromX: prev ? prev.toX : x,
-      fromZ: prev ? prev.toZ : z,
-      toX: x,
-      toZ: z,
-      at: performance.now()
-    })
+    tracks.set(key, nextTrack(prev, x, z, performance.now()))
   }
 
   function smoothed(key) {
