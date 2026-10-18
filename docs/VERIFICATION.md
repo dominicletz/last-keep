@@ -203,6 +203,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - On a touch phone the build row is the building name and its cost, at least 44px on each side. `1 Wall` and `LMB` stay on the desktop captions. Portrait covers the viewport with the rotate card, dimmed at alpha 0.75 or more. At 844×390 the three sacks do not overlap. A desktop mouse still shows the digit and the key.
 - Far from the keep, the roster and the relic lines stay above the build bar and off each other. `seatCaptions` caps them at the control row. `captionsClearTheBuilds` walks west of x=-700 at rank 0. `townGrows` does the same after the keep is raised. `mobileTouch` does it on the phone. This does not change the simulation.
 
+## 2026-10-18 the walk sample waits for its frames
+
+- `movementIsInterpolated` holds W for 900ms and requires more than five rendered samples, a gap above 0.4, travel past 20, and a gap under 14. On main the frame loop returned four callbacks in that 900ms, the retry passed, and `failOnFlakyTests` failed the job. The loop now keeps sampling until those five samples exist, and stops at 2500ms. The count, the gap, and the travel stay where they were. This does not change the simulation. The coverage floor stays 74.
+
 ## 2026-10-18 a repeated snapshot keeps the blend
 
 - Each snapshot called `remember` from the socket nudge and again from the scene sync. The second call, at the same point, set the blend's start to its target, so the body sat on the server position for the rest of the tick. `movementIsInterpolated` then saw no gap above 0.4 and failed as flaky on main. A repeat at the same target keeps the open blend. A new target still starts from the previous one. This does not change the simulation. The coverage floor stays 74.

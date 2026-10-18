@@ -682,7 +682,11 @@ async function movementIsInterpolated(page) {
           if (game?.rendered && game.self) {
             samples.push({ x: game.rendered.x, z: game.rendered.z, sx: game.self.x, sz: game.self.y })
           }
-          if (performance.now() - start < 900) requestAnimationFrame(tick)
+          const elapsed = performance.now() - start
+          // The first 900ms is the walk. A stalled frame loop can return fewer
+          // than six callbacks in that span. Keep collecting until the count
+          // is met. The blend and the travel still have to show up.
+          if (elapsed < 900 || (samples.length <= 5 && elapsed < 2500)) requestAnimationFrame(tick)
           else resolve(samples)
         }
         requestAnimationFrame(tick)
