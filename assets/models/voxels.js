@@ -45,7 +45,7 @@ export function carve(size, paint) {
 }
 
 export function meshVoxels(cells, size) {
-  const step = Number(size) || 1
+  const step = axisStep(size)
   const index = new Map(cells.map((cell) => [key(cell), cell]))
   const used = new Set()
   const boxes = []
@@ -68,12 +68,12 @@ export function meshVoxels(cells, size) {
       mark: !!start.mark,
       shape: "box",
       color: start.color,
-      w: w * step,
-      h: h * step,
-      d: d * step,
-      x: (start.x + w / 2) * step,
-      y: (start.y + h / 2) * step,
-      z: (start.z + d / 2) * step
+      w: w * step.x,
+      h: h * step.y,
+      d: d * step.z,
+      x: (start.x + w / 2) * step.x,
+      y: (start.y + h / 2) * step.y,
+      z: (start.z + d / 2) * step.z
     })
   }
   let minX = Infinity
@@ -88,9 +88,9 @@ export function meshVoxels(cells, size) {
     minZ = Math.min(minZ, cell.z)
     maxZ = Math.max(maxZ, cell.z + 1)
   }
-  const cx = ((minX + maxX) / 2) * step
-  const cz = ((minZ + maxZ) / 2) * step
-  const foot = minY * step
+  const cx = ((minX + maxX) / 2) * step.x
+  const cz = ((minZ + maxZ) / 2) * step.z
+  const foot = minY * step.y
   for (const box of boxes) {
     box.x = round(box.x - cx)
     box.y = round(box.y - foot)
@@ -136,6 +136,17 @@ function depth(index, used, start, w, h, z) {
     if (!slab(index, used, { ...start, y: start.y + y }, w, 0, z)) return false
   }
   return true
+}
+
+function axisStep(size) {
+  if (size && typeof size === "object") {
+    const x = Number(size.x) || 1
+    const y = Number(size.y) || x
+    const z = Number(size.z) || x
+    return { x, y, z }
+  }
+  const step = Number(size) || 1
+  return { x: step, y: step, z: step }
 }
 
 function key(cell) {

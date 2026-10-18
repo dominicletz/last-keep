@@ -30,6 +30,8 @@ import {
   maskIou,
   meanLuma,
   missingConcept,
+  countShadedTokens,
+  shadedTokenBox,
   nightContrast,
   pixelDiff,
   renderCloseup,
@@ -108,6 +110,9 @@ export function checkModels({ writeGolden = false } = {}) {
       problems.push(...nightLightProblems(listed, first))
       problems.push(...yardReadProblems(first))
       problems.push(...heroHeightProblems(listed))
+      problems.push(...heroZoomProblems(listed))
+      const farmer = listed.find((model) => model.id === "farmer" && model.family === "hero")
+      if (farmer) problems.push(...farmerHatProblems(farmer.parts))
       problems.push(...detailProblems(listed))
       problems.push(...closeupProblems(first))
       if (sheets["heroes.jpg"]) problems.push(...heroColorProblems(listed, sheets["heroes.jpg"]))
@@ -320,20 +325,111 @@ export function heroColorProblems(listed, sheet) {
   return problems
 }
 
-export const heroPixelFloor = 24
+export const heroPixelFloor = 56
+
+// Fight-zoom read of the signature tokens. Each record is under the smallest
+// shaded count at rank 0 and rank 4, and at least half of that count.
+const heroShadeTokens = [
+  0xd8cfc3, 0xb5afaa, 0x38516f, 0xd99e66, 0x142a48, 0x23d9f3, 0x374a26, 0x8e755b, 0xe5b268, 0x3a4a60, 0x472a17,
+  0x261e0e, 0xd99b64, 0xe6ccad, 0x5d505b
+]
+
+export const heroZoomRead = {
+  warrior: [
+    { token: "steel", hex: 0xd8cfc3, min: 100 },
+    { token: "shield", hex: 0x38516f, min: 150 },
+    { token: "gold", hex: 0xd99e66, min: 48 }
+  ],
+  mage: [
+    { token: "deep", hex: 0x142a48, min: 300 },
+    { token: "gold", hex: 0xd99e66, min: 64 },
+    { token: "gem", hex: 0x23d9f3, min: 110 }
+  ],
+  scout: [
+    { token: "forest", hex: 0x374a26, min: 400 },
+    { token: "wood", hex: 0x8e755b, min: 150 }
+  ],
+  farmer: [
+    { token: "straw", hex: 0xe5b268, min: 190 },
+    { token: "denim", hex: 0x3a4a60, min: 130 },
+    { token: "wood", hex: 0x8e755b, min: 150 }
+  ],
+  engineer: [
+    { token: "jerkin", hex: 0x472a17, min: 320 },
+    { token: "steel", hex: 0xd8cfc3, min: 220 }
+  ]
+}
 
 export function heroHeightProblems(listed) {
   const problems = []
+  let smallest = Infinity
   for (const model of listed) {
     if (model.family !== "hero") continue
     for (const rank of [0, 4]) {
       const height = maskBounds(renderParts(model.parts, "day", rank)).height
+      if (height < smallest) smallest = height
       if (height < heroPixelFloor) {
         problems.push(`${model.id} rank ${rank} is ${height}px tall, below ${heroPixelFloor}`)
       }
     }
   }
+  if (smallest < Infinity && heroPixelFloor < smallest * 0.5) {
+    problems.push(`hero pixel floor ${heroPixelFloor} is below half of measured ${smallest}`)
+  }
   return problems
+}
+
+export function heroZoomProblems(listed) {
+  const problems = []
+  for (const model of listed) {
+    if (model.family !== "hero") continue
+    const marks = heroZoomRead[model.id]
+    if (!marks) {
+      problems.push(`${model.id} has no fight-zoom palette`)
+      continue
+    }
+    const reads = {}
+    for (const rank of [0, 4]) {
+      reads[rank] = {}
+      for (const light of lightNames) {
+        reads[rank][light] = countShadedTokens(renderParts(model.parts, light, rank), heroShadeTokens, light)
+      }
+    }
+    for (const mark of marks) {
+      const counts = []
+      for (const rank of [0, 4]) {
+        for (const light of lightNames) {
+          counts.push({ rank, light, count: reads[rank][light].get(mark.hex) || 0 })
+        }
+      }
+      const smallest = Math.min(...counts.map((row) => row.count))
+      if (mark.min < smallest * 0.5) {
+        problems.push(`${model.id} ${mark.token} record ${mark.min} is below half of measured ${smallest}`)
+      }
+      for (const row of counts) {
+        if (row.count < mark.min) {
+          problems.push(`${model.id} rank ${row.rank} ${row.light} ${mark.token} has ${row.count}px, below ${mark.min}`)
+        }
+      }
+    }
+  }
+  return problems
+}
+
+// The concept brim sits on the head. A hat whose fight-zoom width is most of
+// the body is the slab that reads as a table.
+export const farmerHatSpan = 0.4
+
+export function farmerHatProblems(parts) {
+  const image = renderParts(parts, "day", 0)
+  const figure = maskBounds(image)
+  const straw = shadedTokenBox(image, heroShadeTokens, "day", 0xe5b268)
+  if (!straw || !(figure.height > 0)) return ["farmer straw hat is missing at fight zoom"]
+  const span = straw.width / figure.height
+  if (span > farmerHatSpan) {
+    return [`farmer straw hat is ${straw.width}px wide on a ${figure.height}px body`]
+  }
+  return []
 }
 
 function closeupProblems(rendered) {

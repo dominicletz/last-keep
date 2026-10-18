@@ -879,7 +879,8 @@ async function heroSilhouettes(browser) {
   for (const figure of figures) {
     expect(figure.parts).toBeGreaterThanOrEqual(5)
     expect(figure.marks.length).toBeGreaterThan(0)
-    expect(figure.bounds.h).toBeGreaterThanOrEqual(30)
+    expect(figure.bounds.h).toBeGreaterThanOrEqual(72)
+    expect(figure.px).toBeGreaterThanOrEqual(56)
   }
   await host.page.screenshot({ path: shot("heroes-host.png") })
   expect(errors, errors.join("\n")).toEqual([])

@@ -464,9 +464,7 @@ function project(camera, width, height, point) {
 
 function shade(hex, normal, center, rig) {
   const ndotl = Math.max(0, dot(normal, rig.keyDir))
-  let pr = 0
-  let pg = 0
-  let pb = 0
+  let pointScale = 0
   if (rig.point) {
     const dx = rig.point.pos[0] - center[0]
     const dy = rig.point.pos[1] - center[1]
@@ -474,20 +472,144 @@ function shade(hex, normal, center, rig) {
     const dist = Math.hypot(dx, dy, dz) || 1
     const falloff = Math.max(0, 1 - dist / rig.point.range)
     const facing = Math.max(0, (normal[0] * dx + normal[1] * dy + normal[2] * dz) / dist)
-    const scale = falloff * facing
-    pr = rig.point.color[0] * scale
-    pg = rig.point.color[1] * scale
-    pb = rig.point.color[2] * scale
+    pointScale = falloff * facing
   }
+  return shadeSample(hex, rig, ndotl, pointScale)
+}
+
+// A shaded pixel is one palette token when this residual fits and every other
+// token fits worse. Byte rounding on the raster is about one channel.
+export const shadeFit = 4
+
+export function shadeSample(hex, rig, ndotl, pointScale) {
   const mr = ((hex >> 16) & 255) / 255
   const mg = ((hex >> 8) & 255) / 255
   const mb = (hex & 255) / 255
+  const pr = rig.point ? rig.point.color[0] * pointScale : 0
+  const pg = rig.point ? rig.point.color[1] * pointScale : 0
+  const pb = rig.point ? rig.point.color[2] * pointScale : 0
   const emit = EMISSIVE.has(hex) ? rig.emission || 0 : 0
   return [
     clampByte(mr * (rig.ambient[0] + rig.key[0] * ndotl + pr + emit)),
     clampByte(mg * (rig.ambient[1] + rig.key[1] * ndotl + pg + emit)),
     clampByte(mb * (rig.ambient[2] + rig.key[2] * ndotl + pb + emit))
   ]
+}
+
+export function shadedTokenBox(image, tokens, light, hex) {
+  const rig = galleryRigs[light]
+  if (!rig) throw new Error(`unknown light ${light}`)
+  const seen = new Map()
+  let minX = image.width
+  let minY = image.height
+  let maxX = -1
+  let maxY = -1
+  let count = 0
+  for (let i = 0; i < image.mask.length; i++) {
+    if (!image.mask[i]) continue
+    const offset = i * 3
+    const pixel = [image.rgb[offset], image.rgb[offset + 1], image.rgb[offset + 2]]
+    const key = (pixel[0] << 16) | (pixel[1] << 8) | pixel[2]
+    let match = seen.get(key)
+    if (match === undefined) {
+      match = nearestToken(pixel, tokens, rig) === hex
+      seen.set(key, match)
+    }
+    if (!match) continue
+    const x = i % image.width
+    const y = (i / image.width) | 0
+    if (x < minX) minX = x
+    if (y < minY) minY = y
+    if (x > maxX) maxX = x
+    if (y > maxY) maxY = y
+    count += 1
+  }
+  if (count === 0) return null
+  return { width: maxX - minX + 1, height: maxY - minY + 1, count }
+}
+
+export function countShadedTokens(image, tokens, light) {
+  const rig = galleryRigs[light]
+  if (!rig) throw new Error(`unknown light ${light}`)
+  const counts = new Map(tokens.map((hex) => [hex, 0]))
+  const seen = new Map()
+  for (let i = 0; i < image.mask.length; i++) {
+    if (!image.mask[i]) continue
+    const offset = i * 3
+    const pixel = [image.rgb[offset], image.rgb[offset + 1], image.rgb[offset + 2]]
+    const key = (pixel[0] << 16) | (pixel[1] << 8) | pixel[2]
+    let hex = seen.get(key)
+    if (hex === undefined) {
+      hex = nearestToken(pixel, tokens, rig)
+      seen.set(key, hex)
+    }
+    if (hex == null) continue
+    counts.set(hex, counts.get(hex) + 1)
+  }
+  return counts
+}
+
+function nearestToken(pixel, tokens, rig) {
+  let best = null
+  let bestDist = shadeFit
+  for (const hex of tokens) {
+    const dist = fitDistance(pixel, hex, rig)
+    if (dist < bestDist) {
+      best = hex
+      bestDist = dist
+    }
+  }
+  return best
+}
+
+function fitDistance(pixel, hex, rig) {
+  const src = [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]
+  const emit = EMISSIVE.has(hex) ? rig.emission || 0 : 0
+  let k2 = 0
+  let p2 = 0
+  let kp = 0
+  let kt = 0
+  let pt = 0
+  let used = 0
+  for (let i = 0; i < 3; i++) {
+    if (src[i] < 8) continue
+    const target = pixel[i] / src[i] - rig.ambient[i] - emit
+    const key = rig.key[i]
+    const point = rig.point ? rig.point.color[i] : 0
+    k2 += key * key
+    p2 += point * point
+    kp += key * point
+    kt += key * target
+    pt += point * target
+    used += 1
+  }
+  if (used < 2 || k2 === 0) return Infinity
+  let ndotl
+  let scale
+  if (!rig.point || p2 === 0) {
+    ndotl = clamp01(kt / k2)
+    scale = 0
+  } else {
+    const det = k2 * p2 - kp * kp
+    if (Math.abs(det) < 1e-8) {
+      ndotl = clamp01(kt / k2)
+      scale = 0
+    } else {
+      ndotl = clamp01((p2 * kt - kp * pt) / det)
+      scale = clamp01((k2 * pt - kp * kt) / det)
+    }
+  }
+  const shaded = shadeSample(hex, rig, ndotl, scale)
+  let dist = 0
+  for (let i = 0; i < 3; i++) {
+    const delta = shaded[i] - pixel[i]
+    dist += delta * delta
+  }
+  return Math.sqrt(dist)
+}
+
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value))
 }
 
 export function nightContrast(image) {

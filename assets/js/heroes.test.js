@@ -20,7 +20,7 @@ test("each hero builds a distinct mesh signature", () => {
   }
   for (const sig of sigs) {
     assert.deepEqual(sig.marks, expected[sig.kind])
-    assert.ok(sig.bounds.h >= 30, sig.kind)
+    assert.ok(sig.bounds.h >= 72, sig.kind)
     assert.ok(sig.bounds.w >= 14, sig.kind)
     const marked = sig.parts.filter((part) => part.mark)
     assert.ok(marked.every((part) => Math.max(part.w, part.h, part.d) >= 12), sig.kind)
@@ -29,7 +29,11 @@ test("each hero builds a distinct mesh signature", () => {
   const warrior = sigs.find((sig) => sig.kind === "warrior")
   const mage = sigs.find((sig) => sig.kind === "mage")
   const scout = sigs.find((sig) => sig.kind === "scout")
-  assert.ok(farmer.bounds.w > warrior.bounds.w)
+  const brim = farmer.parts.find((part) => part.mark && part.name === "brim")
+  const torso = farmer.parts.find((part) => part.name === "torso")
+  assert.ok(brim.w > torso.w)
+  assert.ok(brim.w < farmer.bounds.h * 0.4, `${brim.w} on ${farmer.bounds.h}`)
+  assert.ok(brim.d < farmer.bounds.h * 0.4, `${brim.d} on ${farmer.bounds.h}`)
   assert.ok(mage.bounds.h > warrior.bounds.h)
   assert.ok(scout.bounds.w < warrior.bounds.w)
 })
