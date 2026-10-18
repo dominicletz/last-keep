@@ -581,6 +581,10 @@ async function twoPlayerNight(browser) {
   await clickDoesNotSpendWithoutABuilding(page)
   await invalidPlacementExplains(page)
   await movementIsInterpolated(page)
+  // The blend check can hold W for the whole window. The hero is then far
+  // northwest, and the southeast pine is a few pixels of sky. Walk back
+  // before the dusk grade so the keep pine fills the sample.
+  await returnNearTheKeep(page)
   await placeWall(page)
   await buildRangeRing(page)
 
@@ -620,8 +624,9 @@ async function twoPlayerNight(browser) {
       ground: game.frameGround(),
       stone: game.sampleWorld(0, 36, 6),
       plate: game.sampleWorld(hero.x, 18, hero.y),
-      // The inner pine's crown. The tip is a few pixels and reads as the trunk.
-      pine: game.sampleWorld(201, 18, 73)
+      // Keep pine, centered on the wide cone. The forest pine at the
+      // southeast edge mixes with the sky once the hero has walked.
+      pine: game.sampleWorld(-22, 30, -62)
     }
   })
   expect(duskMood.mood.problems).toEqual([])
@@ -1171,17 +1176,111 @@ async function townGrows(browser) {
   await guest.context.close()
 }
 
+function keysAway(x, y) {
+  const f = Math.SQRT1_2
+  const dirs = [
+    { keys: ["KeyW"], x: -f, y: -f },
+    { keys: ["KeyW", "KeyD"], x: 0, y: -1 },
+    { keys: ["KeyD"], x: f, y: -f },
+    { keys: ["KeyD", "KeyS"], x: 1, y: 0 },
+    { keys: ["KeyS"], x: f, y: f },
+    { keys: ["KeyS", "KeyA"], x: 0, y: 1 },
+    { keys: ["KeyA"], x: -f, y: f },
+    { keys: ["KeyA", "KeyW"], x: -1, y: 0 }
+  ]
+  let best = dirs[0]
+  let score = -Infinity
+  for (const dir of dirs) {
+    const dot = dir.x * x + dir.y * y
+    if (dot > score) {
+      score = dot
+      best = dir
+    }
+  }
+  return best.keys
+}
+
+async function returnNearTheKeep(page) {
+  const far = await page.evaluate(() => {
+    const me = window.__lastKeep.self
+    return me ? Math.hypot(me.x, me.y) : 0
+  })
+  if (far < 140) return
+  await page.bringToFront()
+  await page.evaluate(() => window.__lastKeepTest.hold("KeyS", true))
+  try {
+    await page.waitForFunction(
+      () => {
+        const me = window.__lastKeep.self
+        return me && Math.hypot(me.x, me.y) < 140
+      },
+      undefined,
+      { timeout: 15_000, polling: 100 }
+    )
+  } finally {
+    await page.evaluate(() => window.__lastKeepTest.hold("KeyS", false))
+  }
+}
+
 async function assertFarCaptions(page) {
   await page.bringToFront()
-  // The position is published on the socket. The default wait polls in
-  // requestAnimationFrame, and a covered page never runs that, so the walk
-  // times out after the body has already passed the mark.
+  // KeyW on the west face of the keep slides along x, so y never passes
+  // -220 and the walk sits until the timeout. Step out past the rim, then
+  // west. The mark is still x < -700. The position is published on the
+  // socket, so a covered page does not have to paint a frame.
   const published = { timeout: 20_000, polling: 100 }
-  await page.evaluate(() => window.__lastKeepTest.hold("KeyW", true))
+  const deadline = Date.now() + 20_000
+  let held = []
   try {
-    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -220, undefined, published)
+    while (Date.now() < deadline) {
+      const me = await page.evaluate(() => {
+        const self = window.__lastKeep.self
+        return self ? { x: self.x, y: self.y } : null
+      })
+      if (me && Math.hypot(me.x, me.y) > 160) break
+      const next = me ? keysAway(me.x, me.y) : ["KeyS"]
+      if (next.join() !== held.join()) {
+        await page.evaluate((codes) => {
+          for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) {
+            window.__lastKeepTest.hold(code, codes.includes(code))
+          }
+        }, next)
+        held = next
+      }
+      await page.waitForTimeout(100)
+    }
   } finally {
-    await page.evaluate(() => window.__lastKeepTest.hold("KeyW", false))
+    await page.evaluate(() => {
+      for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(code, false)
+    })
+  }
+  const clear = await page.evaluate(() => {
+    const me = window.__lastKeep.self
+    return me ? { x: me.x, y: me.y, dist: Math.hypot(me.x, me.y) } : { x: 0, y: 0, dist: 0 }
+  })
+  expect(clear.dist).toBeGreaterThan(160)
+  // Pure west from the east side of the keep runs into the wall. Step off
+  // that line first. A hero already west of x=-80 has a clear line.
+  if (clear.x > -80 && Math.abs(clear.y) < 90) {
+    const south = clear.y >= 0
+    await page.evaluate((goSouth) => {
+      window.__lastKeepTest.hold(goSouth ? "KeyS" : "KeyW", true)
+      window.__lastKeepTest.hold(goSouth ? "KeyA" : "KeyD", true)
+    }, south)
+    try {
+      await page.waitForFunction(
+        (goSouth) => {
+          const self = window.__lastKeep.self
+          return self && (goSouth ? self.y > 90 : self.y < -90)
+        },
+        south,
+        published
+      )
+    } finally {
+      await page.evaluate(() => {
+        for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(code, false)
+      })
+    }
   }
   await page.evaluate(() => {
     window.__lastKeepTest.hold("KeyA", true)
