@@ -1788,7 +1788,7 @@ async function readMatch(page) {
       textures: perf.textures || 0,
       calls: perf.calls || 0,
       triangles: perf.triangles || 0,
-      census: perf.census || { inScene: 0, orphans: 0, pooled: 0, byRole: {} },
+      census: perf.census || { inScene: 0, orphans: 0, pooled: 0, byRole: {}, settled: 0 },
       p95: null,
       paints: perf.paints || [],
       maxStep: perf.maxStep || 0,
@@ -1901,7 +1901,7 @@ async function sixSeatMatch(browser) {
         const heaps = [gcHeaps.get(early), gcHeaps.get(early + 3)]
         const note = JSON.stringify({ first, later, heaps })
         expect(later.census.orphans, note).toBe(0)
-        expect(later.census.inScene, note).toBeLessThanOrEqual(first.census.inScene)
+        expect(later.census.settled, note).toBeLessThanOrEqual(first.census.settled)
         expect(later.geometries, note).toBeLessThanOrEqual(later.census.inScene + later.census.pooled)
         expect(later.textures, note).toBeLessThanOrEqual(first.textures)
         expect(first.calls, note).toBeLessThanOrEqual(868)

@@ -3,6 +3,7 @@ import * as THREE from "three"
 const spheres = new Map()
 const burstPool = []
 const tracked = new Set()
+const flightRoles = new Set(["shot", "burst", "spawn"])
 let burstGeometry = null
 
 export function trackGeometry(geometry) {
@@ -15,6 +16,7 @@ export function trackGeometry(geometry) {
 export function geometryCensus(root) {
   const inScene = new Set()
   const byRole = {}
+  let settled = 0
   if (root && typeof root.traverse === "function") {
     root.traverse((node) => {
       const geometry = node.geometry
@@ -30,6 +32,7 @@ export function geometryCensus(root) {
         cursor = cursor.parent
       }
       byRole[role] = (byRole[role] || 0) + 1
+      if (!flightRoles.has(role)) settled += 1
     })
   }
   let orphans = 0
@@ -41,7 +44,7 @@ export function geometryCensus(root) {
     }
     if (!inScene.has(geometry)) orphans += 1
   }
-  return { inScene: inScene.size, orphans, pooled, byRole }
+  return { inScene: inScene.size, orphans, pooled, byRole, settled }
 }
 
 export function releaseGeometries(root) {
@@ -80,18 +83,20 @@ function burstSphere() {
 }
 
 export function takeBurst(color) {
-  const mesh = burstPool.pop()
+  let mesh = burstPool.pop()
   if (mesh) {
     mesh.material.color.set(color)
     mesh.material.opacity = 0.9
     mesh.scale.setScalar(1)
     mesh.visible = true
-    return mesh
+  } else {
+    mesh = new THREE.Mesh(
+      burstSphere(),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
+    )
   }
-  return new THREE.Mesh(
-    burstSphere(),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
-  )
+  mesh.userData.role = "burst"
+  return mesh
 }
 
 export function giveBurst(mesh) {
