@@ -27,6 +27,12 @@ export function isTypingTarget(node) {
 // does nothing.
 let blurBusy = false
 
+// A second window can blur this page and leave it focused. The swing flag
+// has to follow the document, or the next click is thrown away.
+export function focusedAfterBlur(documentHasFocus) {
+  return !!documentHasFocus
+}
+
 export function blurHiddenFocus(doc) {
   if (blurBusy || !doc) return false
   const active = doc.activeElement

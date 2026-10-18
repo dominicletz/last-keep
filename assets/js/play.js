@@ -1,7 +1,7 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
+import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, partyPositions } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
@@ -156,6 +156,9 @@ function start(code, seat, ui) {
     blur() {
       focused = false
     },
+    focus() {
+      focused = true
+    },
     hold(code, down) {
       if (down) keys.add(code)
       else keys.delete(code)
@@ -197,6 +200,12 @@ function start(code, seat, ui) {
   }
   window.addEventListener("blur", () => {
     focused = false
+    // A blur that does not leave the document used to stick, and the next
+    // click was thrown away. Restoring only when the document is focused
+    // leaves an explicit test focus() in place on a covered page.
+    window.setTimeout(() => {
+      if (focusedAfterBlur(document.hasFocus())) focused = true
+    }, 0)
   })
 
   ui.overlay.addEventListener("click", (event) => {
@@ -474,6 +483,10 @@ function start(code, seat, ui) {
       if (me) {
         window.__lastKeep.alive = me.alive
         window.__lastKeep.hp = me.hp
+        // The swing is 8 ticks. draw() is the only other writer, and an idle
+        // page does not paint, so the click check never saw the cooldown.
+        window.__lastKeep.attackCd = me.cds?.attack || 0
+        if (window.__lastKeep.self) window.__lastKeep.self.attackCd = me.cds.attack || 0
       }
     }
     const wave = ui.hud.querySelector("[data-wave]")
