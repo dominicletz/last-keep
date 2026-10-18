@@ -1869,7 +1869,10 @@ async function sixSeatMatch(browser) {
         sawWave = true
         if (!gcHeaps.has(row.shownWave)) {
           const heap = await page.evaluate(() => {
-            if (typeof window.gc === "function") window.gc()
+            if (typeof window.gc === "function") {
+              window.gc()
+              window.gc()
+            }
             return performance.memory ? performance.memory.usedJSHeapSize : null
           })
           gcHeaps.set(row.shownWave, heap)
