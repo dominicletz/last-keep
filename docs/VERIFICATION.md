@@ -202,6 +202,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - A feed tap writes the same pad bit it releases. `padSlot("feed")` is `f`, so the finger-up clears `pad.f` and the next keep heal can rise again. Place and raise keep their own names.
 - On a touch phone the build row is the building name and its cost, at least 44px on each side. `1 Wall` and `LMB` stay on the desktop captions. Portrait covers the viewport with the rotate card, dimmed at alpha 0.75 or more. At 844×390 the three sacks do not overlap. A desktop mouse still shows the digit and the key.
 
+## 2026-10-18 clicks wait on the published tick
+
+- A focus click that must not attack was sampled for 350ms of wall clock. The melee cooldown is 8 ticks, and an idle page publishes a snapshot about every 250ms, so that window can close before the swing is on the page and a real attack looks like a miss. The check now samples `attackCd` until the published tick has moved 12 steps, which covers the input interval and the whole cooldown. A click with no building waits 8 ticks before it reads wood. The deny line waits until the node hides, instead of sleeping 2600ms. This does not change the simulation. The coverage floor stays 74.
+
 ## 2026-10-18 town growth
 
 Raising the keep stakes four timber houses on the new ring. The wood and gold of that raise pay for the houses. Each full ring of standing houses mints one gold on the field-gold beat. A farmer's sow, harvest, or four-second work pulse banks labor, and each point spends 1 wood on a wheat croft. Rank 0 stakes nothing. The ExUnit test is "a raised keep stakes houses and farmer labor stakes crofts", and the browser scenario is `townGrows`. `mix test --cover` measured 74.64% after the meteor unlock landed on main. The floor in `mix.exs` is 74.

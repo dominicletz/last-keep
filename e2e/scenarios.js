@@ -51,6 +51,31 @@ function watch(page, label, errors) {
   })
 }
 
+async function untilTick(page, ticks) {
+  const start = await page.evaluate(() => window.__lastKeep.tick)
+  await page.waitForFunction(
+    (mark) => window.__lastKeep.tick - mark.start >= mark.ticks,
+    { start, ticks },
+    { timeout: 15_000 }
+  )
+}
+
+async function peakAttackAcrossTicks(page, ticks) {
+  const start = await page.evaluate(() => window.__lastKeep.tick)
+  let peak = 0
+  let seen = start
+  while (seen - start < ticks) {
+    await page.waitForFunction((mark) => window.__lastKeep.tick > mark, seen, { timeout: 15_000 })
+    const row = await page.evaluate(() => ({
+      tick: window.__lastKeep.tick,
+      cd: window.__lastKeep.attackCd || 0
+    }))
+    peak = Math.max(peak, row.cd)
+    seen = row.tick
+  }
+  return peak
+}
+
 async function focusClickDoesNotAttack(page) {
   const wood = await page.evaluate(() => window.__lastKeep.wood)
   const spot = await page.evaluate(() => {
@@ -61,12 +86,9 @@ async function focusClickDoesNotAttack(page) {
   expect(tag).toBe("CANVAS")
   await page.evaluate(() => window.__lastKeepTest.blur())
   await page.mouse.click(spot.x, spot.y)
-  const started = Date.now()
-  let peak = 0
-  while (Date.now() - started < 350) {
-    peak = Math.max(peak, await page.evaluate(() => window.__lastKeep.attackCd || 0))
-    await page.waitForTimeout(40)
-  }
+  // Melee cooldown is 8 ticks. A 350ms wall clock can end before an idle page
+  // publishes that swing, so a real attack looks like a miss.
+  const peak = await peakAttackAcrossTicks(page, 12)
   expect(peak).toBe(0)
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
   await page.mouse.click(spot.x, spot.y)
@@ -84,7 +106,7 @@ async function clickDoesNotSpendWithoutABuilding(page) {
     return window.__lastKeep.toClient(me.x + 48, me.y + 8)
   })
   await page.mouse.click(spot.x, spot.y)
-  await page.waitForTimeout(400)
+  await untilTick(page, 8)
   const after = await page.evaluate(() => ({
     wood: window.__lastKeep.wood,
     buildings: window.__lastKeep.buildings
@@ -105,7 +127,7 @@ async function invalidPlacementExplains(page) {
   )
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
   expect(await page.evaluate(() => window.__lastKeep.buildings)).toBe(0)
-  await page.waitForTimeout(2600)
+  // The deny holds for 2200ms of paint time. A fixed sleep ends before a late paint.
   await expect(page.locator("[data-build-reason]")).toBeHidden()
 }
 
