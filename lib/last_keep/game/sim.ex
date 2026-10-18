@@ -166,13 +166,16 @@ defmodule LastKeep.Game.Sim do
     insert(state, monster)
   end
 
+  # The host stands at angle 0 on the join ring, (120, 0). The camera sits on
+  # that hero, so these six stand on a ring around the host. The old ring
+  # around the keep left the troll and the rider outside that frame.
   @parade [
-    {:goblin, 90.0, 30.0},
-    {:skeleton, -90.0, 30.0},
-    {:wolf, 30.0, 110.0},
-    {:troll, -40.0, 120.0},
-    {:bat, 130.0, -50.0},
-    {:boss, -130.0, -40.0}
+    {:goblin, 120.0, -55.0},
+    {:skeleton, 167.63, -27.5},
+    {:wolf, 167.63, 27.5},
+    {:troll, 120.0, 55.0},
+    {:bat, 72.37, 27.5},
+    {:boss, 72.37, -27.5}
   ]
 
   def parade(%State{} = state) do

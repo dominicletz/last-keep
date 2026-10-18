@@ -497,8 +497,20 @@ function drawWorld(ui, snap, selfId) {
   )
   pin(ui.hud.querySelector("[data-bonuses]"), screenPoint(ui, RELIC_SIGN.x, RELIC_SIGN.y))
   pin(ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
+  const rosterNode = ui.hud.querySelector("[data-roster]")
   const party = rosterAnchor(snap.players)
-  pin(ui.hud.querySelector("[data-roster]"), screenPoint(ui, party.x, party.y))
+  const rosterSpot = screenPoint(ui, party.x, party.y)
+  pin(
+    rosterNode,
+    rosterSpot
+      ? visiblePin(
+          rosterSpot,
+          { width: hudBox.width, height: hudBox.height },
+          { width: rosterNode?.offsetWidth || 0, height: rosterNode?.offsetHeight || 0 },
+          "corner"
+        )
+      : null
+  )
 }
 
 function drawYou(ui, snap, selfId) {
