@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { frameFor, pixelSize } from "./frame.js"
+import { cameraFocus, frameFor, pixelSize } from "./frame.js"
 import { viewScale } from "./town.js"
 
 test("wide, square, and portrait windows keep square pixels and frame the yard", () => {
@@ -36,6 +36,17 @@ test("the 1280 by 800 window is 640 by 400 internal pixels", () => {
   assert.equal(frame.bufferWidth, 640)
   assert.equal(frame.bufferHeight, 400)
   assert.equal(frame.halfH, 168)
+})
+
+test("a hero on the spawn ring stays in frame with the body under them", () => {
+  const frame = frameFor(1280, 800, 0)
+  const hero = { x: -455, y: 108 }
+  const focus = cameraFocus(hero.x, hero.y)
+  assert.ok(Math.hypot(hero.x - focus.x, hero.y - focus.z) < frame.halfW * 0.35)
+  const bat = { x: -473, y: 128 }
+  assert.ok(Math.hypot(bat.x - focus.x, bat.y - focus.z) < frame.halfH)
+  const pulled = { x: hero.x * 0.22, z: hero.y * 0.22 }
+  assert.ok(Math.hypot(bat.x - pulled.x, bat.y - pulled.z) > frame.halfW)
 })
 
 test("a higher town rank widens the same window", () => {

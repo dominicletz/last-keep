@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { frameFor } from "./frame"
+import { cameraFocus, frameFor } from "./frame"
 import { poseAt } from "./motion"
 import { sceneryForest, scenerySlots } from "./scenery"
 import { zoomFor } from "./town"
@@ -287,9 +287,8 @@ export function createView(stage) {
       applyFrame()
       const zoom = zoomFor(snap)
       const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
-      const anchorX = me ? me.x * 0.22 : 0
-      const anchorZ = me ? me.y * 0.22 : 0
-      focus.set(anchorX, 0, anchorZ)
+      const anchor = cameraFocus(me?.x, me?.y)
+      focus.set(anchor.x, 0, anchor.z)
       const dist = zoom.camera
       const yardScale = zoom.dirt / 150
       plaza.scale.setScalar(yardScale)

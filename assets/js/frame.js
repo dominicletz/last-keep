@@ -35,3 +35,9 @@ export function frameFor(cssWidth, cssHeight, rank = 0) {
     bottom: -halfH
   }
 }
+
+// The camera sits on the hero. A partial pull toward the keep left a hero
+// standing on a bat outside the frame once they reached the spawn ring.
+export function cameraFocus(x, y) {
+  return { x: Number(x) || 0, z: Number(y) || 0 }
+}
