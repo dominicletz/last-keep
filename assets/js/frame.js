@@ -35,3 +35,14 @@ export function frameFor(cssWidth, cssHeight, rank = 0) {
     bottom: -halfH
   }
 }
+
+// Follow most of the way out. 0.22 left a hero on the spawn ring standing on
+// a bat outside the frame. Following all the way hides a goblin on the far
+// side of the keep from a hero who is still on the join ring.
+export const cameraFollow = 0.72
+
+export function cameraFocus(x, y) {
+  const hx = Number(x) || 0
+  const hy = Number(y) || 0
+  return { x: hx * cameraFollow, z: hy * cameraFollow }
+}

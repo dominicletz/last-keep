@@ -169,6 +169,11 @@ defmodule LastKeep.Game.SimTest do
     parade = Sim.parade(Sim.new("KEEP01", seed: 1))
     kinds = parade |> Sim.monsters() |> Enum.map(& &1.kind) |> Enum.sort()
     assert kinds == [:bat, :boss, :goblin, :skeleton, :troll, :wolf]
+
+    for monster <- Sim.monsters(parade) do
+      dx = monster.x - 120.0
+      assert :math.sqrt(dx * dx + monster.y * monster.y) < 70
+    end
   end
 
   test "every fifth wave is an elite or a boss" do
