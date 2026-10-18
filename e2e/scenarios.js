@@ -1130,14 +1130,8 @@ async function townGrows(browser) {
   )
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(48)
 
-  await holdKey(page, "KeyA", true)
-  await holdKey(page, "KeyW", true)
-  await page.waitForFunction(() => {
-    const me = window.__lastKeep.self
-    return me && Math.hypot(me.x, me.y) <= 100
-  })
-  await holdKey(page, "KeyA", false)
-  await holdKey(page, "KeyW", false)
+  // Raise no longer needs the keep ring. Walking into that ring on a slow
+  // runner stops inside the stone, and the southwest step then cannot move.
   await page.locator("[data-raise]").click()
 
   const grown = () => {
@@ -1310,6 +1304,34 @@ function keysToward(me, goal) {
   return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
 }
 
+async function steer(page, goal, done, timeout, label) {
+  const deadline = Date.now() + timeout
+  let last = null
+  try {
+    while (Date.now() < deadline) {
+      const state = await page.evaluate(() => {
+        const me = window.__lastKeep.self
+        const call = [...document.querySelectorAll(".hint-arrow")].some((node) => /goblin/i.test(node.textContent || ""))
+        return me ? { x: me.x, y: me.y, alive: me.alive !== false, call } : null
+      })
+      last = state
+      if (state && done(state)) return state
+      if (state) {
+        const keys = keysToward(state, goal)
+        await page.evaluate((down) => {
+          for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, down.includes(key))
+        }, keys)
+      }
+      await page.waitForTimeout(80)
+    }
+  } finally {
+    await page.evaluate(() => {
+      for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, false)
+    })
+  }
+  throw new Error(`${label} timed out at ${JSON.stringify(last)}`)
+}
+
 async function walkHome(page) {
   await page.bringToFront()
   // South of the keep, inside the sow ring. An open east-then-north hold
@@ -1407,35 +1429,27 @@ async function phoneClear(browser) {
   await page.locator("[data-start]").click()
   await page.waitForFunction(() => window.__lastKeep.phase === "wave")
   await page.bringToFront()
-  const published = { timeout: 25_000, polling: 100 }
-  await page.evaluate(() => {
-    window.__lastKeepTest.hold("KeyW", true)
-    window.__lastKeepTest.hold("KeyD", true)
+  await page.waitForFunction(
+    () => (window.__lastKeep.monsters || []).some((row) => row.kind === "goblin"),
+    undefined,
+    { timeout: 10_000, polling: 100 }
+  )
+  const here = await page.evaluate(() => window.__lastKeep.self)
+  await steer(page, { x: here.x, y: -210 }, (state) => state.alive && state.y < -180, 20_000, "south of the houses")
+  const packX = await page.evaluate(() => {
+    const goblins = (window.__lastKeep.monsters || []).filter((row) => row.kind === "goblin")
+    return goblins.reduce((sum, row) => sum + row.x, 0) / goblins.length
   })
-  try {
-    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -150, undefined, published)
-  } finally {
-    await page.evaluate(() => {
-      window.__lastKeepTest.hold("KeyW", false)
-      window.__lastKeepTest.hold("KeyD", false)
-    })
-  }
-  await page.evaluate(() => {
-    window.__lastKeepTest.hold("KeyA", true)
-    window.__lastKeepTest.hold("KeyW", true)
-  })
-  try {
-    await page.waitForFunction(() => {
-      const call = [...document.querySelectorAll(".hint-arrow")].some((node) => /goblin/i.test(node.textContent || ""))
-      const me = window.__lastKeep.self
-      return call && me && me.x < -400
-    }, undefined, published)
-  } finally {
-    await page.evaluate(() => {
-      window.__lastKeepTest.hold("KeyA", false)
-      window.__lastKeepTest.hold("KeyW", false)
-    })
-  }
+  // The pack picks a fresh bearing each night. Running west meets the ones
+  // that spawned there, so the call never sits on screen at the far mark.
+  const away = packX >= 0 ? -520 : 520
+  await steer(
+    page,
+    { x: away, y: -210 },
+    (state) => state.alive && state.call && state.y < -160 && Math.hypot(state.x, state.y) > 400,
+    25_000,
+    "goblin call away from the pack"
+  )
   await assertPhoneClear(page)
   const call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
   expect(call).toMatch(/goblin/i)
