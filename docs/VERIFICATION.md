@@ -297,3 +297,8 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 a chest and a portal
 
 - The room stores the seeded world. `a chest at a known coordinate pays 24 gold once` stands on the nearest chest of seed 1 and requires gold to rise by 24, then stay there. `a broken portal leaves the night, and night 1 is still two goblins` breaks every portal but two and requires the two goblins on those bearings, not on the broken one. `a hero keeps walking past the old map edge` requires a hero at x 2400 to stay past 2000. The yard rings stay 600 to 680 and 740 to 900. Night 1 stays two goblins. `exploreLand` walks to a chest, reads the gold sack, breaks the nearest portal, and reads a wave off that bearing. The far mage is no longer standing on both paths, so "a mage who closes on the host lives when both goblins are on screen" keeps the living close and records that the far seat survives seed 1. The measured total is 77.13%, and the floor is 77.
+
+## 2026-10-18 hero cards on the pipeline scorer
+
+- `art_score.js` reads a frame the way `docs/concepts/ART-PIPELINE.md` describes. The town crop scores block p25 of 13 and a hard edge of 0.069, against the published 12 and 0.070. It matches itself at SSIM 1 and IoU 1. The gallery keep still misses block 8, SSIM 0.35, IoU 0.55, and membership 0.98.
+- Each hero close-up, day, dusk, and night, holds the measured floors. Block p25 is 12 to 19. SSIM is 0.118 to 0.398. Silhouette IoU is 0.404 to 0.502. Palette membership is under 0.01. Block clears the floor of 8. SSIM, IoU, and membership do not clear 0.35, 0.55, and 0.98. This does not change the simulation. The coverage floor stays 77.
