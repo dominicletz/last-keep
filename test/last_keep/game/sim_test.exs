@@ -578,6 +578,36 @@ defmodule LastKeep.Game.SimTest do
     assert saw_boom
   end
 
+  test "a stock wave-1 goblin does not survive one fireball" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :mage))
+    ada = hero(state, "ada")
+
+    state =
+      Sim.spawn_monster(state, %{
+        kind: :goblin,
+        x: ada.x + 80,
+        y: ada.y,
+        wave: 1
+      })
+
+    [monster] = Sim.monsters(state)
+    assert monster.hp == 22
+
+    state =
+      state
+      |> Sim.input("ada", %{"q" => true, "ax" => ada.x + 80, "ay" => ada.y})
+      |> Sim.input("ada", %{"q" => false, "ax" => ada.x + 80, "ay" => ada.y})
+
+    state =
+      Enum.reduce(1..40, state, fn _, state ->
+        Sim.tick(state)
+      end)
+
+    assert Sim.monsters(state) == []
+    assert state.kills == 1
+  end
+
   test "the shown wave moves forward once when a wave clears" do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
     {:ok, state} = Sim.join(state, player("ada", :warrior))
