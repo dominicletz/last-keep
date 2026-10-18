@@ -497,6 +497,19 @@ defmodule LastKeep.Game.SimTest do
     assert buildings(swung) == []
   end
 
+  test "an elite drops a relic and a plain goblin does not" do
+    elite = slay(%{kind: :goblin, elite: :fast, hp: 10})
+    assert length(elite.relics) == 1
+    assert Enum.any?(elite.events, &(&1.type == "relic"))
+
+    plain = slay(%{kind: :goblin, elite: nil, hp: 10})
+    assert plain.relics == []
+    refute Enum.any?(plain.events, &(&1.type == "relic"))
+
+    boss = slay(%{kind: :boss, elite: nil, hp: 10})
+    assert length(boss.relics) == 1
+  end
+
   test "a mage fireball damages a goblin and bursts" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :mage))
@@ -574,6 +587,22 @@ defmodule LastKeep.Game.SimTest do
     forged = Sim.tick(forged)
     [hurt] = Sim.monsters(forged)
     assert hurt.hp <= 80 - 29
+  end
+
+  defp slay(attrs) do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+
+    state =
+      Sim.spawn_monster(
+        state,
+        Map.merge(%{x: ada.x + 30, y: ada.y, wave: 5}, attrs)
+      )
+
+    state
+    |> Sim.input("ada", %{"attack" => true, "ax" => ada.x + 30, "ay" => ada.y})
+    |> Sim.tick()
   end
 
   defp hit_goblin(elite) do

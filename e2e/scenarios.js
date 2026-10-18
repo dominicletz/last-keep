@@ -195,31 +195,46 @@ async function sample(tab, notes) {
 }
 
 async function castFireball(friend, notes) {
+  await friend.bringToFront()
   const click = await friend.evaluate(() => {
     const game = window.__lastKeep
     const monster = (game.monsters || [])[0]
     return monster ? game.toClient(monster.x, monster.y) : null
   })
   expect(click).toBeTruthy()
-  await friend.mouse.click(click.x, click.y)
-  await friend.mouse.click(click.x, click.y)
-  await pressKey(friend, "KeyQ")
+  const viewport = friend.viewportSize()
+  const inside =
+    click.x > 8 && click.y > 8 && click.x < viewport.width - 8 && click.y < viewport.height - 8
+  if (inside) {
+    await friend.mouse.click(click.x, click.y)
+    await friend.mouse.click(click.x, click.y)
+  }
+  // Hold the key until the shot is visible. An 80ms tap can be encoded after
+  // the key is already up, so the server never sees the edge.
+  await holdKey(friend, "KeyQ", true)
   try {
-    await friend.waitForFunction(() => {
-      const game = window.__lastKeep
-      const flying = (game.projectiles || []).some((shot) => shot.kind === "fireball")
-      const seen = (game.kinds || []).includes("fireball")
-      return flying || seen
-    })
+    await friend.waitForFunction(
+      () => {
+        const game = window.__lastKeep
+        const flying = (game.projectiles || []).some((shot) => shot.kind === "fireball")
+        const seen = (game.kinds || []).includes("fireball")
+        return flying || seen
+      },
+      null,
+      { timeout: 5000 }
+    )
   } catch (err) {
     const debug = await friend.evaluate(() => ({
       cds: window.__lastKeep.cds,
       kinds: window.__lastKeep.kinds,
       projectiles: window.__lastKeep.projectiles,
       hero: window.__lastKeep.self && window.__lastKeep.self.hero,
-      log: window.__lastKeep.log
+      monsters: (window.__lastKeep.monsters || []).length,
+      phase: window.__lastKeep.phase
     }))
-    throw new Error(`fireball was not on screen ${JSON.stringify(debug)}`)
+    throw new Error(`fireball was not on screen ${JSON.stringify(debug)} (${err.message})`)
+  } finally {
+    await holdKey(friend, "KeyQ", false)
   }
   await sample(friend, notes)
   await friend.screenshot({ path: shot("fireball-guest.png") })

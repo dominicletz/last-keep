@@ -1,7 +1,7 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, isTypingTarget, seatFromQuery } from "./input"
+import { axes, blurHiddenFocus, inputFrame, isTypingTarget, seatFromQuery } from "./input"
 import { absorbShots } from "./paint"
 import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
@@ -290,7 +290,7 @@ function start(code, seat, ui) {
     input.r = keys.has("KeyR")
     input.f = keys.has("KeyF")
     input.build = build
-    channel.push("input", input)
+    channel.push("input", inputFrame(input))
   }
 
   window.setInterval(send, 50)
