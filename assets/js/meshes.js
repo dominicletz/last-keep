@@ -49,7 +49,12 @@ export function releaseGeometries(root) {
   const seen = new Set()
   root.traverse((node) => {
     const geometry = node.geometry
-    // Sprites share one plane on the Three.js module. Disposing it blanks every card.
+    // Each card uploads its own atlas. The plane itself is shared, so disposing it blanks every card.
+    if (node.isSprite && node.material) {
+      const map = node.material.map
+      node.material.dispose()
+      if (map) map.dispose()
+    }
     if (!geometry || seen.has(geometry) || geometry.userData.pooled || node.isSprite) return
     seen.add(geometry)
     geometry.dispose()

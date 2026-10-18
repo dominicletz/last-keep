@@ -40,9 +40,15 @@ test("a dropped hero leaves the shared sprite plane", () => {
     bars += 1
   }
   card.add(new THREE.Mesh(bar))
+  let maps = 0
+  card.material.map = { dispose: () => { maps += 1 } }
+  let materials = 0
+  card.material.dispose = () => { materials += 1 }
   releaseGeometries(card)
   assert.equal(disposed, 0)
   assert.equal(bars, 1)
+  assert.equal(maps, 1)
+  assert.equal(materials, 1)
   assert.equal(other.geometry, card.geometry)
 })
 
