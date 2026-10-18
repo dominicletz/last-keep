@@ -4,18 +4,10 @@ import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, partyPositions } from "./paint"
-import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatPin, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
-const BUILD_LABEL = {
-  wall: "1 Wall",
-  tower: "2 Tower",
-  trap: "3 Trap",
-  field: "4 Field",
-  forge: "5 Forge",
-  mage_tower: "6 Spire"
-}
 const PLACE_WORD = {
   wall: "Wall",
   tower: "Tower",
@@ -536,9 +528,8 @@ function start(code, seat, ui) {
     ui.hud.querySelectorAll("[data-build]").forEach((button) => {
       const kind = button.dataset.build
       const cost = me?.costs?.[kind]
-      const gold = cost?.gold ? ` ${cost.gold} gold` : ""
-      const wood = cost ? `${cost.wood} wood${gold}` : ""
-      button.innerHTML = `${BUILD_LABEL[kind]}<small>${wood}</small>`
+      const face = buildFace(kind, cost, document.documentElement.classList.contains("touch-play"))
+      button.innerHTML = `${escapeHtml(face.title)}<small>${escapeHtml(face.price)}</small>`
       button.classList.toggle("on", kind === armed)
     })
     const cost = armed && me?.costs ? me.costs[armed] : null
@@ -626,7 +617,7 @@ function hudMarkup() {
         `<div class="skill" data-chrome data-skill="${key}"><b>${label}</b><small data-skill-name="${key}"></small><div class="cool"></div></div>`
     )
     .join("")
-  const builds = BUILD.map((kind) => `<button type="button" class="build" data-chrome data-build="${kind}">${BUILD_LABEL[kind]}</button>`).join("")
+  const builds = BUILD.map((kind) => `<button type="button" class="build" data-chrome data-build="${kind}">${buildFace(kind, null, false).title}</button>`).join("")
   return `
     <div class="hud-top">
       <div class="actions">
@@ -657,8 +648,7 @@ function hudMarkup() {
 function thumbMarkup() {
   const slots = ["q", "attack", "e", "r"]
     .map((slot) => {
-      const mark = slot === "attack" ? "Hit" : slot.toUpperCase()
-      return `<button type="button" class="thumb ${slot}" data-touch="${slot}"><img data-touch-portrait alt="" draggable="false" src="/images/portraits/warrior.png" /><b>${mark}</b><small data-touch-name="${slot}"></small><span class="cool" data-touch-cool="${slot}"></span></button>`
+      return `<button type="button" class="thumb ${slot}" data-touch="${slot}"><img data-touch-portrait alt="" draggable="false" src="/images/portraits/warrior.png" /><small data-touch-name="${slot}"></small><span class="cool" data-touch-cool="${slot}"></span></button>`
     })
     .join("")
   return `<div class="thumb-pad" data-touch-pad hidden>${slots}<button type="button" class="thumb context" data-touch-context hidden></button></div><div class="stick" data-stick hidden><div class="stick-knob" data-stick-knob></div></div>`
@@ -698,11 +688,18 @@ function pin(node, spot, dy = 0) {
 
 function drawWorld(ui, snap, selfId) {
   const stock = ui.hud.querySelector("[data-stock]")
-  for (const mark of sackLine(snap.resources)) {
-    pin(stock?.querySelector(`[data-sack="${mark.key}"]`), screenPoint(ui, mark.x, mark.y))
-  }
-  const me = (snap.players || []).find((player) => player.id === selfId)
+  const marks = sackLine(snap.resources)
+  const nodes = marks.map((mark) => stock?.querySelector(`[data-sack="${mark.key}"]`))
   const hudBox = ui.hud.getBoundingClientRect()
+  const boxes = nodes.map((node) => ({ width: node?.offsetWidth || 0, height: node?.offsetHeight || 0 }))
+  const spots = marks.map((mark) => screenPoint(ui, mark.x, mark.y)).map((spot, i) => (spot ? { key: marks[i].key, ...spot } : null))
+  const keepSpot = screenPoint(ui, 0, 0)
+  const keep = keepSpot
+    ? { left: keepSpot.left - 42, top: keepSpot.top - 88, right: keepSpot.left + 42, bottom: keepSpot.top + 10 }
+    : null
+  const seated = seatSacks(spots, { width: hudBox.width, height: hudBox.height }, boxes, keep)
+  seated.forEach((spot, i) => pin(nodes[i], spot))
+  const me = (snap.players || []).find((player) => player.id === selfId)
   pin(ui.hud.querySelector("[data-bonuses]"), screenPoint(ui, RELIC_SIGN.x, RELIC_SIGN.y))
   pin(ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
   const rosterNode = ui.hud.querySelector("[data-roster]")

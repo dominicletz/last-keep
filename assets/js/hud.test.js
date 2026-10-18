@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatPin, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -104,6 +104,40 @@ test("the glass keeps ten controls after the sacks leave it", () => {
   }
   assert.equal(chromeCount(root), CHROME_BUDGET)
   assert.equal(chromeCount(null), 0)
+})
+
+test("a touch build drops the digit and a desktop build keeps it", () => {
+  assert.deepEqual(buildFace("wall", { wood: 8, gold: 0 }, true), { title: "Wall", price: "8 wood" })
+  assert.deepEqual(buildFace("mage_tower", { wood: 18, gold: 30 }, false), { title: "6 Spire", price: "18 wood 30 gold" })
+  assert.equal(buildFace("forge", null, true).title, "Forge")
+  assert.equal(buildFace("forge", null, true).price, "")
+})
+
+test("piled sacks on a phone separate, and clear sacks stay where they were", () => {
+  const box = { width: 90, height: 70 }
+  const boxes = [box, box, box]
+  const piled = [
+    { key: "wood", left: 420, top: 200 },
+    { key: "food", left: 430, top: 210 },
+    { key: "gold", left: 410, top: 190 }
+  ]
+  const keep = { left: 390, top: 130, right: 470, bottom: 230 }
+  const seated = seatSacks(piled, { width: 844, height: 390 }, boxes, keep)
+  const rects = seated.map((spot) => pinRect(spot, box, "sack"))
+  for (let i = 0; i < rects.length; i += 1) {
+    assert.equal(rectsOverlap(rects[i], keep), false)
+    for (let j = i + 1; j < rects.length; j += 1) assert.equal(rectsOverlap(rects[i], rects[j]), false)
+  }
+  const clear = [
+    { key: "wood", left: 200, top: 200 },
+    { key: "food", left: 700, top: 220 },
+    { key: "gold", left: 400, top: 500 }
+  ]
+  const stayed = seatSacks(clear, { width: 1280, height: 800 }, boxes, null)
+  assert.deepEqual(
+    stayed.map(({ left, top }) => ({ left, top })),
+    clear.map(({ left, top }) => ({ left, top }))
+  )
 })
 
 test("wood, food, and gold each sit in their own sack", () => {
