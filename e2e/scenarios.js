@@ -598,7 +598,8 @@ async function twoPlayerNight(browser) {
       mood: game.frameMood(),
       stone: game.sampleWorld(0, 36, 6),
       plate: game.sampleWorld(hero.x, 18, hero.y),
-      pine: game.sampleWorld(197, 28, 83)
+      // The inner pine's crown. The tip is a few pixels and reads as the trunk.
+      pine: game.sampleWorld(201, 18, 73)
     }
   })
   expect(duskMood.mood.problems).toEqual([])

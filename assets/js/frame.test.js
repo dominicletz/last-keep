@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import * as THREE from "three"
 import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, idleDrawMs, inputWindowMs, pixelSize } from "./frame.js"
+import { heroSignature } from "./heroes.js"
 import { viewScale } from "./town.js"
 
 test("wide, square, and portrait windows keep square pixels and frame the yard", () => {
@@ -114,24 +115,61 @@ test("a snapshot does not draw again until the page has had a turn", () => {
   assert.equal(drawDue(10_000, 0, -Infinity), true)
 })
 
-test("a hero behind the host keeps their head in the frame", () => {
+function topCss(camera, kind, x, z) {
+  const sig = heroSignature(kind)
+  const corner = new THREE.Vector3()
+  let top = Infinity
+  const consider = (wx, wy, wz) => {
+    const point = corner.set(wx, wy, wz).project(camera)
+    const css = (-point.y * 0.5 + 0.5) * 800
+    if (css < top) top = css
+  }
+  for (const part of sig.parts) {
+    const grow = part.hold ? 1.12 : 1
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          consider(
+            x + part.x + sx * (part.w / 2) * grow,
+            part.y + sy * (part.h / 2) * grow,
+            z + part.z + sz * (part.d / 2) * grow
+          )
+        }
+      }
+    }
+  }
+  const barW = Math.max(22, sig.bounds.w * 0.45) / 2
+  for (const sx of [-1, 1]) {
+    for (const sz of [-1, 1]) consider(x + sx * barW, sig.bounds.h + 5.5, z + sz)
+  }
+  return top
+}
+
+function hostCamera(lift) {
   const frame = frameFor(1280, 800, 0)
   const camera = new THREE.OrthographicCamera(frame.left, frame.right, frame.top, frame.bottom, 0.1, 2400)
   const focus = cameraFocus(120, 0)
   const dist = 150
   camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-  camera.lookAt(focus.x, cameraLift, focus.z)
+  camera.lookAt(focus.x, lift, focus.z)
   camera.updateProjectionMatrix()
   camera.updateMatrixWorld(true)
-  for (let seat = 0; seat < 5; seat++) {
-    const angle = seat * 2.2
-    const x = Math.cos(angle) * 120
-    const z = Math.sin(angle) * 120
-    const head = new THREE.Vector3(x, 110, z).project(camera)
-    const bar = new THREE.Vector3(x, 118, z).project(camera)
-    assert.ok(head.y < 0.96, `seat ${seat} head ${head.y}`)
-    assert.ok(bar.y < 0.98, `seat ${seat} bar ${bar.y}`)
+  return camera
+}
+
+test("a hero behind the host keeps their head in the frame", () => {
+  assert.equal(cameraLift, 32)
+  const angle = 2 * 2.2
+  const x = Math.cos(angle) * 120
+  const z = Math.sin(angle) * 120
+  const framed = hostCamera(cameraLift)
+  const grounded = hostCamera(0)
+  for (const kind of ["warrior", "mage", "scout", "farmer", "engineer"]) {
+    const top = topCss(framed, kind, x, z)
+    assert.ok(top > 48, `${kind} top ${top.toFixed(1)} sits on the edge`)
   }
+  const clipped = topCss(grounded, "mage", x, z)
+  assert.ok(clipped < 0, `ground look mage top ${clipped.toFixed(1)}`)
 })
 
 test("a higher town rank widens the same window", () => {
