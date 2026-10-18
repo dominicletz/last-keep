@@ -611,7 +611,7 @@ async function twoPlayerNight(browser) {
     const ground = game.frameGround()
     if (mood.problems.length || ground.problems.length) return false
     const stone = game.sampleWorld(0, 36, 6)
-    const pine = game.sampleWorld(201, 18, 73)
+    const pine = game.sampleWorld(-22, 30, -62)
     if (!stone || !pine) return false
     const span = Math.abs(stone.hue - pine.hue) % 360
     return Math.min(span, 360 - span) >= 25
@@ -623,7 +623,9 @@ async function twoPlayerNight(browser) {
       mood: game.frameMood(),
       ground: game.frameGround(),
       stone: game.sampleWorld(0, 36, 6),
-      plate: game.sampleWorld(hero.x, 18, hero.y),
+      // Height 18 is the cape hem. Dusk cloth there is saturated, and the
+      // cuirass at 40 is the steel the floor is about.
+      plate: game.sampleWorld(hero.x, 40, hero.y),
       // Keep pine, centered on the wide cone. The forest pine at the
       // southeast edge mixes with the sky once the hero has walked.
       pine: game.sampleWorld(-22, 30, -62)
