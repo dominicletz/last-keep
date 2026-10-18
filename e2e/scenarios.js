@@ -1413,9 +1413,11 @@ function phoneOverlaps() {
 }
 
 async function assertPhoneClear(page) {
+  // Four guest windows cover this page. A frame promise never resolves there,
+  // and the 150s test budget dies on the first viewport. The overlap poll is the layout wait.
+  await page.bringToFront()
   for (const [width, height] of PHONE_SIZES) {
     await page.setViewportSize({ width, height })
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     await expect.poll(() => page.evaluate(phoneOverlaps), { timeout: 4_000 }).toEqual([])
   }
 }
@@ -1491,10 +1493,15 @@ async function phoneClear(browser) {
     seats.push(seat)
     watch(seat.page, name, errors)
   }
-  await page.waitForFunction(() => {
-    const roster = document.querySelector("[data-roster]")?.innerText || ""
-    return ["Nia", "Ada", "Lux", "Bram", "Pip"].every((name) => roster.includes(name))
-  })
+  await page.bringToFront()
+  await page.waitForFunction(
+    () => {
+      const roster = document.querySelector("[data-roster]")?.innerText || ""
+      return ["Nia", "Ada", "Lux", "Bram", "Pip"].every((name) => roster.includes(name))
+    },
+    undefined,
+    { polling: 100 }
+  )
   await assertPhoneClear(page)
   const aims = [
     [144, 0],
@@ -1509,9 +1516,10 @@ async function phoneClear(browser) {
     await pressKey(page, "KeyQ")
     await page.waitForFunction(
       (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
-      before
+      before,
+      { polling: 100 }
     )
-    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0)
+    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0, undefined, { polling: 100 })
   }
   await page.waitForFunction(
     () => {
@@ -1520,18 +1528,20 @@ async function phoneClear(browser) {
       return match && Number(match[1]) >= 8
     },
     undefined,
-    { timeout: 25_000 }
+    { timeout: 25_000, polling: 100 }
   )
   await page.locator("[data-raise]").click()
-  await page.waitForFunction(() => window.__lastKeep.town === 1)
+  await page.waitForFunction(() => window.__lastKeep.town === 1, undefined, { polling: 100 })
   await assertPhoneClear(page)
   // The guests stand on the join ring. Walking back from the west stops on
   // that ring, so the far pose happens after the fields and the raise.
   await assertFarCaptions(page)
   await assertPhoneClear(page)
   await page.locator("[data-start]").click()
-  await page.waitForFunction(() => window.__lastKeep.phase === "wave")
+  // The same covered page never runs requestAnimationFrame, so the default
+  // poll sat through the whole build even after the server had opened the wave.
   await page.bringToFront()
+  await page.waitForFunction(() => window.__lastKeep.phase === "wave", undefined, { polling: 100 })
   await page.waitForFunction(
     () => (window.__lastKeep.monsters || []).some((row) => row.kind === "goblin"),
     undefined,
@@ -1554,7 +1564,25 @@ async function phoneClear(browser) {
     "goblin call away from the pack"
   )
   await assertPhoneClear(page)
-  const call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  let call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  if (!/goblin/i.test(call)) {
+    // The viewport sweep keeps the night moving, and a goblin that walks into
+    // frame takes the arrow with it. Step away again. The text still has to say goblin.
+    const again = await page.evaluate(() => window.__lastKeep.self)
+    const pack = await page.evaluate(() => {
+      const goblins = (window.__lastKeep.monsters || []).filter((row) => row.kind === "goblin")
+      return goblins.length ? goblins.reduce((sum, row) => sum + row.x, 0) / goblins.length : again.x
+    })
+    const further = pack >= again.x ? again.x - 360 : again.x + 360
+    await steer(
+      page,
+      { x: further, y: -210 },
+      (state) => state.alive && state.call && Math.hypot(state.x, state.y) > 480,
+      15_000,
+      "goblin call after the resize"
+    )
+    call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  }
   expect(call).toMatch(/goblin/i)
   expect(errors, errors.join("\n")).toEqual([])
   for (const seat of seats) await seat.context.close()
@@ -1623,29 +1651,46 @@ function segmentHitsKeep(ax, ay, bx, by) {
 }
 
 async function steerPast(page, goal, done, timeout, label) {
-  const me = await page.evaluate(() => window.__lastKeep.self)
-  if (me && segmentHitsKeep(me.x, me.y, goal.x, goal.y)) {
-    // Radius 180 can be true while the rest of the line still hits the keep.
-    // The hero then walks back into the west face and sits near x 73.5.
-    const around = Date.now() + 20_000
-    for (let hop = 0; hop < 4; hop += 1) {
-      const here = await page.evaluate(() => window.__lastKeep.self)
-      if (!here || !segmentHitsKeep(here.x, here.y, goal.x, goal.y)) break
-      const left = around - Date.now()
-      if (left <= 0) break
-      const ang = Math.atan2(goal.y - here.y, goal.x - here.x)
-      const spin = (hop % 2 === 0 ? 1 : -1) * (1.1 + hop * 0.2)
+  // One detour is not enough. The straight walk uses diagonal keys, clips the
+  // keep, and sits on the west face near x 73.5 for the rest of the budget.
+  // A far portal still gets the whole wait. Only a pin on the keep spends a slice.
+  const deadline = Date.now() + timeout
+  let orbits = 0
+  let lastError = null
+  while (Date.now() < deadline) {
+    const left = deadline - Date.now()
+    const me = await page.evaluate(() => window.__lastKeep.self)
+    const pinned = me && Math.hypot(me.x, me.y) < 160 && segmentHitsKeep(me.x, me.y, goal.x, goal.y)
+    if (pinned) {
+      if (orbits >= 6) break
+      orbits += 1
+      const ang = Math.atan2(me.y, me.x)
+      const spin = (orbits % 2 === 0 ? 1 : -1) * (1.15 + orbits * 0.18)
       const via = { x: Math.cos(ang + spin) * 320, y: Math.sin(ang + spin) * 320 }
-      await steer(
-        page,
-        via,
-        (state) => !segmentHitsKeep(state.x, state.y, goal.x, goal.y),
-        left,
-        `${label} around the keep`
-      )
+      try {
+        await steer(
+          page,
+          via,
+          (state) => !segmentHitsKeep(state.x, state.y, goal.x, goal.y) && Math.hypot(state.x, state.y) > 160,
+          Math.min(left, 8_000),
+          `${label} around the keep`
+        )
+      } catch (error) {
+        lastError = error
+      }
+      continue
+    }
+    try {
+      return await steer(page, goal, done, Math.min(left, 6_000), label)
+    } catch (error) {
+      lastError = error
+      const now = await page.evaluate(() => window.__lastKeep.self)
+      const stuck = now && Math.hypot(now.x, now.y) < 160 && segmentHitsKeep(now.x, now.y, goal.x, goal.y)
+      if (!stuck && left <= 6_000) throw error
     }
   }
-  await steer(page, goal, done, timeout, label)
+  if (lastError) throw lastError
+  throw new Error(`${label} timed out`)
 }
 
 async function exploreLand(browser) {
