@@ -4,6 +4,7 @@ defmodule LastKeep.Game.Sim do
   alias LastKeep.Game.Rules
   alias LastKeep.Game.State
   alias LastKeep.Game.Waves
+  alias LastKeep.Game.World
 
   @empty_input %{
     mx: 0.0,
@@ -45,7 +46,8 @@ defmodule LastKeep.Game.Sim do
       phase: {:build, build},
       hold: hold,
       hints: hints,
-      keep: %{hp: keep_hp, max_hp: keep_hp, r: 54.0}
+      keep: %{hp: keep_hp, max_hp: keep_hp, r: 54.0},
+      world: lay_world(seed)
     }
 
     place_trees(state, 30)
@@ -118,6 +120,8 @@ defmodule LastKeep.Game.Sim do
     |> bump()
     |> cooldowns()
     |> move_heroes()
+    |> survey()
+    |> open_chests()
     |> gather()
     |> abilities()
     |> remember_input()
@@ -391,6 +395,117 @@ defmodule LastKeep.Game.Sim do
     end)
   end
 
+  defp lay_world(seed) do
+    grouped = seed |> World.generate() |> Map.fetch!(:pois) |> Enum.group_by(& &1.kind)
+    hp = Rules.portal_hp()
+
+    %{
+      seed: seed,
+      chunks: %{},
+      discovered: keep_chunks(),
+      portals:
+        Enum.map(grouped[:portal] || [], fn poi ->
+          Map.merge(poi, %{hp: hp, max_hp: hp, r: 28.0})
+        end),
+      chests: Enum.map(grouped[:chest] || [], &Map.put(&1, :gold, Rules.chest_gold())),
+      camps: grouped[:camp] || [],
+      quarries: grouped[:quarry] || [],
+      shrines: grouped[:shrine] || [],
+      merchant: List.first(grouped[:merchant] || []),
+      hermit: List.first(grouped[:hermit] || [])
+    }
+  end
+
+  defp keep_chunks do
+    for cx <- -1..0, cy <- -1..0, into: MapSet.new(), do: {cx, cy}
+  end
+
+  defp survey(state) do
+    {discovered, chunks} =
+      Enum.reduce(living_heroes(state), {state.world.discovered, state.world.chunks}, fn hero,
+                                                                                         {found,
+                                                                                          chunks} ->
+        {cx, cy} = chunk_of(hero.x, hero.y)
+        ring = if hero.hero == :scout, do: 2, else: 1
+
+        Enum.reduce(-ring..ring, {found, chunks}, fn dx, {found, chunks} ->
+          Enum.reduce(-ring..ring, {found, chunks}, fn dy, {found, chunks} ->
+            key = {cx + dx, cy + dy}
+            {MapSet.put(found, key), ensure_chunk(state.world.seed, chunks, key)}
+          end)
+        end)
+      end)
+
+    %{state | world: %{state.world | discovered: discovered, chunks: chunks}}
+  end
+
+  defp ensure_chunk(seed, chunks, {cx, cy} = key) do
+    cond do
+      Map.has_key?(chunks, key) -> chunks
+      cx < -14 or cx > 14 or cy < -14 or cy > 14 -> chunks
+      true -> Map.put(chunks, key, World.chunk(seed, cx, cy))
+    end
+  end
+
+  defp chunk_of(x, y) do
+    {Integer.floor_div(trunc(x), 512), Integer.floor_div(trunc(y), 512)}
+  end
+
+  defp open_chests(state) do
+    Enum.reduce(living_heroes(state), state, fn hero, state ->
+      case nearest(state.world.chests, hero.x, hero.y, Rules.chest_reach()) do
+        nil ->
+          state
+
+        chest ->
+          chests = Enum.reject(state.world.chests, &(&1.id == chest.id))
+
+          %{state | world: %{state.world | chests: chests}}
+          |> add_resource(:gold, chest.gold)
+          |> event(%{type: "chest", x: chest.x, y: chest.y, amount: chest.gold})
+      end
+    end)
+  end
+
+  defp strike_portals(state, hero, ability) do
+    state.world.portals
+    |> Enum.filter(fn portal ->
+      dist = hypot(portal.x - hero.x, portal.y - hero.y)
+
+      dist <= 48 or
+        (dist <= ability.range + portal.r and angle_between(hero, portal) <= ability.arc / 2)
+    end)
+    |> Enum.reduce(state, fn portal, state -> hurt_portal(state, portal.id, ability.damage) end)
+  end
+
+  defp hurt_portal(state, id, amount) do
+    case Enum.find(state.world.portals, &(&1.id == id)) do
+      nil ->
+        state
+
+      portal ->
+        left = portal.hp - amount
+
+        portals =
+          if left <= 0 do
+            Enum.reject(state.world.portals, &(&1.id == id))
+          else
+            Enum.map(state.world.portals, fn
+              %{id: ^id} = row -> %{row | hp: left}
+              row -> row
+            end)
+          end
+
+        state = %{state | world: %{state.world | portals: portals}}
+
+        if left <= 0 do
+          event(state, %{type: "death", kind: :portal, x: portal.x, y: portal.y, amount: amount})
+        else
+          state
+        end
+    end
+  end
+
   defp abilities(state) do
     Enum.reduce(state.players, state, fn {_id, player}, state ->
       hero = state.entities[player.hero_id]
@@ -474,6 +589,7 @@ defmodule LastKeep.Game.Sim do
       damage = scaled_damage(ability.damage, state, hero.hero, monster)
       hurt_monster(state, monster.id, damage, Rules.kill_bonus(hero.hero))
     end)
+    |> strike_portals(hero, ability)
     |> repair_near(hero, Map.get(ability, :repair, 0))
   end
 
@@ -1241,8 +1357,10 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp spawn_group(state, group, wave) do
-    Enum.reduce(1..group.count, state, fn i, state ->
-      angle = group.angle + (i - group.count / 2) * 0.45
+    group
+    |> wave_one_bearings(state, wave)
+    |> Enum.with_index(1)
+    |> Enum.reduce(state, fn {angle, i}, state ->
       dist = spawn_ring(wave, i)
 
       spawn_monster(state, %{
@@ -1254,6 +1372,46 @@ defmodule LastKeep.Game.Sim do
       })
     end)
   end
+
+  defp wave_one_bearings(group, state, wave) do
+    portals = nearest_portals(state)
+
+    cond do
+      wave == 1 ->
+        taken = Enum.take(portals, group.count)
+        live = Enum.map(taken, &poi_angle/1)
+        start = length(live) + 1
+
+        fillers =
+          if start > group.count do
+            []
+          else
+            for i <- start..group.count do
+              group.angle + (i - group.count / 2) * 0.45
+            end
+          end
+
+        live ++ fillers
+
+      portals == [] ->
+        []
+
+      true ->
+        n = length(portals)
+
+        for i <- 0..(group.count - 1) do
+          poi_angle(Enum.at(portals, rem(i, n)))
+        end
+    end
+  end
+
+  defp nearest_portals(state) do
+    Enum.sort_by(state.world.portals, fn poi ->
+      {poi.x * poi.x + poi.y * poi.y, poi.id}
+    end)
+  end
+
+  defp poi_angle(poi), do: :math.atan2(poi.y, poi.x)
 
   defp spawn_ring(wave, i), do: Rules.spawn_distance(wave, i)
 
@@ -1696,8 +1854,10 @@ defmodule LastKeep.Game.Sim do
 
   defp clamp_axis(_), do: 0.0
 
-  defp clamp_world(value) when is_number(value),
-    do: value |> max(-2000.0) |> min(2000.0) |> Kernel.*(1.0)
+  defp clamp_world(value) when is_number(value) do
+    radius = Rules.map_radius() * 1.0
+    value |> max(-radius) |> min(radius) |> Kernel.*(1.0)
+  end
 
   defp clamp_world(_), do: 0.0
 

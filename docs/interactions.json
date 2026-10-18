@@ -82,6 +82,9 @@
     {"from": "keep", "to": "monsters", "via": "The keep is solid. A monster bites it from the edge.", "status": "implemented", "rule": "pass_keep"},
     {"from": "wood", "to": "keep", "via": "Raising the keep spends wood and gold. There is no card pick.", "status": "implemented", "rule": "defp try_raise"},
     {"from": "keep", "to": "wall", "via": "Each keep rank widens the build radius and pulls the camera back.", "status": "implemented", "rule": "def build_range"},
-    {"from": "scenery", "to": "wood", "via": "The outer ring is dead wood: bare trunks, no crown, and no wood. Living trees are the green ones.", "status": "implemented", "rule": "def scenery_ring"}
+    {"from": "scenery", "to": "wood", "via": "The outer ring is dead wood: bare trunks, no crown, and no wood. Living trees are the green ones.", "status": "implemented", "rule": "def scenery_ring"},
+    {"from": "chest", "to": "gold", "via": "A living hero who stands on a chest opens it once and the room gains 24 gold.", "status": "implemented", "rule": "def chest_gold"},
+    {"from": "portal", "to": "monsters", "via": "Night 1 is two goblins on the bearings of the two nearest living portals. A broken portal's bearing is left out.", "status": "implemented", "rule": "defp wave_one_bearings"},
+    {"from": "warrior", "to": "portal", "via": "A strike on a portal breaks it. The next night does not spawn on that bearing.", "status": "implemented", "rule": "defp hurt_portal"}
   ]
 }

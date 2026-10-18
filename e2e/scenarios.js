@@ -1563,6 +1563,104 @@ async function scoreList(request) {
   }
 }
 
+function segmentHitsKeep(ax, ay, bx, by) {
+  const dx = bx - ax
+  const dy = by - ay
+  const len2 = dx * dx + dy * dy
+  if (len2 < 1) return Math.hypot(ax, ay) < 90
+  const t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / len2))
+  return Math.hypot(ax + dx * t, ay + dy * t) < 90
+}
+
+async function steerPast(page, goal, done, timeout, label) {
+  const me = await page.evaluate(() => window.__lastKeep.self)
+  if (me && segmentHitsKeep(me.x, me.y, goal.x, goal.y)) {
+    const ang = Math.atan2(goal.y - me.y, goal.x - me.x)
+    const via = { x: Math.cos(ang + 1.1) * 260, y: Math.sin(ang + 1.1) * 260 }
+    await steer(page, via, (state) => Math.hypot(state.x, state.y) > 180, 20_000, `${label} around the keep`)
+  }
+  await steer(page, goal, done, timeout, label)
+}
+
+async function exploreLand(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior")
+  const page = host.page
+  watch(page, "host", errors)
+  await page.waitForFunction(() => (window.__lastKeep.chests || []).length > 0)
+  const chest = await page.evaluate(() => {
+    const me = window.__lastKeep.self
+    return window.__lastKeep.chests.reduce((best, row) => {
+      const dist = Math.hypot(row.x - me.x, row.y - me.y)
+      return !best || dist < best.dist ? { ...row, dist } : best
+    }, null)
+  })
+  const before = await page.evaluate(() => window.__lastKeep.gold)
+  await steerPast(page, chest, (state) => Math.hypot(state.x - chest.x, state.y - chest.y) < 30, 45_000, "chest")
+  await page.waitForFunction(
+    (mark) => window.__lastKeep.gold === mark.before + 24 && !(window.__lastKeep.chests || []).some((row) => row.id === mark.id),
+    { before, id: chest.id },
+    { timeout: 8_000 }
+  )
+  const sack = await page.locator("[data-sack='gold']").innerText()
+  expect(sack).toContain(String(before + 24))
+  await page.screenshot({ path: shot("chest-host.png") })
+
+  const portal = await page.evaluate(() => {
+    return window.__lastKeep.portals.reduce((best, row) => {
+      const dist = Math.hypot(row.x, row.y)
+      return !best || dist < best.dist ? { ...row, dist } : best
+    }, null)
+  })
+  const bearing = Math.atan2(portal.y, portal.x)
+  await steerPast(page, portal, (state) => Math.hypot(state.x - portal.x, state.y - portal.y) < 30, 70_000, "portal")
+  const box = await page.locator("canvas").boundingBox()
+  for (let swing = 0; swing < 6; swing += 1) {
+    const gone = await page.evaluate((id) => !(window.__lastKeep.portals || []).some((row) => row.id === id), portal.id)
+    if (gone) break
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.waitForTimeout(700)
+    await page.mouse.up()
+  }
+  const broke = await page.evaluate((id) => {
+    const row = (window.__lastKeep.portals || []).find((portal) => portal.id === id)
+    const me = window.__lastKeep.self
+    return {
+      gone: !row,
+      hp: row ? row.hp : 0,
+      x: me.x,
+      y: me.y,
+      cd: window.__lastKeep.attackCd || 0
+    }
+  }, portal.id)
+  if (!broke.gone) {
+    throw new Error(`portal still stands ${JSON.stringify(broke)}`)
+  }
+  const living = await page.evaluate(() => {
+    return [...window.__lastKeep.portals]
+      .sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))
+      .slice(0, 2)
+  })
+  await page.locator("[data-start]").click()
+  await page.waitForFunction(() => window.__lastKeep.phase === "wave")
+  const goblins = await page.evaluate(() => (window.__lastKeep.monsters || []).filter((row) => row.kind === "goblin"))
+  expect(goblins).toHaveLength(2)
+  const gap = (a, b) => {
+    const diff = Math.abs(a - b)
+    return Math.min(diff, Math.PI * 2 - diff)
+  }
+  for (const goblin of goblins) {
+    const ang = Math.atan2(goblin.y, goblin.x)
+    const liveGap = Math.min(...living.map((row) => gap(ang, Math.atan2(row.y, row.x))))
+    expect(liveGap).toBeLessThan(0.05)
+    expect(gap(ang, bearing)).toBeGreaterThan(liveGap)
+  }
+  await page.screenshot({ path: shot("portal-host.png") })
+  expect(errors).toEqual([])
+  await host.context.close()
+}
+
 module.exports = {
   prepareProof,
   proofDir,
@@ -1578,5 +1676,6 @@ module.exports = {
   mobileTouch,
   townGrows,
   captionsClearTheBuilds,
-  phoneClear
+  phoneClear,
+  exploreLand
 }

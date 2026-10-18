@@ -14,7 +14,10 @@ defmodule LastKeep.Game.Rules do
   def build_ticks(cleared_wave) when cleared_wave <= 1, do: 700
   def build_ticks(cleared_wave), do: max(500, 700 - cleared_wave * 15)
 
-  def map_radius, do: 1800
+  def map_radius, do: 7200
+  def chest_gold, do: 24
+  def chest_reach, do: 36
+  def portal_hp, do: 78
 
   def spawn_distance(1, i), do: 620 + rem(i * 17, 40)
   def spawn_distance(_wave, i), do: 760 + rem(i * 17, 80)
