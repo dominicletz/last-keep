@@ -41,6 +41,18 @@ export function frameFor(cssWidth, cssHeight, rank = 0) {
 // side of the keep from a hero who is still on the join ring.
 export const cameraFollow = 0.72
 
+// A headless page stays "visible", so a draw inside the socket handler never
+// yields and the test's wait sits until the browser is closed. Recent input
+// draws with the tick. An idle page coasts.
+export const activeDrawMs = 50
+export const idleDrawMs = 250
+export const inputWindowMs = 1500
+
+export function drawDue(now, lastRender, lastInput) {
+  const gap = now - lastInput < inputWindowMs ? activeDrawMs : idleDrawMs
+  return now - lastRender >= gap
+}
+
 export function cameraFocus(x, y) {
   const hx = Number(x) || 0
   const hy = Number(y) || 0

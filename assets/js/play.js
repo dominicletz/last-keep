@@ -2,6 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, isTypingTarget, seatFromQuery } from "./input"
+import { absorbShots } from "./paint"
 import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
@@ -307,7 +308,16 @@ function start(code, seat, ui) {
   }
 
   function paint(ui, snap, selfId, armed) {
-    ui.view.draw(snap, selfId)
+    seen.kinds = absorbShots(seen.kinds, snap.projectiles)
+    // The first snapshot builds the test hook. Later ones only queue the
+    // scene: a draw on the socket handler never yields, and the fireball
+    // wait then dies when the test closes the page.
+    if (window.__lastKeep) ui.view.queue(snap, selfId)
+    else ui.view.draw(snap, selfId)
+    if (window.__lastKeep) {
+      window.__lastKeep.projectiles = snap.projectiles || []
+      window.__lastKeep.kinds = seen.kinds
+    }
     const me = (snap.players || []).find((player) => player.id === selfId)
     const wave = ui.hud.querySelector("[data-wave]")
     const clock = ui.hud.querySelector("[data-clock]")
@@ -315,9 +325,6 @@ function start(code, seat, ui) {
     const label = waveLabel(snap.shown_wave)
     if (seen.labels[seen.labels.length - 1] !== label) seen.labels.push(label)
     ui.hud.querySelector("[data-score]").textContent = `Score ${snap.score ?? 0}`
-    for (const shot of snap.projectiles || []) {
-      if (!seen.kinds.includes(shot.kind)) seen.kinds.push(shot.kind)
-    }
     wave.textContent = label
     clock.textContent = snap.phase === "over" ? "Fallen" : clockText(snap)
     drawSacks(stock, snap.resources)
