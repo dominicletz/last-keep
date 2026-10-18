@@ -17,9 +17,11 @@ function gameUrl(path) {
 }
 
 async function createHost(browser, name, hero, prepare) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const options = prepare && typeof prepare !== "function" ? prepare : {}
+  const ready = typeof prepare === "function" ? prepare : null
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, ...options })
   const page = await context.newPage()
-  if (prepare) await prepare(page)
+  if (ready) await ready(page)
   await page.goto(gameUrl("/"))
   await page.waitForFunction(() => {
     const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
@@ -1919,6 +1921,40 @@ async function sixSeatMatch(browser) {
   await host.context.close()
 }
 
+async function disabledRaiseSaysWalk(browser) {
+  const errors = []
+  const { context, page } = await createHost(browser, "Ada", "warrior", { hasTouch: true })
+  watch(page, "host", errors)
+  const raise = page.locator("[data-raise]")
+  const hit = page.locator("[data-raise-hit]")
+  const reason = page.locator("[data-build-reason]")
+  await expect(raise).toBeDisabled()
+  const spot = await page.evaluate(() => {
+    const me = window.__lastKeep.self
+    return { x: me.x, y: me.y, gold: window.__lastKeep.gold, town: window.__lastKeep.town }
+  })
+  expect(Math.hypot(spot.x, spot.y)).toBeGreaterThanOrEqual(100)
+  expect(spot.town).toBe(0)
+  await hit.hover()
+  await expect(reason).toHaveText("Walk to the keep")
+  await page.mouse.move(1100, 700)
+  await expect(reason).toBeHidden()
+  await hit.click()
+  await expect(reason).toHaveText("Walk to the keep")
+  await page.mouse.move(1100, 700)
+  await expect(reason).toHaveText("Walk to the keep")
+  await expect(reason).toBeHidden({ timeout: 4_000 })
+  await hit.tap()
+  await expect(reason).toHaveText("Walk to the keep")
+  await page.mouse.move(1100, 700)
+  await expect(reason).toHaveText("Walk to the keep")
+  const after = await page.evaluate(() => ({ gold: window.__lastKeep.gold, town: window.__lastKeep.town }))
+  expect(after).toEqual({ gold: spot.gold, town: 0 })
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
+
 module.exports = {
   prepareProof,
   proofDir,
@@ -1938,5 +1974,6 @@ module.exports = {
   townGrows,
   captionsClearTheBuilds,
   phoneClear,
-  exploreLand
+  exploreLand,
+  disabledRaiseSaysWalk
 }

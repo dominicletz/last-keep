@@ -175,6 +175,14 @@ export function raiseReady(upgrade, resources) {
   return (resources?.wood ?? 0) >= upgrade.wood && (resources?.gold ?? 0) >= upgrade.gold
 }
 
+export function raiseHint(disabled, hero, upgrade) {
+  if (!disabled || !upgrade) return ""
+  const x = Number(hero?.x)
+  const y = Number(hero?.y)
+  if (Number.isFinite(x) && Number.isFinite(y) && Math.hypot(x, y) < 100) return ""
+  return "Walk to the keep"
+}
+
 const CALL_GAP = Math.PI / 3.6
 
 export function edgeCalls(monsters) {

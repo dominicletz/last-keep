@@ -5,7 +5,7 @@ import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, swingSeen } from "./paint"
-import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
@@ -130,6 +130,8 @@ function start(code, seat, ui) {
   const fx = []
   const seen = { kinds: [], labels: [], log: [] }
   let reasonEntry = { text: "", until: 0 }
+  let raiseHover = false
+  let raiseCue = { text: "", until: 0 }
   let placeTick = null
   let focused = document.hasFocus()
   let pinned = false
@@ -469,6 +471,25 @@ function start(code, seat, ui) {
       input.raise = false
     }
   })
+  const raiseHit = ui.hud.querySelector("[data-raise-hit]")
+  const cueRaise = () => {
+    const button = raiseHit.querySelector("[data-raise]")
+    const meNow = (latest?.players || []).find((player) => player.id === selfId)
+    const offer = latest?.upgrade
+    const text = raiseHint(!!button?.disabled, meNow, offer)
+    if (!text) return
+    raiseCue = showReason(raiseCue, text, performance.now(), 2200, true)
+    refresh()
+  }
+  raiseHit.addEventListener("pointerenter", () => {
+    raiseHover = true
+    refresh()
+  })
+  raiseHit.addEventListener("pointerleave", () => {
+    raiseHover = false
+    refresh()
+  })
+  raiseHit.addEventListener("pointerup", cueRaise)
 
   function send() {
     blurHiddenFocus(document)
@@ -621,9 +642,10 @@ function start(code, seat, ui) {
       button.classList.toggle("on", kind === armed)
     })
     const cost = armed && me?.costs ? me.costs[armed] : null
-    const preview = armed ? placementReason({ ...me, cost }, aim, snap.resources) : ""
-    const denied = (snap.events || []).find((ev) => ev.type === "deny" && ev.reason)
     const now = performance.now()
+    const raiseNote = raiseHint(!!raise?.disabled && (raiseHover || reasonOpen(raiseCue, now)), me, snap.upgrade)
+    const preview = armed ? placementReason({ ...me, cost }, aim, snap.resources) : raiseNote
+    const denied = (snap.events || []).find((ev) => ev.type === "deny" && ev.reason)
     if (denied) reasonEntry = showReason(reasonEntry, denied.reason, now, 2200, true)
     else reasonEntry = showReason(reasonEntry, preview, now)
     const reasonNode = ui.hud.querySelector("[data-build-reason]")
@@ -712,7 +734,7 @@ function hudMarkup() {
     <div class="hud-top">
       <div class="actions">
         <button type="button" data-start hidden>Start the night</button>
-        <button type="button" data-raise>Raise the keep</button>
+        <span data-raise-hit><button type="button" data-raise>Raise the keep</button></span>
         <button type="button" data-copy>Copy invite</button>
         <div class="sound"><button type="button" data-mute>Sound</button><input type="range" min="0" max="100" value="70" data-volume aria-label="Volume"></div>
       </div>

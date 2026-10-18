@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -71,6 +71,15 @@ test("raising the keep names the wood and gold it costs", () => {
   assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 2 }), false)
   assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }), true)
   assert.equal(raiseReady(null, { wood: 48, gold: 8 }), false)
+})
+
+test("a disabled raise away from the keep says to walk there", () => {
+  const offer = { wood: 24, gold: 8, rank: 1 }
+  assert.equal(raiseHint(true, { x: -122, y: -252 }, offer), "Walk to the keep")
+  assert.equal(raiseHint(true, { x: 120, y: 0 }, offer), "Walk to the keep")
+  assert.equal(raiseHint(true, { x: 40, y: 0 }, offer), "")
+  assert.equal(raiseHint(false, { x: -122, y: -252 }, offer), "")
+  assert.equal(raiseHint(true, { x: -122, y: -252 }, null), "")
 })
 
 test("an edge call beside the roster stops short of the names", () => {
