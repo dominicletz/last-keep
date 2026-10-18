@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { heroSilhouettes, joinFromForm, paradeShowsEveryKind, prepareProof, scoreList, squarePixels, twoPlayerNight } = require("./scenarios")
+const { heroSilhouettes, joinFromForm, paradeShowsEveryKind, prepareProof, scoreList, squarePixels, townGrows, twoPlayerNight } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -27,4 +27,8 @@ test("the five heroes stand as different bodies", async ({ browser }) => {
 test("a scripted night puts every monster kind on the yard", async ({ browser }) => {
   test.skip(Boolean(process.env.BASE_URL), "the parade is only on the suite server")
   await paradeShowsEveryKind(browser)
+})
+
+test("the town ring grows when the keep is raised and the farmer has worked", async ({ browser }) => {
+  await townGrows(browser)
 })

@@ -11,6 +11,8 @@ defmodule LastKeep.Game.State do
     keep: %{hp: 900, max_hp: 900, r: 54.0},
     town: 0,
     resources: %{wood: 48, food: 8, gold: 0},
+    staked: MapSet.new(),
+    labor: 0,
     players: %{},
     entities: %{},
     next_id: 1,

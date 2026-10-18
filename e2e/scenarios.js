@@ -932,6 +932,97 @@ async function mobileTouch(browser) {
   await context.close()
 }
 
+async function townGrows(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "farmer")
+  const page = host.page
+  watch(page, "host", errors)
+  const code = await page.evaluate(() => document.body.dataset.code)
+  const guest = await joinQuery(browser, code, "Bob", "warrior")
+  const friend = guest.page
+  watch(friend, "guest", errors)
+
+  const waiting = () => {
+    const game = window.__lastKeep
+    return game && game.town === 0 && game.buildings === 0 && game.wood === 48 && game.phase === "build"
+  }
+  await page.waitForFunction(waiting)
+  await friend.waitForFunction(waiting)
+
+  const aims = [
+    [144, 0],
+    [180, 0],
+    [144, -36],
+    [180, -36]
+  ]
+  for (const [x, y] of aims) {
+    const before = await page.evaluate(
+      () => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length
+    )
+    const spot = await page.evaluate((point) => window.__lastKeep.toClient(point.x, point.y), { x, y })
+    await page.mouse.move(spot.x, spot.y)
+    await pressKey(page, "KeyQ")
+    await page.waitForFunction(
+      (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
+      before
+    )
+    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0)
+  }
+
+  expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(48)
+  const open = await page.evaluate(() => {
+    const rows = window.__lastKeep.structures || []
+    return rows.some((row) => (row.x === 108 && row.y === 36) || (row.x === -108 && row.y === 36))
+  })
+  expect(open).toBe(false)
+
+  await page.waitForFunction(
+    () => {
+      const text = document.querySelector("[data-sack='gold']")?.textContent || ""
+      const match = text.match(/(\d+)/)
+      return match && Number(match[1]) >= 8
+    },
+    undefined,
+    { timeout: 25_000 }
+  )
+  expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(48)
+
+  await holdKey(page, "KeyA", true)
+  await holdKey(page, "KeyW", true)
+  await page.waitForFunction(() => {
+    const me = window.__lastKeep.self
+    return me && Math.hypot(me.x, me.y) <= 100
+  })
+  await holdKey(page, "KeyA", false)
+  await holdKey(page, "KeyW", false)
+  await page.locator("[data-raise]").click()
+
+  const grown = () => {
+    const game = window.__lastKeep
+    if (!game || game.town !== 1 || game.phase !== "build" || game.wood !== 22 || game.dirt !== 190) return false
+    if (Math.abs(game.ring - 190 / 150) > 0.001) return false
+    const houses = (game.structures || []).filter((row) => row.kind === "house")
+    if (houses.length !== 4) return false
+    const placed = houses.every((row) => {
+      const dist = Math.hypot(row.x, row.y)
+      return dist > 140 && dist < 190
+    })
+    if (!placed) return false
+    const fields = (game.structures || []).filter((row) => row.kind === "field")
+    const has = (x, y) => fields.some((row) => row.x === x && row.y === y)
+    return has(108, 36) && has(-108, 36)
+  }
+  await page.waitForFunction(grown)
+  await friend.waitForFunction(grown)
+
+  await expect(page.locator("[data-chrome]")).toHaveCount(10)
+  await expect(page.locator("[data-build]")).toHaveCount(6)
+  await page.screenshot({ path: shot("town-growth-host.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+  await guest.context.close()
+}
+
 async function scoreList(request) {
   const response = await request.get("/api/highscores")
   expect(response.ok()).toBeTruthy()
@@ -954,5 +1045,6 @@ module.exports = {
   scoreList,
   heroSilhouettes,
   paradeShowsEveryKind,
-  mobileTouch
+  mobileTouch,
+  townGrows
 }

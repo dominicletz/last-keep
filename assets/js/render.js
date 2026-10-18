@@ -359,7 +359,7 @@ export function createView(stage) {
 
       sync("monster", drawn.monsters, (row) => monsterMesh(row))
 
-      sync("building", drawn.buildings, (row) => groupFrom(modelParts(row.kind)))
+      sync("building", drawn.buildings, (row) => buildingMesh(row))
 
       sync("tree", snap.trees || [], () => groupFrom(modelParts("tree")))
 
@@ -448,6 +448,14 @@ export function createView(stage) {
         figures,
         rangeRing: rangeRingState(rangeRing.visible, bearer.range),
         buildings: (snap.buildings || []).length,
+        town: snap.town,
+        dirt: snap.dirt,
+        ring: ring.scale.x,
+        structures: (snap.buildings || []).map((row) => ({
+          kind: row.kind,
+          x: row.x,
+          y: row.y
+        })),
         projectiles: snap.projectiles || [],
         relics: snap.relics || [],
         forge: !!snap.forge,
@@ -638,6 +646,19 @@ export function createView(stage) {
     const group = new THREE.Group()
     for (const piece of parts) group.add(pieceMesh(piece))
     return group
+  }
+
+  function buildingMesh(row) {
+    if (row.kind === "house") return houseMesh()
+    return groupFrom(modelParts(row.kind))
+  }
+
+  function houseMesh() {
+    // y 20 puts the cone base on the wall. The wall center is 7 and its height is 14.
+    return groupFrom([
+      { shape: "box", w: 22, h: 14, d: 18, x: 0, y: 7, z: 0, color: 0x8e755b },
+      { shape: "cone", w: 28, h: 12, d: 28, x: 0, y: 20, z: 0, color: 0x43382e }
+    ])
   }
 
   function pieceMesh(piece) {

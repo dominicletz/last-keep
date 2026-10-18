@@ -52,7 +52,7 @@ The interaction graph is [`docs/GAME-INTERACTIONS.md`](../docs/GAME-INTERACTIONS
 | --- | --- | --- | --- | --- | --- |
 | LK-021 | Dominic, interaction graph | logic | high | Elites do not drop relics. CONCEPT.md says bosses and elites do. A boss or an elite now drops one. Guarded by "an elite drops a relic and a plain goblin does not". | done |
 | LK-022 | Dominic, interaction graph | gameplay | high | The spire does not unlock spells. It only raises mage damage and shortens mage cooldowns. The meteor now waits for the spire. Guarded by "the spire unlocks the meteor". | done |
-| LK-023 | Dominic, interaction graph | gameplay | medium | There is no city-growth layer. The party places every building by hand. | open |
+| LK-023 | Dominic, interaction graph | gameplay | medium | There is no city-growth layer. The party places every building by hand. Raising the keep stakes the next ring of houses, and farmer labor stakes crofts. Guarded by "a raised keep stakes houses and farmer labor stakes crofts" and `townGrows`. | done |
 | LK-024 | queued playtest loop | audio | high | Day and night loops, a horn, a clear, and hit, kill, build, keep-hit, and fall cues. Mute and volume persist. Guarded by `audio.test.js` and `twoPlayerNight`. | done |
 | LK-025 | queued playtest loop | gameplay | medium | Five specialists share one room through `e2e/playtest/`. The check is `e2e/playtest.spec.js`. | done |
 | LK-026 | Dominic manual | logic | high | Monster bodies block, and a gap in a wall lets one through at a time. Guarded by "a gap in a long wall lets goblins through one at a time" and "two goblins that share a spot step apart". | done |

@@ -1005,6 +1005,196 @@ defmodule LastKeep.Game.SimTest do
     mage
   end
 
+  test "a raised keep stakes houses and farmer labor stakes crofts" do
+    state = approach_and_raise(:warrior, 200, 80)
+    assert state.town == 1
+    assert state.resources.wood == 176
+    assert state.resources.gold == 72
+
+    houses = of_kind(state, :house)
+    ring = MapSet.new([{108.0, 108.0}, {-108.0, 108.0}, {-108.0, -108.0}, {108.0, -108.0}])
+    assert length(houses) == 4
+    assert of_kind(state, :field) == []
+    assert cells(houses) == ring
+
+    for house <- houses do
+      dist = :math.sqrt(house.x * house.x + house.y * house.y)
+      assert dist > 140
+      assert dist < 190
+    end
+
+    state =
+      Enum.reduce(1..2, state, fn _, state ->
+        state
+        |> push("ada", %{"raise" => false, "mx" => 0, "my" => 0})
+        |> Sim.tick()
+      end)
+
+    assert length(of_kind(state, :house)) == 4
+    assert cells(of_kind(state, :house)) == ring
+    assert state.resources.wood == 176
+    assert of_kind(state, :field) == []
+
+    state = %{state | tick: 119}
+    state = state |> push("ada", %{"raise" => false, "mx" => 0, "my" => 0}) |> Sim.tick()
+    assert state.resources.gold == 73
+    assert of_kind(state, :field) == []
+
+    wood = state.resources.wood
+    gold = state.resources.gold
+
+    state =
+      state
+      |> push("ada", %{"raise" => true, "mx" => 0, "my" => 0})
+      |> Sim.tick()
+
+    assert state.tick == 121
+    assert state.resources.wood == wood - 36
+    assert state.resources.gold == gold - 14
+    assert state.town == 2
+    houses = of_kind(state, :house)
+    assert length(houses) == 8
+
+    furthest =
+      houses
+      |> Enum.map(fn house -> :math.sqrt(house.x * house.x + house.y * house.y) end)
+      |> Enum.max()
+
+    assert furthest > 200
+    assert of_kind(state, :field) == []
+
+    state = approach_and_raise(:farmer, 80, 40)
+    assert state.town == 1
+    assert state.resources.wood == 56
+    assert state.resources.gold == 32
+    assert length(of_kind(state, :house)) == 4
+    assert of_kind(state, :field) == []
+
+    state = %{state | tick: 10}
+
+    state =
+      state
+      |> push("ada", %{
+        "q" => true,
+        "ax" => 144,
+        "ay" => 0,
+        "mx" => 0,
+        "my" => 0,
+        "raise" => false
+      })
+      |> Sim.tick()
+
+    assert state.tick == 11
+    assert rem(state.tick, 80) != 0
+    assert rem(state.tick, 120) != 0
+    assert state.resources.wood == 55
+    fields = of_kind(state, :field)
+    assert length(fields) == 2
+    assert Enum.any?(fields, &(&1.x == 108.0 and &1.y == 36.0))
+    assert Enum.any?(fields, &(&1.x == 144.0 and &1.y == 0.0))
+    standing = cells(of_kind(state, :house))
+
+    state =
+      state
+      |> push("ada", %{"q" => false, "mx" => 0, "my" => 0, "raise" => false})
+      |> Sim.tick()
+
+    assert state.tick == 12
+    assert length(of_kind(state, :field)) == 2
+    assert state.resources.wood == 55
+    assert cells(of_kind(state, :house)) == standing
+
+    food = state.resources.food
+
+    state =
+      state
+      |> push("ada", %{"e" => true, "q" => false, "mx" => 0, "my" => 0, "raise" => false})
+      |> Sim.tick()
+
+    assert state.resources.food > food
+    assert state.resources.wood == 54
+    assert length(of_kind(state, :field)) == 3
+    assert Enum.any?(of_kind(state, :field), &(&1.x == -108.0 and &1.y == 36.0))
+
+    state = approach_and_raise(:farmer, 80, 40)
+    state = %{state | resources: %{state.resources | wood: 0}, tick: 10}
+
+    state =
+      state
+      |> push("ada", %{
+        "q" => true,
+        "ax" => 144,
+        "ay" => 0,
+        "mx" => 0,
+        "my" => 0,
+        "raise" => false
+      })
+      |> Sim.tick()
+
+    assert state.tick == 11
+    assert state.resources.wood == 0
+    assert Enum.any?(of_kind(state, :field), &(&1.x == 144.0 and &1.y == 0.0))
+    refute Enum.any?(of_kind(state, :field), &(&1.x == 108.0 and &1.y == 36.0))
+
+    state = %{state | resources: %{state.resources | wood: 1}}
+
+    state =
+      state
+      |> push("ada", %{"q" => false, "mx" => 0, "my" => 0, "raise" => false})
+      |> Sim.tick()
+
+    assert state.tick == 12
+    assert rem(state.tick, 80) != 0
+    assert state.resources.wood == 0
+    assert Enum.any?(of_kind(state, :field), &(&1.x == 108.0 and &1.y == 36.0))
+
+    state = approach_and_raise(:farmer, 80, 40)
+    assert of_kind(state, :field) == []
+    assert length(of_kind(state, :house)) == 4
+    assert state.resources.wood == 56
+    state = %{state | resources: %{state.resources | wood: 10}, tick: 79}
+
+    state =
+      state
+      |> push("ada", %{"q" => false, "e" => false, "mx" => 0, "my" => 0, "raise" => false})
+      |> Sim.tick()
+
+    assert state.tick == 80
+    assert state.resources.wood == 9
+    assert length(of_kind(state, :field)) == 1
+    assert Enum.any?(of_kind(state, :field), &(&1.x == 108.0 and &1.y == 36.0))
+
+    state =
+      state
+      |> push("ada", %{"mx" => 0, "my" => 0, "raise" => false})
+      |> Sim.tick()
+
+    assert length(of_kind(state, :field)) == 1
+    assert state.resources.wood == 9
+    assert length(of_kind(state, :house)) == 4
+  end
+
+  defp approach_and_raise(hero, wood, gold) do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", hero))
+    state = %{state | resources: %{state.resources | wood: wood, gold: gold}, tick: 1}
+
+    state =
+      Enum.reduce(1..20, state, fn _, state ->
+        state
+        |> push("ada", %{"mx" => -1, "my" => 0})
+        |> Sim.tick()
+      end)
+
+    state
+    |> push("ada", %{"raise" => true, "mx" => 0, "my" => 0})
+    |> Sim.tick()
+  end
+
+  defp of_kind(state, kind), do: Enum.filter(buildings(state), &(&1.kind == kind))
+
+  defp cells(rows), do: MapSet.new(Enum.map(rows, &{&1.x, &1.y}))
+
   defp place_wall(hero) do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 400)
     {:ok, state} = Sim.join(state, player("ada", hero))
