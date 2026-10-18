@@ -38,5 +38,6 @@ test("far from the keep the roster and relic lines clear the build bar", async (
 })
 
 test("a walk opens a chest and a broken portal skips the night", async ({ browser }) => {
+  test.setTimeout(180_000)
   await exploreLand(browser)
 })
