@@ -373,11 +373,7 @@ export function createView(stage) {
   function paintFrame() {
     renderer.render(scene, camera)
     renders += 1
-    fieldSample = sampleYard(renderer.getContext(), renderer.domElement)
-    if (window.__lastKeep) {
-      window.__lastKeep.renders = renders
-      window.__lastKeep.field = fieldSample
-    }
+    if (window.__lastKeep) window.__lastKeep.renders = renders
   }
 
   function sampleYard(gl, canvas) {
@@ -878,6 +874,8 @@ export function createView(stage) {
 
   function brightNear(x, z, height = 16) {
     paintFrame()
+    fieldSample = sampleYard(renderer.getContext(), renderer.domElement)
+    if (window.__lastKeep) window.__lastKeep.field = fieldSample
     const gl = renderer.getContext()
     const point = new THREE.Vector3(x, height, z).project(camera)
     const canvas = renderer.domElement
