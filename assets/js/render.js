@@ -384,12 +384,20 @@ export function createView(stage) {
     ]
     const buf = new Uint8Array(width * height * 4)
     let best = null
+    let flat = null
     for (const [x, y] of spots) {
       gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, buf)
       const stats = patchStats(buf)
+      // The circle past the tile is one lit color. Variance 0 was beating the
+      // clearing, and the house was then scored against that disc.
+      if (stats.variance === 0) {
+        if (!flat) flat = stats
+        continue
+      }
       if (!best || stats.variance < best.variance) best = stats
     }
-    return best ? { ...best, light: liveLight } : null
+    const picked = best || flat
+    return picked ? { ...picked, light: liveLight } : null
   }
 
   window.addEventListener("pointerdown", noteInput)
@@ -979,6 +987,10 @@ export function createView(stage) {
 
   function buildingMesh(row) {
     const group = row.kind === "house" ? groupFrom(houseParts(houseVariant(row.x, row.y))) : groupFrom(modelParts(row.kind))
+    // The clearing tile replaced the flat bright grass. The lit cottage was 492
+    // pixels above that tile, under the floor of 619. The mesh grows from its
+    // ground point so the same cottage clears the floor.
+    if (row.kind === "house") group.scale.setScalar(1.25)
     const radius = row.kind === "house" || row.kind === "field" ? 22 : 12
     group.add(contactDisc(radius))
     return group

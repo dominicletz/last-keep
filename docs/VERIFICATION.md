@@ -238,6 +238,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 - A raised house is a voxel cottage. Timber, whitewash, thatch, and a lit window vary by the snapped cell. `a house is a timber cottage with a lit window` checks the three variants. The voxel detail floor includes the house and the field. Other buildings stay exempt.
 - The plaza disc, the stone curb, and the ground disc use `plazaSides` 48. The disc is grass `#5c642f` and the curb is stone `#4b3c33`. The live page reports `plazaSides` on `townLook`.
 - The outer ring is seventy stumps and felled logs at the same three distances, with wood 0 and no crown. `townGrows` requires one house to read above the grass. The sample floor is 619, half of a measured 1238. This does not change the simulation. The coverage floor stays 74.
+- The concept clearing is darker than that flat grass. A corner of the untextured disc is variance 0, and it was the field sample, so the cottage was scored against the disc. The sample now prefers a textured patch. The lit cottage on the tile was 492 pixels above the grass, under 619. The house mesh is scaled 1.25 from its ground point, and the same sample then read 790. The floor stays 619.
 
 ## 2026-10-18 the frame, not the patch
 
