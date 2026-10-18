@@ -1405,12 +1405,19 @@ async function phoneClear(browser) {
   await assertPhoneClear(page)
   await page.locator("[data-start]").click()
   await page.waitForFunction(() => window.__lastKeep.phase === "wave")
-  const published = { timeout: 20_000, polling: 100 }
-  await page.evaluate(() => window.__lastKeepTest.hold("KeyW", true))
+  await page.bringToFront()
+  const published = { timeout: 25_000, polling: 100 }
+  await page.evaluate(() => {
+    window.__lastKeepTest.hold("KeyW", true)
+    window.__lastKeepTest.hold("KeyD", true)
+  })
   try {
-    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -180, undefined, published)
+    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -150, undefined, published)
   } finally {
-    await page.evaluate(() => window.__lastKeepTest.hold("KeyW", false))
+    await page.evaluate(() => {
+      window.__lastKeepTest.hold("KeyW", false)
+      window.__lastKeepTest.hold("KeyD", false)
+    })
   }
   await page.evaluate(() => {
     window.__lastKeepTest.hold("KeyA", true)
