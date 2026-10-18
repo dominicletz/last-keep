@@ -119,6 +119,16 @@ test("the context button is a legal place, a paid raise, or a feed", () => {
   })
   assert.deepEqual(raise, { id: "raise" })
 
+  const woods = contextAction({
+    hero: { x: -232, y: -396, range: 180 },
+    keepR: 54,
+    resources: { wood: 72, gold: 12, food: 8 },
+    upgrade: { wood: 24, gold: 8 },
+    armed: null,
+    buildings: []
+  })
+  assert.deepEqual(woods, { id: "raise" })
+
   const feed = contextAction({
     hero: { x: 80, y: 0, range: 165 },
     keepR: 54,

@@ -854,6 +854,70 @@ defmodule LastKeep.Game.SimTest do
     assert state.keep.hp < 900
   end
 
+  test "the wave timer keeps moving from frenzy in 43s with the keep at 291" do
+    state = Sim.new("KEEP01", seed: 3, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+
+    state =
+      put_hero(state, %{ada | x: -232.0, y: -396.0})
+      |> Map.put(:wave, 3)
+      |> Map.put(:kills, 15)
+      |> Map.put(:hold, false)
+      |> Map.put(:phase, {:wave, 860})
+      |> Map.put(:keep, %{state.keep | hp: 291, max_hp: 900})
+      |> Map.put(:resources, %{state.resources | wood: 72, gold: 12})
+
+    state = Sim.spawn_monster(state, %{kind: :troll, x: 80.0, y: 0.0, hp: 1_000_000, wave: 3})
+    state = %{state | keep: %{state.keep | hp: 100_000, max_hp: 100_000}}
+
+    snap = Snapshot.render(state)
+    assert snap.phase == "wave"
+    assert snap.phase_ms == 43_000
+    assert snap.enraged == false
+    assert snap.kills == 15
+    assert Jason.encode!(snap)
+
+    state =
+      Enum.reduce(1..900, state, fn _, state ->
+        previous = state.phase
+        state = Sim.tick(state)
+        assert state.keep.hp > 0
+        assert state.phase != previous
+        assert match?({:wave, _}, state.phase)
+        state
+      end)
+
+    assert state.enraged
+    assert Sim.monsters(state) != []
+    snap = Snapshot.render(state)
+    assert snap.phase_ms < 0
+    assert Jason.encode!(snap)
+  end
+
+  test "a raise from the reported woods spends the purse and stakes houses" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    state = put_hero(state, %{ada | x: -232.0, y: -396.0})
+    state = %{state | resources: %{state.resources | wood: 72, gold: 12}}
+
+    state =
+      push(state, "ada", %{"raise" => true})
+      |> Sim.tick()
+
+    assert state.town == 1
+    assert state.resources.wood == 48
+    assert state.resources.gold == 4
+    assert length(of_kind(state, :house)) == 4
+    refute Enum.any?(state.events, &(&1.type == "deny" and &1.reason == "Stand by the keep"))
+
+    snap = Snapshot.render(state)
+    assert snap.town == 1
+    assert snap.camera == 186
+    assert Jason.encode!(snap)
+  end
+
   test "raising the keep spends wood and gold and widens the town" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :warrior))
