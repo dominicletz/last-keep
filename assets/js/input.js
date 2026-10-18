@@ -52,6 +52,25 @@ export function blurHiddenFocus(doc) {
   }
 }
 
+// The socket may encode a push after the next key change. The frame is the
+// tap that was true at the moment of the push.
+export function inputFrame(input) {
+  return {
+    mx: input.mx,
+    my: input.my,
+    ax: input.ax,
+    ay: input.ay,
+    attack: !!input.attack,
+    place: !!input.place,
+    raise: !!input.raise,
+    q: !!input.q,
+    e: !!input.e,
+    r: !!input.r,
+    f: !!input.f,
+    build: input.build
+  }
+}
+
 export function axes(keys) {
   // The camera sits on the +x +z diagonal, so W moves toward the top of the screen.
   const f = Math.SQRT1_2

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, blurHiddenFocus, isTypingTarget, seatFromQuery } from "./input.js"
+import { axes, blurHiddenFocus, inputFrame, isTypingTarget, seatFromQuery } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -70,6 +70,16 @@ test("blurring a hidden field does not chase focus", () => {
   assert.equal(radio.blurCount, 1)
   assert.equal(canvas.focusCount, 1)
   assert.equal(blurHiddenFocus(doc), false)
+})
+
+test("a skill tap keeps its value if the socket sends it later", () => {
+  const input = { mx: 0, my: 0, ax: 1, ay: 2, attack: false, place: false, raise: false, q: true, e: false, r: false, f: false, build: null }
+  const frame = inputFrame(input)
+  input.q = false
+  input.attack = true
+  assert.equal(frame.q, true)
+  assert.equal(frame.attack, false)
+  assert.equal(frame.ax, 1)
 })
 
 test("W moves toward the top of the isometric view", () => {
