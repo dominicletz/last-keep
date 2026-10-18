@@ -252,7 +252,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 ## 2026-10-18 the ground at the camera
 
-- Whole-frame contrast can pass while the plaza under the camera is one wash. `groundSpread` is the 25th percentile of block deviation from 42% to 90% of the frame, counted from the top. Under 8 fails. `theme.jpg` passes. The afternoon frames in `assets/js/fixtures/yard-*.jpg` fail. The floor does not go down. The live read flips the bottom-up framebuffer so that band is the near yard. A bottom-up read was scoring the far wash and failing a worn ground.
+- Whole-frame contrast can pass while the plaza under the camera is one wash. `groundSpread` is the 25th percentile of block deviation from 42% to 90% of the frame, counted from the top. Under 8 fails. `theme.jpg` passes. The afternoon frames in `assets/js/fixtures/yard-*.jpg` fail. The floor does not go down. The live read flips the bottom-up framebuffer so that band is the near yard. A bottom-up read was scoring the far wash and failing a worn ground. Dusk sunset flecks stay inside the plaza and past the pine wall. The wall band is grass, so the inner crown sample does not pick up the keep stone's hue.
 - A worn disc sits on the plaza mesh. Tufts, dirt, and stones use the grass, path, and stone tokens. Soft contact discs follow heroes, buildings, and the pine wall. The plaza mesh, the houses, and the hero models are unchanged. `twoPlayerNight` reads `frameGround` in day, dusk, and night. This does not change the simulation. The coverage floor stays 74.
 
 ## 2026-10-18 the image ships the commit's bundle

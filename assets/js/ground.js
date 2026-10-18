@@ -49,7 +49,11 @@ function paint(phase, size, span) {
       else if (n > 0.74) color = LIGHT
       if (n2 < 0.07) color = STONE
       else if (n2 < 0.12) color = PEBBLE
-      if (phase === "dusk" && n2 > 0.86) color = SUNSET
+      // The inner pine crown is a few pixels. The dusk sample around it is mostly
+      // the ground behind that crown. Sunset flecks there pull the pine hue onto
+      // the keep stone. Flecks stay in the plaza and past the wall.
+      const pineBand = radius > 168 && radius < 330
+      if (phase === "dusk" && n2 > 0.86 && !pineBand) color = SUNSET
       const pathBand = Math.min(Math.abs(worldX), Math.abs(worldZ))
       const along = Math.max(Math.abs(worldX), Math.abs(worldZ))
       if (pathBand < 12 + n * 14 && along < span * 0.46) color = mix(PATH, color, pathBand / 30)
