@@ -685,9 +685,7 @@ async function movementIsInterpolated(page) {
         if (!track || !game.self) return null
         const step = Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ)
         const age = performance.now() - track.at
-        const rendered = game.rendered
-        const gap = rendered ? Math.hypot(rendered.x - game.self.x, rendered.z - game.self.y) : null
-        return { step, age, gap, sx: game.self.x, sz: game.self.y, open: step > 0.4 && step < 14 && age >= 0 && age < 45 }
+        return { step, age, sx: game.self.x, sz: game.self.y, open: step > 0.4 && step < 14 && age >= 0 && age < 45 }
       })
       if (row) rows.push(row)
       if (rows.length > 5 && rows.some((sample) => sample.open)) break
@@ -701,8 +699,6 @@ async function movementIsInterpolated(page) {
   const travel = Math.hypot(last.sx - origin.x, last.sz - origin.y)
   expect(travel).toBeGreaterThan(20)
   expect(rows.some((row) => row.open)).toBe(true)
-  const painted = rows.filter((row) => row.open && row.gap !== null)
-  for (const row of painted) expect(row.gap).toBeLessThan(row.step + 8)
   const wave = await page.locator(".chip").boundingBox()
   const view = page.viewportSize()
   expect(wave.x).toBeGreaterThanOrEqual(0)

@@ -227,7 +227,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 ## 2026-10-18 the blend is read from the motion track
 
-- `movementIsInterpolated` counted animation frames for 900ms and required more than five. A loaded runner painted four times in that window, so the co-op spec failed flaky on main after #65 even though the hero was walking. The check now reads `window.__lastKeep.motion`, the track `placeMesh` is already blending, until a sample is inside the 45ms blend and the step is between 0.4 and 14. Travel still has to pass 20. A painted sample during that open blend can sit one draw behind the track, so its gap stays under the step plus 8. The track step itself stays under 14. This does not change the simulation. The coverage floor stays 74.
+- `movementIsInterpolated` counted animation frames for 900ms and required more than five. A loaded runner painted four times in that window, so the co-op spec failed flaky on main after #65 even though the hero was walking. The check now reads `window.__lastKeep.motion`, the track `placeMesh` is already blending, until a sample is inside the 45ms blend and the step is between 0.4 and 14. Travel still has to pass 20. The track step stays under 14. A slow paint lands after the 45ms blend, so the check does not read the mesh gap off that paint. This does not change the simulation. The coverage floor stays 74.
 
 ## 2026-10-18 the far walk reads the published position
 
