@@ -853,13 +853,24 @@ defmodule LastKeep.Game.SimTest do
     assert me.hp == 0
     assert me.max == 125
     assert me.alive == false
+
+    standing =
+      fall_beside(
+        fn bram -> %{bram | hp: 0, alive: false, respawn: 1, x: 800.0, y: 800.0} end,
+        900
+      )
+
+    me = bram_snap(standing)
+    assert standing.phase != :over
+    assert me.hp == 125
+    assert me.alive
   end
 
-  defp fall_beside(change) do
+  defp fall_beside(change, keep_hp \\ 6) do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 50, hold: false)
     {:ok, state} = Sim.join(state, player("bram", :engineer))
     state = put_hero(state, change.(hero(state, "bram")))
-    state = %{state | phase: {:wave, 400}, wave: 1, keep: %{state.keep | hp: 6}}
+    state = %{state | phase: {:wave, 400}, wave: 1, keep: %{state.keep | hp: keep_hp}}
     state = Sim.spawn_monster(state, %{kind: :goblin, x: 70, y: 0, damage: 20, wave: 1})
     Sim.tick(state)
   end

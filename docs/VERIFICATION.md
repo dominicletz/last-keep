@@ -172,3 +172,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-18 the palisade reads as a wall
 
 - A placed wall is five posts at least 7 by 40 with two rails and a flame. The recorded silhouette floor is 1411. The thin 4 by 24 posts were the wall that did not read in round 7. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-18 a fallen keep does not refill a hero
+
+- Respawn runs after the keep is checked. A hero at 81 health is still at 81 on the fallen snapshot. A downed hero whose timer is up stays down, instead of returning at full kit health on that same tick. A downed hero still returns when the keep stands. The coverage floor stays 69.

@@ -117,7 +117,6 @@ defmodule LastKeep.Game.Sim do
     state
     |> bump()
     |> cooldowns()
-    |> respawns()
     |> move_heroes()
     |> gather()
     |> abilities()
@@ -127,6 +126,7 @@ defmodule LastKeep.Game.Sim do
     |> step_monsters()
     |> economy()
     |> advance_phase()
+    |> respawns()
   end
 
   def spawn_monster(%State{} = state, attrs) do
@@ -313,6 +313,8 @@ defmodule LastKeep.Game.Sim do
 
     %{state | entities: entities}
   end
+
+  defp respawns(%{phase: :over} = state), do: state
 
   defp respawns(state) do
     Enum.reduce(heroes(state), state, fn hero, state ->
