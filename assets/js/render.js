@@ -255,7 +255,7 @@ export function createView(stage) {
       group.position.set(slot.x, 0, slot.z)
       group.scale.setScalar(slot.scale)
       group.rotation.y = slot.angle
-      group.add(contactDisc(18))
+      group.add(contactDisc(8))
       group.traverse((child) => {
         child.castShadow = false
         child.receiveShadow = false
@@ -763,9 +763,20 @@ export function createView(stage) {
   function readFrame() {
     paintFrame()
     const canvas = renderer.domElement
-    const buf = new Uint8Array(canvas.width * canvas.height * 4)
-    renderer.getContext().readPixels(0, 0, canvas.width, canvas.height, renderer.getContext().RGBA, renderer.getContext().UNSIGNED_BYTE, buf)
-    return { buf, width: canvas.width, height: canvas.height }
+    const gl = renderer.getContext()
+    const width = canvas.width
+    const height = canvas.height
+    const raw = new Uint8Array(width * height * 4)
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, raw)
+    // readPixels is bottom-up. The ground band counts from the top of the picture,
+    // the same way the jpeg check does, so the near yard is the rows under the sky.
+    const buf = new Uint8Array(width * height * 4)
+    const stride = width * 4
+    for (let y = 0; y < height; y++) {
+      const src = (height - 1 - y) * stride
+      buf.set(raw.subarray(src, src + stride), y * stride)
+    }
+    return { buf, width, height }
   }
 
   function frameMood() {

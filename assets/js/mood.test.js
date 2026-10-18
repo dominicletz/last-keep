@@ -54,6 +54,30 @@ test("the 2026-10-18 live frames fail the same comparison", () => {
   assert.ok(day.mood.lime > dusk.mood.lime)
 })
 
+test("ground spread reads the near yard, under the sky", () => {
+  const width = 80
+  const height = 100
+  const band = (y0, y1) => {
+    const rgba = new Uint8Array(width * height * 4)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const worn = y >= y0 && y < y1 && ((x + y) & 1) === 0
+        const value = worn ? 220 : 20
+        const offset = (y * width + x) * 4
+        rgba[offset] = value
+        rgba[offset + 1] = value
+        rgba[offset + 2] = value
+        rgba[offset + 3] = 255
+      }
+    }
+    return groundSpread(rgba, width, height)
+  }
+  const near = band(42, 90)
+  assert.deepEqual(groundProblems(near), [], JSON.stringify(near))
+  const sky = band(0, 40)
+  assert.ok(groundProblems(sky).length > 0, JSON.stringify(sky))
+})
+
 test("the concept ground is worn and today's yard frames are a flat wash", () => {
   const concept = loadJpeg(path.join(here, "../../docs/concept/theme.jpg"))
   assert.deepEqual(groundProblems(concept.ground), [], JSON.stringify(concept.ground))

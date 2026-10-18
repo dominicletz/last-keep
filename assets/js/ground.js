@@ -1,7 +1,7 @@
 // Grass, path, pine shade, stone, and the sunset band. Hexes are the STYLE.md tokens.
 // The outer plane covers the camera. The plaza disc covers the flat town circle
 // the camera stands on, without replacing that circle's mesh.
-export const GROUND_TEX = 256
+export const GROUND_TEX = 512
 export const GROUND_SPAN = 760
 export const PLAZA_TEX = 256
 export const PLAZA_SPAN = 300
@@ -44,11 +44,12 @@ function paint(phase, size, span) {
       const n = hash(ix, iy)
       const n2 = hash(ix + 19, iy - 7)
       let color = GRASS
-      if (n < 0.34) color = SHADE
-      else if (n < 0.55) color = TUFT
-      else if (n > 0.8) color = LIGHT
+      if (n < 0.42) color = SHADE
+      else if (n < 0.62) color = TUFT
+      else if (n > 0.74) color = LIGHT
       if (n2 < 0.07) color = STONE
       else if (n2 < 0.12) color = PEBBLE
+      if (phase === "dusk" && n2 > 0.86) color = SUNSET
       const pathBand = Math.min(Math.abs(worldX), Math.abs(worldZ))
       const along = Math.max(Math.abs(worldX), Math.abs(worldZ))
       if (pathBand < 12 + n * 14 && along < span * 0.46) color = mix(PATH, color, pathBand / 30)
@@ -60,9 +61,7 @@ function paint(phase, size, span) {
         else color = mix(color, SHADE, 0.15 + edge * 0.4)
       }
       if (phase === "night") {
-        if (color === SHADE) color = NIGHT
-        else if (color === TUFT) color = SHADE
-        else if (color === GRASS) color = TUFT
+        if (color === SHADE || color === TUFT || color === GRASS) color = NIGHT
       }
       const offset = (iy * size + ix) * 4
       rgba[offset] = color[0]

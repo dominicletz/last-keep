@@ -44,7 +44,7 @@ They share one room. The hero is only the seat they play.
 
 Upgrades come from buildings and finds. There is no card pick.
 
-The waiting yard is a whole frame, not one patch. `frameMood` fails contrast under 9 or a lime share over 0.08. Dusk fails a cool wash over 0.25 or a warm tail under 0.03. Night fails the flat-field contrast. `frameGround` fails when the near-ground spread is under 8. That is the 25th percentile of block deviation from 42% to 90% of the frame. `twoPlayerNight` reads the framebuffer in day, dusk, and night. A formula that passes while the canvas is a flat tint is not a pass. The pine wall is `forestLook.wall`, at least 80, inside the seventy stumps and felled logs.
+The waiting yard is a whole frame, not one patch. `frameMood` fails contrast under 9 or a lime share over 0.08. Dusk fails a cool wash over 0.25 or a warm tail under 0.03. Night fails the flat-field contrast. `frameGround` fails when the near-ground spread is under 8. That is the 25th percentile of block deviation from 42% to 90% of the frame, from the top. The framebuffer is flipped to top-down first. A bottom-up read scores the far wash. `twoPlayerNight` reads the framebuffer in day, dusk, and night. A formula that passes while the canvas is a flat tint is not a pass. The pine wall is `forestLook.wall`, at least 80, inside the seventy stumps and felled logs.
 
 A bat or a dark rider that is darker than the night grass is not on the yard, even when the snapshot says the body is in frame. The wings are bone, the rider's helm and cuirass are plate, and both wear a bone rim. `paradeShowsEveryKind` reads those pixels.
 

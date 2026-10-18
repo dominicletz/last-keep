@@ -535,10 +535,11 @@ async function twoPlayerNight(browser) {
   await expect(friend.locator("[data-roster]")).toContainText("Mage")
   await expect(page.locator("[data-clock]")).toHaveText("Waiting to start")
   expect(await page.evaluate(() => window.__lastKeep.light)).toBe("day")
+  await page.waitForFunction(() => window.__lastKeep.light === "day")
   await page.waitForFunction(() => {
-    const mood = window.__lastKeep.frameMood && window.__lastKeep.frameMood()
-    const ground = window.__lastKeep.frameGround && window.__lastKeep.frameGround()
-    return mood && mood.light === "day" && mood.problems.length === 0 && ground && ground.problems.length === 0
+    const mood = window.__lastKeep.frameMood()
+    const ground = window.__lastKeep.frameGround()
+    return mood.problems.length === 0 && ground.problems.length === 0
   })
   const dayMood = await page.evaluate(() => window.__lastKeep.frameMood())
   const dayGround = await page.evaluate(() => window.__lastKeep.frameGround())
@@ -591,10 +592,13 @@ async function twoPlayerNight(browser) {
   // and the fireball key then hits a corpse.
   await walkTowardHost(friend)
   await page.locator("[data-start]").click()
+  // Reading the framebuffer on every poll stalls the page and the 8s dusk window
+  // is gone before a snapshot lands. Wait for the light, then grade one frame.
+  await page.waitForFunction(() => window.__lastKeep.light === "dusk", null, { timeout: 45_000 })
   await page.waitForFunction(() => {
-    const mood = window.__lastKeep.frameMood && window.__lastKeep.frameMood()
-    const ground = window.__lastKeep.frameGround && window.__lastKeep.frameGround()
-    return mood && mood.light === "dusk" && mood.problems.length === 0 && ground && ground.problems.length === 0
+    const mood = window.__lastKeep.frameMood()
+    const ground = window.__lastKeep.frameGround()
+    return mood.problems.length === 0 && ground.problems.length === 0
   })
   const duskMood = await page.evaluate(() => {
     const game = window.__lastKeep
@@ -625,10 +629,11 @@ async function twoPlayerNight(browser) {
   }
   expect(hueDistance(duskMood.stone.hue, duskMood.pine.hue)).toBeGreaterThanOrEqual(25)
   await page.screenshot({ path: shot("dusk-host.png") })
+  await page.waitForFunction(() => window.__lastKeep.light === "night")
   await page.waitForFunction(() => {
     const mood = window.__lastKeep.frameMood()
     const ground = window.__lastKeep.frameGround()
-    return mood.light === "night" && mood.problems.length === 0 && ground.problems.length === 0
+    return mood.problems.length === 0 && ground.problems.length === 0
   })
   const nightGround = await page.evaluate(() => window.__lastKeep.frameGround())
   expect(nightGround.spread).toBeGreaterThanOrEqual(8)
