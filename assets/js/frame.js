@@ -41,6 +41,10 @@ export function frameFor(cssWidth, cssHeight, rank = 0) {
 // side of the keep from a hero who is still on the join ring.
 export const cameraFollow = 0.72
 
+// The join ring puts one hero behind the host. A look point on the ground
+// leaves that head above the frame. This lift sits the body in the picture.
+export const cameraLift = 32
+
 // A headless page stays "visible", so a draw inside the socket handler never
 // yields and the test's wait sits until the browser is closed. Recent input
 // draws with the tick. An idle page coasts.

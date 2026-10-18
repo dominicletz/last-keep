@@ -22,6 +22,7 @@ export function detailProblems(models, floor = detailFloor) {
 }
 
 export function carve(size, paint) {
+  const hold = size && typeof size === "object" ? Number(size.hold) || 0 : 0
   const map = new Map()
   const put = (x, y, z, name, color, mark = false) => {
     map.set(`${x},${y},${z}`, { x, y, z, name, color, mark: !!mark })
@@ -43,10 +44,10 @@ export function carve(size, paint) {
     map.delete(`${x},${y},${z}`)
   }
   paint({ put, fill, cut })
-  return meshVoxels([...map.values()], size)
+  return meshVoxels([...map.values()], size, hold)
 }
 
-export function meshVoxels(cells, size) {
+export function meshVoxels(cells, size, hold = 0) {
   const step = axisStep(size)
   const index = new Map(cells.map((cell) => [key(cell), cell]))
   const used = new Set()
@@ -75,7 +76,8 @@ export function meshVoxels(cells, size) {
       d: d * step.z,
       x: (start.x + w / 2) * step.x,
       y: (start.y + h / 2) * step.y,
-      z: (start.z + d / 2) * step.z
+      z: (start.z + d / 2) * step.z,
+      ...(hold > 0 ? { hold } : {})
     })
   }
   let minX = Infinity

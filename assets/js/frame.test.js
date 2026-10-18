@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as THREE from "three"
-import { activeDrawMs, cameraFocus, cameraFollow, drawDue, frameFor, idleDrawMs, inputWindowMs, pixelSize } from "./frame.js"
+import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, idleDrawMs, inputWindowMs, pixelSize } from "./frame.js"
 import { viewScale } from "./town.js"
 
 test("wide, square, and portrait windows keep square pixels and frame the yard", () => {
@@ -44,7 +44,7 @@ function project(focus, x, y, height = 16) {
   const camera = new THREE.OrthographicCamera(frame.left, frame.right, frame.top, frame.bottom, 0.1, 2400)
   const dist = 150
   camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-  camera.lookAt(focus.x, 0, focus.z)
+  camera.lookAt(focus.x, cameraLift, focus.z)
   camera.updateProjectionMatrix()
   camera.updateMatrixWorld(true)
   return new THREE.Vector3(x, height, y).project(camera)
@@ -82,7 +82,7 @@ test("the scripted parade stays on screen around the host", () => {
   const focus = cameraFocus(hero.x, hero.y)
   const dist = 150
   camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-  camera.lookAt(focus.x, 0, focus.z)
+  camera.lookAt(focus.x, cameraLift, focus.z)
   camera.updateProjectionMatrix()
   camera.updateMatrixWorld(true)
   const parade = [
@@ -99,7 +99,7 @@ test("the scripted parade stays on screen around the host", () => {
     assert.ok(Math.abs(point.y) < 0.62)
     assert.ok(point.z < 1)
   }
-  const boss = new THREE.Vector3(-130, 16, -40).project(camera)
+  const boss = new THREE.Vector3(-220, 16, -100).project(camera)
   assert.ok(Math.abs(boss.x) >= 0.72 || Math.abs(boss.y) >= 0.62)
 })
 
@@ -112,6 +112,26 @@ test("a snapshot does not draw again until the page has had a turn", () => {
   assert.equal(drawDue(1000, 800, -600), false)
   assert.equal(drawDue(1000, 700, -600), true)
   assert.equal(drawDue(10_000, 0, -Infinity), true)
+})
+
+test("a hero behind the host keeps their head in the frame", () => {
+  const frame = frameFor(1280, 800, 0)
+  const camera = new THREE.OrthographicCamera(frame.left, frame.right, frame.top, frame.bottom, 0.1, 2400)
+  const focus = cameraFocus(120, 0)
+  const dist = 150
+  camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
+  camera.lookAt(focus.x, cameraLift, focus.z)
+  camera.updateProjectionMatrix()
+  camera.updateMatrixWorld(true)
+  for (let seat = 0; seat < 5; seat++) {
+    const angle = seat * 2.2
+    const x = Math.cos(angle) * 120
+    const z = Math.sin(angle) * 120
+    const head = new THREE.Vector3(x, 110, z).project(camera)
+    const bar = new THREE.Vector3(x, 118, z).project(camera)
+    assert.ok(head.y < 0.96, `seat ${seat} head ${head.y}`)
+    assert.ok(bar.y < 0.98, `seat ${seat} bar ${bar.y}`)
+  }
 })
 
 test("a higher town rank widens the same window", () => {

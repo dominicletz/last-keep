@@ -211,6 +211,11 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 - A focus click that must not attack was sampled for 350ms of wall clock. The melee cooldown is 8 ticks, and an idle page publishes a snapshot about every 250ms, so that window can close before the swing is on the page and a real attack looks like a miss. The check now samples `attackCd` until the published tick has moved 12 steps, which covers the input interval and the whole cooldown. A click with no building waits 8 ticks before it reads wood. The deny line waits until the node hides, instead of sleeping 2600ms. This does not change the simulation. The coverage floor stays 74.
 
+## 2026-10-18 hero shapes stay readable
+
+- The warrior helmet has a one-band visor slit, the shield narrows toward its foot, the gold on that face is a cross, and the sword is one cell wide. The mage hat ends in a point. The scout hood covers the head. `heroFeatureProblems` fails a slab shield, a missing slit, a plank sword, a block hat, and a bare scout head. Day-raster heights at 1280×800 are warrior 97 and 65, mage 113 and 75, scout 98 and 66, farmer 99 and 67, engineer 99 and 67. The 56px floor is unchanged.
+- Hero paint keeps half its unlit color at dusk and night, so steel saturation stays at or under 0.3 and the shield, robe, hood, and denim stay on their hues. Day paint is unheld, so the close-up still matches the concept crop, and night stays darker than dusk and dusk darker than day. The live mesh uses an unlit material and a dark rim, so the yard's green ambient cannot turn the plate mint. The camera looks 32 units above the ground. The five join-ring heads, including the bar, stay inside the 1280×800 frame. This does not change the simulation. The coverage floor stays 74.
+
 ## 2026-10-18 town growth
 
 Raising the keep stakes four timber houses on the new ring. The wood and gold of that raise pay for the houses. Each full ring of standing houses mints one gold on the field-gold beat. A farmer's sow, harvest, or four-second work pulse banks labor, and each point spends 1 wood on a wheat croft. Rank 0 stakes nothing. The ExUnit test is "a raised keep stakes houses and farmer labor stakes crofts", and the browser scenario is `townGrows`. `mix test --cover` measured 74.64% after the meteor unlock landed on main. The floor in `mix.exs` is 74.
