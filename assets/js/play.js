@@ -1,5 +1,6 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
+import { monsterKinds, monsterParts } from "./monsters.js"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
@@ -168,6 +169,9 @@ function start(code, seat, ui) {
       const me = window.__lastKeep && window.__lastKeep.self
       if (!me) return []
       return keysAround(me.x, me.y, goalX, goalY)
+    },
+    pictures() {
+      for (const kind of monsterKinds()) monsterParts(kind)
     },
     // The co-op night used to leave the mage standing on the far side of the
     // ring. The goblins killed that mage before they walked into the host's

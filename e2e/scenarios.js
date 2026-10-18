@@ -1840,6 +1840,7 @@ async function sixSeatMatch(browser) {
     await engineer.evaluate(([wx, wy]) => window.__lastKeepTest.order("wall", wx, wy), [x, y])
     await page.waitForTimeout(120)
   }
+  await page.evaluate(() => window.__lastKeepTest.pictures())
   await page.locator("[data-start]").click()
   await page.waitForFunction(() => window.__lastKeep.phase === "wave")
 
