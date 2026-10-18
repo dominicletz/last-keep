@@ -33,6 +33,12 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8081/health | grep -q ok"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 3s
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data

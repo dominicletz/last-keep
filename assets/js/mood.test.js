@@ -4,7 +4,7 @@ import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import jpeg from "jpeg-js"
-import { GROUND_TEX, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { GROUND_SPAN, GROUND_TEX, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -86,6 +86,25 @@ test("the concept ground is worn and today's yard frames are a flat wash", () =>
     const problems = groundProblems(live.ground)
     assert.ok(problems.length > 0, `${phase} spread ${live.ground.spread}`)
   }
+})
+
+test("dusk sunset flecks stay off the pine wall", () => {
+  const pixels = groundPixels("dusk")
+  let bandSunset = 0
+  let plazaSunset = 0
+  for (let iy = 0; iy < GROUND_TEX; iy++) {
+    for (let ix = 0; ix < GROUND_TEX; ix++) {
+      const worldX = ((ix + 0.5) / GROUND_TEX - 0.5) * GROUND_SPAN
+      const worldZ = -((iy + 0.5) / GROUND_TEX - 0.5) * GROUND_SPAN
+      const radius = Math.hypot(worldX, worldZ)
+      const offset = (iy * GROUND_TEX + ix) * 4
+      const sunset = pixels[offset] === 0xe5 && pixels[offset + 1] === 0x8e && pixels[offset + 2] === 0x54
+      if (radius > 180 && radius < 290 && sunset) bandSunset += 1
+      if (radius < 150 && sunset) plazaSunset += 1
+    }
+  }
+  assert.equal(bandSunset, 0)
+  assert.ok(plazaSunset > 100, `plaza sunset ${plazaSunset}`)
 })
 
 test("the painted yard keeps texture, a moss day, and a warm dusk edge", () => {
