@@ -257,35 +257,38 @@ export function keepParts(rank = 0) {
   return parts
 }
 
+const partCache = new Map()
+
+function partsFor(model) {
+  if (partCache.has(model.id)) return partCache.get(model.id)
+  let parts
+  if (model.family === "hero") parts = heroParts(model.id)
+  else if (model.family === "monster") parts = monsterParts(model.id)
+  else if (model.id === "keep") parts = keepParts(0)
+  else if (model.id === "house") parts = houseParts(0)
+  else if (model.id === "scenery") parts = sceneryParts()
+  else if (model.id === "field") {
+    parts = model.parts.map((part) => ({ ...part }))
+    parts.voxelCount = model.parts.voxelCount
+  } else parts = model.parts.map((part) => ({ ...part }))
+  partCache.set(model.id, parts)
+  return parts
+}
+
 export function models() {
   return REGISTRY.map((model) => {
-    if (model.family === "hero") {
-      const parts = heroParts(model.id)
+    const parts = partsFor(model)
+    if (model.family === "hero" || model.family === "monster" || model.id === "house" || model.id === "field") {
       return { ...model, parts, voxels: parts.voxelCount }
     }
-    if (model.family === "monster") {
-      const parts = monsterParts(model.id)
-      return { ...model, parts, voxels: parts.voxelCount }
-    }
-    if (model.id === "keep") return { ...model, parts: keepParts(0) }
-    if (model.id === "house") {
-      const parts = houseParts(0)
-      return { ...model, parts, voxels: parts.voxelCount }
-    }
-    if (model.id === "scenery") return { ...model, parts: sceneryParts() }
-    if (model.id === "field") {
-      const parts = model.parts.map((part) => ({ ...part }))
-      parts.voxelCount = model.parts.voxelCount
-      return { ...model, parts, voxels: parts.voxelCount }
-    }
-    return { ...model, parts: model.parts.map((part) => ({ ...part })) }
+    return { ...model, parts }
   })
 }
 
 export function modelParts(id) {
-  const model = models().find((row) => row.id === id)
+  const model = REGISTRY.find((row) => row.id === id)
   if (!model) throw new Error(`no model for ${id}`)
-  return model.parts
+  return partsFor(model)
 }
 
 export function horizontalRadius(parts) {

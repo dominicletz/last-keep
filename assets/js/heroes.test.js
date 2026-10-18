@@ -24,6 +24,7 @@ test("each hero builds a distinct mesh signature", () => {
     assert.deepEqual(sig.marks, expected[sig.kind])
     assert.equal(sig.bounds.h, spriteHeight, sig.kind)
     assert.ok(sig.bounds.w >= 8 && sig.bounds.w <= 28, sig.kind)
+    assert.equal(heroParts(sig.kind), sig.parts)
     assert.equal(sig.parts[0].shape, "billboard")
     assert.equal(sig.parts[0].directions, 8)
     assert.equal(sig.parts[0].frames, 11)

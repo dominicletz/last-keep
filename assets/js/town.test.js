@@ -3,6 +3,13 @@ import test from "node:test"
 import { fitSlack, horizontalRadius, houseParts, houseVariant, keepParts, modelParts, models } from "../models/registry.js"
 import { cameraDistance, dirtRadius, viewScale, zoomFor } from "./town.js"
 
+test("thirty trees share one mesh", () => {
+  const started = performance.now()
+  const first = modelParts("tree")
+  for (let i = 0; i < 29; i++) assert.equal(modelParts("tree"), first)
+  assert.ok(performance.now() - started < 1000, "a tree rebuilt the character sheets")
+})
+
 test("the keep tower grows a course of stone at each rank", () => {
   const heights = [0, 1, 2, 3, 4].map((rank) => keepParts(rank).find((part) => part.name === "tower").h)
   assert.deepEqual(heights, [104, 118, 132, 146, 160])
