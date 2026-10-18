@@ -36,7 +36,7 @@ import {
   renderParts,
   stackHorizontal
 } from "./raster.js"
-import { groundColor, pathColor, plazaColor, ringColor, skyColor } from "../js/scene.js"
+import { cycleLight, groundColor, litGround, lumaOf, pathColor, plazaColor, ringColor, skyColor } from "../js/scene.js"
 import { detailFloor, detailProblems } from "./voxels.js"
 import { citationProblems, loadSheet, sceneColorProblems } from "./sheets.js"
 
@@ -65,6 +65,8 @@ export function checkModels({ writeGolden = false } = {}) {
   if (!styleSource.includes("fit slack is 2")) problems.push("STYLE.md does not record fit slack 2")
   if (!styleSource.includes("pixel threshold is 0")) problems.push("STYLE.md does not record pixel threshold 0")
   if (!styleSource.includes("0.85")) problems.push("STYLE.md does not record the silhouette IoU limit")
+  if (!styleSource.includes("bat record is 80")) problems.push("STYLE.md does not record the bat night read")
+  if (!styleSource.includes("rider record is 1000")) problems.push("STYLE.md does not record the rider night read")
   if (!styleSource.includes(`voxel detail floor is ${detailFloor}`)) {
     problems.push(`STYLE.md does not record voxel detail floor ${detailFloor}`)
   }
@@ -104,6 +106,7 @@ export function checkModels({ writeGolden = false } = {}) {
       rendered = first
       problems.push(...silhouetteProblems(listed, first))
       problems.push(...nightLightProblems(listed, first))
+      problems.push(...yardReadProblems(first))
       problems.push(...heroHeightProblems(listed))
       problems.push(...detailProblems(listed))
       problems.push(...closeupProblems(first))
@@ -349,6 +352,41 @@ function closeupProblems(rendered) {
       problems.push(`${row.id} portrait is not the close-up`)
     }
     if (!row.compare) problems.push(`${row.id} has no concept comparison`)
+  }
+  return problems
+}
+
+// The gallery night rig is dimmer than the yard. A pixel at or above the live
+// night grass is the wing or the plate. Hide and the rider cloth stay under it.
+export const nightYardLift = 18
+
+// About 80% of the measured night read. The half-area rule below refuses a lower record.
+export const nightYardRead = {
+  bat: 80,
+  boss: 1000
+}
+
+export function nightYardPixels(image, floor) {
+  let above = 0
+  for (let i = 0; i < image.mask.length; i++) {
+    if (!image.mask[i]) continue
+    const offset = i * 3
+    if (lumaOf(image.rgb[offset], image.rgb[offset + 1], image.rgb[offset + 2]) >= floor) above += 1
+  }
+  return above
+}
+
+function yardReadProblems(rendered) {
+  const problems = []
+  const floor = litGround(groundColor, cycleLight.night).luma
+  for (const row of rendered) {
+    const recorded = nightYardRead[row.id]
+    if (!recorded) continue
+    const above = nightYardPixels(row.frames.night, floor)
+    if (above < recorded) problems.push(`${row.id} night yard read ${above} is below ${recorded}`)
+    if (recorded < above * 0.5) {
+      problems.push(`${row.id} recorded night read ${recorded} is below half of measured ${above}`)
+    }
   }
   return problems
 }

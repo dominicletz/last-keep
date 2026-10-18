@@ -180,11 +180,11 @@
     {
       "id": "bat",
       "family": "monster",
-      "area": 351,
-      "minArea": 280,
-      "day": 54.91,
-      "dusk": 29.47,
-      "night": 23.45,
+      "area": 434,
+      "minArea": 347,
+      "day": 97.33,
+      "dusk": 49.22,
+      "night": 37.65,
       "sheet": "monsters.jpg",
       "figure": "bat",
       "crop": [
@@ -198,11 +198,11 @@
     {
       "id": "boss",
       "family": "monster",
-      "area": 3028,
-      "minArea": 2402,
-      "day": 58.18,
-      "dusk": 29.24,
-      "night": 26.32,
+      "area": 6123,
+      "minArea": 4898,
+      "day": 67.91,
+      "dusk": 32.43,
+      "night": 26.93,
       "sheet": "monsters.jpg",
       "figure": "dark rider",
       "crop": [

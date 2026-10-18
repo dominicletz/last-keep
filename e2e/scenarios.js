@@ -434,6 +434,23 @@ async function paradeShowsEveryKind(browser) {
     (window.__lastKeep.monsters || []).filter((monster) => monster.onScreen).map((monster) => monster.kind)
   )
   expect(new Set(onScreen)).toEqual(new Set(["goblin", "skeleton", "wolf", "troll", "bat", "boss"]))
+  const reads = await page.evaluate(() => {
+    const game = window.__lastKeep
+    return (game.monsters || [])
+      .filter((monster) => monster.kind === "bat" || monster.kind === "boss")
+      .map((monster) => {
+        const x = monster.drawX == null ? monster.x : monster.drawX
+        const z = monster.drawZ == null ? monster.y : monster.drawZ
+        const height = monster.kind === "bat" ? 36 : 48
+        return { kind: monster.kind, onScreen: monster.onScreen, ...game.brightNear(x, z, height) }
+      })
+  })
+  expect(reads.map((read) => read.kind).sort()).toEqual(["bat", "boss"])
+  for (const read of reads) {
+    expect(read.onScreen).toBe(true)
+    expect(read.above).toBeGreaterThanOrEqual(24)
+    expect(read.max).toBeGreaterThanOrEqual(read.field + 18)
+  }
   await page.screenshot({ path: shot("parade.png") })
   expect(errors, errors.join("\n")).toEqual([])
   await host.context.close()

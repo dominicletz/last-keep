@@ -76,8 +76,8 @@ const REGISTRY = [
   monster("skeleton", 13, 835, crop(260, 328, 260, 246), skeletonVoxels()),
   monster("wolf", 13, 445, crop(760, 340, 270, 245), wolfVoxels()),
   monster("troll", 22, 1884, crop(524, 292, 226, 286), ogreVoxels(), "ogre"),
-  monster("bat", 12, 280, crop(408, 68, 260, 96), batVoxels(), "bat"),
-  monster("boss", 34, 2402, crop(1000, 70, 275, 520), riderVoxels(), "dark rider"),
+  monster("bat", 12, 347, crop(408, 68, 260, 96), batVoxels(), "bat"),
+  monster("boss", 34, 4898, crop(1000, 70, 275, 520), riderVoxels(), "dark rider"),
   building("wall", 16, 1411, crop(160, 280, 250, 220), palisadeParts(), "palisade"),
   building("tower", 16, 1028, crop(590, 36, 120, 130), [
     box("shaft", 18, 32, 18, 0, 16, 0, STONE),

@@ -60,10 +60,13 @@ test("a hero on the spawn ring stays in frame with the body under them", () => {
   const focus = cameraFocus(hero.x, hero.y)
   assert.equal(cameraFollow, 0.72)
   assert.ok(Math.hypot(hero.x - focus.x, hero.y - focus.z) < frame.halfH)
-  const bat = { x: -473, y: 128 }
-  assert.ok(onScreen(project(focus, bat.x, bat.y)))
+  const bats = [
+    { x: -473, y: 128 },
+    { x: -454, y: 142 }
+  ]
+  for (const bat of bats) assert.ok(onScreen(project(focus, bat.x, bat.y)), `${bat.x},${bat.y}`)
   const pulled = { x: hero.x * 0.22, z: hero.y * 0.22 }
-  assert.ok(!onScreen(project(pulled, bat.x, bat.y)))
+  assert.ok(!onScreen(project(pulled, bats[0].x, bats[0].y)))
 })
 
 test("a hero on the join ring still frames a goblin across the keep", () => {
