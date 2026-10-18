@@ -1,6 +1,7 @@
 // theme.jpg medians. Sky is the blue-violet dusk at 24,0. Ground is the lit
 // clearing grass at 366,314, not the shadow moss. The horizon is the orange
-// band. Do not fill the sky with a brick, and do not leave the field dark olive.
+// band. Moss is the brightest hue-85 patch, at 150,192. Do not fill the sky
+// with a brick, and do not leave the field olive.
 export const skyColor = 0x4e4651
 export const horizonColor = 0xeba15d
 export const sunsetColor = 0xe58e54
@@ -9,6 +10,8 @@ export const pathColor = 0x5e4529
 export const plazaColor = groundColor
 export const ringColor = 0x4b3c33
 export const flameColor = 0xeea821
+export const mossColor = 0x455c28
+export const mossRegion = { x: 150, y: 192, w: 4, h: 4 }
 
 // Daylight stays near the material color. The old sun (amber at 2.6, plus a warm
 // ambient past 1) clipped every grey to orange, so plate and stone read as brown.
@@ -30,19 +33,30 @@ export const yardLight = {
 }
 
 // The build is day. The last eight seconds of the build are dusk. A wave is night.
-// Day stays on yardLight so grey plate is not clipped. Night is the darkest.
+// Day bodies stay on yardLight so grey plate is not clipped. The ground fill is
+// a separate lamp: green by day, violet by dusk. It does not light heroes.
+// Dusk bodies are the cool violet. Warmth is the brazier pool, not the sky.
 export const cycleLight = {
-  day: { ...yardLight, background: skyColor },
+  day: {
+    ...yardLight,
+    groundFill: 0x40ff60,
+    groundFillLevel: 2.2,
+    pool: 0,
+    background: skyColor
+  },
   dusk: {
     sky: 0x6a5080,
-    ground: 0x4a3820,
-    hemisphere: 0.4,
-    ambient: horizonColor,
-    ambientLevel: 4.2,
-    sun: sunsetColor,
-    sunLevel: 0.5,
+    ground: 0x3a3050,
+    hemisphere: 0.45,
+    ambient: 0x9a90b8,
+    ambientLevel: 1.6,
+    sun: 0x9a90c0,
+    sunLevel: 0.25,
+    groundFill: 0x8060ff,
+    groundFillLevel: 10,
     torch: 26,
-    background: horizonColor
+    pool: 5200,
+    background: skyColor
   },
   night: {
     sky: 0x4e4651,
@@ -53,6 +67,7 @@ export const cycleLight = {
     sun: 0xc8b8d0,
     sunLevel: 0.22,
     torch: 34,
+    pool: 6400,
     background: 0x322c3c
   }
 }
@@ -117,15 +132,17 @@ export function hueGap(left, right) {
 }
 
 // Up-facing MeshLambert. Three encodes the paint and the lights as sRGB and
-// the BRDF divides by pi, which is why a byte multiply of the same rigs
-// predicted a bright field while the yard stayed dark olive.
-export function litGround(albedo, rig) {
+// the BRDF divides by pi. litGround is the body light. litYard adds the ground
+// fill, which is the lamp that does not touch heroes. litPool adds the brazier.
+function shade(albedo, terms) {
   const bytes = [16, 8, 0].map((shift) => {
     const paint = srgbToLinear(((albedo >> shift) & 255) / 255)
-    const ambient = srgbToLinear(((rig.ambient >> shift) & 255) / 255) * rig.ambientLevel
-    const sky = srgbToLinear(((rig.sky >> shift) & 255) / 255) * rig.hemisphere
-    const sun = srgbToLinear(((rig.sun >> shift) & 255) / 255) * rig.sunLevel * sunDot
-    const linear = Math.min(1, (paint * (ambient + sky + sun)) / Math.PI)
+    let sum = 0
+    for (const term of terms) {
+      const channel = srgbToLinear(((term.color >> shift) & 255) / 255)
+      sum += channel * term.level * (term.sun ? sunDot : 1)
+    }
+    const linear = Math.min(1, (paint * sum) / Math.PI)
     return Math.round(linearToSrgb(linear) * 255)
   })
   return {
@@ -137,10 +154,40 @@ export function litGround(albedo, rig) {
   }
 }
 
-// A small in-game dusk frame: warm horizon, the lit field, and the torch.
+function bodyTerms(rig) {
+  return [
+    { color: rig.sky, level: rig.hemisphere },
+    { color: rig.ambient, level: rig.ambientLevel },
+    { color: rig.sun, level: rig.sunLevel, sun: true }
+  ]
+}
+
+export function litGround(albedo, rig) {
+  return shade(albedo, bodyTerms(rig))
+}
+
+export function litYard(albedo, rig) {
+  const terms = bodyTerms(rig)
+  if (rig.groundFill && rig.groundFillLevel) {
+    terms.push({ color: rig.groundFill, level: rig.groundFillLevel })
+  }
+  return shade(albedo, terms)
+}
+
+export function litPool(albedo, rig, warmth) {
+  const terms = bodyTerms(rig)
+  if (rig.groundFill && rig.groundFillLevel) {
+    terms.push({ color: rig.groundFill, level: rig.groundFillLevel })
+  }
+  terms.push({ color: flameColor, level: warmth })
+  return shade(albedo, terms)
+}
+
+// A small in-game dusk frame: violet sky, the cool field, and the torch pool.
 export function duskFrame(ground, rig = cycleLight.dusk, width = 96, height = 60) {
   const sky = bytesOf(rig.background)
-  const field = litGround(ground, rig)
+  const field = litYard(ground, rig)
+  const pool = litPool(ground, rig, 4)
   const torch = Math.min(1, (Number(rig.torch) || 0) / 20)
   const flame = bytesOf(flameColor).map((channel) => Math.round(channel * torch))
   const rgb = new Uint8Array(width * height * 3)
@@ -166,24 +213,21 @@ export function duskFrame(ground, rig = cycleLight.dusk, width = 96, height = 60
       rgb[offset + 2] = flame[2]
     }
   }
-  let sr = 0
-  let sg = 0
-  let sb = 0
   let max = 0
   const count = width * height
   for (let i = 0; i < count; i++) {
-    const r = rgb[i * 3]
-    const g = rgb[i * 3 + 1]
-    const b = rgb[i * 3 + 2]
-    sr += r
-    sg += g
-    sb += b
-    max = Math.max(max, lumaOf(r, g, b))
+    max = Math.max(max, lumaOf(rgb[i * 3], rgb[i * 3 + 1], rgb[i * 3 + 2]))
   }
-  const r = sr / count
-  const g = sg / count
-  const b = sb / count
-  return { r, g, b, luma: lumaOf(r, g, b), hue: hueOf(r, g, b), max }
+  return {
+    r: field.r,
+    g: field.g,
+    b: field.b,
+    luma: field.luma,
+    hue: field.hue,
+    poolHue: pool.hue,
+    poolLuma: pool.luma,
+    max
+  }
 }
 
 function bytesOf(hex) {

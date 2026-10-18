@@ -181,6 +181,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 - Respawn runs after the keep is checked. A hero at 81 health is still at 81 on the fallen snapshot. A downed hero whose timer is up stays down, instead of returning at full kit health on that same tick. A downed hero still returns when the keep stands. The coverage floor stays 69.
 
+## 2026-10-18 moss day and a cool dusk
+
+- Round 8's day patch was luminance 103 and hue 73, olive-mustard. The same patch at dusk was luminance 75 and hue 40, an orange wash. The grass token stays the clearing. A ground lamp, which does not light heroes, grades the day field to hue 85–100 and luminance 100 or above, within 8 degrees of the moss at theme.jpg 150,192 (`#455c28`). Dusk's sky is the violet at 24,0. The far field stays luminance 72 or above and at least 80 degrees from the flame. The brazier patch is warmer by 25 degrees. Grey plate still fails if a channel reaches 240 or red leads blue by 40. This does not change the simulation. The coverage floor stays 69.
+
 ## 2026-10-18 the day clearing and the warm dusk
 
 - The waiting yard was luminance 51 and hue 65. The same patch at dusk was luminance 31 and hue 38. The day illuminant is the grass token lifted toward white, so the lit patch stays at luminance 100 or above and hue 70 or above. Dusk is lit by the horizon token and the sunset token. Its patch stays between hue 28 and 48, at luminance 72 or above, and under the day. The round-7 olive bytes fail that floor. `twoPlayerNight` reads the same patch off the canvas. This does not change the simulation. The coverage floor stays 69.

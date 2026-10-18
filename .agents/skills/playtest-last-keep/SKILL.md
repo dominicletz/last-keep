@@ -44,7 +44,7 @@ They share one room. The hero is only the seat they play.
 
 Upgrades come from buildings and finds. There is no card pick.
 
-The waiting yard patch is the lit clearing. Luminance under 100, or a hue under 70, is the dark olive from round 7. Dusk is the warm step under that day. `twoPlayerNight` reads the canvas patch. A formula that passes while the canvas is dark is not a pass.
+The waiting yard patch is the lit clearing graded toward the moss at theme.jpg 150,192. Luminance under 100, or a hue outside 85 to 100, misses that moss. Dusk's far patch is blue-violet, at least 80 degrees from the flame, and a patch by the brazier is warmer. `twoPlayerNight` reads those canvas patches. A formula that passes while the canvas is olive or orange is not a pass.
 
 A bat or a dark rider that is darker than the night grass is not on the yard, even when the snapshot says the body is in frame. The wings are bone, the rider's helm and cuirass are plate, and both wear a bone rim. `paradeShowsEveryKind` reads those pixels.
 

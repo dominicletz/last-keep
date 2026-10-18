@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import jpeg from "jpeg-js"
-import { cycleLight, duskFrame, hueGap, hueOf, litGround, lumaOf } from "../js/scene.js"
+import { cycleLight, duskFrame, flameColor, hueGap, hueOf, litYard, lumaOf, mossColor, mossRegion } from "../js/scene.js"
 
 // Palette hexes are the jpeg-js lower median of the cited patch.
 // Sort each channel and take index (length - 1) >> 1. Do not use another decoder.
@@ -95,12 +95,18 @@ export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
   if (groundHex !== grass.hex) problems.push(`yard ground #${groundHex} is not the grass token #${grass.hex}`)
   if (groundLuma < 90) problems.push(`yard ground luma ${groundLuma.toFixed(1)} is dark olive`)
   if (skyHex !== skyMedian) problems.push(`sky color #${skyHex} is not the concept sky median #${skyMedian}`)
-  const dayField = litGround(colors.ground, cycleLight.day)
-  if (dayField.luma < 100 || dayField.hue < 70 || dayField.hue > 95) {
-    problems.push(`day field luma ${dayField.luma.toFixed(1)} hue ${dayField.hue.toFixed(1)} is dark olive`)
+  const dayField = litYard(colors.ground, cycleLight.day)
+  const mossMedian = medianHex(sheet, mossRegion)
+  if (mossMedian !== rgbOf(mossColor).map((channel) => channel.toString(16).padStart(2, "0")).join("")) {
+    problems.push(`moss sample #${mossMedian} is not #${rgbOf(mossColor).map((channel) => channel.toString(16).padStart(2, "0")).join("")}`)
   }
-  const horizonMedian = medianHex(sheet, regions.horizon.region)
-  problems.push(...duskMoodProblems(sheet, colors.ground, horizonMedian))
+  const mossHue = hueOf(...rgbOf(parseInt(mossMedian, 16)))
+  if (dayField.luma < 100 || dayField.hue < 85 || dayField.hue > 100 || hueGap(dayField.hue, mossHue) > 8) {
+    problems.push(
+      `day field luma ${dayField.luma.toFixed(1)} hue ${dayField.hue.toFixed(1)} is ${hueGap(dayField.hue, mossHue).toFixed(1)} from moss hue ${mossHue.toFixed(1)}`
+    )
+  }
+  problems.push(...duskMoodProblems(colors.ground, skyMedian))
   const path = cited.find((token) => token.name === "path")
   const stone = cited.find((token) => token.name === "stone")
   if (!path || !stone) {
@@ -139,50 +145,29 @@ export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
   return problems
 }
 
-// The in-game dusk frame has to share the theme sheet's warm hue, stay at
-// least as bright as that sheet, and carry a torch. Dark olive fails.
-function duskMoodProblems(sheet, ground, horizonMedian) {
+// Dusk sky is the concept violet. The far field stays cool, and the torch
+// pool sits closer to the flame than that field does.
+function duskMoodProblems(ground, skyMedian) {
   const problems = []
   const background = rgbOf(cycleLight.dusk.background)
     .map((channel) => channel.toString(16).padStart(2, "0"))
     .join("")
-  if (background !== horizonMedian) {
-    problems.push(`dusk sky #${background} is not the concept horizon #${horizonMedian}`)
+  if (background !== skyMedian) {
+    problems.push(`dusk sky #${background} is not the concept sky #${skyMedian}`)
   }
   const frame = duskFrame(ground, cycleLight.dusk)
-  const mean = sheetMean(sheet)
-  if (hueGap(frame.hue, mean.hue) > 18) {
-    problems.push(`dusk frame hue ${frame.hue.toFixed(1)} is ${hueGap(frame.hue, mean.hue).toFixed(1)} from the theme hue ${mean.hue.toFixed(1)}`)
-  }
-  if (frame.luma < mean.luma) {
-    problems.push(`dusk frame luma ${frame.luma.toFixed(1)} is below the theme luma ${mean.luma.toFixed(1)}`)
-  }
   if (frame.max < 160) problems.push(`dusk torch luma ${frame.max.toFixed(1)} is dim`)
-  const duskField = litGround(ground, cycleLight.dusk)
-  if (duskField.luma < 72 || duskField.hue > 48 || duskField.hue < 28) {
-    problems.push(`dusk field luma ${duskField.luma.toFixed(1)} hue ${duskField.hue.toFixed(1)} is murky olive`)
+  const duskField = litYard(ground, cycleLight.dusk)
+  const flame = hueOf(...rgbOf(flameColor))
+  const farGap = hueGap(duskField.hue, flame)
+  const poolGap = hueGap(frame.poolHue, flame)
+  if (duskField.luma < 72 || farGap < 80) {
+    problems.push(`dusk field luma ${duskField.luma.toFixed(1)} hue ${duskField.hue.toFixed(1)} is still the orange wash`)
+  }
+  if (!(poolGap + 25 < farGap)) {
+    problems.push(`dusk pool hue ${frame.poolHue.toFixed(1)} is not warmer than the field hue ${duskField.hue.toFixed(1)}`)
   }
   return problems
-}
-
-function sheetMean(sheet) {
-  let sr = 0
-  let sg = 0
-  let sb = 0
-  let count = 0
-  for (let y = 0; y < sheet.height; y += 4) {
-    for (let x = 0; x < sheet.width; x += 4) {
-      const offset = (y * sheet.width + x) * 4
-      sr += sheet.data[offset]
-      sg += sheet.data[offset + 1]
-      sb += sheet.data[offset + 2]
-      count += 1
-    }
-  }
-  const r = sr / count
-  const g = sg / count
-  const b = sb / count
-  return { r, g, b, luma: lumaOf(r, g, b), hue: hueOf(r, g, b) }
 }
 
 export function citationProblems(cited, sheets) {

@@ -36,7 +36,7 @@ import {
   renderParts,
   stackHorizontal
 } from "./raster.js"
-import { cycleLight, groundColor, litGround, lumaOf, pathColor, plazaColor, ringColor, skyColor } from "../js/scene.js"
+import { cycleLight, groundColor, litGround, litPool, litYard, lumaOf, mossColor, pathColor, plazaColor, ringColor, skyColor } from "../js/scene.js"
 import { detailFloor, detailProblems } from "./voxels.js"
 import { citationProblems, loadSheet, sceneColorProblems } from "./sheets.js"
 
@@ -129,7 +129,7 @@ export function checkModels({ writeGolden = false } = {}) {
     }
   }
 
-  const html = rendered.length > 0 ? galleryHtml(rendered, present, "../test/gallery/") : ""
+  const html = rendered.length > 0 ? galleryHtml(rendered, present, "../test/gallery/", yardMood()) : ""
   const htmlPath = path.join(root, "docs/gallery.html")
   const goldenDir = path.join(root, "test/gallery")
 
@@ -611,7 +611,22 @@ function directoryDiff(left, right) {
   return problems
 }
 
-export function galleryHtml(rendered, present, prefix) {
+function hexByte(value) {
+  return Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0")
+}
+
+function swatch(stats) {
+  return `#${hexByte(stats.r)}${hexByte(stats.g)}${hexByte(stats.b)}`
+}
+
+function yardMood() {
+  const day = litYard(groundColor, cycleLight.day)
+  const dusk = litYard(groundColor, cycleLight.dusk)
+  const pool = litPool(groundColor, cycleLight.dusk, 4)
+  return { day, dusk, pool, moss: mossColor }
+}
+
+export function galleryHtml(rendered, present, prefix, mood = yardMood()) {
   const articles = rendered
     .map((row) => {
       const here = Boolean(present[row.concept.sheet])
@@ -641,6 +656,8 @@ body { margin: 0; background: #140e12; color: #f3e6cf; font: 16px/1.45 sans-seri
 main { padding: 24px; max-width: 1100px; }
 img { image-rendering: pixelated; background: #1a140f; max-width: 100%; height: auto; display: block; margin: 8px 0; }
 img.near { height: 384px; width: auto; max-width: none; }
+.swatches { display: flex; gap: 12px; margin: 12px 0 24px; }
+.swatches div { width: 140px; height: 88px; padding: 8px; color: #f3e6cf; font-weight: 700; }
 .miss { border: 1px solid #6a4a30; padding: 12px; }
 </style>
 </head>
@@ -648,6 +665,17 @@ img.near { height: 384px; width: auto; max-width: none; }
 <main>
 <h1>Gallery</h1>
 <p><code>npm run models</code> wrote these frames at game zoom through the pixel path. Heroes and monsters also have a close-up, about ${closeupFigure}px tall, and the portrait card is that close-up. The pictures on this page are the goldens in <code>test/gallery/</code>. CI uploads the same bytes as <code>artifacts/gallery/</code>. A second run has to match. The concept sheets are ${conceptSheets.map((sheet) => `${sheet} (${present[sheet] ? "present" : "not in the repo"})`).join(", ")}. Do not invent a substitute sheet.</p>
+<section id="yard">
+<h2>Yard beside the concept</h2>
+<p>The sheet is the dusk town: violet sky, dark pines, warm windows. The day swatch is the lit clearing graded to the moss at 150,192 (hue ${mood.day.hue.toFixed(1)}, luminance ${mood.day.luma.toFixed(1)}). The dusk swatch is the far field (hue ${mood.dusk.hue.toFixed(1)}). The pool swatch is the ground by the brazier (hue ${mood.pool.hue.toFixed(1)}).</p>
+<img src="concept/theme.jpg" alt="theme.jpg, the concept the yard is graded toward">
+<div class="swatches">
+<div style="background:${swatch(mood.day)}">day ${swatch(mood.day)}</div>
+<div style="background:${swatch(mood.dusk)}">dusk ${swatch(mood.dusk)}</div>
+<div style="background:${swatch(mood.pool)}">pool ${swatch(mood.pool)}</div>
+<div style="background:#${mood.moss.toString(16).padStart(6, "0")}">moss #${mood.moss.toString(16).padStart(6, "0")}</div>
+</div>
+</section>
 ${articles}
 </main>
 </body>
