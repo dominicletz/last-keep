@@ -83,25 +83,25 @@ export function keysToward(dx, dy, slack = 42) {
   if (Math.hypot(dx, dy) <= slack) return []
   const f = Math.SQRT1_2
   const dirs = [
-    [["KeyW"], -f, -f],
-    [["KeyW", "KeyD"], 0, -1],
-    [["KeyD"], f, -f],
-    [["KeyD", "KeyS"], 1, 0],
-    [["KeyS"], f, f],
-    [["KeyS", "KeyA"], 0, 1],
-    [["KeyA"], -f, f],
-    [["KeyA", "KeyW"], -1, 0]
+    { keys: ["KeyW"], x: -f, y: -f },
+    { keys: ["KeyW", "KeyD"], x: 0, y: -1 },
+    { keys: ["KeyD"], x: f, y: -f },
+    { keys: ["KeyD", "KeyS"], x: 1, y: 0 },
+    { keys: ["KeyS"], x: f, y: f },
+    { keys: ["KeyS", "KeyA"], x: 0, y: 1 },
+    { keys: ["KeyA"], x: -f, y: f },
+    { keys: ["KeyA", "KeyW"], x: -1, y: 0 }
   ]
   let best = dirs[0]
   let score = -Infinity
   for (const dir of dirs) {
-    const dot = dir[1] * dx + dir[2] * dy
+    const dot = dir.x * dx + dir.y * dy
     if (dot > score) {
       score = dot
       best = dir
     }
   }
-  return best[0]
+  return best.keys
 }
 
 export function axes(keys) {
