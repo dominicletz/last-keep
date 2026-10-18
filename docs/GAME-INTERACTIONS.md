@@ -129,7 +129,7 @@ The keep is the loss condition. Monsters bite it when they are closer to it than
 
 The keep is solid. A hero stops at the wall. A monster stops at the edge and bites from there. A monster that is already inside still bites.
 
-Raising the keep spends wood and gold. The button is on the bar, and the hero has to stand beside the keep. There is no card pick. Rank 0 costs 24 wood and 8 gold. Each rank adds 12 wood and 6 gold, and the keep stops at rank 4. The build radius becomes the wider of the hero's kit range and 180 plus 48 per rank. The camera pulls back by 36 per rank, the dirt disc grows by 40, and the view scale grows by 0.12.
+Raising the keep spends wood and gold. The button is on the bar, and a hero who can pay raises from anywhere on the map. There is no card pick. Rank 0 costs 24 wood and 8 gold. Each rank adds 12 wood and 6 gold, and the keep stops at rank 4. The build radius becomes the wider of the hero's kit range and 180 plus 48 per rank. The camera pulls back by 36 per rank, the dirt disc grows by 40, and the view scale grows by 0.12.
 
 Raising the keep stakes four timber houses on the new ring, paid by the wood and gold already spent. Each full ring of four mints one gold on the field-gold beat. A farmer's sow, harvest, or a four-second work pulse banks labor, and each point spends 1 wood to stake a wheat croft. No farmer, no croft. Rank 0 stakes nothing.
 

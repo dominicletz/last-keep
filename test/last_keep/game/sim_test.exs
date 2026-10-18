@@ -927,22 +927,6 @@ defmodule LastKeep.Game.SimTest do
       push(state, "ada", %{"raise" => true})
       |> Sim.tick()
 
-    assert state.town == 0
-    assert state.resources.wood == 200
-    assert Enum.any?(state.events, &(&1.type == "deny"))
-
-    state =
-      Enum.reduce(1..20, state, fn _, state ->
-        state
-        |> Sim.input("ada", %{"mx" => -1, "my" => 0, "raise" => false})
-        |> Sim.tick()
-      end)
-
-    state =
-      state
-      |> Sim.input("ada", %{"raise" => true, "mx" => 0, "my" => 0})
-      |> Sim.tick()
-
     assert state.town == 1
     assert state.resources.wood == 176
     assert state.resources.gold == 72

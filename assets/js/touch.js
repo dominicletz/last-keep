@@ -1,9 +1,7 @@
 export const STICK_RADIUS = 64
 
 const DEAD = 0.18
-const HERO_R = 14
 const KEEP_CLEAR = 28
-const RAISE_PAD = 36
 const FEED_REACH = 100
 const FOOT = { wall: 16, tower: 16, trap: 15, field: 16, forge: 18, mage_tower: 18 }
 
@@ -82,10 +80,8 @@ function canPay(resources, cost) {
 }
 
 function canRaise(scene) {
-  const keepR = scene.keepR ?? 54
-  const near = Math.hypot(scene.hero.x, scene.hero.y) <= keepR + HERO_R + RAISE_PAD
   const offer = scene.upgrade
-  if (!near || !offer) return false
+  if (!offer) return false
   return (scene.resources?.wood ?? 0) >= offer.wood && (scene.resources?.gold ?? 0) >= offer.gold
 }
 

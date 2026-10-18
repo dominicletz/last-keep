@@ -1208,12 +1208,8 @@ defmodule LastKeep.Game.Sim do
   defp advance_phase(%{phase: {:build, _}} = state), do: start_wave(state)
 
   defp advance_phase(%{phase: {:wave, ticks}} = state) do
-    state =
-      cond do
-        ticks > 1 -> %{state | phase: {:wave, ticks - 1}}
-        ticks == 1 -> state |> Map.put(:phase, {:wave, 0}) |> enrage()
-        true -> state
-      end
+    state = %{state | phase: {:wave, ticks - 1}}
+    state = if ticks - 1 <= 0, do: enrage(state), else: state
 
     if monsters(state) == [] do
       clear_wave(state)
@@ -1543,14 +1539,10 @@ defmodule LastKeep.Game.Sim do
 
   defp try_raise(state, _player, hero) do
     rank = state.town
-    near = hypot(hero.x, hero.y) <= state.keep.r + hero.r + 36
 
     cond do
       rank >= Rules.town_rank_cap() ->
         refuse(state, hero.x, hero.y, "The keep is as high as it goes")
-
-      not near ->
-        refuse(state, hero.x, hero.y, "Stand by the keep")
 
       not afford?(state, Rules.keep_upgrade_cost(rank)) ->
         cost = Rules.keep_upgrade_cost(rank)
