@@ -11,6 +11,13 @@ export const moodFloor = {
   warm: 0.03
 }
 
+// The near ground, from 42% down the frame to 90%, skipping the bars.
+// Spread is the 25th percentile of 16px-at-1280 block luma deviation.
+// theme.jpg clears 10. Today's live yard frames sit under 5. Do not lower it.
+export const groundFloor = {
+  spread: 8
+}
+
 export function moodOf(rgba, width, height) {
   const count = width * height
   let lime = 0
@@ -58,6 +65,40 @@ export function moodOf(rgba, width, height) {
     warm: warm / count,
     cool: cool / count
   }
+}
+
+export function groundSpread(rgba, width, height) {
+  const step = Math.max(4, Math.round(width / 80))
+  const y0 = Math.round(height * 0.42)
+  const y1 = Math.round(height * 0.9)
+  const stds = []
+  for (let y = y0; y + step <= y1; y += step) {
+    for (let x = 0; x + step <= width; x += step) {
+      let sum = 0
+      let sumSq = 0
+      const n = step * step
+      for (let yy = y; yy < y + step; yy++) {
+        for (let xx = x; xx < x + step; xx++) {
+          const offset = (yy * width + xx) * 4
+          const luma = lumaOf(rgba[offset], rgba[offset + 1], rgba[offset + 2])
+          sum += luma
+          sumSq += luma * luma
+        }
+      }
+      const mean = sum / n
+      stds.push(Math.sqrt(Math.max(0, sumSq / n - mean * mean)))
+    }
+  }
+  if (stds.length === 0) return { spread: 0, step }
+  stds.sort((a, b) => a - b)
+  return { spread: stds[Math.floor(0.25 * (stds.length - 1))], step }
+}
+
+export function groundProblems(read) {
+  if (read.spread < groundFloor.spread) {
+    return [`ground spread ${read.spread.toFixed(2)} is a flat wash`]
+  }
+  return []
 }
 
 export function moodProblems(mood, phase) {

@@ -4,8 +4,8 @@ import { eliteLook } from "./elite"
 import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
 import { nextTrack, poseAt } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
-import { GROUND_SPAN, GROUND_TEX, groundPixels } from "./ground.js"
-import { moodOf, moodProblems } from "./mood.js"
+import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
@@ -137,6 +137,25 @@ export function createView(stage) {
   yard.receiveShadow = true
   scene.add(yard)
   let painted = "day"
+  const plazaBytes = plazaPixels("day")
+  const plazaMap = new THREE.DataTexture(plazaBytes, PLAZA_TEX, PLAZA_TEX)
+  plazaMap.colorSpace = THREE.SRGBColorSpace
+  plazaMap.magFilter = THREE.NearestFilter
+  plazaMap.minFilter = THREE.NearestFilter
+  plazaMap.flipY = false
+  plazaMap.needsUpdate = true
+  const plazaWear = new THREE.Mesh(
+    new THREE.CircleGeometry(PLAZA_SPAN / 2, plazaSides),
+    new THREE.MeshLambertMaterial({ map: plazaMap, color: 0xffffff })
+  )
+  plazaWear.rotation.x = -Math.PI / 2
+  plazaWear.position.y = 0.24
+  scene.add(plazaWear)
+  const shadowMat = new THREE.MeshBasicMaterial({
+    map: contactTexture(),
+    transparent: true,
+    depthWrite: false
+  })
 
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
@@ -196,7 +215,33 @@ export function createView(stage) {
     if (painted === phase) return
     groundMap.image.data.set(groundPixels(phase))
     groundMap.needsUpdate = true
+    plazaMap.image.data.set(plazaPixels(phase))
+    plazaMap.needsUpdate = true
     painted = phase
+  }
+
+  function contactTexture() {
+    const canvas = document.createElement("canvas")
+    canvas.width = 64
+    canvas.height = 64
+    const ctx = canvas.getContext("2d")
+    const fade = ctx.createRadialGradient(32, 32, 2, 32, 32, 32)
+    fade.addColorStop(0, "rgba(20,16,12,0.78)")
+    fade.addColorStop(0.5, "rgba(20,16,12,0.32)")
+    fade.addColorStop(1, "rgba(20,16,12,0)")
+    ctx.fillStyle = fade
+    ctx.fillRect(0, 0, 64, 64)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }
+
+  function contactDisc(radius) {
+    const mesh = new THREE.Mesh(new THREE.CircleGeometry(radius, 14), shadowMat)
+    mesh.rotation.x = -Math.PI / 2
+    mesh.position.y = 0.46
+    mesh.renderOrder = 2
+    return mesh
   }
 
   function addForestWall() {
@@ -210,6 +255,7 @@ export function createView(stage) {
       group.position.set(slot.x, 0, slot.z)
       group.scale.setScalar(slot.scale)
       group.rotation.y = slot.angle
+      group.add(contactDisc(8))
       group.traverse((child) => {
         child.castShadow = false
         child.receiveShadow = false
@@ -599,6 +645,7 @@ export function createView(stage) {
         patchAt,
         sampleWorld,
         frameMood,
+        frameGround,
         tick: snap.tick,
         alive: me ? !!me.alive : !!kept.alive,
         hp: me ? me.hp : kept.hp,
@@ -713,13 +760,35 @@ export function createView(stage) {
     return patchStats(buf)
   }
 
-  function frameMood() {
+  function readFrame() {
     paintFrame()
     const canvas = renderer.domElement
-    const buf = new Uint8Array(canvas.width * canvas.height * 4)
-    renderer.getContext().readPixels(0, 0, canvas.width, canvas.height, renderer.getContext().RGBA, renderer.getContext().UNSIGNED_BYTE, buf)
-    const mood = moodOf(buf, canvas.width, canvas.height)
+    const gl = renderer.getContext()
+    const width = canvas.width
+    const height = canvas.height
+    const raw = new Uint8Array(width * height * 4)
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, raw)
+    // readPixels is bottom-up. The ground band counts from the top of the picture,
+    // the same way the jpeg check does, so the near yard is the rows under the sky.
+    const buf = new Uint8Array(width * height * 4)
+    const stride = width * 4
+    for (let y = 0; y < height; y++) {
+      const src = (height - 1 - y) * stride
+      buf.set(raw.subarray(src, src + stride), y * stride)
+    }
+    return { buf, width, height }
+  }
+
+  function frameMood() {
+    const shot = readFrame()
+    const mood = moodOf(shot.buf, shot.width, shot.height)
     return { ...mood, light: liveLight, problems: moodProblems(mood, liveLight) }
+  }
+
+  function frameGround() {
+    const shot = readFrame()
+    const read = groundSpread(shot.buf, shot.width, shot.height)
+    return { ...read, light: liveLight, problems: groundProblems(read) }
   }
 
   function patchAt(x, z) {
@@ -806,6 +875,7 @@ export function createView(stage) {
       gold.position.y = 0.6
       group.add(gold)
     }
+    group.add(contactDisc(16))
     return group
   }
 
@@ -816,8 +886,10 @@ export function createView(stage) {
   }
 
   function buildingMesh(row) {
-    if (row.kind === "house") return groupFrom(houseParts(houseVariant(row.x, row.y)))
-    return groupFrom(modelParts(row.kind))
+    const group = row.kind === "house" ? groupFrom(houseParts(houseVariant(row.x, row.y))) : groupFrom(modelParts(row.kind))
+    const radius = row.kind === "house" || row.kind === "field" ? 22 : 12
+    group.add(contactDisc(radius))
+    return group
   }
 
   function pieceMesh(piece) {
