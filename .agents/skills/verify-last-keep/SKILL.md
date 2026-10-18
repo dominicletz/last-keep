@@ -58,7 +58,7 @@ BASE_URL=https://agentyard.letz.tw npx playwright test
 - `squarePixels` — the buffer aspect and the camera aspect follow the window at 1600×600, 600×1000, and 1280×800. Console errors fail the scenario.
 - `heroSilhouettes` — Ada, Lux, Bram, Pip, and Nia stand in one room as warrior, mage, engineer, scout, and farmer. `window.__lastKeep.figures` has five distinct mark, bounds, and part-count signatures.
 - `paradeShowsEveryKind` — the scripted parade puts goblin, skeleton, wolf, troll, bat, and boss on screen around the host. `brightNear` reads the bat and the rider. Each needs at least 24 pixels 18 luma above the yard patch. The parade is skipped when `BASE_URL` is set.
-- `mobileTouch` — a touch phone in landscape creates a game, walks with the left joystick, casts Q from the portrait button, and places a wall from the context button. The same page in portrait shows the rotate prompt. A desktop context keeps the touch pad hidden.
+- `mobileTouch` — a touch phone in landscape creates a game, walks with the left joystick, casts Q from the portrait button, and places a wall from the context button. The same page in portrait shows the rotate prompt. A desktop context keeps the touch pad hidden. `padSlot("feed")` is `f`, the same bit the finger-up clears.
 
 `assertWaveClear` runs while the party waits at the keep and again after the host walks. The wave line stays inside the window and off the sacks, the relic lines, the heart, the roster, the name, the calls, and the raise, skill, and build controls.
 

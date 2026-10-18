@@ -60,6 +60,11 @@ export function viewportContent(playing) {
   return "width=device-width, initial-scale=1, viewport-fit=cover"
 }
 
+export function padSlot(id) {
+  if (id === "feed") return "f"
+  return id
+}
+
 export function contextAction(scene) {
   if (!scene?.hero || !Number.isFinite(scene.hero.x) || !Number.isFinite(scene.hero.y)) return null
   if (scene.armed) {
