@@ -66,7 +66,7 @@ The snap and the palette lock are the part of (a) that the scores support. The d
 3. Hand-clean jpeg noise and a broken outline. A cleaned pixel stays on the locked palette.
 4. Run the scorer. A tile ships when it meets the floors. A later floor may be higher. It may not be lower.
 
-The locked palette is each of the forty `STYLE.md` tokens at full strength, at 0.65, and at 0.40, with channels rounded and clamped. That set has 120 colors. A pixel is a member when its distance to the nearest locked color is at most 1.
+The locked palette is each of the forty `STYLE.md` tokens at 1, 0.60, 0.50, and 0.40, with channels rounded and clamped. A pixel is a member when its distance to the nearest locked color is at most 1. Steps at 1, 0.65, and 0.40 put the lit dusk sunset under luma 90, so the warm tail drops under 0.03, and they put a dark tuft on a brown, so the stone-to-pine gap drops under 25. The 0.60 step keeps that sunset, and the 0.50 step keeps the tuft. Three.js writes linear light into an offscreen target. Showing those bytes as sRGB flattens the yard: a day ground stored that way scores under the spread floor of 8. The pass encodes sRGB, then picks the nearest locked color.
 
 Hero and monster sheets are eight directions at world yaw 0°, 45°, 90°, 135°, 180°, 225°, 270°, and 315°, with yaw 0 facing +x. Each direction has at least four walk frames, three attack frames, and four death frames. A frame is at least 56 internal pixels tall at town rank 0, the same floor `STYLE.md` uses for the day raster. The heroes agent `bc-c0cd18ed` draws those sheets to this spec.
 
@@ -86,6 +86,8 @@ The scorer lives in `assets/js/art_score.js`, with `assets/js/art_score.test.js`
 | silhouette IoU on a registered crop | 0.55 | 1 against itself | 0.351 on the keep |
 | palette membership after the lock | 0.98 | the jpeg is not the render | 0.000 |
 | CSS 2×2 block is one color | 0.99 | guards the upscale | client uses nearest at `pixelSize` 2 |
+
+Membership is distance at most 1 from a token at 1, 0.60, 0.50, or 0.40. The earlier lock, 1, 0.65, and 0.40, is not the spec.
 
 Block, hard edge, SSIM, IoU, and membership fail on today's gallery frames. The CSS grid check guards `pixelSize` 2. A bilinear upscale fails it. These floors may only rise. Mood floors, ground spread 8, the stone-versus-pine hue gap of 25, and the 56-pixel hero height stay where they are.
 

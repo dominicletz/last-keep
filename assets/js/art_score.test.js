@@ -5,15 +5,25 @@ import { models, styleTables } from "../models/registry.js"
 import { decodePng, renderCloseup } from "../models/raster.js"
 import { loadSheet } from "../models/sheets.js"
 import { heroCrops, MONSTER_CROPS } from "../models/sprites.js"
+import { groundPixels } from "./ground.js"
+import { groundFloor, groundSpread } from "./mood.js"
+import { cycleLight, hueOf, litYard, lumaOf } from "./scene.js"
 import {
   blockPercentiles,
   hardEdge,
+  lockFrame,
   lockInk,
   lockedPalette,
+  membership,
+  nearestLocked,
   noiseCap,
   noiseEnergy,
+  paletteScales,
+  pixelStep,
   readability,
   scoreFrame,
+  snapWorld,
+  srgbFromLinearByte,
   styleHexes,
   valueFloor,
   valueStructure
@@ -62,7 +72,36 @@ test("lockInk searches each distinct color once", () => {
   const stats = { probes: 0 }
   const locked = lockInk(rgb, width, height, null, swatch, stats)
   assert.equal(stats.probes, swatch.length)
-  assert.deepEqual([locked[0], locked[1], locked[2]], swatch[2])
+  assert.deepEqual([locked[0], locked[1], locked[2]], swatch[swatch.length - 1])
+})
+
+test("lockInk restores a collapsed step from a later pixel in the block", () => {
+  const palette = [
+    [200, 200, 200],
+    [30, 30, 30],
+    [45, 45, 45]
+  ]
+  const width = 8
+  const height = 8
+  const rgb = new Uint8Array(width * height * 3)
+  rgb[0] = 200
+  rgb[1] = 200
+  rgb[2] = 200
+  for (let i = 1; i < 32; i++) {
+    rgb[i * 3] = 28
+    rgb[i * 3 + 1] = 28
+    rgb[i * 3 + 2] = 28
+  }
+  for (let i = 32; i < 64; i++) {
+    rgb[i * 3] = 10
+    rgb[i * 3 + 1] = 10
+    rgb[i * 3 + 2] = 10
+  }
+  const locked = lockInk(rgb, width, height, null, palette)
+  const buckets = new Set()
+  for (let i = 0; i < 64; i++) buckets.add(locked[i * 3] >> 4)
+  assert.equal(buckets.size, 3)
+  assert.equal(locked[0], 200)
 })
 
 test("readability is the ink height and the silhouette gap against the ground", () => {
@@ -234,4 +273,101 @@ test("the value and noise floors stay at the measured yard", () => {
   assert.equal(valueFloor.spread, 2)
   assert.equal(valueFloor.focalContrast, 5)
   assert.equal(noiseCap, 12)
+})
+
+function scalesInSpec() {
+  const spec = fs.readFileSync(new URL("../../docs/concepts/ART-PIPELINE.md", import.meta.url), "utf8")
+  const named = spec.match(/tokens at ([0-9.]+), ([0-9.]+), ([0-9.]+), and ([0-9.]+)/)
+  assert.ok(named, "ART-PIPELINE.md names the four lock steps")
+  assert.match(spec, /Steps at 1, 0\.65, and 0\.40 put the lit dusk sunset under luma 90/)
+  assert.match(spec, /stone-to-pine gap drops under 25/)
+  assert.match(spec, /The 0\.60 step keeps that sunset, and the 0\.50 step keeps the tuft/)
+  return named.slice(1).map(Number)
+}
+
+test("the locked palette is the style tokens at the spec's four shades", () => {
+  assert.equal(tokens.size, 40)
+  assert.deepEqual(styleHexes, [...tokens.keys()])
+  assert.deepEqual(paletteScales, scalesInSpec())
+  assert.deepEqual(paletteScales, [1, 0.6, 0.5, 0.4])
+  assert.equal(palette.length, 160)
+  const grass = nearestLocked(0x5c, 0x64, 0x2f, palette)
+  assert.deepEqual(grass.rgb, [0x5c, 0x64, 0x2f])
+  assert.equal(grass.dist, 0)
+  const shade = (scale) => [0x5c, 0x64, 0x2f].map((channel) => Math.round(channel * scale))
+  assert.deepEqual(nearestLocked(...shade(0.6), palette).rgb, shade(0.6))
+  assert.deepEqual(nearestLocked(...shade(0.5), palette).rgb, shade(0.5))
+  assert.ok(nearestLocked(...shade(0.65), palette).dist > 1)
+})
+
+test("the camera and a sprite origin snap to the internal pixel", () => {
+  const step = pixelStep(168, 400)
+  assert.ok(Math.abs(step - 0.84) < 1e-9)
+  const snapped = snapWorld(10.2, step)
+  assert.equal(snapped / step, Math.round(snapped / step))
+  assert.ok(Math.abs(snapped - 10.2) <= step / 2 + 1e-9)
+  assert.equal(snapWorld(step * 3, step), step * 3)
+  const render = fs.readFileSync(new URL("./render.js", import.meta.url), "utf8")
+  assert.equal(render.includes("focus.set(anchor.x, 0, anchor.z)"), false)
+  assert.equal(render.split("snapWorld(anchor.x, step)").length - 1, 2)
+})
+
+function linearByte(channel) {
+  const x = channel / 255
+  const linear = x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
+  return Math.round(linear * 255)
+}
+
+test("encoding the linear target keeps the yard spread on the palette", () => {
+  const src = groundPixels("day", 160)
+  const linear = new Uint8Array(src.length)
+  const encoded = new Uint8Array(src.length)
+  for (let i = 0; i < src.length; i += 4) {
+    const bytes = [linearByte(src[i]), linearByte(src[i + 1]), linearByte(src[i + 2])]
+    const shown = srgbFromLinearByte(bytes[0], bytes[1], bytes[2])
+    linear[i] = bytes[0]
+    linear[i + 1] = bytes[1]
+    linear[i + 2] = bytes[2]
+    linear[i + 3] = 255
+    encoded[i] = shown[0]
+    encoded[i + 1] = shown[1]
+    encoded[i + 2] = shown[2]
+    encoded[i + 3] = 255
+  }
+  assert.ok(groundSpread(linear, 160, 160).spread < groundFloor.spread)
+  const locked = lockFrame(encoded, 160, 160, palette)
+  assert.ok(groundSpread(locked, 160, 160).spread >= groundFloor.spread)
+  assert.ok(membership(locked, 160, 160, palette) >= 0.98)
+  const pass = fs.readFileSync(new URL("./palette_pass.js", import.meta.url), "utf8")
+  assert.match(pass, /0\.0031308/)
+  assert.match(pass, /12\.92/)
+  assert.match(pass, /toSrgb\(texture2D/)
+})
+
+function gap(left, right) {
+  const span = Math.abs(left - right) % 360
+  return Math.min(span, 360 - span)
+}
+
+function lockedLit(hex) {
+  const lit = litYard(hex, cycleLight.dusk)
+  return nearestLocked(lit.r, lit.g, lit.b, palette).rgb
+}
+
+test("dusk sunset stays warm and the tuft stays off the stone", () => {
+  const sunset = lockedLit(0xe58e54)
+  const sunLuma = lumaOf(...sunset)
+  const sunSat = (Math.max(...sunset) - Math.min(...sunset)) / Math.max(...sunset)
+  const sunHue = hueOf(...sunset)
+  assert.ok(sunLuma > 90, `sunset luma ${sunLuma}`)
+  assert.ok(sunSat > 0.35, `sunset sat ${sunSat}`)
+  assert.ok(sunHue >= 10 && sunHue <= 50, `sunset hue ${sunHue}`)
+  const tuft = hueOf(...lockedLit(0x3a4218))
+  const pine = hueOf(...lockedLit(0x353e27))
+  const stone = hueOf(...lockedLit(0x4b3c33))
+  assert.ok(gap(tuft, stone) >= 25, `tuft ${tuft} stone ${stone}`)
+  assert.ok(gap(pine, stone) >= 25, `pine ${pine} stone ${stone}`)
+  const plate = lockedLit(0xb5afaa)
+  const plateSat = (Math.max(...plate) - Math.min(...plate)) / Math.max(...plate)
+  assert.ok(plateSat < 0.2, `plate sat ${plateSat}`)
 })
