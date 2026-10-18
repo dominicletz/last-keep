@@ -21,6 +21,18 @@ defmodule LastKeep.Game.State do
     upgrades: %{forge: false, mage_tower: false},
     kills: 0,
     events: [],
-    enraged: false
+    enraged: false,
+    world: %{
+      seed: 0,
+      chunks: %{},
+      discovered: MapSet.new(),
+      portals: [],
+      chests: [],
+      camps: [],
+      quarries: [],
+      shrines: [],
+      merchant: nil,
+      hermit: nil
+    }
   ]
 end

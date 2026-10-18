@@ -33,6 +33,8 @@ defmodule LastKeep.Game.Snapshot do
       projectiles: projectiles(state),
       buildings: Enum.map(of_type(state, :building), &building/1),
       trees: Enum.map(of_type(state, :tree), &tree/1),
+      chests: Enum.map(state.world.chests, &chest_view/1),
+      portals: Enum.map(state.world.portals, &portal_view/1),
       events: Enum.map(Enum.reverse(state.events), &event/1)
     }
   end
@@ -126,6 +128,20 @@ defmodule LastKeep.Game.Snapshot do
 
   defp tree(tree) do
     %{id: tree.id, x: round1(tree.x), y: round1(tree.y), wood: tree.wood}
+  end
+
+  defp chest_view(chest) do
+    %{id: chest.id, x: round1(chest.x), y: round1(chest.y), gold: chest.gold}
+  end
+
+  defp portal_view(portal) do
+    %{
+      id: portal.id,
+      x: round1(portal.x),
+      y: round1(portal.y),
+      hp: portal.hp,
+      max: portal.max_hp
+    }
   end
 
   defp projectiles(state) do

@@ -18,6 +18,20 @@ defmodule LastKeep.Game.World do
   ]
 
   def generate(seed) when is_integer(seed) do
+    key = {__MODULE__, seed}
+
+    case :persistent_term.get(key, :miss) do
+      :miss ->
+        world = build(seed)
+        :persistent_term.put(key, world)
+        world
+
+      world ->
+        world
+    end
+  end
+
+  defp build(seed) do
     {attempt, pois, grid} = layout(seed)
 
     %{

@@ -148,7 +148,7 @@ Raising the keep stakes four timber houses on the new ring, paid by the wood and
 
 Goblins, skeletons, wolves, and trolls walk at the keep or at the nearest hero and bite. Elites change that body: fast lunges, armored hits take less, enraged bites harder and sooner. A boss slams the keep harder. Killing any monster pays gold. Killing a boss also grants one relic the party does not hold: heartwood, whetstone, swiftness, banner, or granary.
 
-Wave 1 is two slower, softer goblins from one direction, spawned about 620 to 659 units from the origin. Later nights spawn farther, about 760 to 839, then add directions, skeletons, wolves, trolls, elites, and bosses. Heroes stand near radius 120. The map clamps at 1800. A wave-1 goblin still has time to reach the keep inside the minute.
+Wave 1 is two slower, softer goblins, spawned about 620 to 659 units from the origin. Their bearings are the two nearest portals that still stand. Later nights spawn farther, about 760 to 839, and split that same count across the living portals. Heroes stand near radius 120. The map clamps at 7200. A wave-1 goblin still has time to reach the keep inside the minute.
 
 On screen the five heroes do not share a body. A warrior reads as broad shoulders and a shield, a mage as a robe, hat, and staff, a scout as a hood and a bow, a farmer as a straw brim and a fork, and an engineer as an apron and a hammer. Two monsters drawn on the same ground step apart, each with its own outline and bar, so a pair at the door is two bodies.
 
@@ -159,6 +159,8 @@ The night has its own sound. Day and building play one loop, the wave plays anot
 No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, and gold has a producer and a consumer. The test fails if that stops being true.
 
 Trees with wood are entities. A living hero standing on one chops it, and the tree leaves the world when the wood is gone. Those trees are drawn as a layered pine: a wood trunk and stacked boughs. The client also draws seventy bare trunks in three rings. That ring is not an entity. It has no crown and no wood, so it cannot be chopped. `Rules.scenery_ring/0` says so.
+
+A chest on the seeded land pays 24 gold the first time a living hero stands on it. The same spot pays nothing after that. A portal breaks under a strike. Night 1 stays two goblins, and the broken portal's bearing is not one of them.
 
 ## Planned, not in the simulation
 

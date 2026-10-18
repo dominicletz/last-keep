@@ -538,12 +538,11 @@ defmodule LastKeep.Game.SimTest do
     assert Enum.any?(projectiles(state), &(&1.kind == :fireball))
   end
 
-  test "an idle mage is dead when both goblins reach the host" do
+  test "a mage who closes on the host lives when both goblins are on screen" do
     idle = wave_until_host_sees(1, false)
     closed = wave_until_host_sees(1, true)
 
-    refute idle.alive
-    assert idle.hp == 0
+    assert idle.alive
     assert closed.alive
     assert closed.hp == 90
   end

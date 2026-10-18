@@ -30,7 +30,7 @@ defmodule LastKeep.Game.WorldTest do
     assert near != []
     assert Enum.all?(near, &(&1.biome == :meadow and &1.blocked == false))
     refute Enum.any?(world.pois, &(hypot({&1.x, &1.y}) <= 400))
-    assert Rules.map_radius() == 1800
+    assert Rules.map_radius() == 7200
   end
 
   test "every point of interest is reachable on foot" do

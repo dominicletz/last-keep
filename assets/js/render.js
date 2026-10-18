@@ -517,6 +517,20 @@ export function createView(stage) {
 
       sync("tree", snap.trees || [], () => groupFrom(modelParts("tree")))
 
+      sync("chest", snap.chests || [], () => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(16, 12, 16), mat(0xf0c14a, 0xc9a227))
+        mesh.userData.lift = 8
+        mesh.userData.role = "chest"
+        return mesh
+      })
+
+      sync("portal", snap.portals || [], () => {
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(18, 22, 18), mat(0xff7a2a, 0xc45c24))
+        mesh.userData.lift = 11
+        mesh.userData.role = "portal"
+        return mesh
+      })
+
       sync("shot", snap.projectiles || [], (row) => {
         const fire = row.kind === "fireball" || row.kind === "meteor"
         const color = fire ? 0xff7a2a : 0xf2e2b0
@@ -583,6 +597,7 @@ export function createView(stage) {
         wave: snap.wave,
         keep: snap.keep,
         wood: snap.resources?.wood,
+        gold: snap.resources?.gold,
         kills: snap.kills,
         score: snap.score ?? 0,
         self: me
@@ -613,6 +628,8 @@ export function createView(stage) {
           y: row.y
         })),
         projectiles: snap.projectiles || [],
+        chests: snap.chests || [],
+        portals: snap.portals || [],
         relics: snap.relics || [],
         forge: !!snap.forge,
         mageTower: !!snap.mage_tower,

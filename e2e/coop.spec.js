@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, heroSilhouettes, joinFromForm, paradeShowsEveryKind, prepareProof, scoreList, squarePixels, townGrows, twoPlayerNight } = require("./scenarios")
+const { captionsClearTheBuilds, exploreLand, heroSilhouettes, joinFromForm, paradeShowsEveryKind, prepareProof, scoreList, squarePixels, townGrows, twoPlayerNight } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -35,4 +35,8 @@ test("the town ring grows when the keep is raised and the farmer has worked", as
 
 test("far from the keep the roster and relic lines clear the build bar", async ({ browser }) => {
   await captionsClearTheBuilds(browser)
+})
+
+test("a walk opens a chest and a broken portal skips the night", async ({ browser }) => {
+  await exploreLand(browser)
 })
