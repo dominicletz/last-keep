@@ -359,9 +359,6 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - `docs/concepts/WORLD.md` is the contract for a seeded land of radius 7200. The keep disc of radius 400 stays meadow. Points of interest, role walks, portal bearings, fog, and the 2-to-15 seat scale are on that page. The chest, the portal, the quarry, and the meadow sow are already in the simulation, and the walk clamp is 7200. Pine wood and the performance slice stay planned. LK-089 stays open. Night 1 stays two goblins. This does not change the simulation. The coverage floor stays 77.
 
-## 2026-10-18 a focused blur keeps the swing
-
-- Deploy of the swing-cooldown commit failed the live smoke on one flaky run of `focusClickDoesNotAttack`. The retry passed, and `failOnFlakyTests` failed the job. The same flake failed the motion-cap deploy. The blurred click still has to stay at 0, and the focused click still has to set `attackPeak`. A window `blur` that leaves `document.hasFocus()` true no longer clears the swing flag. The spec's `focus()` sticks until `blur()`, so a guest page that takes the document after that mark cannot throw the click away. `saw_swing` still rides on the snapshot that is pushed, and the spec still waits on that latch. `retainFocus` and `swingFocus` cover the focus cases. This does not change the simulation. The coverage floor stays 77.
 
 ## 2026-10-18 the chest detour steps off the face
 
