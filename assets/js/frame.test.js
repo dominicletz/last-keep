@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as THREE from "three"
-import { cameraFocus, cameraFollow, frameFor, pixelSize } from "./frame.js"
+import { activeDrawMs, cameraFocus, cameraFollow, drawDue, frameFor, idleDrawMs, inputWindowMs, pixelSize } from "./frame.js"
 import { viewScale } from "./town.js"
 
 test("wide, square, and portrait windows keep square pixels and frame the yard", () => {
@@ -98,6 +98,17 @@ test("the scripted parade stays on screen around the host", () => {
   }
   const boss = new THREE.Vector3(-130, 16, -40).project(camera)
   assert.ok(Math.abs(boss.x) >= 0.72 || Math.abs(boss.y) >= 0.62)
+})
+
+test("a snapshot does not draw again until the page has had a turn", () => {
+  assert.equal(activeDrawMs, 50)
+  assert.equal(idleDrawMs, 250)
+  assert.equal(inputWindowMs, 1500)
+  assert.equal(drawDue(1000, 980, 900), false)
+  assert.equal(drawDue(1000, 940, 900), true)
+  assert.equal(drawDue(1000, 800, -600), false)
+  assert.equal(drawDue(1000, 700, -600), true)
+  assert.equal(drawDue(10_000, 0, -Infinity), true)
 })
 
 test("a higher town rank widens the same window", () => {

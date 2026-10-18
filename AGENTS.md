@@ -69,4 +69,4 @@ npx playwright test
 
 As soon as a PR is open, turn on GitHub auto-merge with squash: `gh pr merge <number> --squash --auto`. The repo has `allow_auto_merge` on, and `main` requires the CI `test` check, so the PR merges itself once that check is green.
 
-Never end a run while one of your PRs is green and unmerged, or while a deploy on `main` is pending or red. Every run ends with an explicit next step you have already started.
+Never end a run while one of your PRs is green and unmerged, or while a deploy on `main` is pending or red. A red CI run on `main` counts the same as a red deploy. Every run ends with an explicit next step you have already started.

@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { cameraFocus, frameFor } from "./frame"
+import { cameraFocus, drawDue, frameFor } from "./frame"
 import { poseAt } from "./motion"
 import { sceneryForest, scenerySlots } from "./scenery"
 import { zoomFor } from "./town"
@@ -190,6 +190,9 @@ export function createView(stage) {
   let lastRender = 0
   let lastInput = -Infinity
   let renders = 0
+  let pending = null
+  let drawnTick = -1
+  let viewApi = null
 
   function noteInput() {
     lastInput = performance.now()
@@ -206,6 +209,13 @@ export function createView(stage) {
 
   function frame() {
     const now = performance.now()
+    // The socket handler only queues. Drawing here lets the test's wait run
+    // between snapshots. A draw inside the handler piles up and the page
+    // never returns, so the fireball wait dies when the browser closes.
+    if (pending && viewApi && pending.snap.tick !== drawnTick && drawDue(now, lastRender, lastInput)) {
+      viewApi.draw(pending.snap, pending.selfId)
+      drawnTick = pending.snap.tick
+    }
     for (const [key, mesh] of meshes) placeMesh(key, mesh)
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
       const burst = bursts[i]
@@ -227,11 +237,7 @@ export function createView(stage) {
       probe.set(mesh.position.x, 16, mesh.position.z).project(camera)
       mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
     }
-    // Headless reports every page as visible, so five shadow frames never yield
-    // and the walk's evaluate sits until the test timeout. A page that just
-    // got a key paints with the tick. The others coast.
-    const gap = now - lastInput < 1500 ? 50 : 250
-    if (now - lastRender >= gap) {
+    if (drawDue(now, lastRender, lastInput)) {
       paintFrame()
       lastRender = now
     }
@@ -240,8 +246,13 @@ export function createView(stage) {
 
   requestAnimationFrame(frame)
 
-  return {
+  viewApi = {
     canvas: renderer.domElement,
+    queue(snap, selfId) {
+      pending = { snap, selfId }
+      placeCamera(snap, selfId)
+      nudge(snap, selfId)
+    },
     aim(clientX, clientY) {
       const rect = renderer.domElement.getBoundingClientRect()
       let nearest = null
@@ -271,6 +282,7 @@ export function createView(stage) {
       return { x: point.x, y: point.y, behind: point.z > 1 }
     },
     draw(snap, selfId) {
+      drawnTick = snap.tick
       const name = lightName(snap)
       const rig = cycleLight[name]
       if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
@@ -342,6 +354,7 @@ export function createView(stage) {
         }
       }
 
+      const kept = window.__lastKeep || {}
       const counts = { heroes: 0, monsters: 0, shots: 0 }
       scene.traverse((object) => {
         if (object.userData?.role === "hero") counts.heroes += 1
@@ -429,7 +442,11 @@ export function createView(stage) {
         },
         renders,
         toClient,
-        redNear
+        redNear,
+        kinds: kept.kinds || [],
+        log: kept.log || [],
+        labels: kept.labels || [],
+        audio: kept.audio
       }
     },
     ghost(kind, x, z, ok) {
@@ -445,6 +462,36 @@ export function createView(stage) {
       ghost.position.set(x, 11, z)
       ghost.material.color.set(ok ? 0x7ea35a : 0xc84b3a)
     }
+  }
+  return viewApi
+
+  // The heavy scene sync can skip ticks. The hero still has to take each
+  // step, or the rendered body lands more than one tick behind the server.
+  function nudge(snap, selfId) {
+    const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
+    if (window.__lastKeep && me && window.__lastKeep.self) {
+      window.__lastKeep.self = { ...window.__lastKeep.self, x: me.x, y: me.y }
+    }
+    for (const row of snap.players || []) {
+      const mesh = meshes.get(`hero:${row.id}`)
+      if (!mesh) continue
+      remember(`hero:${row.id}`, row.x, row.y)
+      if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
+    }
+    for (const row of snap.monsters || []) {
+      if (!meshes.has(`monster:${row.id}`)) continue
+      remember(`monster:${row.id}`, row.x, row.y)
+    }
+  }
+
+  function placeCamera(snap, selfId) {
+    const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
+    const anchor = cameraFocus(me?.x, me?.y)
+    focus.set(anchor.x, 0, anchor.z)
+    const dist = zoomFor(snap).camera
+    camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
+    camera.lookAt(focus.x, 0, focus.z)
+    camera.updateMatrixWorld(true)
   }
 
   function toClient(x, z) {
