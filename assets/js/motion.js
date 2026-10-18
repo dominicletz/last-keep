@@ -11,3 +11,14 @@ export function poseAt(track, now, duration = 45) {
     z: lerp(track.fromZ, track.toZ, t)
   }
 }
+
+export function nextTrack(prev, x, z, now) {
+  if (prev && prev.toX === x && prev.toZ === z) return prev
+  return {
+    fromX: prev ? prev.toX : x,
+    fromZ: prev ? prev.toZ : z,
+    toX: x,
+    toZ: z,
+    at: now
+  }
+}
