@@ -574,13 +574,15 @@ async function twoPlayerNight(browser) {
     )
   }, dayField.luma)
   await page.waitForFunction(() => window.__lastKeep.light === "night")
-  await castFireball(friend, notes)
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
+  // A stock goblin has 22 hp and the fireball deals 30. Casting first removes
+  // one, and the wait for two on-screen monsters then sits until the test times out.
   await expectGoblinsOnYard(page)
   await assertMonsterSpread(page)
   await sample(page, notes)
   await expectGoblinsOnYard(friend)
+  await castFireball(friend, notes)
   const sameKeep = await Promise.all([
     page.evaluate(() => window.__lastKeep.keep.hp),
     friend.evaluate(() => window.__lastKeep.keep.hp)
