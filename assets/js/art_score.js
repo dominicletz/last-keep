@@ -242,3 +242,97 @@ export function scoreFrame(frame, crop, palette) {
     membership: palette ? paletteMembership(frame.rgb, frame.width, frame.height, mask, palette) : 0
   }
 }
+
+// Four luma bands of 64. That is inside the 3-to-5 value posterization.
+// Spread counts bands that hold at least 2% of the frame.
+// Focal contrast is the absolute gap between the median luma of the focal mask
+// and the median luma of the ground mask. With no ground mask, the ground is
+// every pixel that is not focal. Spread and contrast only rise.
+const VALUE_BANDS = 4
+const BAND_WIDTH = 64
+const SPREAD_SHARE = 0.02
+
+function medianLuma(hist, total) {
+  if (!total) return 0
+  let seen = 0
+  const mid = (total - 1) >> 1
+  for (let i = 0; i < hist.length; i++) {
+    seen += hist[i]
+    if (seen > mid) return i
+  }
+  return hist.length - 1
+}
+
+export function valueStructure(rgb, width, height, focal, ground) {
+  const n = width * height
+  const counts = [0, 0, 0, 0]
+  const focalCounts = [0, 0, 0, 0]
+  const groundCounts = [0, 0, 0, 0]
+  const focalHist = new Uint32Array(256)
+  const groundHist = new Uint32Array(256)
+  let focalN = 0
+  let groundN = 0
+  for (let i = 0; i < n; i++) {
+    const o = i * 3
+    const tone = Math.max(0, Math.min(255, Math.round(luma(rgb[o], rgb[o + 1], rgb[o + 2]))))
+    const band = Math.min(VALUE_BANDS - 1, (tone / BAND_WIDTH) | 0)
+    counts[band] += 1
+    const onFocal = focal ? focal[i] : 0
+    if (onFocal) {
+      focalCounts[band] += 1
+      focalHist[tone] += 1
+      focalN += 1
+    }
+    if (ground ? ground[i] : !onFocal) {
+      groundCounts[band] += 1
+      groundHist[tone] += 1
+      groundN += 1
+    }
+  }
+  let spread = 0
+  const need = n * SPREAD_SHARE
+  for (let band = 0; band < VALUE_BANDS; band++) {
+    if (counts[band] >= need) spread += 1
+  }
+  const focalLuma = medianLuma(focalHist, focalN)
+  const groundLuma = medianLuma(groundHist, groundN)
+  return {
+    levels: VALUE_BANDS,
+    spread,
+    focalContrast: focalN && groundN ? Math.abs(focalLuma - groundLuma) : 0,
+    focalLuma,
+    groundLuma,
+    bands: counts,
+    focalBands: focalCounts,
+    groundBands: groundCounts
+  }
+}
+
+// Live 640×400 camera, day dusk and night, measured before this floor.
+// Day spread 2, dusk 3, night 2. Median luma gap 5, 10, and 5.
+// Ground noise 8.93, 11.97, and 8.57. The concept clearing tile is 12.43.
+// Spread and contrast only rise. The noise cap only falls.
+export const valueFloor = { spread: 2, focalContrast: 5 }
+export const noiseCap = 12
+
+// Mean absolute luma step between horizontal neighbors. A mask keeps the step
+// on those pixels. The concept clearing and the near yard both use this.
+export function noiseEnergy(rgb, width, height, mask) {
+  let pairs = 0
+  let energy = 0
+  for (let y = 0; y < height; y++) {
+    const row = y * width
+    for (let x = 0; x + 1 < width; x++) {
+      const a = row + x
+      const b = a + 1
+      if (mask && (!mask[a] || !mask[b])) continue
+      const oa = a * 3
+      const ob = b * 3
+      energy += Math.abs(
+        luma(rgb[oa], rgb[oa + 1], rgb[oa + 2]) - luma(rgb[ob], rgb[ob + 1], rgb[ob + 2])
+      )
+      pairs += 1
+    }
+  }
+  return pairs ? energy / pairs : 0
+}

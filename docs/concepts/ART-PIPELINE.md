@@ -91,6 +91,22 @@ Block, hard edge, SSIM, IoU, and membership fail on today's gallery frames. The 
 
 `art_score.test.js` pins the concept-town numbers above and fails a fixture copied from `test/gallery/keep/day.png`. The concept jpeg does not have to pass membership. The frame after the lock does.
 
+## Value and noise
+
+`valueStructure` splits luma into four bands of 64. `spread` is how many of those bands hold at least 2% of the frame. `focalContrast` is the absolute gap between the median luma of the keep, the heroes, and any monster on the canvas, and the median luma of the near ground. The near ground is rows 42% to 90% from the top, the same band as `groundSpread`, with those subjects left out. `noiseEnergy` is the mean absolute luma step between horizontal neighbors on that ground.
+
+The concept clearing is `theme.jpg` at 366,314, 48×48. Its noise is 12.43. The live yard, read by `pictureGrade` at the gameplay camera, measured:
+
+| light | spread | focal luma | ground luma | focal contrast | ground noise |
+| --- | --- | --- | --- | --- | --- |
+| day | 2 | 58 | 53 | 5 | 8.93 |
+| dusk | 3 | 57 | 47 | 10 | 11.97 |
+| night | 2 | 43 | 38 | 5 | 8.57 |
+
+The floors are spread 2 and focal contrast 5. The noise cap is 12. Spread and contrast only rise. The cap only falls. The rendered ground is already under the clearing tile, so the fleck rate stays where it is.
+
+Hero and keep readability is the shared `readability` in `art_score.js`: the ink box in internal pixels and the mean luma gap of the silhouette edge against the ground, floors 20 and 60, at day, dusk, and night. That function lands with the monster-yard change. This pipeline calls it for the keep and each hero once that change is on main. It does not define a second contrast.
+
 ## Gallery and the playtest rounds
 
 `docs/gallery.html` gains a yard section: the town crop, the live frame at the same framing, and the six numbers from the scorer. `npm run models` and `.agents/skills/verify-assets/SKILL.md` fail a kind whose registered crop misses a floor.
