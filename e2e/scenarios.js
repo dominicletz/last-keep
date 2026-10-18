@@ -535,12 +535,14 @@ async function twoPlayerNight(browser) {
   await expect(friend.locator("[data-roster]")).toContainText("Mage")
   await expect(page.locator("[data-clock]")).toHaveText("Waiting to start")
   expect(await page.evaluate(() => window.__lastKeep.light)).toBe("day")
-  await page.waitForFunction(() => window.__lastKeep.field && window.__lastKeep.field.variance < 30)
-  const dayField = await page.evaluate(() => window.__lastKeep.field)
-  expect(dayField.light).toBe("day")
-  expect(dayField.luma).toBeGreaterThanOrEqual(100)
-  expect(dayField.hue).toBeGreaterThanOrEqual(85)
-  expect(dayField.hue).toBeLessThanOrEqual(100)
+  await page.waitForFunction(() => {
+    const mood = window.__lastKeep.frameMood && window.__lastKeep.frameMood()
+    return mood && mood.light === "day" && mood.problems.length === 0
+  })
+  const dayMood = await page.evaluate(() => window.__lastKeep.frameMood())
+  expect(dayMood.problems).toEqual([])
+  expect(dayMood.lime).toBeLessThanOrEqual(0.08)
+  expect(dayMood.contrast).toBeGreaterThanOrEqual(9)
   const town = await page.evaluate(() => window.__lastKeep.townLook)
   expect(town.rank).toBe(0)
   expect(town.path).toBe(true)
@@ -555,6 +557,7 @@ async function twoPlayerNight(browser) {
   expect(forest.wood).toBe(0)
   expect(forest.crowns).toBe(false)
   expect(forest.stumps).toBe(true)
+  expect(forest.wall).toBeGreaterThanOrEqual(80)
   expect(forest.treeBoughs).toBeGreaterThanOrEqual(3)
   await expect(page.locator("[data-wave]")).toHaveText("Wave 1")
   await expect(page.locator('[data-skill-name="attack"]')).toHaveText("Strike")
@@ -584,25 +587,39 @@ async function twoPlayerNight(browser) {
   // and the fireball key then hits a corpse.
   await walkTowardHost(friend)
   await page.locator("[data-start]").click()
-  await page.waitForFunction((dayLuma) => {
-    const field = window.__lastKeep.field
-    if (!field || field.light !== "dusk" || field.variance >= 30) return false
-    const span = Math.abs(field.hue - 40) % 360
-    const far = Math.min(span, 360 - span)
-    return field.luma >= 72 && field.luma < dayLuma && far >= 80
-  }, dayField.luma)
-  const duskRead = await page.evaluate(() => {
-    const field = window.__lastKeep.field
-    const pool = window.__lastKeep.patchAt(48, 48)
-    return { field, pool }
+  await page.waitForFunction(() => {
+    const mood = window.__lastKeep.frameMood && window.__lastKeep.frameMood()
+    return mood && mood.light === "dusk" && mood.problems.length === 0
   })
+  const duskMood = await page.evaluate(() => {
+    const game = window.__lastKeep
+    const hero = game.self
+    return {
+      mood: game.frameMood(),
+      stone: game.sampleWorld(0, 36, 6),
+      plate: game.sampleWorld(hero.x, 18, hero.y),
+      pine: game.sampleWorld(197, 28, 83)
+    }
+  })
+  expect(duskMood.mood.problems).toEqual([])
+  expect(duskMood.mood.cool).toBeLessThanOrEqual(0.25)
+  expect(duskMood.mood.warm).toBeGreaterThanOrEqual(0.03)
+  expect(duskMood.stone && duskMood.plate && duskMood.pine).toBeTruthy()
+  const plateSat =
+    (Math.max(duskMood.plate.r, duskMood.plate.g, duskMood.plate.b) -
+      Math.min(duskMood.plate.r, duskMood.plate.g, duskMood.plate.b)) /
+    Math.max(duskMood.plate.r, 1)
+  expect(plateSat).toBeLessThan(0.2)
   const hueDistance = (left, right) => {
     const span = Math.abs(left - right) % 360
     return Math.min(span, 360 - span)
   }
-  expect(hueDistance(duskRead.pool.hue, 40) + 25).toBeLessThan(hueDistance(duskRead.field.hue, 40))
+  expect(hueDistance(duskMood.stone.hue, duskMood.pine.hue)).toBeGreaterThanOrEqual(25)
   await page.screenshot({ path: shot("dusk-host.png") })
-  await page.waitForFunction(() => window.__lastKeep.light === "night")
+  await page.waitForFunction(() => {
+    const mood = window.__lastKeep.frameMood()
+    return mood.light === "night" && mood.problems.length === 0
+  })
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
   // A stock goblin has 22 hp and the fireball deals 30. Casting first removes

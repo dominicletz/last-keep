@@ -4,6 +4,7 @@ import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import jpeg from "jpeg-js"
+import { GROUND_TEX, groundPixels } from "./ground.js"
 import { moodOf, moodProblems } from "./mood.js"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -46,4 +47,12 @@ test("the 2026-10-18 live frames fail the same comparison", () => {
   assert.ok(duskProblems.some((line) => line.includes("cool") || line.includes("flat")), duskProblems.join("; "))
   assert.ok(nightProblems.some((line) => line.includes("flat")), nightProblems.join("; "))
   assert.ok(day.mood.lime > dusk.mood.lime)
+})
+
+test("the painted yard keeps texture, a moss day, and a warm dusk edge", () => {
+  for (const phase of ["day", "dusk", "night"]) {
+    const pixels = groundPixels(phase)
+    const problems = moodProblems(moodOf(pixels, GROUND_TEX, GROUND_TEX), phase)
+    assert.deepEqual(problems, [], `${phase} ${problems.join("; ")}`)
+  }
 })

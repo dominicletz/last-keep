@@ -3,7 +3,9 @@ import { present } from "./present"
 import { eliteLook } from "./elite"
 import { cameraFocus, drawDue, frameFor } from "./frame"
 import { nextTrack, poseAt } from "./motion"
-import { sceneryForest, scenerySlots } from "./scenery"
+import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
+import { GROUND_SPAN, GROUND_TEX, groundPixels } from "./ground.js"
+import { moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
@@ -82,11 +84,22 @@ export function createView(stage) {
   groundFill.layers.set(1)
   scene.add(groundFill)
   camera.layers.enable(1)
-  const brazierPool = new THREE.PointLight(flameColor, 0, 120, 2)
+  const brazierPool = new THREE.PointLight(flameColor, 0, 90, 2)
   brazierPool.position.set(26, 14, 26)
-  const windowPool = new THREE.PointLight(flameColor, 0, 100, 2)
+  const windowPool = new THREE.PointLight(flameColor, 0, 72, 2)
   windowPool.position.set(0, 16, 36)
-  scene.add(brazierPool, windowPool)
+  const yardTorches = []
+  for (const [x, z] of [
+    [150, 150],
+    [-150, 150],
+    [150, -150],
+    [-150, -150]
+  ]) {
+    const light = new THREE.PointLight(flameColor, 0, 64, 2)
+    light.position.set(x, 14, z)
+    yardTorches.push(light)
+  }
+  scene.add(brazierPool, windowPool, ...yardTorches)
 
   const mats = new Map()
   const mat = (color, emissive = 0x000000) => {
@@ -108,6 +121,22 @@ export function createView(stage) {
   ground.receiveShadow = true
   ground.layers.enable(1)
   scene.add(ground)
+  const groundBytes = groundPixels("day")
+  const groundMap = new THREE.DataTexture(groundBytes, GROUND_TEX, GROUND_TEX)
+  groundMap.colorSpace = THREE.SRGBColorSpace
+  groundMap.magFilter = THREE.NearestFilter
+  groundMap.minFilter = THREE.NearestFilter
+  groundMap.flipY = false
+  groundMap.needsUpdate = true
+  const yard = new THREE.Mesh(
+    new THREE.PlaneGeometry(GROUND_SPAN, GROUND_SPAN),
+    new THREE.MeshLambertMaterial({ map: groundMap, color: 0xffffff })
+  )
+  yard.rotation.x = -Math.PI / 2
+  yard.position.y = 0.08
+  yard.receiveShadow = true
+  scene.add(yard)
+  let painted = "day"
 
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
@@ -126,6 +155,7 @@ export function createView(stage) {
   scene.add(pathNS, pathEW)
 
   forest()
+  addForestWall()
   let keep = makeKeep(0)
   scene.add(keep)
 
@@ -161,6 +191,32 @@ export function createView(stage) {
 
   const forestLook = forestState()
 
+  function paintYard(phase) {
+    if (painted === phase) return
+    groundMap.image.data.set(groundPixels(phase))
+    groundMap.needsUpdate = true
+    painted = phase
+  }
+
+  function addForestWall() {
+    const look = forestWall()
+    const parts = modelParts("tree").map((part) => {
+      if (part.name === "trunk") return { ...part, color: look.trunk }
+      return { ...part, color: part.y < 20 ? look.shade : look.pine }
+    })
+    for (const slot of forestWallSlots()) {
+      const group = groupFrom(parts)
+      group.position.set(slot.x, 0, slot.z)
+      group.scale.setScalar(slot.scale)
+      group.rotation.y = slot.angle
+      group.traverse((child) => {
+        child.castShadow = false
+        child.receiveShadow = false
+      })
+      scene.add(group)
+    }
+  }
+
   function forest() {
     const look = sceneryForest()
     const slots = scenerySlots()
@@ -185,6 +241,7 @@ export function createView(stage) {
     const look = sceneryForest()
     return {
       trunks: scenerySlots().length,
+      wall: forestWallSlots().length,
       wood: look.wood,
       crowns: look.parts.includes("crown") || look.parts.includes("bough"),
       stumps: look.parts.includes("stump") && look.parts.includes("log"),
@@ -361,6 +418,8 @@ export function createView(stage) {
       groundFill.intensity = rig.groundFillLevel || 0
       brazierPool.intensity = rig.pool || 0
       windowPool.intensity = rig.pool || 0
+      for (const light of yardTorches) light.intensity = (rig.pool || 0) * 0.55
+      paintYard(name)
       sky.color.set(rig.sky)
       sky.groundColor.set(rig.ground)
       sky.intensity = rig.hemisphere
@@ -533,6 +592,8 @@ export function createView(stage) {
         redNear,
         brightNear,
         patchAt,
+        sampleWorld,
+        frameMood,
         tick: snap.tick,
         alive: me ? !!me.alive : !!kept.alive,
         hp: me ? me.hp : kept.hp,
@@ -616,6 +677,34 @@ export function createView(stage) {
       if (bodyPixel(buf[i], buf[i + 1], buf[i + 2])) count += 1
     }
     return count
+  }
+
+  function sampleWorld(x, y, z) {
+    paintFrame()
+    const gl = renderer.getContext()
+    const canvas = renderer.domElement
+    const point = new THREE.Vector3(x, y, z).project(camera)
+    if (point.z > 1) return null
+    const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
+    const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)
+    const size = 8
+    const sx0 = Math.max(0, px - size / 2)
+    const sy0 = Math.max(0, py - size / 2)
+    const width = Math.min(size, canvas.width - sx0)
+    const heightPx = Math.min(size, canvas.height - sy0)
+    if (width < 4 || heightPx < 4) return null
+    const buf = new Uint8Array(width * heightPx * 4)
+    gl.readPixels(sx0, Math.max(0, canvas.height - (sy0 + heightPx)), width, heightPx, gl.RGBA, gl.UNSIGNED_BYTE, buf)
+    return patchStats(buf)
+  }
+
+  function frameMood() {
+    paintFrame()
+    const canvas = renderer.domElement
+    const buf = new Uint8Array(canvas.width * canvas.height * 4)
+    renderer.getContext().readPixels(0, 0, canvas.width, canvas.height, renderer.getContext().RGBA, renderer.getContext().UNSIGNED_BYTE, buf)
+    const mood = moodOf(buf, canvas.width, canvas.height)
+    return { ...mood, light: liveLight, problems: moodProblems(mood, liveLight) }
   }
 
   function patchAt(x, z) {

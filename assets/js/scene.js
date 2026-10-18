@@ -34,27 +34,28 @@ export const yardLight = {
 }
 
 // The build is day. The last eight seconds of the build are dusk. A wave is night.
-// Day bodies stay on yardLight so grey plate is not clipped. The ground fill is
-// a separate lamp: green by day, violet by dusk. It does not light heroes.
-// Dusk bodies are the cool violet. Warmth is the brazier pool, not the sky.
+// Day bodies stay on yardLight so grey plate is not clipped. There is no ground
+// lamp: a green or violet fill painted the whole yard one hue. Dusk ambient is
+// neutral and dim so stone, cloth, and plate keep their colors. Warmth is the
+// brazier, the window, and the horizon band.
 export const cycleLight = {
   day: {
     ...yardLight,
-    groundFill: 0x40ff60,
-    groundFillLevel: 2.2,
+    groundFill: 0x000000,
+    groundFillLevel: 0,
     pool: 0,
     background: skyColor
   },
   dusk: {
-    sky: 0x6a5080,
-    ground: 0x3a3050,
-    hemisphere: 0.45,
-    ambient: 0x9a90b8,
-    ambientLevel: 1.6,
-    sun: 0x9a90c0,
-    sunLevel: 0.25,
-    groundFill: 0x8060ff,
-    groundFillLevel: 10,
+    sky: 0xb0b0b4,
+    ground: 0x3a342c,
+    hemisphere: 0.5,
+    ambient: 0xc8c6c0,
+    ambientLevel: 1.05,
+    sun: 0xd0ccc4,
+    sunLevel: 0.3,
+    groundFill: 0x000000,
+    groundFillLevel: 0,
     torch: 26,
     pool: 5200,
     background: skyColor
