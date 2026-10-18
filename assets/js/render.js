@@ -646,6 +646,7 @@ export function createView(stage) {
         sampleWorld,
         frameMood,
         frameGround,
+        frameGrade,
         tick: snap.tick,
         alive: me ? !!me.alive : !!kept.alive,
         hp: me ? me.hp : kept.hp,
@@ -789,6 +790,16 @@ export function createView(stage) {
     const shot = readFrame()
     const read = groundSpread(shot.buf, shot.width, shot.height)
     return { ...read, light: liveLight, problems: groundProblems(read) }
+  }
+
+  function frameGrade() {
+    const shot = readFrame()
+    const mood = moodOf(shot.buf, shot.width, shot.height)
+    const ground = groundSpread(shot.buf, shot.width, shot.height)
+    return {
+      mood: { ...mood, light: liveLight, problems: moodProblems(mood, liveLight) },
+      ground: { ...ground, light: liveLight, problems: groundProblems(ground) }
+    }
   }
 
   function patchAt(x, z) {
