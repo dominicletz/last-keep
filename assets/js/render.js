@@ -420,6 +420,7 @@ export function createView(stage) {
       const heroMesh = heroKey ? meshes.get(heroKey) : null
       window.__lastKeep = {
         counts,
+        tick: snap.tick,
         phase: snap.phase,
         light: lightName(snap),
         field: fieldSample,

@@ -473,6 +473,7 @@ function start(code, seat, ui) {
     else ui.view.draw(snap, selfId)
     const me = (snap.players || []).find((player) => player.id === selfId)
     if (window.__lastKeep) {
+      window.__lastKeep.tick = snap.tick
       window.__lastKeep.projectiles = snap.projectiles || []
       window.__lastKeep.kinds = seen.kinds
       window.__lastKeep.tick = snap.tick

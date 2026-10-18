@@ -194,3 +194,4 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 - `mobileTouch` joins on a landscape phone viewport with touch, walks on the joystick, casts from a portrait button, and places a wall from the context button. Portrait shows the rotate prompt. `twoPlayerNight` still requires the touch pad to stay hidden on a mouse. `stickVector` matches WASD, and a user-agent string does not turn touch on.
 - The post-deploy smoke is `npx playwright test`, which now includes `e2e/mobile.spec.js`. Timeouts and retries are unchanged. This does not change the simulation. The coverage floor stays 69.
+- A guest left behind another window can still be chewing through old snaps. `castFireball` brings that page forward and waits until its tick is advancing at the live rate, then holds Q. The fireball still has to be on screen within 5 seconds.

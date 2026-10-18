@@ -202,7 +202,7 @@ async function sample(tab, notes) {
 }
 
 async function castFireball(friend, notes) {
-  await friend.bringToFront()
+  await liveSnap(friend)
   const click = await friend.evaluate(() => {
     const game = window.__lastKeep
     const monster = (game.monsters || [])[0]
@@ -240,7 +240,9 @@ async function castFireball(friend, notes) {
       hp: window.__lastKeep.hp,
       tick: window.__lastKeep.tick,
       monsters: (window.__lastKeep.monsters || []).length,
-      phase: window.__lastKeep.phase
+      phase: window.__lastKeep.phase,
+      tick: window.__lastKeep.tick,
+      hidden: document.visibilityState
     }))
     throw new Error(`fireball was not on screen ${JSON.stringify(debug)} (${err.message})`)
   } finally {
@@ -271,6 +273,34 @@ async function fight(page, friend, notes) {
   if (guestKey) await holdKey(friend, guestKey, false)
   await sample(page, notes)
   await sample(friend, notes)
+}
+
+async function liveSnap(page) {
+  await page.bringToFront()
+  await page.waitForFunction(() => document.visibilityState === "visible", null, { polling: 100 })
+  await page.evaluate(() => {
+    window.__lastKeepLive = null
+  })
+  await page.waitForFunction(
+    () => {
+      const tick = window.__lastKeep && window.__lastKeep.tick
+      if (!Number.isFinite(tick)) return false
+      const now = performance.now()
+      const mark = window.__lastKeepLive
+      if (!mark) {
+        window.__lastKeepLive = { tick, at: now }
+        return false
+      }
+      const dt = now - mark.at
+      if (dt < 250) return false
+      const steps = tick - mark.tick
+      window.__lastKeepLive = { tick, at: now }
+      const rate = (steps * 1000) / dt
+      return rate >= 8 && rate <= 40
+    },
+    null,
+    { polling: 100 }
+  )
 }
 
 async function holdKey(page, code, down) {
