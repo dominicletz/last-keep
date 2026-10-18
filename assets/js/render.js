@@ -20,7 +20,6 @@ import {
   patchStats,
   pathColor,
   plazaColor,
-  plazaSides,
   ringColor,
   skyColor,
   yardLight
@@ -83,19 +82,24 @@ export function createView(stage) {
     return mats.get(key)
   }
 
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(1900, plazaSides), mat(groundColor))
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(1900, 8),
+    mat(groundColor)
+  )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
   ground.layers.enable(1)
   scene.add(ground)
 
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, 8), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
   plaza.position.y = 0.2
+  plaza.receiveShadow = true
   plaza.layers.enable(1)
-  const ring = new THREE.Mesh(new THREE.RingGeometry(146, 168, plazaSides), mat(ringColor))
+  const ring = new THREE.Mesh(new THREE.RingGeometry(146, 168, 8), mat(ringColor))
   ring.rotation.x = -Math.PI / 2
   ring.position.y = 0.28
+  ring.receiveShadow = true
   scene.add(plaza, ring)
   const pathNS = new THREE.Mesh(new THREE.BoxGeometry(18, 0.45, 280), mat(pathColor))
   pathNS.position.y = 0.4

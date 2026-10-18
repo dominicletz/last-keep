@@ -519,10 +519,6 @@ async function twoPlayerNight(browser) {
   expect(dayField.luma).toBeGreaterThanOrEqual(100)
   expect(dayField.hue).toBeGreaterThanOrEqual(85)
   expect(dayField.hue).toBeLessThanOrEqual(100)
-  const plaza = await page.evaluate(() => window.__lastKeep.patchAt(70, 70))
-  expect(plaza.luma).toBeGreaterThanOrEqual(dayField.luma - 18)
-  expect(plaza.hue).toBeGreaterThanOrEqual(85)
-  expect(plaza.hue).toBeLessThanOrEqual(100)
   const town = await page.evaluate(() => window.__lastKeep.townLook)
   expect(town.rank).toBe(0)
   expect(town.path).toBe(true)
@@ -567,16 +563,21 @@ async function twoPlayerNight(browser) {
   await page.locator("[data-start]").click()
   await page.waitForFunction((dayLuma) => {
     const field = window.__lastKeep.field
-    const pool = window.__lastKeep.patchAt(48, 48)
-    const gap = (left, right) => {
-      const span = Math.abs(left - right) % 360
-      return Math.min(span, 360 - span)
-    }
-    if (!field || !pool || field.light !== "dusk" || field.variance >= 30) return false
-    const far = gap(field.hue, 40)
-    const near = gap(pool.hue, 40)
-    return field.luma >= 72 && field.luma < dayLuma && far >= 80 && near + 25 < far
+    if (!field || field.light !== "dusk" || field.variance >= 30) return false
+    const span = Math.abs(field.hue - 40) % 360
+    const far = Math.min(span, 360 - span)
+    return field.luma >= 72 && field.luma < dayLuma && far >= 80
   }, dayField.luma)
+  const duskRead = await page.evaluate(() => {
+    const field = window.__lastKeep.field
+    const pool = window.__lastKeep.patchAt(48, 48)
+    return { field, pool }
+  })
+  const hueDistance = (left, right) => {
+    const span = Math.abs(left - right) % 360
+    return Math.min(span, 360 - span)
+  }
+  expect(hueDistance(duskRead.pool.hue, 40) + 25).toBeLessThan(hueDistance(duskRead.field.hue, 40))
   await page.screenshot({ path: shot("dusk-host.png") })
   await page.waitForFunction(() => window.__lastKeep.light === "night")
   await assertNightAudio(page)

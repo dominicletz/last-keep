@@ -12,8 +12,6 @@ export const ringColor = 0x4b3c33
 export const flameColor = 0xeea821
 export const mossColor = 0x455c28
 export const mossRegion = { x: 150, y: 192, w: 4, h: 4 }
-// A circle, not the 8-sided disc that read as a dark octagon.
-export const plazaSides = 32
 
 // Daylight stays near the material color. The old sun (amber at 2.6, plus a warm
 // ambient past 1) clipped every grey to orange, so plate and stone read as brown.

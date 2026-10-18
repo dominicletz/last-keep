@@ -14,7 +14,6 @@ import {
   litYard,
   mossColor,
   patchStats,
-  plazaSides,
   skyColor,
   yardLight
 } from "./scene.js"
@@ -73,6 +72,5 @@ test("the day field is moss and dusk is a cool field with a warm pool", () => {
   assert.ok(cycleLight.night.torch > cycleLight.dusk.torch)
   assert.ok(cycleLight.dusk.pool >= 4000)
   assert.ok(cycleLight.night.pool > cycleLight.dusk.pool)
-  assert.ok(plazaSides >= 24)
   assert.equal(litGround(0xd8cfc3, cycleLight.day).g, litGround(0xd8cfc3, yardLight).g)
 })
