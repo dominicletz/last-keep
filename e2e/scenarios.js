@@ -1413,9 +1413,11 @@ function phoneOverlaps() {
 }
 
 async function assertPhoneClear(page) {
+  // Four guest windows cover this page. A frame promise never resolves there,
+  // and the 150s test budget dies on the first viewport. The overlap poll is the layout wait.
+  await page.bringToFront()
   for (const [width, height] of PHONE_SIZES) {
     await page.setViewportSize({ width, height })
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     await expect.poll(() => page.evaluate(phoneOverlaps), { timeout: 4_000 }).toEqual([])
   }
 }
@@ -1491,10 +1493,15 @@ async function phoneClear(browser) {
     seats.push(seat)
     watch(seat.page, name, errors)
   }
-  await page.waitForFunction(() => {
-    const roster = document.querySelector("[data-roster]")?.innerText || ""
-    return ["Nia", "Ada", "Lux", "Bram", "Pip"].every((name) => roster.includes(name))
-  })
+  await page.bringToFront()
+  await page.waitForFunction(
+    () => {
+      const roster = document.querySelector("[data-roster]")?.innerText || ""
+      return ["Nia", "Ada", "Lux", "Bram", "Pip"].every((name) => roster.includes(name))
+    },
+    undefined,
+    { polling: 100 }
+  )
   await assertPhoneClear(page)
   const aims = [
     [144, 0],
@@ -1509,9 +1516,10 @@ async function phoneClear(browser) {
     await pressKey(page, "KeyQ")
     await page.waitForFunction(
       (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
-      before
+      before,
+      { polling: 100 }
     )
-    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0)
+    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0, undefined, { polling: 100 })
   }
   await page.waitForFunction(
     () => {
@@ -1520,18 +1528,20 @@ async function phoneClear(browser) {
       return match && Number(match[1]) >= 8
     },
     undefined,
-    { timeout: 25_000 }
+    { timeout: 25_000, polling: 100 }
   )
   await page.locator("[data-raise]").click()
-  await page.waitForFunction(() => window.__lastKeep.town === 1)
+  await page.waitForFunction(() => window.__lastKeep.town === 1, undefined, { polling: 100 })
   await assertPhoneClear(page)
   // The guests stand on the join ring. Walking back from the west stops on
   // that ring, so the far pose happens after the fields and the raise.
   await assertFarCaptions(page)
   await assertPhoneClear(page)
   await page.locator("[data-start]").click()
-  await page.waitForFunction(() => window.__lastKeep.phase === "wave")
+  // The same covered page never runs requestAnimationFrame, so the default
+  // poll sat through the whole build even after the server had opened the wave.
   await page.bringToFront()
+  await page.waitForFunction(() => window.__lastKeep.phase === "wave", undefined, { polling: 100 })
   await page.waitForFunction(
     () => (window.__lastKeep.monsters || []).some((row) => row.kind === "goblin"),
     undefined,
