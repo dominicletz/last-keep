@@ -123,6 +123,7 @@ defmodule LastKeep.Game.Sim do
     |> survey()
     |> open_chests()
     |> gather()
+    |> mine()
     |> abilities()
     |> remember_input()
     |> projectiles()
@@ -395,6 +396,37 @@ defmodule LastKeep.Game.Sim do
     end)
   end
 
+  defp mine(state) do
+    Enum.reduce(living_heroes(state), state, fn hero, state ->
+      case nearest_quarry(state.world.quarries, hero.x, hero.y) do
+        nil ->
+          state
+
+        quarry ->
+          room = Rules.cap(:stone) - state.resources.stone
+          take = min(Rules.quarry_take(hero.hero), min(quarry.stone, room))
+
+          if take <= 0 do
+            state
+          else
+            quarries =
+              Enum.map(state.world.quarries, fn row ->
+                if row.id == quarry.id, do: %{row | stone: row.stone - take}, else: row
+              end)
+
+            state = %{state | world: %{state.world | quarries: quarries}}
+            add_resource(state, :stone, take)
+          end
+      end
+    end)
+  end
+
+  defp nearest_quarry(quarries, x, y) do
+    quarries
+    |> Enum.filter(&(&1.stone > 0))
+    |> nearest(x, y, 48)
+  end
+
   defp lay_world(seed) do
     grouped = seed |> World.generate() |> Map.fetch!(:pois) |> Enum.group_by(& &1.kind)
     hp = Rules.portal_hp()
@@ -409,7 +441,7 @@ defmodule LastKeep.Game.Sim do
         end),
       chests: Enum.map(grouped[:chest] || [], &Map.put(&1, :gold, Rules.chest_gold())),
       camps: grouped[:camp] || [],
-      quarries: grouped[:quarry] || [],
+      quarries: Enum.map(grouped[:quarry] || [], &Map.put(&1, :stone, Rules.quarry_stone())),
       shrines: grouped[:shrine] || [],
       merchant: List.first(grouped[:merchant] || []),
       hermit: List.first(grouped[:hermit] || [])
@@ -534,7 +566,10 @@ defmodule LastKeep.Game.Sim do
             refuse(state, player.input.ax, player.input.ay, "Choose a building")
 
           kind ->
-            try_place(state, hero, kind, player.input.ax, player.input.ay)
+            {kind, cost} =
+              if kind == :wall, do: wall_offer(state, hero), else: {kind, nil}
+
+            try_place(state, hero, kind, player.input.ax, player.input.ay, cost)
         end
 
       (player.input.attack or clicked) && hero.cooldowns.attack <= 0 ->
@@ -814,7 +849,8 @@ defmodule LastKeep.Game.Sim do
   defp cast(state, player, hero, slot, %{kind: :wall}) do
     hero = start_cd(state, hero, slot, Rules.kit(hero.hero).q.cd)
     state = put_entity(state, hero)
-    try_place(state, hero, :wall, player.input.ax, player.input.ay)
+    {kind, cost} = wall_offer(state, hero)
+    try_place(state, hero, kind, player.input.ax, player.input.ay, cost)
   end
 
   defp cast(state, player, hero, slot, %{kind: :trap}) do
@@ -846,6 +882,11 @@ defmodule LastKeep.Game.Sim do
 
   defp cast(state, _player, _hero, _slot, _ability), do: state
 
+  defp wall_offer(state, hero) do
+    cost = Rules.cost(:stone_wall, hero.hero)
+    if afford?(state, cost), do: {:stone_wall, cost}, else: {:wall, nil}
+  end
+
   defp try_place(state, hero, kind, x, y, cost \\ nil) do
     x = snap(num(x))
     y = snap(num(y))
@@ -867,11 +908,19 @@ defmodule LastKeep.Game.Sim do
       overlap?(state, x, y, Rules.building(kind).r) ->
         refuse(state, x, y, "Blocked")
 
+      # The keep disc is meadow, and the build range never leaves it. A hero
+      # who walked out can still sow at their feet, and pine has to refuse that.
+      kind == :field and World.biome(state.world.seed, x, y) != :meadow ->
+        refuse(state, x, y, "Not meadow")
+
       state.resources.wood < Map.get(cost, :wood, 0) ->
         refuse(state, x, y, "Not enough wood")
 
       state.resources.gold < Map.get(cost, :gold, 0) ->
         refuse(state, x, y, "Not enough gold")
+
+      state.resources.stone < Map.get(cost, :stone, 0) ->
+        refuse(state, x, y, "Not enough stone")
 
       true ->
         state
@@ -882,6 +931,7 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp build_limit(:wall), do: 80
+  defp build_limit(:stone_wall), do: 80
   defp build_limit(:tower), do: 16
   defp build_limit(:trap), do: 40
   defp build_limit(:field), do: 14
@@ -1788,7 +1838,8 @@ defmodule LastKeep.Game.Sim do
   defp afford?(state, cost) do
     state.resources.wood >= Map.get(cost, :wood, 0) and
       state.resources.gold >= Map.get(cost, :gold, 0) and
-      state.resources.food >= Map.get(cost, :food, 0)
+      state.resources.food >= Map.get(cost, :food, 0) and
+      state.resources.stone >= Map.get(cost, :stone, 0)
   end
 
   defp pay(state, cost) do
@@ -1797,6 +1848,7 @@ defmodule LastKeep.Game.Sim do
       |> Map.update!(:wood, &(&1 - Map.get(cost, :wood, 0)))
       |> Map.update!(:gold, &(&1 - Map.get(cost, :gold, 0)))
       |> Map.update!(:food, &(&1 - Map.get(cost, :food, 0)))
+      |> Map.update!(:stone, &(&1 - Map.get(cost, :stone, 0)))
 
     %{state | resources: resources}
   end

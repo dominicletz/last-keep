@@ -136,6 +136,7 @@ defmodule LastKeep.Game.Rules do
   def kill_bonus(_), do: 0
 
   def building(:wall), do: %{hp: 170, r: 16}
+  def building(:stone_wall), do: %{hp: 280, r: 16}
   def building(:tower), do: %{hp: 100, r: 16}
   def building(:trap), do: %{hp: 1, r: 15}
   def building(:field), do: %{hp: 50, r: 16}
@@ -181,6 +182,7 @@ defmodule LastKeep.Game.Rules do
   def cost(:field, _), do: %{wood: 4, gold: 0}
   def cost(:forge, _), do: %{wood: 30, gold: 14}
   def cost(:mage_tower, _), do: %{wood: 30, gold: 14}
+  def cost(:stone_wall, _), do: %{wood: 4, gold: 0, stone: 8}
 
   def barricade_cost(:engineer), do: %{wood: 10, gold: 0}
   def barricade_cost(_), do: %{wood: 22, gold: 0}
@@ -188,6 +190,11 @@ defmodule LastKeep.Game.Rules do
   def cap(:wood), do: 500
   def cap(:food), do: 250
   def cap(:gold), do: 250
+  def cap(:stone), do: 200
+
+  def quarry_stone, do: 40
+  def quarry_take(:engineer), do: 2
+  def quarry_take(_), do: 1
 
   @builds [:wall, :tower, :trap, :field, :forge, :mage_tower]
   def build?(kind), do: kind in @builds

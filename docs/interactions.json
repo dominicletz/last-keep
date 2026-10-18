@@ -15,6 +15,11 @@
       "id": "gold",
       "producers": ["field", "bounty", "house"],
       "consumers": ["tower", "forge", "mage_tower", "keep"]
+    },
+    {
+      "id": "stone",
+      "producers": ["quarry"],
+      "consumers": ["wall"]
     }
   ],
   "monsters": ["goblin", "skeleton", "wolf", "troll", "bat", "boss"],
@@ -85,6 +90,11 @@
     {"from": "scenery", "to": "wood", "via": "The outer ring is dead wood: bare trunks, no crown, and no wood. Living trees are the green ones.", "status": "implemented", "rule": "def scenery_ring"},
     {"from": "chest", "to": "gold", "via": "A living hero who stands on a chest opens it once and the room gains 24 gold.", "status": "implemented", "rule": "def chest_gold"},
     {"from": "portal", "to": "monsters", "via": "Night 1 is two goblins on the bearings of the two nearest living portals. A broken portal's bearing is left out.", "status": "implemented", "rule": "defp wave_one_bearings"},
-    {"from": "warrior", "to": "portal", "via": "A strike on a portal breaks it. The next night does not spawn on that bearing.", "status": "implemented", "rule": "defp hurt_portal"}
+    {"from": "warrior", "to": "portal", "via": "A strike on a portal breaks it. The next night does not spawn on that bearing.", "status": "implemented", "rule": "defp hurt_portal"},
+    {"from": "quarry", "to": "stone", "via": "A quarry holds 40 stone. An engineer takes 2 per tick and any other living hero takes 1.", "status": "implemented", "rule": "defp mine"},
+    {"from": "engineer", "to": "quarry", "via": "The quarry is the engineer's walk. Stone walls are why the engineer leaves the yard.", "status": "implemented", "rule": "def quarry_take(:engineer)"},
+    {"from": "meadow", "to": "field", "via": "A field can be sown only on meadow. Pine refuses the sow and spends nothing.", "status": "implemented", "rule": "kind == :field and World.biome"},
+    {"from": "stone", "to": "wall", "via": "A wall placed while the room can pay 8 stone and 4 wood is a stone wall with 280 health. A wood wall stays at 170.", "status": "implemented", "rule": "def cost(:stone_wall"},
+    {"from": "pine", "to": "wood", "via": "Any living hero chops a pine that still has wood. The pine forest refills a wall line after the yard trees are cut.", "status": "planned"}
   ]
 }
