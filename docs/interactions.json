@@ -13,7 +13,7 @@
     },
     {
       "id": "gold",
-      "producers": ["field", "bounty"],
+      "producers": ["field", "bounty", "house"],
       "consumers": ["tower", "forge", "mage_tower", "keep"]
     }
   ],
@@ -71,7 +71,9 @@
     {"from": "relic", "to": "field", "via": "Granary adds extra food to the field yield.", "status": "implemented", "rule": "defp field_yield"},
     {"from": "elite", "to": "relic", "via": "Killing a fast, armored, or enraged elite adds one relic the party does not already hold.", "status": "implemented", "rule": "defp relic_bearer?"},
     {"from": "mage_tower", "to": "spells", "via": "The spire unlocks the mage meteor. Without it the meteor does not cast.", "status": "implemented", "rule": "defp spell_open?"},
-    {"from": "wall", "to": "city", "via": "CONCEPT.md describes the settlement growing into a walled city. Raising the keep widens the town. Buildings are still placed by hand.", "status": "planned"},
+    {"from": "wall", "to": "city", "via": "Raising the keep spends wood and gold. That payment stakes the next ring of houses, and the wall is what makes the ring a city.", "status": "implemented", "rule": "defp stake"},
+    {"from": "house", "to": "gold", "via": "Each full ring of standing houses mints one gold on the town-tax beat. Towers, the forge, and the spire spend that gold.", "status": "implemented", "rule": "defp town_tax"},
+    {"from": "farmer", "to": "field", "via": "Sow, harvest, or working the day banks labor. Each labor point stakes one croft, which is a field, and pays one wood.", "status": "implemented", "rule": "def croft_cost"},
     {"from": "monsters", "to": "monsters", "via": "Overlapping monsters push apart so two bodies cannot share one spot.", "status": "implemented", "rule": "defp separate_monsters"},
     {"from": "monsters", "to": "monsters", "via": "Monster bodies block each other, so a gap in a wall lets one through at a time.", "status": "implemented", "rule": "defp body_blocked?"},
     {"from": "warrior", "to": "monsters", "via": "A hero stops on a monster. The warrior dash is the one pass through a monster.", "status": "implemented", "rule": "pass_monsters"},

@@ -652,9 +652,11 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp cast(state, player, hero, slot, %{kind: :sow}) do
+    before = field_count(state)
     hero = start_cd(state, hero, slot, Rules.kit(:farmer).q.cd)
     state = put_entity(state, hero)
-    try_place(state, hero, :field, player.input.ax, player.input.ay, %{wood: 0, gold: 0})
+    state = try_place(state, hero, :field, player.input.ax, player.input.ay, %{wood: 0, gold: 0})
+    if field_count(state) > before, do: bank(state, 1), else: state
   end
 
   defp cast(state, _player, hero, slot, %{kind: :harvest} = ability) do
@@ -670,7 +672,8 @@ defmodule LastKeep.Game.Sim do
     else
       hero = start_cd(state, hero, slot, ability.cd)
       state = put_entity(state, hero)
-      add_resource(state, :food, length(fields) * ability.food)
+      state = add_resource(state, :food, length(fields) * ability.food)
+      bank(state, 1)
     end
   end
 
@@ -1104,10 +1107,67 @@ defmodule LastKeep.Game.Sim do
   defp economy(%{phase: {:build, _}} = state) do
     state
     |> field_yield()
+    |> settle()
     |> regrow_trees()
   end
 
   defp economy(state), do: state
+
+  defp settle(state) do
+    state
+    |> bank_work()
+    |> stake()
+    |> town_tax()
+  end
+
+  defp bank_work(state) do
+    if rem(state.tick, Rules.work_every()) == 0 and farmer_present?(state) do
+      bank(state, 1)
+    else
+      state
+    end
+  end
+
+  defp bank(state, n), do: %{state | labor: min(state.labor + n, Rules.labor_cap())}
+
+  defp farmer_present?(state), do: Enum.any?(living_heroes(state), &(&1.hero == :farmer))
+
+  defp stake(state) do
+    Enum.reduce(Rules.plots(state.town, state.labor), state, &claim/2)
+  end
+
+  defp claim(%{id: id, kind: kind, x: x, y: y}, state) do
+    price = if kind == :field, do: Rules.croft_cost(), else: %{wood: 0, gold: 0}
+
+    cond do
+      MapSet.member?(state.staked, id) ->
+        state
+
+      hypot(x, y) < state.keep.r + 28 or overlap?(state, x, y, Rules.building(kind).r) ->
+        state
+
+      kind == :field and
+          (field_count(state) >= build_limit(:field) or not afford?(state, price)) ->
+        state
+
+      true ->
+        state
+        |> pay(price)
+        |> spawn_building(%{kind: kind, x: x, y: y})
+        |> Map.update!(:staked, &MapSet.put(&1, id))
+    end
+  end
+
+  defp town_tax(state) do
+    if rem(state.tick, 120) == 0 do
+      houses = Enum.count(buildings(state), &(&1.kind == :house))
+      add_resource(state, :gold, div(houses, 4))
+    else
+      state
+    end
+  end
+
+  defp field_count(state), do: Enum.count(buildings(state), &(&1.kind == :field))
 
   defp field_yield(state) do
     if rem(state.tick, 40) == 0 do
@@ -1507,6 +1567,7 @@ defmodule LastKeep.Game.Sim do
         |> pay(cost)
         |> Map.update!(:town, &(&1 + 1))
         |> event(%{type: "raise", x: 0.0, y: 0.0, amount: rank + 1})
+        |> stake()
     end
   end
 
@@ -1689,7 +1750,9 @@ defmodule LastKeep.Game.Sim do
     do: for({_id, %{type: :building} = building} <- state.entities, do: building)
 
   defp blockers(state) do
-    Enum.filter(buildings(state), fn building -> building.kind not in [:field, :trap] end)
+    Enum.filter(buildings(state), fn building ->
+      building.kind not in [:field, :trap, :house]
+    end)
   end
 
   defp trees(state), do: for({_id, %{type: :tree} = tree} <- state.entities, do: tree)

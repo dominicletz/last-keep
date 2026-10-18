@@ -24,6 +24,8 @@ flowchart LR
   mage[Mage]
   scout[Scout]
   keep[Keep]
+  city[City]
+  house[House]
   monsters[Monsters]
   boss[Boss]
   relics[Relics]
@@ -72,7 +74,9 @@ flowchart LR
 
   monsters -->|an elite drops one relic| relics
   spire -->|unlocks the meteor| mage
-  wall -.->|planned: the town grows itself| keep
+  wall -->|stakes the next ring| city
+  house -->|town tax| gold
+  farmer -->|labor stakes a croft| field
 ```
 
 ## Roles
@@ -127,6 +131,8 @@ The keep is solid. A hero stops at the wall. A monster stops at the edge and bit
 
 Raising the keep spends wood and gold. The button is on the bar, and the hero has to stand beside the keep. There is no card pick. Rank 0 costs 24 wood and 8 gold. Each rank adds 12 wood and 6 gold, and the keep stops at rank 4. The build radius becomes the wider of the hero's kit range and 180 plus 48 per rank. The camera pulls back by 36 per rank, the dirt disc grows by 40, and the view scale grows by 0.12.
 
+Raising the keep stakes four timber houses on the new ring, paid by the wood and gold already spent. Each full ring of four mints one gold on the field-gold beat. A farmer's sow, harvest, or a four-second work pulse banks labor, and each point spends 1 wood to stake a wheat croft. No farmer, no croft. Rank 0 stakes nothing.
+
 ### Buildings
 
 | Building | Costs | Why it exists |
@@ -158,4 +164,4 @@ Trees with wood are entities. A living hero standing on one chops it, and the tr
 
 Dotted arrows in the graph are these edges. They are `planned` in `interactions.json` and open in the backlog.
 
-- There is no city-growth layer beyond the keep upgrade. The party still places each building by hand.
+Every edge in the graph is implemented. An elite drops a relic, the spire unlocks the meteor, and raising the keep stakes the next ring of houses.

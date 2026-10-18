@@ -138,6 +138,35 @@ defmodule LastKeep.Game.Rules do
   def building(:field), do: %{hp: 50, r: 16}
   def building(:forge), do: %{hp: 150, r: 18}
   def building(:mage_tower), do: %{hp: 130, r: 18}
+  def building(:house), do: %{hp: 80, r: 18}
+
+  def croft_cost, do: %{wood: 1, gold: 0}
+  def labor_cap, do: 8
+  def work_every, do: 80
+
+  def plots(rank, labor)
+      when is_integer(rank) and rank >= 0 and is_integer(labor) and labor >= 0 do
+    rings = min(rank, 4)
+
+    houses =
+      Enum.flat_map(1..rings//1, fn ring ->
+        house_ring(ring)
+        |> Enum.with_index()
+        |> Enum.map(fn {{x, y}, index} ->
+          %{id: {:house, ring, index}, kind: :house, x: x, y: y}
+        end)
+      end)
+
+    crofts =
+      croft_ring()
+      |> Enum.take(min(labor, rings * 2))
+      |> Enum.with_index(1)
+      |> Enum.map(fn {{x, y}, n} ->
+        %{id: {:croft, n}, kind: :field, x: x, y: y}
+      end)
+
+    houses ++ crofts
+  end
 
   def cost(:wall, :engineer), do: %{wood: 4, gold: 0}
   def cost(:wall, _), do: %{wood: 8, gold: 0}
@@ -160,4 +189,22 @@ defmodule LastKeep.Game.Rules do
   @builds [:wall, :tower, :trap, :field, :forge, :mage_tower]
   def build?(kind), do: kind in @builds
   def builds, do: @builds
+
+  defp house_ring(1), do: [{108.0, 108.0}, {-108.0, 108.0}, {-108.0, -108.0}, {108.0, -108.0}]
+  defp house_ring(2), do: [{180.0, 108.0}, {180.0, -108.0}, {-180.0, 108.0}, {-180.0, -108.0}]
+  defp house_ring(3), do: [{216.0, 108.0}, {216.0, -108.0}, {-216.0, 108.0}, {-216.0, -108.0}]
+  defp house_ring(4), do: [{252.0, 144.0}, {252.0, -144.0}, {-252.0, 144.0}, {-252.0, -144.0}]
+
+  defp croft_ring do
+    [
+      {108.0, 36.0},
+      {-108.0, 36.0},
+      {108.0, -36.0},
+      {-36.0, 108.0},
+      {144.0, 36.0},
+      {-144.0, 36.0},
+      {36.0, 144.0},
+      {-36.0, 144.0}
+    ]
+  end
 end
