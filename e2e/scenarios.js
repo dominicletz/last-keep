@@ -617,14 +617,19 @@ async function twoPlayerNight(browser) {
     const span = Math.abs(stone.hue - pine.hue) % 360
     if (Math.min(span, 360 - span) < 25) return false
     const hero = game.self
+    // The card is 32 world units. Height 40 is above it. The steel is height 18.
+    // A dark miss has almost no red, and dividing by that red jumps past 1.
+    const plate = hero ? game.sampleWorld(hero.x, 18, hero.y) : null
+    if (!plate) return false
+    const plateSat =
+      (Math.max(plate.r, plate.g, plate.b) - Math.min(plate.r, plate.g, plate.b)) / Math.max(plate.r, 1)
+    if (plateSat >= 0.2) return false
     return {
       mood: grade.mood,
       ground: grade.ground,
       stone,
       pine,
-      // The card is 32 world units. Height 40 is above it and reads dusk
-      // saturation 0.60. The steel on the card is height 18.
-      plate: game.sampleWorld(hero.x, 18, hero.y)
+      plate
     }
   }, undefined, { timeout: 8_000, polling: 400 })
   const duskMood = await duskHandle.jsonValue()
