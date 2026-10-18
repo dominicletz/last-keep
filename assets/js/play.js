@@ -474,6 +474,10 @@ function start(code, seat, ui) {
       if (me) {
         window.__lastKeep.alive = me.alive
         window.__lastKeep.hp = me.hp
+        // The swing is 8 ticks. draw() is the only other writer, and an idle
+        // page does not paint, so the click check never saw the cooldown.
+        window.__lastKeep.attackCd = me.cds?.attack || 0
+        if (window.__lastKeep.self) window.__lastKeep.self.attackCd = me.cds.attack || 0
       }
     }
     const wave = ui.hud.querySelector("[data-wave]")

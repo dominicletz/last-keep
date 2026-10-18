@@ -65,7 +65,12 @@ async function peakAttackAcrossTicks(page, ticks) {
   let peak = 0
   let seen = start
   while (seen - start < ticks) {
-    await page.waitForFunction((mark) => window.__lastKeep.tick > mark, seen, { timeout: 15_000 })
+    // A covered page does not run animation frames. The tick still arrives
+    // on the socket, and the cooldown is copied there too.
+    await page.waitForFunction((mark) => window.__lastKeep.tick > mark, seen, {
+      timeout: 15_000,
+      polling: 100
+    })
     const row = await page.evaluate(() => ({
       tick: window.__lastKeep.tick,
       cd: window.__lastKeep.attackCd || 0
@@ -92,7 +97,8 @@ async function focusClickDoesNotAttack(page) {
   expect(peak).toBe(0)
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
   await page.mouse.click(spot.x, spot.y)
-  await page.waitForFunction(() => window.__lastKeep.attackCd > 0)
+  const swung = await peakAttackAcrossTicks(page, 12)
+  expect(swung).toBeGreaterThan(0)
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
 }
 
