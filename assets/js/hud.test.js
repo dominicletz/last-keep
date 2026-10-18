@@ -81,6 +81,10 @@ test("an edge call beside the roster stops short of the names", () => {
   const open = callAnchor(0.2, 0.5, roster)
   assert.ok(Math.abs(open.left - 0.2) < 0.001)
   assert.equal(open.end, false)
+  const west = { left: 0.04, top: 0.2, right: 0.22, bottom: 0.55 }
+  const beside = callAnchor(0.1, 0.32, west)
+  assert.equal(beside.end, false)
+  assert.ok(beside.left >= west.right)
 })
 
 test("an armed build draws a ring the size of the hero's reach", () => {

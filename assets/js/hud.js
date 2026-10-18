@@ -185,20 +185,38 @@ export function edgeCalls(monsters) {
   })
 }
 
+const CALL_WIDTH = 0.1
+const CALL_HEIGHT = 0.05
+
+function callHits(left, top, end, roster) {
+  if (!roster || !(roster.right > roster.left) || !(roster.bottom > roster.top)) return false
+  const boxLeft = end ? left - CALL_WIDTH : left
+  const boxRight = end ? left : left + CALL_WIDTH
+  return boxRight > roster.left && boxLeft < roster.right && top + CALL_HEIGHT > roster.top && top < roster.bottom
+}
+
 export function callAnchor(x, y, roster, bar) {
   let left = clamp(x, 0.06, 0.94)
   let top = clamp(y, 0.08, 0.78)
+  let end = left > 0.5
   const barBottom = Number(bar?.bottom) || 0
   if (barBottom > 0 && top < barBottom + 0.03) top = barBottom + 0.05
-  if (roster && roster.right > roster.left && roster.bottom > roster.top) {
-    const covers =
-      left >= roster.left - 0.02 &&
-      left <= roster.right + 0.02 &&
-      top >= roster.top - 0.02 &&
-      top <= roster.bottom + 0.02
-    if (covers) left = roster.left - 0.03
+  if (callHits(left, top, end, roster)) {
+    const parkLeft = roster.left - 0.012
+    // A left-hand roster used to shove the call to its left edge and then
+    // clamp that point back onto the names. The label grew right, through them.
+    if (parkLeft >= 0.04 && parkLeft - CALL_WIDTH >= 0.02) {
+      left = parkLeft
+      end = true
+    } else {
+      left = roster.right + 0.012
+      end = false
+    }
   }
-  return { left: clamp(left, 0.04, 0.96), top: clamp(top, 0.06, 0.78), end: left > 0.5 }
+  left = clamp(left, 0.04, 0.96)
+  top = clamp(top, 0.06, 0.78)
+  if (callHits(left, top, end, roster)) top = clamp(roster.bottom + 0.04, 0.06, 0.78)
+  return { left, top, end }
 }
 
 export function spreadCalls(anchors) {
