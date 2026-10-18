@@ -1131,9 +1131,13 @@ async function townGrows(browser) {
 
 async function assertFarCaptions(page) {
   await page.bringToFront()
+  // The position is published on the socket. The default wait polls in
+  // requestAnimationFrame, and a covered page never runs that, so the walk
+  // times out after the body has already passed the mark.
+  const published = { timeout: 20_000, polling: 100 }
   await page.evaluate(() => window.__lastKeepTest.hold("KeyW", true))
   try {
-    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -220, undefined, { timeout: 20_000 })
+    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -220, undefined, published)
   } finally {
     await page.evaluate(() => window.__lastKeepTest.hold("KeyW", false))
   }
@@ -1142,7 +1146,7 @@ async function assertFarCaptions(page) {
     window.__lastKeepTest.hold("KeyW", true)
   })
   try {
-    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.x < -700, undefined, { timeout: 20_000 })
+    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.x < -700, undefined, published)
   } finally {
     await page.evaluate(() => {
       window.__lastKeepTest.hold("KeyA", false)
