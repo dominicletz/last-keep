@@ -85,9 +85,11 @@ export function sackLine(resources = {}) {
   }))
 }
 
-export function seatSacks(spots, view, boxes, keep) {
+export function seatSacks(spots, view, boxes, keep, extra) {
   const seated = []
-  const obstacles = keep ? [keep] : []
+  const obstacles = []
+  if (keep) obstacles.push(keep)
+  for (const block of extra || []) if (block) obstacles.push(block)
   for (let i = 0; i < (spots || []).length; i += 1) {
     const spot = spots[i]
     const box = boxes?.[i] || { width: 0, height: 0 }
@@ -273,8 +275,6 @@ export function waveAnchor(hero) {
   return { x: hero.x - 64, y: hero.y - 64 }
 }
 
-const SEAT_STEP = 16
-
 function pinMetrics(box, anchor) {
   const width = box?.width || 0
   const height = box?.height || 0
@@ -288,7 +288,7 @@ function pinLimits(view, box, anchor, floor, cap) {
   const corner = anchor === "corner"
   const minX = 8 + shiftX
   const maxX = Math.max(minX, view.width - 8 - tailX)
-  const minY = Math.max(8 + shiftY, Number(floor) || 0)
+  const minY = Math.max(8 + shiftY, (Number(floor) || 0) + shiftY)
   let maxY = Math.max(minY, view.height - (corner ? 8 + tailY : 72))
   if (Number.isFinite(cap)) maxY = Math.max(minY, Math.min(maxY, cap))
   return { minX, maxX, minY, maxY }
@@ -301,17 +301,138 @@ export function captionCap(anchor, box, limit) {
   return limit + height * 0.2
 }
 
-export function seatCaptions(roster, relic, view, limit, floor = 0) {
+export function seatCaptions(roster, relic, view, limit, floor = 0, extra) {
   const rosterBox = roster?.box || { width: 0, height: 0 }
   const relicBox = relic?.box || { width: 0, height: 0 }
+  const blocks = (extra || []).filter(Boolean)
   const rosterSpot = roster?.spot
-    ? seatPin(roster.spot, view, rosterBox, [], "corner", floor, captionCap("corner", rosterBox, limit))
+    ? seatPin(roster.spot, view, rosterBox, blocks, "corner", floor, captionCap("corner", rosterBox, limit))
     : null
-  const blocks = rosterSpot ? [pinRect(rosterSpot, rosterBox, "corner")] : []
+  const relicBlocks = rosterSpot ? [...blocks, pinRect(rosterSpot, rosterBox, "corner")] : blocks
   const relicSpot = relic?.spot
-    ? seatPin(relic.spot, view, relicBox, blocks, "chip", 0, captionCap("chip", relicBox, limit))
+    ? seatPin(relic.spot, view, relicBox, relicBlocks, "chip", floor, captionCap("chip", relicBox, limit))
     : null
   return { roster: rosterSpot, relic: relicSpot }
+}
+
+export function seatPhoneHud({ view, sacks, boxes, keep, heart, controls, roster, relic, limit, floor }) {
+  const fixed = [...(controls || []), heart].filter(Boolean)
+  const seated = seatSacks(sacks, view, boxes, keep, fixed)
+  const sackRects = seated.map((spot, i) => (spot ? pinRect(spot, boxes?.[i] || { width: 0, height: 0 }, "sack") : null)).filter(Boolean)
+  const captions = seatCaptions(roster, relic, view, limit, floor, [...fixed, keep, ...sackRects].filter(Boolean))
+  return { sacks: seated, roster: captions.roster, relic: captions.relic }
+}
+
+export function callRect(anchor, box, view) {
+  const width = box?.width || 0
+  const height = box?.height || 0
+  const x = (Number(anchor?.left) || 0) * (view?.width || 0)
+  const y = (Number(anchor?.top) || 0) * (view?.height || 0)
+  if (anchor?.end) return { left: x - width, top: y, right: x, bottom: y + height }
+  return { left: x, top: y, right: x + width, bottom: y + height }
+}
+
+export function parkCall(anchor, box, obstacles, view) {
+  const parked = parkRect(callRect(anchor, box, view), obstacles, {
+    left: 4,
+    top: 4,
+    right: Math.max(4, (view?.width || 0) - 4),
+    bottom: Math.max(4, (view?.height || 0) - 4)
+  })
+  const width = view?.width || 1
+  const height = view?.height || 1
+  return { left: parked.left / width, top: parked.top / height, end: false, label: anchor?.label }
+}
+
+export function parkRect(rect, obstacles, bounds) {
+  const width = Math.max(0, (rect?.right || 0) - (rect?.left || 0))
+  const height = Math.max(0, (rect?.bottom || 0) - (rect?.top || 0))
+  const minL = bounds?.left || 0
+  const minT = bounds?.top || 0
+  const maxL = Math.max(minL, (bounds?.right || minL) - width)
+  const maxT = Math.max(minT, (bounds?.bottom || minT) - height)
+  const home = {
+    left: clamp(rect?.left, minL, maxL),
+    top: clamp(rect?.top, minT, maxT)
+  }
+  home.right = home.left + width
+  home.bottom = home.top + height
+  const blocks = (obstacles || []).filter((block) => block && block.right > block.left && block.bottom > block.top)
+  const hit = (box) => {
+    let area = 0
+    for (const block of blocks) {
+      area += overlapArea(box, {
+        left: block.left - 1,
+        top: block.top - 1,
+        right: block.right + 1,
+        bottom: block.bottom + 1
+      })
+    }
+    return area
+  }
+  if (hit(home) === 0) return home
+  let best = home
+  let bestArea = hit(home)
+  let bestDist = Infinity
+  const consider = (left, top) => {
+    const x = clamp(left, minL, maxL)
+    const y = clamp(top, minT, maxT)
+    const box = { left: x, top: y, right: x + width, bottom: y + height }
+    const area = hit(box)
+    const dist = (x - home.left) ** 2 + (y - home.top) ** 2
+    if (area < bestArea || (area === bestArea && dist < bestDist)) {
+      best = box
+      bestArea = area
+      bestDist = dist
+    }
+    return box
+  }
+  // Push clear of each block, then a coarse grid. The 4px sweep runs only
+  // when those two still overlap something.
+  let current = home
+  for (let pass = 0; pass < 8 && hit(current) > 0; pass += 1) {
+    let moved = false
+    for (const block of blocks) {
+      if (!rectsOverlap(current, block)) continue
+      const options = [
+        consider(current.left, block.top - height),
+        consider(current.left, block.bottom),
+        consider(block.left - width, current.top),
+        consider(block.right, current.top)
+      ]
+      for (const box of options) {
+        if (hit(box) < hit(current)) {
+          current = box
+          moved = true
+        }
+      }
+    }
+    if (!moved) break
+  }
+  if (bestArea === 0) return best
+  const step = 16
+  const stepsX = Math.max(1, Math.ceil((maxL - minL) / step))
+  const stepsY = Math.max(1, Math.ceil((maxT - minT) / step))
+  for (let ix = 0; ix <= stepsX; ix += 1) {
+    const left = minL + ((maxL - minL) * ix) / stepsX
+    for (let iy = 0; iy <= stepsY; iy += 1) {
+      const top = minT + ((maxT - minT) * iy) / stepsY
+      consider(left, top)
+    }
+  }
+  if (bestArea > 0) {
+    const fine = 4
+    const fineX = Math.max(1, Math.ceil((maxL - minL) / fine))
+    const fineY = Math.max(1, Math.ceil((maxT - minT) / fine))
+    for (let ix = 0; ix <= fineX; ix += 1) {
+      const left = minL + ((maxL - minL) * ix) / fineX
+      for (let iy = 0; iy <= fineY; iy += 1) {
+        const top = minT + ((maxT - minT) * iy) / fineY
+        consider(left, top)
+      }
+    }
+  }
+  return best
 }
 
 export function pinRect(spot, box, anchor = "chip") {
@@ -347,37 +468,29 @@ export function visiblePin(spot, view, box, anchor = "chip", floor = 0, cap = In
   }
 }
 
+function visualBounds(view, box, anchor, floor, cap) {
+  const { minX, maxX, minY, maxY } = pinLimits(view, box, anchor, floor, cap)
+  const { shiftX, shiftY } = pinMetrics(box, anchor)
+  const width = box?.width || 0
+  const height = box?.height || 0
+  return {
+    left: minX - shiftX,
+    top: minY - shiftY,
+    right: maxX - shiftX + width,
+    bottom: maxY - shiftY + height
+  }
+}
+
+function spotFromRect(rect, box, anchor) {
+  const { shiftX, shiftY } = pinMetrics(box, anchor)
+  return { left: rect.left + shiftX, top: rect.top + shiftY }
+}
+
 export function seatPin(spot, view, box, obstacles, anchor = "chip", floor = 0, cap = Infinity) {
   const home = visiblePin(spot, view, box, anchor, floor, cap)
   if (!home || !(view?.width > 0) || !(view?.height > 0)) return home
-  const blocks = (obstacles || []).filter((block) => block && block.right > block.left && block.bottom > block.top)
-  const covered = (candidate) => {
-    const rect = pinRect(candidate, box, anchor)
-    let area = 0
-    for (const block of blocks) area += overlapArea(rect, block)
-    return area
-  }
-  if (covered(home) === 0) return home
-  const { minX, maxX, minY, maxY } = pinLimits(view, box, anchor, floor, cap)
-  const stepsX = Math.max(1, Math.ceil((maxX - minX) / SEAT_STEP))
-  const stepsY = Math.max(1, Math.ceil((maxY - minY) / SEAT_STEP))
-  let best = home
-  let bestArea = covered(home)
-  let bestDist = Infinity
-  for (let ix = 0; ix <= stepsX; ix += 1) {
-    const left = minX + ((maxX - minX) * ix) / stepsX
-    for (let iy = 0; iy <= stepsY; iy += 1) {
-      const top = minY + ((maxY - minY) * iy) / stepsY
-      const area = covered({ left, top })
-      const dist = (left - home.left) ** 2 + (top - home.top) ** 2
-      if (area < bestArea || (area === bestArea && dist < bestDist)) {
-        best = { left, top }
-        bestArea = area
-        bestDist = dist
-      }
-    }
-  }
-  return best
+  const parked = parkRect(pinRect(home, box, anchor), obstacles, visualBounds(view, box, anchor, floor, cap))
+  return spotFromRect(parked, box, anchor)
 }
 
 export function rangeRingState(armed, range) {

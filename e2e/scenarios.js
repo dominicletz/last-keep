@@ -605,7 +605,12 @@ async function twoPlayerNight(browser) {
     if (!game || game.light !== "dusk") return false
     const mood = game.frameMood()
     const ground = game.frameGround()
-    return mood.problems.length === 0 && ground.problems.length === 0
+    if (mood.problems.length || ground.problems.length) return false
+    const stone = game.sampleWorld(0, 36, 6)
+    const pine = game.sampleWorld(201, 18, 73)
+    if (!stone || !pine) return false
+    const span = Math.abs(stone.hue - pine.hue) % 360
+    return Math.min(span, 360 - span) >= 25
   }, undefined, { timeout: 8_000, polling: 400 })
   const duskMood = await page.evaluate(() => {
     const game = window.__lastKeep
@@ -1130,14 +1135,8 @@ async function townGrows(browser) {
   )
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(48)
 
-  await holdKey(page, "KeyA", true)
-  await holdKey(page, "KeyW", true)
-  await page.waitForFunction(() => {
-    const me = window.__lastKeep.self
-    return me && Math.hypot(me.x, me.y) <= 100
-  })
-  await holdKey(page, "KeyA", false)
-  await holdKey(page, "KeyW", false)
+  // Raise no longer needs the keep ring. Walking into that ring on a slow
+  // runner stops inside the stone, and the southwest step then cannot move.
   await page.locator("[data-raise]").click()
 
   const grown = () => {
@@ -1241,6 +1240,209 @@ async function captionsClearTheBuilds(browser) {
   await host.context.close()
 }
 
+const PHONE_SIZES = [
+  [844, 390],
+  [667, 375],
+  [932, 430]
+]
+
+function phoneOverlaps() {
+  const shown = (node) => {
+    if (!node || node.hidden) return null
+    const style = getComputedStyle(node)
+    if (style.display === "none" || style.visibility === "hidden") return null
+    const box = node.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return null
+    return box
+  }
+  const tag = (node) => {
+    if (node.dataset.sack) return node.dataset.sack
+    if (node.dataset.touch) return node.dataset.touch
+    if (node.hasAttribute("data-touch-context")) return "context"
+    if (node.dataset.build) return node.dataset.build
+    if (node.hasAttribute("data-raise")) return "raise"
+    if (node.hasAttribute("data-copy")) return "copy"
+    if (node.hasAttribute("data-mute")) return "mute"
+    if (node.hasAttribute("data-volume")) return "volume"
+    if (node.hasAttribute("data-start")) return "start"
+    if (node.hasAttribute("data-bonuses")) return "relics"
+    if (node.hasAttribute("data-roster")) return "roster"
+    if (node.classList.contains("heart")) return "heart"
+    if (node.hasAttribute("data-you")) return "you"
+    if (node.classList.contains("hint-arrow")) return (node.textContent || "call").trim()
+    if (node.classList.contains("chip")) return "wave"
+    if (node.classList.contains("stick")) return "stick"
+    return "hud"
+  }
+  const nodes = [
+    ...document.querySelectorAll(
+      ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .chip, [data-touch], [data-touch-context], [data-build], .stick, [data-raise], [data-copy], [data-mute], [data-volume], [data-start]"
+    )
+  ]
+  const boxes = nodes.map((node) => ({ node, tag: tag(node), box: shown(node) })).filter((row) => row.box)
+  const hits = []
+  for (let i = 0; i < boxes.length; i += 1) {
+    for (let j = i + 1; j < boxes.length; j += 1) {
+      const a = boxes[i]
+      const b = boxes[j]
+      if (a.node.contains(b.node) || b.node.contains(a.node)) continue
+      const width = Math.min(a.box.right, b.box.right) - Math.max(a.box.left, b.box.left)
+      const height = Math.min(a.box.bottom, b.box.bottom) - Math.max(a.box.top, b.box.top)
+      if (width >= 1 && height >= 1) hits.push(`${a.tag}/${b.tag}`)
+    }
+  }
+  return hits
+}
+
+async function assertPhoneClear(page) {
+  for (const [width, height] of PHONE_SIZES) {
+    await page.setViewportSize({ width, height })
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await expect.poll(() => page.evaluate(phoneOverlaps), { timeout: 4_000 }).toEqual([])
+  }
+}
+
+function keysToward(me, goal) {
+  const dx = goal.x - me.x
+  const dy = goal.y - me.y
+  // The join ring and the keep sit north of y=-165. A drift into that band
+  // stops the body on a guest, so the southern goal wins until the lane is back.
+  if (me.y > -165 && goal.y < -160) return ["KeyW", "KeyD"]
+  if (Math.abs(dx) > 28) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
+  if (Math.abs(dy) > 18) return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
+  return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
+}
+
+async function steer(page, goal, done, timeout, label) {
+  const deadline = Date.now() + timeout
+  let last = null
+  try {
+    while (Date.now() < deadline) {
+      const state = await page.evaluate(() => {
+        const me = window.__lastKeep.self
+        const call = [...document.querySelectorAll(".hint-arrow")].some((node) => /goblin/i.test(node.textContent || ""))
+        return me ? { x: me.x, y: me.y, alive: me.alive !== false, call } : null
+      })
+      last = state
+      if (state && done(state)) return state
+      if (state) {
+        const keys = keysToward(state, goal)
+        await page.evaluate((down) => {
+          for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, down.includes(key))
+        }, keys)
+      }
+      await page.waitForTimeout(80)
+    }
+  } finally {
+    await page.evaluate(() => {
+      for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, false)
+    })
+  }
+  throw new Error(`${label} timed out at ${JSON.stringify(last)}`)
+}
+
+async function phoneClear(browser) {
+  const errors = []
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    hasTouch: true,
+    isMobile: true
+  })
+  const page = await context.newPage()
+  watch(page, "phone", errors)
+  await page.goto(gameUrl("/"))
+  await page.waitForFunction(() => {
+    const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
+    return imgs.length === 5 && imgs.every((img) => img.complete && img.naturalHeight >= 64 && img.naturalHeight <= 128)
+  })
+  await page.locator("#player-name").fill("Nia")
+  await page.locator('input[value="farmer"]').check()
+  await page.locator("#create-button").click()
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Nia"))
+  const code = await page.evaluate(() => document.body.dataset.code)
+  const seats = []
+  for (const [name, hero] of [
+    ["Ada", "warrior"],
+    ["Lux", "mage"],
+    ["Bram", "engineer"],
+    ["Pip", "scout"]
+  ]) {
+    const seat = await joinQuery(browser, code, name, hero)
+    seats.push(seat)
+    watch(seat.page, name, errors)
+  }
+  await page.waitForFunction(() => {
+    const roster = document.querySelector("[data-roster]")?.innerText || ""
+    return ["Nia", "Ada", "Lux", "Bram", "Pip"].every((name) => roster.includes(name))
+  })
+  await assertPhoneClear(page)
+  const aims = [
+    [144, 0],
+    [180, 0],
+    [144, -36],
+    [180, -36]
+  ]
+  for (const [x, y] of aims) {
+    const before = await page.evaluate(() => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length)
+    const spot = await page.evaluate((point) => window.__lastKeep.toClient(point.x, point.y), { x, y })
+    await page.mouse.move(spot.x, spot.y)
+    await pressKey(page, "KeyQ")
+    await page.waitForFunction(
+      (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
+      before
+    )
+    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0)
+  }
+  await page.waitForFunction(
+    () => {
+      const text = document.querySelector("[data-sack='gold']")?.textContent || ""
+      const match = text.match(/(\d+)/)
+      return match && Number(match[1]) >= 8
+    },
+    undefined,
+    { timeout: 25_000 }
+  )
+  await page.locator("[data-raise]").click()
+  await page.waitForFunction(() => window.__lastKeep.town === 1)
+  await assertPhoneClear(page)
+  // The guests stand on the join ring. Walking back from the west stops on
+  // that ring, so the far pose happens after the fields and the raise.
+  await assertFarCaptions(page)
+  await assertPhoneClear(page)
+  await page.locator("[data-start]").click()
+  await page.waitForFunction(() => window.__lastKeep.phase === "wave")
+  await page.bringToFront()
+  await page.waitForFunction(
+    () => (window.__lastKeep.monsters || []).some((row) => row.kind === "goblin"),
+    undefined,
+    { timeout: 10_000, polling: 100 }
+  )
+  const here = await page.evaluate(() => window.__lastKeep.self)
+  await steer(page, { x: here.x, y: -210 }, (state) => state.alive && state.y < -180, 20_000, "south of the houses")
+  const packX = await page.evaluate(() => {
+    const goblins = (window.__lastKeep.monsters || []).filter((row) => row.kind === "goblin")
+    return goblins.reduce((sum, row) => sum + row.x, 0) / goblins.length
+  })
+  // The pack picks a fresh bearing each night. Running west meets the ones
+  // that spawned there, so the call never sits on screen at the far mark.
+  const away = packX >= here.x ? here.x - 320 : here.x + 320
+  await steer(
+    page,
+    { x: away, y: -210 },
+    (state) => state.alive && state.call && state.y < -160 && Math.hypot(state.x, state.y) > 400,
+    25_000,
+    "goblin call away from the pack"
+  )
+  await assertPhoneClear(page)
+  const call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  expect(call).toMatch(/goblin/i)
+  expect(errors, errors.join("\n")).toEqual([])
+  for (const seat of seats) await seat.context.close()
+  await context.close()
+}
+
 async function scoreList(request) {
   const response = await request.get("/api/highscores")
   expect(response.ok()).toBeTruthy()
@@ -1265,5 +1467,6 @@ module.exports = {
   paradeShowsEveryKind,
   mobileTouch,
   townGrows,
-  captionsClearTheBuilds
+  captionsClearTheBuilds,
+  phoneClear
 }
