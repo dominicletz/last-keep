@@ -4,7 +4,7 @@ import test from "node:test"
 import { models, styleTables } from "../models/registry.js"
 import { decodePng, renderCloseup } from "../models/raster.js"
 import { loadSheet } from "../models/sheets.js"
-import { heroCrops } from "../models/sprites.js"
+import { heroCrops, MONSTER_CROPS } from "../models/sprites.js"
 import { blockPercentiles, hardEdge, lockedPalette, scoreFrame } from "./art_score.js"
 
 const markdown = fs.readFileSync(new URL("../../STYLE.md", import.meta.url), "utf8")
@@ -76,6 +76,39 @@ test("each hero close-up holds its pipeline score in day, dusk, and night", () =
       assert.ok(score.ssim >= floor.ssim, `${id} ${light} ssim ${score.ssim}`)
       assert.ok(score.iou >= floor.iou, `${id} ${light} iou ${score.iou}`)
       assert.ok(score.membership < 0.02, `${id} ${light} membership ${score.membership}`)
+    }
+  }
+})
+
+// Measured on the player-camera close-up. Block clears 8 except the bat, whose
+// wings are broad flats. SSIM and IoU clear 0.35 and 0.55 except where a row
+// is lower. Membership stays under 0.05 until the palette lock lands.
+const monsterFloors = {
+  goblin: { block: 14, ssim: 0.85, iou: 0.74 },
+  skeleton: { block: 14, ssim: 0.7, iou: 0.77 },
+  wolf: { block: 9, ssim: 0.8, iou: 0.76 },
+  troll: { block: 12, ssim: 0.83, iou: 0.85 },
+  bat: { block: 5, ssim: 0.89, iou: 0.87 },
+  boss: { block: 11, ssim: 0.68, iou: 0.64 }
+}
+
+test("each monster close-up holds its pipeline score in day, dusk, and night", () => {
+  const monsters = loadSheet(new URL("../../docs/concept/monsters.jpg", import.meta.url).pathname)
+  const listed = models()
+  for (const [id, floor] of Object.entries(monsterFloors)) {
+    const model = listed.find((row) => row.id === id)
+    const crop = cropOf(monsters, MONSTER_CROPS[id])
+    for (const light of ["day", "dusk", "night"]) {
+      const shot = renderCloseup(model.parts, light)
+      const score = scoreFrame(
+        { rgb: shot.rgb, width: shot.width, height: shot.height, mask: shot.mask },
+        crop,
+        palette
+      )
+      assert.ok(score.blockP25 >= floor.block, `${id} ${light} block ${score.blockP25}`)
+      assert.ok(score.ssim >= floor.ssim, `${id} ${light} ssim ${score.ssim}`)
+      assert.ok(score.iou >= floor.iou, `${id} ${light} iou ${score.iou}`)
+      assert.ok(score.membership < 0.05, `${id} ${light} membership ${score.membership}`)
     }
   }
 })

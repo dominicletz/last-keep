@@ -110,7 +110,8 @@ defmodule LastKeep.Game.Snapshot do
       max: monster.max_hp,
       r: monster.r,
       elite: elite(monster.elite),
-      enraged: monster.enraged
+      enraged: monster.enraged,
+      attack_cd: monster.attack_cd * Rules.tick_ms()
     }
   end
 

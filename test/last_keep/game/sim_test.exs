@@ -853,6 +853,26 @@ defmodule LastKeep.Game.SimTest do
     assert state.keep.hp < 900
   end
 
+  test "a biting goblin publishes its attack cooldown" do
+    state = Sim.new("KEEP01", seed: 1)
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 70, y: 0, wave: 1})
+    [monster] = Sim.monsters(state)
+    waiting = Snapshot.render(state).monsters |> Enum.find(&(&1.id == monster.id))
+    assert waiting.attack_cd == 0
+
+    state =
+      Enum.reduce_while(1..40, state, fn _, state ->
+        state = Sim.tick(state)
+        [biter] = Sim.monsters(state)
+        if biter.attack_cd > 0, do: {:halt, state}, else: {:cont, state}
+      end)
+
+    [biter] = Sim.monsters(state)
+    row = Snapshot.render(state).monsters |> Enum.find(&(&1.id == biter.id))
+    assert biter.attack_cd > 0
+    assert row.attack_cd == biter.attack_cd * Rules.tick_ms()
+  end
+
   test "the wave timer keeps moving from frenzy in 43s with the keep at 291" do
     state = Sim.new("KEEP01", seed: 3, hold: false)
     {:ok, state} = Sim.join(state, player("ada", :warrior))

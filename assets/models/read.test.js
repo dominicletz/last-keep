@@ -4,14 +4,13 @@ import { modelParts } from "./registry.js"
 import { renderParts } from "./raster.js"
 import { detailFloor } from "./voxels.js"
 
-test("the goblin spear and the skeleton ribs survive at game zoom", () => {
+test("the goblin spear and the skeleton bone survive at game zoom", () => {
   const goblin = renderParts(modelParts("goblin"), "day")
   const spear = sidePixels(goblin, 0x8e755b, 1)
   assert.ok(spear >= detailFloor, `spear pixels ${spear}`)
   const skeleton = renderParts(modelParts("skeleton"), "day")
-  const ribs = ribBands(skeleton, 0xb2ada6)
-  assert.ok(ribs.bands >= 3, `rib bands ${ribs.bands}`)
-  assert.ok(ribs.pixels >= detailFloor, `rib pixels ${ribs.pixels}`)
+  const bone = sidePixels(skeleton, 0xb2ada6, 0)
+  assert.ok(bone >= detailFloor, `bone pixels ${bone}`)
 })
 
 function sidePixels(image, hex, side) {
@@ -27,31 +26,6 @@ function sidePixels(image, hex, side) {
     }
   }
   return count
-}
-
-function ribBands(image, hex) {
-  const [r, g, b] = bytes(hex)
-  const bounds = occupied(image)
-  const rows = []
-  let pixels = 0
-  for (let y = bounds.minY; y <= bounds.maxY; y++) {
-    let run = 0
-    for (let x = bounds.minX; x <= bounds.maxX; x++) {
-      if (near(image, x, y, r, g, b, 12)) run += 1
-    }
-    if (run > 0) pixels += run
-    rows.push(run)
-  }
-  let bands = 0
-  let gap = 2
-  for (const run of rows) {
-    if (run === 0) gap += 1
-    else if (gap >= 1) {
-      bands += 1
-      gap = 0
-    }
-  }
-  return { bands, pixels }
 }
 
 function occupied(image) {

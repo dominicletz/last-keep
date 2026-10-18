@@ -45,6 +45,7 @@ import {
 import { cycleLight, groundColor, litGround, litPool, litYard, lumaOf, mossColor, pathColor, plazaColor, ringColor, skyColor } from "../js/scene.js"
 import { detailFloor, detailProblems } from "./voxels.js"
 import { citationProblems, loadSheet, sceneColorProblems } from "./sheets.js"
+import { monsterHeights } from "../js/monsters.js"
 import { conceptFigure, likenessScore, spriteHeight } from "./sprites.js"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
@@ -72,8 +73,8 @@ export function checkModels({ writeGolden = false } = {}) {
   if (!styleSource.includes("fit slack is 2")) problems.push("STYLE.md does not record fit slack 2")
   if (!styleSource.includes("pixel threshold is 0")) problems.push("STYLE.md does not record pixel threshold 0")
   if (!styleSource.includes("0.85")) problems.push("STYLE.md does not record the silhouette IoU limit")
-  if (!styleSource.includes("bat record is 80")) problems.push("STYLE.md does not record the bat night read")
-  if (!styleSource.includes("rider record is 1000")) problems.push("STYLE.md does not record the rider night read")
+  if (!styleSource.includes("bat record is 16")) problems.push("STYLE.md does not record the bat night read")
+  if (!styleSource.includes("rider record is 48")) problems.push("STYLE.md does not record the rider night read")
   if (!styleSource.includes(`voxel detail floor is ${detailFloor}`)) {
     problems.push(`STYLE.md does not record voxel detail floor ${detailFloor}`)
   }
@@ -119,6 +120,7 @@ export function checkModels({ writeGolden = false } = {}) {
       problems.push(...heroHueProblems(listed.filter((model) => !billboard(model))))
       problems.push(...heroFeatureProblems(listed))
       problems.push(...heroScaleProblems(listed))
+      problems.push(...monsterScaleProblems(listed))
       problems.push(...heroLikenessProblems(listed))
       const farmer = listed.find((model) => model.id === "farmer" && model.family === "hero")
       if (farmer && !billboard(farmer)) problems.push(...farmerHatProblems(farmer.parts))
@@ -397,6 +399,34 @@ export function heroScaleProblems(listed) {
 // ground disks stay apart. The rest check is that disk. The door and the tower
 // are still tested on the player camera, because a hero can cover the keep
 // without standing on it.
+// The hero door ceiling is 1.75. Small kinds stay under the hero. The troll
+// and the rider stay under that door ceiling and above the hero.
+export function monsterScaleProblems(listed) {
+  const problems = []
+  const cap = 20 * heroDoorRatio
+  for (const model of listed || []) {
+    if (model.family !== "monster") continue
+    const expect = monsterHeights[model.id]
+    let minY = Infinity
+    let maxY = -Infinity
+    for (const part of model.parts) {
+      minY = Math.min(minY, part.y - part.h / 2)
+      maxY = Math.max(maxY, part.y + part.h / 2)
+    }
+    const height = maxY - minY
+    if (!(expect > 0) || Math.abs(height - expect) > 0.5) {
+      problems.push(`${model.id} height ${height.toFixed(1)} leaves ${expect}`)
+    }
+    if (height > cap) problems.push(`${model.id} is ${height.toFixed(1)} tall, over the keep door ceiling`)
+    if (model.id === "troll" || model.id === "boss") {
+      if (height <= spriteHeight) problems.push(`${model.id} height ${height.toFixed(1)} is not above the hero`)
+    } else if (height >= spriteHeight) {
+      problems.push(`${model.id} height ${height.toFixed(1)} is not under the hero`)
+    }
+  }
+  return problems
+}
+
 function reachOf(model) {
   const bounds = model.parts.bounds
   if (bounds) return Math.max(bounds.w, bounds.d) / 2
@@ -813,8 +843,8 @@ export const nightYardLift = 18
 
 // About 80% of the measured night read. The half-area rule below refuses a lower record.
 export const nightYardRead = {
-  bat: 80,
-  boss: 1000
+  bat: 16,
+  boss: 48
 }
 
 export function nightYardPixels(image, floor) {

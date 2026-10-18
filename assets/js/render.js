@@ -11,9 +11,10 @@ import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
+import { monsterParts } from "./monsters.js"
 import { pictureColumn, sheetRow } from "./pictures.js"
-import { houseParts, houseVariant, keepParts, modelBounds, modelParts } from "../models/registry.js"
-import { monsterRim, monsterSpread } from "./bodies"
+import { houseParts, houseVariant, keepParts, modelParts } from "../models/registry.js"
+import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, swingSeen } from "./paint.js"
 import {
@@ -210,9 +211,7 @@ export function createView(stage) {
   rangeRing.position.y = 0.45
   rangeRing.visible = false
   scene.add(rangeRing)
-  const darkOutline = new THREE.MeshLambertMaterial({ color: 0x140c0a, side: THREE.BackSide })
   const heroRim = new THREE.MeshBasicMaterial({ color: 0x140c0a, side: THREE.BackSide })
-  const boneOutline = new THREE.MeshBasicMaterial({ color: 0x908b8a, side: THREE.BackSide })
   let bearer = { x: 0, z: 0, range: 160 }
   const raycaster = new THREE.Raycaster()
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
@@ -339,7 +338,8 @@ export function createView(stage) {
       }
       remember(key, row.x, row.y)
       aimFacing(mesh, row.facing)
-      if (kind === "hero") noteHeroPose(mesh, row)
+      if (kind === "hero") notePose(mesh, row.cds?.attack || 0, row.alive === false)
+      if (kind === "monster") notePose(mesh, row.attack_cd || 0, false)
       placeMesh(key, mesh)
       if (mesh.userData.hp) {
         const ratio = row.max ? row.hp / row.max : 1
@@ -348,6 +348,7 @@ export function createView(stage) {
     }
     for (const [key, mesh] of meshes) {
       if (key.startsWith(`${kind}:`) && !seen.has(key)) {
+        if (kind === "monster" && holdMonsterDeath(key, mesh)) continue
         scene.remove(mesh)
         if (mesh.userData.role !== "shot") releaseGeometries(mesh)
         meshes.delete(key)
@@ -921,17 +922,34 @@ export function createView(stage) {
     return poseAt(tracks.get(key), performance.now())
   }
 
-  function noteHeroPose(mesh, row) {
+  function notePose(mesh, cd, dead) {
     const pose = mesh.userData.pose || {}
-    const cd = row.cds?.attack || 0
     const now = performance.now()
     if (Number.isFinite(pose.lastCd) && cd > pose.lastCd + 40) pose.attackAt = now
     pose.lastCd = cd
-    const dead = row.alive === false
-    if (dead && !pose.dead) pose.deadAt = now
-    if (!dead) pose.deadAt = 0
-    pose.dead = dead
+    if (dead) {
+      if (!pose.dead) pose.deadAt = now
+      pose.dead = true
+    } else {
+      pose.dead = false
+      pose.deadAt = 0
+    }
     mesh.userData.pose = pose
+  }
+
+  function holdMonsterDeath(key, mesh) {
+    const pose = mesh.userData.pose || {}
+    const now = performance.now()
+    if (!pose.dead) {
+      pose.dead = true
+      pose.deadAt = now
+      mesh.userData.pose = pose
+    }
+    const picture = mesh.userData.picture
+    const span = Math.max(picture?.death || 4, 1) * 160
+    if (now - pose.deadAt >= span) return false
+    placeMesh(key, mesh)
+    return true
   }
 
   function placeMesh(key, mesh) {
@@ -946,6 +964,9 @@ export function createView(stage) {
     const column = pictureColumn(viewYaw, facing)
     const track = tracks.get(key)
     const step = track ? Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ) : 0
+    if (mesh.userData.role === "monster" && track && step > 0.4) {
+      aimFacing(mesh, Math.atan2(track.toZ - track.fromZ, track.toX - track.fromX))
+    }
     const anim = mesh.userData.pose || {}
     anim.moving = step > 0.4
     mesh.userData.pose = anim
@@ -1093,15 +1114,21 @@ export function createView(stage) {
   }
 
   function monsterMesh(row) {
-    const bounds = modelBounds(row.kind)
-    const mesh = groupFrom(modelParts(row.kind))
-    mesh.userData.span = bounds
+    const parts = monsterParts(row.kind)
+    const picture = parts.find((part) => part.shape === "billboard")
+    const mesh = new THREE.Group()
+    const card = heroCard(picture)
+    mesh.add(card)
+    mesh.userData.card = card
+    mesh.userData.picture = picture
+    mesh.userData.parts = picture.directions * picture.frames
+    mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: picture.y, height: picture.h }
     mesh.userData.face = true
     if (row.kind === "bat") mesh.userData.lift = 22
     const plate = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 2), mat(0x1a100c))
     const fill = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 2), mat(0x7ea35a))
-    plate.position.y = bounds.height + 4
-    fill.position.set(0, bounds.height + 4, 1.2)
+    plate.position.y = picture.h + 4
+    fill.position.set(0, picture.h + 4, 1.2)
     mesh.add(plate, fill)
     mesh.userData.hp = fill
     mesh.userData.bar = plate
@@ -1112,24 +1139,12 @@ export function createView(stage) {
         new THREE.BoxGeometry(5, 8, 5),
         litTokens.has(markColor) ? new THREE.MeshBasicMaterial({ color: markColor }) : mat(markColor)
       )
-      mark.position.y = bounds.height + 10
+      mark.position.y = picture.h + 10
       mesh.add(mark)
     }
     const spread = monsterSpread(row.id)
     mesh.userData.spread = spread
     mesh.userData.role = "monster"
-    const scale = mesh.userData.bodyScale || 1
-    const span = mesh.userData.span
-    const rim = monsterRim(row.kind)
-    const grow = rim.scale
-    const halo = new THREE.Mesh(
-      span
-        ? new THREE.BoxGeometry(span.w * grow, span.h * grow, span.d * grow)
-        : new THREE.BoxGeometry(15 * scale * grow, 22 * scale * grow, 11 * scale * grow),
-      grow > 1 ? boneOutline : darkOutline
-    )
-    halo.position.y = span ? span.y : 14 * scale
-    mesh.add(halo)
     if (spread.bar && mesh.userData.hp && mesh.userData.bar) {
       mesh.userData.hp.position.y += spread.bar
       mesh.userData.bar.position.y += spread.bar
