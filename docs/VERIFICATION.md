@@ -375,3 +375,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 the tangent is the shared step
 
 - `steer` holds `keysAround`. The helper beside it still built a cardinal via, and that via treated `|dx|` above 28 as due west, so the face at x 73.5 could be walked back onto the keep. The helper now steps with `keysAround`. Due west is not the face step. `e2e/steer.test.js` walks that face and the spawn to a chest inside 30. The chest wait stays 45 seconds and the portal wait stays 70 seconds. After the phone viewport sweep, an empty arrow steps away until the text says goblin. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 a focused blur keeps the swing
+
+- Deploy of the swing-cooldown commit failed the live smoke on one flaky run of `focusClickDoesNotAttack`. The retry passed, and `failOnFlakyTests` failed the job. The same flake failed the motion-cap deploy. The blurred click still has to stay at 0, and the focused click still has to set `attackPeak`. A window `blur` that leaves `document.hasFocus()` true no longer clears the swing flag. The spec's `focus()` sticks until `blur()`, so a guest page that takes the document after that mark cannot throw the click away. `saw_swing` still rides on the snapshot that is pushed, and the spec still waits on that latch. `retainFocus` and `swingFocus` cover the focus cases. This does not change the simulation. The coverage floor stays 77.

@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { monsterKinds, monsterParts } from "./monsters.js"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend } from "./input"
+import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, swingSeen } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
@@ -132,6 +132,7 @@ function start(code, seat, ui) {
   let reasonEntry = { text: "", until: 0 }
   let placeTick = null
   let focused = document.hasFocus()
+  let pinned = false
   const audio = createConductor({ storage: window.localStorage })
   const unlockAudio = () => audio.unlock()
   window.addEventListener("pointerdown", unlockAudio)
@@ -156,9 +157,11 @@ function start(code, seat, ui) {
   window.__lastKeepTest = {
     blur() {
       focused = false
+      pinned = false
     },
     focus() {
       focused = true
+      pinned = true
     },
     hold(code, down) {
       if (down) keys.add(code)
@@ -266,12 +269,13 @@ function start(code, seat, ui) {
     }
   }
   window.addEventListener("blur", () => {
-    focused = false
-    // A blur that does not leave the document used to stick, and the next
-    // click was thrown away. Restoring only when the document is focused
-    // leaves an explicit test focus() in place on a covered page.
+    // A second window can fire blur while this document still has focus.
+    // Clearing the flag in that gap throws away the next click. The spec's
+    // focus() sticks until blur(), because the guest page can take the
+    // document after that mark. A covered page with no mark still drops it.
+    focused = swingFocus(focused, document.hasFocus(), pinned)
     window.setTimeout(() => {
-      if (focusedAfterBlur(document.hasFocus())) focused = true
+      if (pinned || focusedAfterBlur(document.hasFocus())) focused = true
     }, 0)
   })
 
