@@ -1,7 +1,7 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
+import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, partyPositions } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
@@ -156,6 +156,9 @@ function start(code, seat, ui) {
     blur() {
       focused = false
     },
+    focus() {
+      focused = true
+    },
     hold(code, down) {
       if (down) keys.add(code)
       else keys.delete(code)
@@ -197,6 +200,9 @@ function start(code, seat, ui) {
   }
   window.addEventListener("blur", () => {
     focused = false
+    window.setTimeout(() => {
+      focused = focusedAfterBlur(document.hasFocus())
+    }, 0)
   })
 
   ui.overlay.addEventListener("click", (event) => {

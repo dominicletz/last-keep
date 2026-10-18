@@ -96,6 +96,10 @@ async function focusClickDoesNotAttack(page) {
   const peak = await peakAttackAcrossTicks(page, 12)
   expect(peak).toBe(0)
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
+  // The guest window can blur the host during those ticks. Bring it back
+  // and mark the game focused, then the click has to swing.
+  await page.bringToFront()
+  await page.evaluate(() => window.__lastKeepTest.focus())
   await page.mouse.click(spot.x, spot.y)
   const swung = await peakAttackAcrossTicks(page, 12)
   expect(swung).toBeGreaterThan(0)

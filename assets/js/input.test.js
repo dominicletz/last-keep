@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input.js"
+import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -29,6 +29,11 @@ test("a hidden or non-text field does not count as typing", () => {
   assert.equal(isTypingTarget(range), false)
   assert.equal(isTypingTarget(radio), false)
   assert.equal(isTypingTarget(null), false)
+})
+
+test("a blur that leaves the document focused does not drop the swing", () => {
+  assert.equal(focusedAfterBlur(true), true)
+  assert.equal(focusedAfterBlur(false), false)
 })
 
 test("blurring a hidden field does not chase focus", () => {

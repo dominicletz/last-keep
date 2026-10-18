@@ -268,6 +268,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 the swing is on the snapshot
 
 - The second click in `focusClickDoesNotAttack` waited for `attackCd` on the next animation frame. That field was copied only inside `draw()`. An idle page does not paint, the cooldown stayed 0, and the co-op spec sat until the 150s test timeout. The retry passed, and `failOnFlakyTests` failed the job. `paint` now copies `cds.attack` onto `__lastKeep` with the tick. The focused click is read across 12 ticks with a 100ms poll, the same window as the blurred click. A blurred click still stays at 0. Wood is unchanged. This does not change the simulation. The coverage floor stays 74.
+- After that, the same check failed fast: the peak over 12 ticks was 0, and the retry passed. The guest window blurs the host while the first click is being watched, the swing flag stays false, and the second click is thrown away as a focus click. A blur that leaves the document focused restores the flag. The spec brings the host forward and marks the game focused before the swing. A blurred click still stays at 0. This does not change the simulation. The coverage floor stays 74.
 
 ## 2026-10-18 the walk sample waits for the distance
 
