@@ -96,7 +96,7 @@ export function sceneColorProblems(markdown, sheet, cited, rigs, colors) {
   if (groundLuma < 90) problems.push(`yard ground luma ${groundLuma.toFixed(1)} is dark olive`)
   if (skyHex !== skyMedian) problems.push(`sky color #${skyHex} is not the concept sky median #${skyMedian}`)
   const dayField = litGround(colors.ground, cycleLight.day)
-  if (dayField.luma < 90 || dayField.hue < 55 || dayField.hue > 95) {
+  if (dayField.luma < 100 || dayField.hue < 70 || dayField.hue > 95) {
     problems.push(`day field luma ${dayField.luma.toFixed(1)} hue ${dayField.hue.toFixed(1)} is dark olive`)
   }
   const horizonMedian = medianHex(sheet, regions.horizon.region)
@@ -159,7 +159,7 @@ function duskMoodProblems(sheet, ground, horizonMedian) {
   }
   if (frame.max < 160) problems.push(`dusk torch luma ${frame.max.toFixed(1)} is dim`)
   const duskField = litGround(ground, cycleLight.dusk)
-  if (duskField.luma < 70 || duskField.hue > 55) {
+  if (duskField.luma < 72 || duskField.hue > 48 || duskField.hue < 28) {
     problems.push(`dusk field luma ${duskField.luma.toFixed(1)} hue ${duskField.hue.toFixed(1)} is murky olive`)
   }
   return problems

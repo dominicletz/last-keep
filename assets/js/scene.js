@@ -3,6 +3,7 @@
 // band. Do not fill the sky with a brick, and do not leave the field dark olive.
 export const skyColor = 0x4e4651
 export const horizonColor = 0xeba15d
+export const sunsetColor = 0xe58e54
 export const groundColor = 0x5c642f
 export const pathColor = 0x5e4529
 export const plazaColor = groundColor
@@ -20,8 +21,9 @@ export const yardLight = {
   sky: 0xc8c6c2,
   ground: 0x5c642f,
   hemisphere: 0.55,
-  ambient: 0xd8d4cc,
-  ambientLevel: 3.75,
+  // Grass lifted toward white. The warm grey illuminant left the clearing olive.
+  ambient: 0xd4e0d6,
+  ambientLevel: 4.5,
   sun: 0xfff3e4,
   sunLevel: 0.22,
   torch: 8
@@ -34,11 +36,11 @@ export const cycleLight = {
   dusk: {
     sky: 0x6a5080,
     ground: 0x4a3820,
-    hemisphere: 0.45,
-    ambient: 0xf0b090,
-    ambientLevel: 2.7,
-    sun: 0xffa060,
-    sunLevel: 0.85,
+    hemisphere: 0.4,
+    ambient: horizonColor,
+    ambientLevel: 4.2,
+    sun: sunsetColor,
+    sunLevel: 0.5,
     torch: 26,
     background: horizonColor
   },
@@ -86,6 +88,27 @@ export function hueOf(r, g, b) {
   else if (max === g) hue = (b - r) / span + 2
   else hue = (r - g) / span + 4
   return (hue * 60 + 360) % 360
+}
+
+export function patchStats(rgba) {
+  let r = 0
+  let g = 0
+  let b = 0
+  let count = 0
+  for (let i = 0; i < rgba.length; i += 4) {
+    r += rgba[i]
+    g += rgba[i + 1]
+    b += rgba[i + 2]
+    count += 1
+  }
+  r /= count
+  g /= count
+  b /= count
+  let variance = 0
+  for (let i = 0; i < rgba.length; i += 4) {
+    variance += (rgba[i] - r) ** 2 + (rgba[i + 1] - g) ** 2 + (rgba[i + 2] - b) ** 2
+  }
+  return { r, g, b, luma: lumaOf(r, g, b), hue: hueOf(r, g, b), variance: variance / count }
 }
 
 export function hueGap(left, right) {

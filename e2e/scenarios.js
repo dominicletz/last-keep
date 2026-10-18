@@ -444,6 +444,12 @@ async function twoPlayerNight(browser) {
   await expect(friend.locator("[data-roster]")).toContainText("Mage")
   await expect(page.locator("[data-clock]")).toHaveText("Waiting to start")
   expect(await page.evaluate(() => window.__lastKeep.light)).toBe("day")
+  await page.waitForFunction(() => window.__lastKeep.field && window.__lastKeep.field.variance < 30)
+  const dayField = await page.evaluate(() => window.__lastKeep.field)
+  expect(dayField.light).toBe("day")
+  expect(dayField.luma).toBeGreaterThanOrEqual(100)
+  expect(dayField.hue).toBeGreaterThanOrEqual(70)
+  expect(dayField.hue).toBeLessThan(95)
   const town = await page.evaluate(() => window.__lastKeep.townLook)
   expect(town.rank).toBe(0)
   expect(town.path).toBe(true)
@@ -479,6 +485,18 @@ async function twoPlayerNight(browser) {
   await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
   const notes = blankNotes()
   await page.locator("[data-start]").click()
+  await page.waitForFunction((dayLuma) => {
+    const field = window.__lastKeep.field
+    return (
+      field &&
+      field.light === "dusk" &&
+      field.variance < 30 &&
+      field.luma >= 72 &&
+      field.luma < dayLuma &&
+      field.hue <= 48 &&
+      field.hue >= 28
+    )
+  }, dayField.luma)
   await page.waitForFunction(() => window.__lastKeep.light === "night")
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
