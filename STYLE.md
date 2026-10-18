@@ -55,7 +55,7 @@ The old stone patch at 636,124 was a brown shaft course, `#554034`. The stone to
 
 ## Scene
 
-The yard ground is the grass token, sampled from the lit clearing. The shadow moss at 648,408 (`#374115`) is dark olive: its luminance is under 90, and a day field lit from it fails. The upper sky is the violet at 24,0. The horizon is the warm orange band. Day uses the violet sky. Dusk uses the horizon, and an in-game dusk frame has to share the theme sheet's warm hue and stay at least as bright, with a torch that reads. Gallery backgrounds stay shades of the violet sky, not the thatch roof. The check fails when the grass token is closer to the roof than to this clearing, when the day field is dark olive, or when a gallery background's mix is not this sky.
+The yard ground is the grass token, sampled from the lit clearing. The shadow moss at 648,408 (`#374115`) is dark olive: its luminance is under 90, and a day field lit from it fails. A lit day patch under luminance 100, or with a hue under 70, is that same olive. Dusk is lit by the horizon token and stays the warm step under the day: luminance at least 72, hue from 28 to 48. The upper sky is the violet at 24,0. The horizon is the warm orange band. Day uses the violet sky. Dusk uses the horizon, and an in-game dusk frame has to share the theme sheet's warm hue and stay at least as bright, with a torch that reads. Gallery backgrounds stay shades of the violet sky, not the thatch roof. The check fails when the grass token is closer to the roof than to this clearing, when the day field is dark olive, or when a gallery background's mix is not this sky.
 
 | role | sheet | region |
 | --- | --- | --- |

@@ -11,7 +11,7 @@ import { keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { bodyPixel } from "./paint.js"
-import { cycleLight, groundColor, lightName, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
+import { cycleLight, groundColor, lightName, patchStats, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -190,6 +190,8 @@ export function createView(stage) {
   let lastRender = 0
   let lastInput = -Infinity
   let renders = 0
+  let liveLight = "day"
+  let fieldSample = null
   let pending = null
   let drawnTick = -1
   let viewApi = null
@@ -201,7 +203,31 @@ export function createView(stage) {
   function paintFrame() {
     renderer.render(scene, camera)
     renders += 1
-    if (window.__lastKeep) window.__lastKeep.renders = renders
+    fieldSample = sampleYard(renderer.getContext(), renderer.domElement)
+    if (window.__lastKeep) {
+      window.__lastKeep.renders = renders
+      window.__lastKeep.field = fieldSample
+    }
+  }
+
+  function sampleYard(gl, canvas) {
+    const width = 40
+    const height = 20
+    if (!gl || canvas.width < width + 32 || canvas.height < height + 32) return null
+    const spots = [
+      [16, 16],
+      [canvas.width - width - 16, 16],
+      [16, Math.min(300, canvas.height - height - 16)],
+      [canvas.width - width - 16, Math.min(300, canvas.height - height - 16)]
+    ]
+    const buf = new Uint8Array(width * height * 4)
+    let best = null
+    for (const [x, y] of spots) {
+      gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, buf)
+      const stats = patchStats(buf)
+      if (!best || stats.variance < best.variance) best = stats
+    }
+    return best ? { ...best, light: liveLight } : null
   }
 
   window.addEventListener("pointerdown", noteInput)
@@ -284,6 +310,7 @@ export function createView(stage) {
     draw(snap, selfId) {
       drawnTick = snap.tick
       const name = lightName(snap)
+      liveLight = name
       const rig = cycleLight[name]
       if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
       sky.color.set(rig.sky)
@@ -394,6 +421,7 @@ export function createView(stage) {
         counts,
         phase: snap.phase,
         light: lightName(snap),
+        field: fieldSample,
         hold: !!snap.hold,
         wave: snap.wave,
         keep: snap.keep,

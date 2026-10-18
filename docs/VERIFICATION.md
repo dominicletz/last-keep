@@ -176,3 +176,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-18 a fallen keep does not refill a hero
 
 - Respawn runs after the keep is checked. A hero at 81 health is still at 81 on the fallen snapshot. A downed hero whose timer is up stays down, instead of returning at full kit health on that same tick. A downed hero still returns when the keep stands. The coverage floor stays 69.
+
+## 2026-10-18 the day clearing and the warm dusk
+
+- The waiting yard was luminance 51 and hue 65. The same patch at dusk was luminance 31 and hue 38. The day illuminant is the grass token lifted toward white, so the lit patch stays at luminance 100 or above and hue 70 or above. Dusk is lit by the horizon token and the sunset token. Its patch stays between hue 28 and 48, at luminance 72 or above, and under the day. The round-7 olive bytes fail that floor. `twoPlayerNight` reads the same patch off the canvas. This does not change the simulation. The coverage floor stays 69.

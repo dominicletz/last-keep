@@ -41,3 +41,5 @@ They share one room. The hero is only the seat they play.
 `playtests/round-N.md` has one section per speciality, in the order above. Each section has what that lens saw, bugs with the screenshot path, and a top 3. The aggregate then dedupes and ranks by severity and how many specialists hit it. Disagreements stay in the list. Append every new finding to `playtests/BACKLOG.md`. Re-check items already marked done.
 
 Upgrades come from buildings and finds. There is no card pick.
+
+The waiting yard patch is the lit clearing. Luminance under 100, or a hue under 70, is the dark olive from round 7. Dusk is the warm step under that day. `twoPlayerNight` reads the canvas patch. A formula that passes while the canvas is dark is not a pass.
