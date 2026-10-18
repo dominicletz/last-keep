@@ -4,7 +4,7 @@ import path from "node:path"
 import test from "node:test"
 import { heroKinds, heroParts } from "../js/heroes.js"
 import { cycleLight, groundColor, litGround, pathColor, plazaColor, ringColor, skyColor, yardLight } from "../js/scene.js"
-import { checkModels, farmerHatProblems, heroColorProblems, heroHeightProblems, heroPixelFloor, heroZoomProblems, repoRoot } from "./run.js"
+import { checkModels, farmerHatProblems, heroColorProblems, heroFeatureProblems, heroHeightProblems, heroHueProblems, heroPixelFloor, heroZoomProblems, repoRoot } from "./run.js"
 import { conceptProblems, coverageProblems, fitSlack, iouLimit, keepStoneProblems, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
 import { galleryRigs, maskBounds, maskIou } from "./raster.js"
 import { citationProblems, loadSheet, medianHex, sceneColorProblems } from "./sheets.js"
@@ -91,6 +91,27 @@ test("a fight-zoom hero missing its prop fails the palette read", () => {
   assert.deepEqual(whole, [])
   const tall = heroHeightProblems(heroKinds().map((id) => ({ id, family: "hero", parts: heroParts(id) })))
   assert.deepEqual(tall, [])
+})
+
+test("each hero keeps its colors and its concept shape at fight zoom", () => {
+  const heroes = heroKinds().map((id) => ({ id, family: "hero", parts: heroParts(id) }))
+  assert.deepEqual(heroHueProblems(heroes), [])
+  assert.deepEqual(heroFeatureProblems(heroes), [])
+  const slab = {
+    id: "warrior",
+    family: "hero",
+    parts: [
+      ...heroParts("warrior").filter((part) => part.name !== "shield"),
+      { name: "shield", shape: "box", color: 0x38516f, w: 14, h: 30, d: 4, x: -16, y: 28, z: 4, hold: 0.78 }
+    ]
+  }
+  assert.ok(heroFeatureProblems([slab]).some((line) => line.includes("slab")))
+  const bare = {
+    id: "warrior",
+    family: "hero",
+    parts: heroParts("warrior").map((part) => (part.name === "slit" ? { ...part, color: 0xd8cfc3 } : part))
+  }
+  assert.ok(heroFeatureProblems([bare]).some((line) => line.includes("visor")))
 })
 
 test("a farmer hat that covers the body fails at fight zoom", () => {

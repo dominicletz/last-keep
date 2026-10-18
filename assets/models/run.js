@@ -32,6 +32,7 @@ import {
   missingConcept,
   countShadedTokens,
   shadedTokenBox,
+  tokenPoints,
   nightContrast,
   pixelDiff,
   renderCloseup,
@@ -111,6 +112,8 @@ export function checkModels({ writeGolden = false } = {}) {
       problems.push(...yardReadProblems(first))
       problems.push(...heroHeightProblems(listed))
       problems.push(...heroZoomProblems(listed))
+      problems.push(...heroHueProblems(listed))
+      problems.push(...heroFeatureProblems(listed))
       const farmer = listed.find((model) => model.id === "farmer" && model.family === "hero")
       if (farmer) problems.push(...farmerHatProblems(farmer.parts))
       problems.push(...detailProblems(listed))
@@ -336,7 +339,7 @@ const heroShadeTokens = [
 
 export const heroZoomRead = {
   warrior: [
-    { token: "steel", hex: 0xd8cfc3, min: 100 },
+    { token: "steel", hex: 0xd8cfc3, min: 338 },
     { token: "shield", hex: 0x38516f, min: 150 },
     { token: "gold", hex: 0xd99e66, min: 48 }
   ],
@@ -419,6 +422,149 @@ export function heroZoomProblems(listed) {
 // The concept brim sits on the head. A hat whose fight-zoom width is most of
 // the body is the slab that reads as a table.
 export const farmerHatSpan = 0.4
+
+const heroHueRead = {
+  warrior: [
+    { token: "steel", hex: 0xd8cfc3, sat: 0.3 },
+    { token: "shield", hex: 0x38516f, hue: 215, gap: 28 }
+  ],
+  mage: [{ token: "deep", hex: 0x142a48, hue: 212, gap: 28 }],
+  scout: [{ token: "forest", hex: 0x374a26, hue: 92, gap: 28 }],
+  farmer: [{ token: "denim", hex: 0x3a4a60, hue: 214, gap: 28 }],
+  engineer: [{ token: "steel", hex: 0xd8cfc3, sat: 0.28 }]
+}
+
+function hueGap(left, right) {
+  const gap = Math.abs(left - right) % 360
+  return Math.min(gap, 360 - gap)
+}
+
+export function heroHueProblems(listed) {
+  const problems = []
+  for (const model of listed) {
+    if (model.family !== "hero") continue
+    const marks = heroHueRead[model.id]
+    if (!marks) continue
+    for (const light of lightNames) {
+      const image = renderParts(model.parts, light, 0)
+      for (const mark of marks) {
+        const stats = tokenPoints(image, heroShadeTokens, light, mark.hex)
+        if (!stats) {
+          problems.push(`${model.id} ${light} ${mark.token} is missing`)
+          continue
+        }
+        if (mark.sat != null && stats.sat > mark.sat) {
+          problems.push(`${model.id} ${light} ${mark.token} saturation ${stats.sat.toFixed(2)} reads as a tint`)
+        }
+        if (mark.hue != null && hueGap(stats.hue, mark.hue) > mark.gap) {
+          problems.push(
+            `${model.id} ${light} ${mark.token} hue ${Math.round(stats.hue)} leaves ${mark.hue}`
+          )
+        }
+      }
+    }
+  }
+  return problems
+}
+
+function rowWidths(points) {
+  const rows = new Map()
+  for (const point of points) {
+    const row = rows.get(point.y) || { min: point.x, max: point.x, n: 0 }
+    row.min = Math.min(row.min, point.x)
+    row.max = Math.max(row.max, point.x)
+    row.n += 1
+    rows.set(point.y, row)
+  }
+  return [...rows.entries()].sort((a, b) => a[0] - b[0])
+}
+
+export function heroFeatureProblems(listed) {
+  const problems = []
+  const warrior = listed.find((model) => model.id === "warrior" && model.family === "hero")
+  if (warrior) problems.push(...warriorRead(warrior))
+  const mage = listed.find((model) => model.id === "mage" && model.family === "hero")
+  if (mage) problems.push(...mageRead(mage))
+  const scout = listed.find((model) => model.id === "scout" && model.family === "hero")
+  if (scout) problems.push(...scoutRead(scout))
+  return problems
+}
+
+function figureSpan(image) {
+  let minY = image.height
+  let maxY = -1
+  for (let i = 0; i < image.mask.length; i++) {
+    if (!image.mask[i]) continue
+    const y = (i / image.width) | 0
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
+  }
+  return { minY, maxY, height: maxY < 0 ? 0 : maxY - minY + 1 }
+}
+
+function warriorRead(model) {
+  const problems = []
+  const image = renderParts(model.parts, "day", 0)
+  const figure = figureSpan(image)
+  const leather = tokenPoints(image, heroShadeTokens, "day", 0x261e0e)
+  const head = leather
+    ? leather.points.filter((point) => point.y < figure.minY + figure.height * 0.42)
+    : []
+  const slitRows = rowWidths(head)
+  const slitWidth = slitRows.reduce((wide, [, row]) => Math.max(wide, row.max - row.min + 1), 0)
+  const slitSpan = slitRows.length === 0 ? Infinity : slitRows[slitRows.length - 1][0] - slitRows[0][0] + 1
+  if (!(slitWidth >= 5 && slitSpan <= 10)) problems.push("warrior helmet has no visor slit")
+  const shield = tokenPoints(image, heroShadeTokens, "day", 0x38516f)
+  if (!shield) {
+    problems.push("warrior shield is missing")
+  } else {
+    const rows = rowWidths(shield.points)
+    const widest = Math.max(...rows.map(([, row]) => row.max - row.min + 1))
+    const low = rows[Math.min(rows.length - 1, Math.floor(rows.length * 0.85))]
+    const lowWidth = low[1].max - low[1].min + 1
+    if (!(lowWidth < widest * 0.72)) problems.push("warrior shield is a rectangular slab")
+    const gold = tokenPoints(image, heroShadeTokens, "day", 0xd99e66)
+    const shieldX = shield.points.map((point) => point.x)
+    const shieldY = shield.points.map((point) => point.y)
+    const minX = Math.min(...shieldX)
+    const maxX = Math.max(...shieldX)
+    const minY = Math.min(...shieldY)
+    const maxY = Math.max(...shieldY)
+    const inside = gold
+      ? gold.points.filter((point) => point.x >= minX - 1 && point.x <= maxX + 1 && point.y >= minY && point.y <= maxY)
+      : []
+    const bars = rowWidths(inside)
+    const cols = new Map()
+    for (const point of inside) cols.set(point.x, (cols.get(point.x) || 0) + 1)
+    const arm = Math.max(0, ...bars.map(([, row]) => row.max - row.min + 1))
+    const post = Math.max(0, ...cols.values())
+    if (arm < 6 || post < 8) problems.push("warrior shield has no gold cross")
+  }
+  const blade = model.parts.filter((part) => part.name === "sword").sort((a, b) => b.h - a.h)[0]
+  if (!blade || blade.w > 2.6 || blade.h < blade.w * 8) problems.push("warrior sword is a plank")
+  return problems
+}
+
+function mageRead(model) {
+  const image = renderParts(model.parts, "day", 0)
+  const deep = tokenPoints(image, heroShadeTokens, "day", 0x142a48)
+  if (!deep) return ["mage robe is missing"]
+  const rows = rowWidths(deep.points)
+  const tip = rows[0][1].max - rows[0][1].min + 1
+  const widest = Math.max(...rows.map(([, row]) => row.max - row.min + 1))
+  if (!(tip < widest * 0.45)) return ["mage hat is a block"]
+  return []
+}
+
+function scoutRead(model) {
+  const image = renderParts(model.parts, "day", 0)
+  const figure = figureSpan(image)
+  const forest = tokenPoints(image, heroShadeTokens, "day", 0x374a26)
+  if (!forest) return ["scout hood is missing"]
+  const head = forest.points.filter((point) => point.y < figure.minY + figure.height * 0.35)
+  if (head.length < 12) return ["scout hood does not cover the head"]
+  return []
+}
 
 export function farmerHatProblems(parts) {
   const image = renderParts(parts, "day", 0)

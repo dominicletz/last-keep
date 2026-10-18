@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { cameraFocus, drawDue, frameFor } from "./frame"
+import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
 import { nextTrack, poseAt } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, groundPixels } from "./ground.js"
@@ -176,6 +176,7 @@ export function createView(stage) {
   rangeRing.visible = false
   scene.add(rangeRing)
   const darkOutline = new THREE.MeshLambertMaterial({ color: 0x140c0a, side: THREE.BackSide })
+  const heroRim = new THREE.MeshBasicMaterial({ color: 0x140c0a, side: THREE.BackSide })
   const boneOutline = new THREE.MeshBasicMaterial({ color: 0x908b8a, side: THREE.BackSide })
   let bearer = { x: 0, z: 0, range: 160 }
   const raycaster = new THREE.Raycaster()
@@ -448,7 +449,7 @@ export function createView(stage) {
         scene.add(keep)
       }
       camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-      camera.lookAt(focus.x, 0, focus.z)
+      camera.lookAt(focus.x, cameraLift, focus.z)
       sun.position.set(focus.x + 90, 200, focus.z + 30)
       sun.target.position.copy(focus)
 
@@ -645,7 +646,7 @@ export function createView(stage) {
     focus.set(anchor.x, 0, anchor.z)
     const dist = zoomFor(snap).camera
     camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-    camera.lookAt(focus.x, 0, focus.z)
+    camera.lookAt(focus.x, cameraLift, focus.z)
     camera.updateMatrixWorld(true)
   }
 
@@ -813,10 +814,20 @@ export function createView(stage) {
           ? new THREE.CylinderGeometry(piece.rt, piece.rb, piece.h, piece.segments || 5)
           : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
     const emissive = piece.color === 0xeea821 || piece.color === 0xf5751e ? piece.color : 0x000000
-    const mesh = new THREE.Mesh(geometry, mat(piece.color, emissive))
+    const mesh = new THREE.Mesh(
+      geometry,
+      piece.hold ? new THREE.MeshBasicMaterial({ color: piece.color }) : mat(piece.color, emissive)
+    )
     mesh.position.set(piece.x, piece.y, piece.z)
     mesh.castShadow = true
     mesh.receiveShadow = true
+    if (piece.hold) {
+      const shell = new THREE.Mesh(geometry, heroRim)
+      shell.scale.set(1.12, 1.12, 1.12)
+      shell.castShadow = false
+      shell.receiveShadow = false
+      mesh.add(shell)
+    }
     return mesh
   }
 

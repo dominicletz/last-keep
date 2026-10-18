@@ -150,7 +150,7 @@ function paint(parts, light, camera, width, height) {
         projected,
         depth,
         order: order++,
-        color: shade(part.color, face.normal, center, rig)
+        color: shade(part.color, face.normal, center, rig, light === "day" ? 0 : part.hold || 0)
       })
     }
   }
@@ -160,7 +160,29 @@ function paint(parts, light, camera, width, height) {
     if (poly.length < 3) continue
     for (let i = 1; i < poly.length - 1; i++) fillTriangle(rgb, mask, width, height, poly[0], poly[i], poly[i + 1], face.color)
   }
+  if (parts.some((part) => part.hold > 0)) traceRim(rgb, mask, width, height)
   return { rgb, mask, width, height }
+}
+
+function traceRim(rgb, mask, width, height) {
+  const edge = []
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const index = y * width + x
+      if (mask[index]) continue
+      const touches =
+        (x > 0 && mask[index - 1]) ||
+        (x + 1 < width && mask[index + 1]) ||
+        (y > 0 && mask[index - width]) ||
+        (y + 1 < height && mask[index + width])
+      if (touches) edge.push(index)
+    }
+  }
+  for (const index of edge) {
+    rgb[index * 3] = 0x14
+    rgb[index * 3 + 1] = 0x0c
+    rgb[index * 3 + 2] = 0x0a
+  }
 }
 
 export function stackHorizontal(images) {
@@ -462,7 +484,7 @@ function project(camera, width, height, point) {
   }
 }
 
-function shade(hex, normal, center, rig) {
+function shade(hex, normal, center, rig, hold = 0) {
   const ndotl = Math.max(0, dot(normal, rig.keyDir))
   let pointScale = 0
   if (rig.point) {
@@ -474,14 +496,19 @@ function shade(hex, normal, center, rig) {
     const facing = Math.max(0, (normal[0] * dx + normal[1] * dy + normal[2] * dz) / dist)
     pointScale = falloff * facing
   }
-  return shadeSample(hex, rig, ndotl, pointScale)
+  return shadeSample(hex, rig, ndotl, pointScale, hold)
 }
 
 // A shaded pixel is one palette token when this residual fits and every other
 // token fits worse. Byte rounding on the raster is about one channel.
 export const shadeFit = 4
 
-export function shadeSample(hex, rig, ndotl, pointScale) {
+// Heroes keep this much of the unlit palette. The yard light can be green or
+// orange. A material that gives the light the rest of the pixel stays the
+// token's hue. Yard props leave it at 0, so their frames do not move.
+export const albedoHold = 0.5
+
+export function shadeSample(hex, rig, ndotl, pointScale, hold = 0) {
   const mr = ((hex >> 16) & 255) / 255
   const mg = ((hex >> 8) & 255) / 255
   const mb = (hex & 255) / 255
@@ -489,11 +516,17 @@ export function shadeSample(hex, rig, ndotl, pointScale) {
   const pg = rig.point ? rig.point.color[1] * pointScale : 0
   const pb = rig.point ? rig.point.color[2] * pointScale : 0
   const emit = EMISSIVE.has(hex) ? rig.emission || 0 : 0
-  return [
-    clampByte(mr * (rig.ambient[0] + rig.key[0] * ndotl + pr + emit)),
-    clampByte(mg * (rig.ambient[1] + rig.key[1] * ndotl + pg + emit)),
-    clampByte(mb * (rig.ambient[2] + rig.key[2] * ndotl + pb + emit))
+  const lights = [
+    rig.ambient[0] + rig.key[0] * ndotl + pr + emit,
+    rig.ambient[1] + rig.key[1] * ndotl + pg + emit,
+    rig.ambient[2] + rig.key[2] * ndotl + pb + emit
   ]
+  const albedo = [mr, mg, mb]
+  return albedo.map((channel, index) => {
+    const lit = channel * lights[index]
+    const mixed = hold > 0 ? lit * (1 - hold) + channel * hold : lit
+    return clampByte(mixed)
+  })
 }
 
 export function shadedTokenBox(image, tokens, light, hex) {
@@ -549,11 +582,55 @@ export function countShadedTokens(image, tokens, light) {
   return counts
 }
 
+export function tokenPoints(image, tokens, light, hex) {
+  const rig = galleryRigs[light]
+  if (!rig) throw new Error(`unknown light ${light}`)
+  const points = []
+  const seen = new Map()
+  let red = 0
+  let green = 0
+  let blue = 0
+  for (let i = 0; i < image.mask.length; i++) {
+    if (!image.mask[i]) continue
+    const offset = i * 3
+    const pixel = [image.rgb[offset], image.rgb[offset + 1], image.rgb[offset + 2]]
+    const key = (pixel[0] << 16) | (pixel[1] << 8) | pixel[2]
+    let match = seen.get(key)
+    if (match === undefined) {
+      match = nearestToken(pixel, tokens, rig) === hex
+      seen.set(key, match)
+    }
+    if (!match) continue
+    points.push({ x: i % image.width, y: (i / image.width) | 0 })
+    red += pixel[0]
+    green += pixel[1]
+    blue += pixel[2]
+  }
+  if (points.length === 0) return null
+  const tone = toneOf(red / points.length, green / points.length, blue / points.length)
+  return { points, count: points.length, hue: tone.hue, sat: tone.sat }
+}
+
+function toneOf(red, green, blue) {
+  const max = Math.max(red, green, blue)
+  const min = Math.min(red, green, blue)
+  const span = max - min
+  let hue = 0
+  if (span > 0) {
+    if (max === red) hue = ((green - blue) / span) % 6
+    else if (max === green) hue = (blue - red) / span + 2
+    else hue = (red - green) / span + 4
+    hue *= 60
+    if (hue < 0) hue += 360
+  }
+  return { hue, sat: max === 0 ? 0 : span / max }
+}
+
 function nearestToken(pixel, tokens, rig) {
   let best = null
   let bestDist = shadeFit
   for (const hex of tokens) {
-    const dist = fitDistance(pixel, hex, rig)
+    const dist = Math.min(fitDistance(pixel, hex, rig, 0), fitDistance(pixel, hex, rig, albedoHold))
     if (dist < bestDist) {
       best = hex
       bestDist = dist
@@ -562,9 +639,10 @@ function nearestToken(pixel, tokens, rig) {
   return best
 }
 
-function fitDistance(pixel, hex, rig) {
+function fitDistance(pixel, hex, rig, hold) {
   const src = [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]
   const emit = EMISSIVE.has(hex) ? rig.emission || 0 : 0
+  const scale = hold > 0 ? 1 - hold : 1
   let k2 = 0
   let p2 = 0
   let kp = 0
@@ -573,7 +651,8 @@ function fitDistance(pixel, hex, rig) {
   let used = 0
   for (let i = 0; i < 3; i++) {
     if (src[i] < 8) continue
-    const target = pixel[i] / src[i] - rig.ambient[i] - emit
+    const lifted = hold > 0 ? (pixel[i] / src[i] - hold) / scale : pixel[i] / src[i]
+    const target = lifted - rig.ambient[i] - emit
     const key = rig.key[i]
     const point = rig.point ? rig.point.color[i] : 0
     k2 += key * key
@@ -585,21 +664,21 @@ function fitDistance(pixel, hex, rig) {
   }
   if (used < 2 || k2 === 0) return Infinity
   let ndotl
-  let scale
+  let pointScale
   if (!rig.point || p2 === 0) {
     ndotl = clamp01(kt / k2)
-    scale = 0
+    pointScale = 0
   } else {
     const det = k2 * p2 - kp * kp
     if (Math.abs(det) < 1e-8) {
       ndotl = clamp01(kt / k2)
-      scale = 0
+      pointScale = 0
     } else {
       ndotl = clamp01((p2 * kt - kp * pt) / det)
-      scale = clamp01((k2 * pt - kp * kt) / det)
+      pointScale = clamp01((k2 * pt - kp * kt) / det)
     }
   }
-  const shaded = shadeSample(hex, rig, ndotl, scale)
+  const shaded = shadeSample(hex, rig, ndotl, pointScale, hold)
   let dist = 0
   for (let i = 0; i < 3; i++) {
     const delta = shaded[i] - pixel[i]
