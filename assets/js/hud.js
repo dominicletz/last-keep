@@ -155,19 +155,19 @@ export function edgeCalls(monsters) {
   const groups = []
   for (const row of rows) {
     const last = groups[groups.length - 1]
-    if (last && last.kind === row.kind && row.angle - last.angle < CALL_GAP) {
+    if (last && last.kind === row.kind && row.angle - last.end < CALL_GAP) {
       last.x += row.x
       last.y += row.y
       last.count += 1
-      last.angle = row.angle
+      last.end = row.angle
     } else {
-      groups.push({ x: row.x, y: row.y, kind: row.kind, count: 1, angle: row.angle })
+      groups.push({ x: row.x, y: row.y, kind: row.kind, count: 1, angle: row.angle, end: row.angle })
     }
   }
   if (groups.length > 1) {
     const first = groups[0]
     const last = groups[groups.length - 1]
-    const wrap = first.angle + Math.PI * 2 - last.angle
+    const wrap = first.angle + Math.PI * 2 - last.end
     if (first.kind === last.kind && wrap < CALL_GAP) {
       first.x += last.x
       first.y += last.y

@@ -143,6 +143,19 @@ test("offscreen monsters in one direction share a counted call", () => {
   assert.deepEqual(labels, ["2 goblins", "skeleton"])
 })
 
+test("a west pack that crosses the seam is one call", () => {
+  const at = (angle, radius) => ({
+    kind: "goblin",
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius
+  })
+  const calls = edgeCalls([at(-2.2, 600), at(-3.05, 620), at(3.05, 640)])
+  assert.deepEqual(
+    calls.map((call) => call.label),
+    ["3 goblins"]
+  )
+})
+
 test("a goblin pair across a compass boundary is one call, and it stays under the raise bar", () => {
   const left = { kind: "goblin", x: Math.cos(0.35) * 640, y: Math.sin(0.35) * 640 }
   const right = { kind: "goblin", x: Math.cos(0.44) * 620, y: Math.sin(0.44) * 620 }
