@@ -53,6 +53,7 @@ async function readState(page) {
     const text = (selector) => document.querySelector(selector)?.innerText || ""
     return {
       phase: game.phase || null,
+      light: game.light || null,
       hold: !!game.hold,
       wave: game.shownWave ?? null,
       clock: text("[data-clock]"),
@@ -65,6 +66,8 @@ async function readState(page) {
       monsterBodies: (game.monsters || []).map((monster) => ({
         id: monster.id,
         kind: monster.kind,
+        x: monster.x,
+        y: monster.y,
         spreadX: monster.spreadX,
         spreadZ: monster.spreadZ,
         onScreen: monster.onScreen
