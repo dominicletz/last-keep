@@ -150,3 +150,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - The goblin spear and the skeleton ribs have to cover at least the voxel detail floor of 12 pixels at game zoom, and the ribs have to read as three separate bands.
 - Wave 2 brings a wolf, wave 3 a troll and bats, wave 4 a dark rider. A scripted parade, only when `PLAYWRIGHT=1`, puts one of each kind on the yard. The food sack names the feast. A short Raise button is painted inert. A goblin pair across a compass boundary is one call, and that call stays under the top bar. The wave sign follows the hero and is clamped inside the window.
 - `mix test --cover` reports 70.19%. The floor stays 69.
+
+## 2026-10-18 specialist round 7
+
+- Room `EM9YG3` on https://agentyard.letz.tw after the dusk-field deploy (`1 skipped, 6 passed`). Fidelity against rounds 5 and 6 is mood 3, town 3, heroes 3, monsters 4, ui 4. The round-5 and round-6 rows stay.
+- Wave 1 cleared at keep 900. The food sack says Feast 10. Raise is dark at gold 0. The wave-1 call is one `2 goblins` and it sits off the button. The wave line stays in the window and covers the food sack.
+- Wave 2 put a wolf on the yard, wave 3 put an ogre on the yard and spawned two bats, and wave 4 spawned the rider. The bat body and the rider body were not readable in the frame. The keep fell on wave 4 at 34 kills.
+- A day-yard patch samples luminance 51. The same patch at dusk samples luminance 31. This does not change the simulation. The coverage floor stays 69.
