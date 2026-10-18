@@ -28,7 +28,14 @@ COPY priv ./priv
 COPY assets/js ./assets/js
 COPY assets/models ./assets/models
 
-RUN mix assets.deploy \
+# The GHA layer cache (mode=max) once published an image whose tag was this
+# commit and whose bundle was the previous commit. The live smoke then saw
+# no motion track. SOURCE_SHA ties the asset step to the commit, and a
+# bundle that dropped the track fails here instead of after the deploy.
+ARG SOURCE_SHA=unknown
+RUN echo "assets ${SOURCE_SHA}" \
+    && mix assets.deploy \
+    && grep -q 'motion:' priv/static/assets/js/app.js \
     && mix compile \
     && mix release
 
