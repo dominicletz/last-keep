@@ -1258,7 +1258,15 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
-  defp maybe_relic(state, %{kind: :boss}) do
+  defp maybe_relic(state, monster) do
+    if relic_bearer?(monster), do: grant_relic(state), else: state
+  end
+
+  defp relic_bearer?(%{kind: :boss}), do: true
+  defp relic_bearer?(%{elite: elite}) when elite in [:fast, :armored, :enraged, :boss], do: true
+  defp relic_bearer?(_), do: false
+
+  defp grant_relic(state) do
     pool = [:heartwood, :whetstone, :swiftness, :banner, :granary] -- state.relics
 
     case pool do
@@ -1272,8 +1280,6 @@ defmodule LastKeep.Game.Sim do
         event(state, %{type: "relic", relic: relic, x: 0.0, y: 0.0})
     end
   end
-
-  defp maybe_relic(state, _), do: state
 
   defp grow_keep(state) do
     keep = state.keep
