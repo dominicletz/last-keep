@@ -92,7 +92,7 @@ Terrain and these points of interest will be drawn by the pixel-art lane in that
 
 ## What stays the same
 
-Night 1 is two goblins. The keep is the loss. Food still heals the keep from beside it. A raise still spends wood and gold from anywhere the hero stands, and it still stakes houses on the town rings. Feed still needs the hero beside the keep. The five heroes, the six monsters, and the six build buttons stay. Hold still waits until the host starts.
+Night 1 is two goblins. The keep is the loss. Food still heals the keep from beside it. A raise requires the hero at the keep. Until then the button stays disabled, and the hint says "Walk to the keep". Inside that range it still spends wood and gold and stakes houses on the town rings. Feed still needs the hero beside the keep. The five heroes, the six monsters, and the six build buttons stay. Hold still waits until the host starts.
 
 ## How a slice proves itself
 

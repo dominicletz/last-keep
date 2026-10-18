@@ -1752,6 +1752,9 @@ defmodule LastKeep.Game.Sim do
       rank >= Rules.town_rank_cap() ->
         refuse(state, hero.x, hero.y, "The keep is as high as it goes")
 
+      hypot(hero.x, hero.y) >= Rules.raise_reach() ->
+        refuse(state, hero.x, hero.y, "Walk to the keep")
+
       not afford?(state, Rules.keep_upgrade_cost(rank)) ->
         cost = Rules.keep_upgrade_cost(rank)
 

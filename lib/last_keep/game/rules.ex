@@ -30,6 +30,8 @@ defmodule LastKeep.Game.Rules do
 
   def build_range(hero, rank), do: max(kit(hero).range, town_radius(rank))
 
+  def raise_reach, do: 100
+
   def keep_upgrade_cost(rank) when is_integer(rank) and rank >= 0 and rank < 4 do
     %{wood: 24 + rank * 12, gold: 8 + rank * 6}
   end

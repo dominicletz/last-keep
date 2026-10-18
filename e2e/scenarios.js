@@ -1115,6 +1115,45 @@ async function mobileTouch(browser) {
   await context.close()
 }
 
+async function sowFour(page) {
+  const aims = [
+    [144, 0],
+    [180, 0],
+    [144, -36],
+    [180, -36]
+  ]
+  for (const [x, y] of aims) {
+    const before = await page.evaluate(
+      () => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length
+    )
+    const spot = await page.evaluate((point) => window.__lastKeep.toClient(point.x, point.y), { x, y })
+    await page.mouse.move(spot.x, spot.y)
+    await pressKey(page, "KeyQ")
+    await page.waitForFunction(
+      (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
+      before,
+      { polling: 100 }
+    )
+    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0, undefined, { polling: 100 })
+  }
+}
+
+async function waitForRaiseGold(page) {
+  await page.waitForFunction(
+    () => {
+      const text = document.querySelector("[data-sack='gold']")?.textContent || ""
+      const match = text.match(/(\d+)/)
+      return match && Number(match[1]) >= 8
+    },
+    undefined,
+    { timeout: 25_000, polling: 100 }
+  )
+}
+
+async function walkToRaise(page) {
+  await steer(page, { x: 0, y: 0 }, (state) => Math.hypot(state.x, state.y) < 100, 15_000, "raise ring")
+}
+
 async function townGrows(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "farmer")
@@ -1132,25 +1171,7 @@ async function townGrows(browser) {
   await page.waitForFunction(waiting)
   await friend.waitForFunction(waiting)
 
-  const aims = [
-    [144, 0],
-    [180, 0],
-    [144, -36],
-    [180, -36]
-  ]
-  for (const [x, y] of aims) {
-    const before = await page.evaluate(
-      () => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length
-    )
-    const spot = await page.evaluate((point) => window.__lastKeep.toClient(point.x, point.y), { x, y })
-    await page.mouse.move(spot.x, spot.y)
-    await pressKey(page, "KeyQ")
-    await page.waitForFunction(
-      (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
-      before
-    )
-    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0)
-  }
+  await sowFour(page)
 
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(48)
   const open = await page.evaluate(() => {
@@ -1159,19 +1180,11 @@ async function townGrows(browser) {
   })
   expect(open).toBe(false)
 
-  await page.waitForFunction(
-    () => {
-      const text = document.querySelector("[data-sack='gold']")?.textContent || ""
-      const match = text.match(/(\d+)/)
-      return match && Number(match[1]) >= 8
-    },
-    undefined,
-    { timeout: 25_000 }
-  )
+  await waitForRaiseGold(page)
   expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(48)
-
-  // Raise no longer needs the keep ring. Walking into that ring on a slow
-  // runner stops inside the stone, and the southwest step then cannot move.
+  await expect(page.locator("[data-raise]")).toBeDisabled()
+  await walkToRaise(page)
+  await expect(page.locator("[data-raise]")).toBeEnabled()
   await page.locator("[data-raise]").click()
 
   const grown = () => {
@@ -1489,33 +1502,11 @@ async function phoneClear(browser) {
     { polling: 100 }
   )
   await assertPhoneClear(page)
-  const aims = [
-    [144, 0],
-    [180, 0],
-    [144, -36],
-    [180, -36]
-  ]
-  for (const [x, y] of aims) {
-    const before = await page.evaluate(() => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length)
-    const spot = await page.evaluate((point) => window.__lastKeep.toClient(point.x, point.y), { x, y })
-    await page.mouse.move(spot.x, spot.y)
-    await pressKey(page, "KeyQ")
-    await page.waitForFunction(
-      (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
-      before,
-      { polling: 100 }
-    )
-    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0, undefined, { polling: 100 })
-  }
-  await page.waitForFunction(
-    () => {
-      const text = document.querySelector("[data-sack='gold']")?.textContent || ""
-      const match = text.match(/(\d+)/)
-      return match && Number(match[1]) >= 8
-    },
-    undefined,
-    { timeout: 25_000, polling: 100 }
-  )
+  await sowFour(page)
+  await waitForRaiseGold(page)
+  await expect(page.locator("[data-raise]")).toBeDisabled()
+  await walkToRaise(page)
+  await expect(page.locator("[data-raise]")).toBeEnabled()
   await page.locator("[data-raise]").click()
   await page.waitForFunction(() => window.__lastKeep.town === 1, undefined, { polling: 100 })
   await assertPhoneClear(page)
@@ -1921,17 +1912,25 @@ async function sixSeatMatch(browser) {
   await host.context.close()
 }
 
-async function disabledRaiseSaysWalk(browser) {
+async function raiseNeedsTheKeep(browser) {
   const errors = []
-  const { context, page } = await createHost(browser, "Ada", "warrior", { hasTouch: true })
-  watch(page, "host", errors)
+  await raiseOnTheBar(browser, errors)
+  await raiseOnThePhone(browser, errors)
+}
+
+async function raiseOnTheBar(browser, errors) {
+  const { context, page } = await createHost(browser, "Ada", "farmer")
+  watch(page, "desk", errors)
+  await sowFour(page)
+  expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(48)
+  await waitForRaiseGold(page)
   const raise = page.locator("[data-raise]")
   const hit = page.locator("[data-raise-hit]")
   const reason = page.locator("[data-build-reason]")
   await expect(raise).toBeDisabled()
   const spot = await page.evaluate(() => {
     const me = window.__lastKeep.self
-    return { x: me.x, y: me.y, gold: window.__lastKeep.gold, town: window.__lastKeep.town }
+    return { x: me.x, y: me.y, wood: window.__lastKeep.wood, town: window.__lastKeep.town }
   })
   expect(Math.hypot(spot.x, spot.y)).toBeGreaterThanOrEqual(100)
   expect(spot.town).toBe(0)
@@ -1943,13 +1942,41 @@ async function disabledRaiseSaysWalk(browser) {
   await expect(reason).toHaveText("Walk to the keep")
   await page.mouse.move(1100, 700)
   await expect(reason).toHaveText("Walk to the keep")
-  await expect(reason).toBeHidden({ timeout: 4_000 })
-  await hit.tap()
+  await walkToRaise(page)
+  await expect(raise).toBeEnabled()
+  const wood = await page.evaluate(() => window.__lastKeep.wood)
+  await raise.click()
+  await page.waitForFunction((before) => window.__lastKeep.town === 1 && window.__lastKeep.wood <= before - 24, wood)
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
+async function raiseOnThePhone(browser, errors) {
+  const { context, page } = await createHost(browser, "Nia", "farmer", {
+    viewport: { width: 844, height: 390 },
+    hasTouch: true,
+    isMobile: true
+  })
+  watch(page, "phone", errors)
+  await expect(page.locator("[data-touch-pad]")).toBeVisible()
+  await sowFour(page)
+  await waitForRaiseGold(page)
+  const button = page.locator("[data-touch-context]")
+  const reason = page.locator("[data-build-reason]")
+  await expect(button).toBeVisible()
+  await expect(button).toHaveText("Raise")
+  await expect(button).toHaveAttribute("aria-disabled", "true")
+  const away = await page.evaluate(() => Math.hypot(window.__lastKeep.self.x, window.__lastKeep.self.y))
+  expect(away).toBeGreaterThanOrEqual(100)
+  await button.tap({ force: true })
   await expect(reason).toHaveText("Walk to the keep")
-  await page.mouse.move(1100, 700)
-  await expect(reason).toHaveText("Walk to the keep")
-  const after = await page.evaluate(() => ({ gold: window.__lastKeep.gold, town: window.__lastKeep.town }))
-  expect(after).toEqual({ gold: spot.gold, town: 0 })
+  expect(await page.evaluate(() => window.__lastKeep.town)).toBe(0)
+  await walkToRaise(page)
+  await expect(button).toHaveAttribute("aria-disabled", "false")
+  await expect(button).toHaveText("Raise")
+  const wood = await page.evaluate(() => window.__lastKeep.wood)
+  await button.tap()
+  await page.waitForFunction((before) => window.__lastKeep.town === 1 && window.__lastKeep.wood <= before - 24, wood)
   expect(errors, errors.join("\n")).toEqual([])
   await context.close()
 }
@@ -1975,5 +2002,5 @@ module.exports = {
   captionsClearTheBuilds,
   phoneClear,
   exploreLand,
-  disabledRaiseSaysWalk
+  raiseNeedsTheKeep
 }

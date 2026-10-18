@@ -81,7 +81,7 @@ test("the context button is a legal place, a paid raise, or a feed", () => {
     armed: null,
     buildings: []
   })
-  assert.equal(far, null)
+  assert.deepEqual(far, { id: "raise", enabled: false })
 
   const place = contextAction({
     hero: { x: 120, y: 0, range: 165 },
@@ -117,7 +117,7 @@ test("the context button is a legal place, a paid raise, or a feed", () => {
     armed: null,
     buildings: []
   })
-  assert.deepEqual(raise, { id: "raise" })
+  assert.deepEqual(raise, { id: "raise", enabled: true })
 
   const woods = contextAction({
     hero: { x: -232, y: -396, range: 180 },
@@ -127,7 +127,7 @@ test("the context button is a legal place, a paid raise, or a feed", () => {
     armed: null,
     buildings: []
   })
-  assert.deepEqual(woods, { id: "raise" })
+  assert.deepEqual(woods, { id: "raise", enabled: false })
 
   const feed = contextAction({
     hero: { x: 80, y: 0, range: 165 },

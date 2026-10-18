@@ -66,20 +66,23 @@ test("forge, spire, and relics are explained", () => {
 })
 
 test("raising the keep names the wood and gold it costs", () => {
+  const near = { x: 80, y: 0 }
   assert.equal(raiseLabel({ wood: 24, gold: 8, rank: 1 }), "Raise the keep  24 wood 8 gold")
   assert.equal(raiseLabel(null), "The keep is as high as it goes")
-  assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 2 }), false)
-  assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }), true)
-  assert.equal(raiseReady(null, { wood: 48, gold: 8 }), false)
+  assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 2 }, near), false)
+  assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }, near), true)
+  assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }, { x: 120, y: 0 }), false)
+  assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }, { x: -122, y: -252 }), false)
+  assert.equal(raiseReady(null, { wood: 48, gold: 8 }, near), false)
 })
 
 test("a disabled raise away from the keep says to walk there", () => {
   const offer = { wood: 24, gold: 8, rank: 1 }
-  assert.equal(raiseHint(true, { x: -122, y: -252 }, offer), "Walk to the keep")
-  assert.equal(raiseHint(true, { x: 120, y: 0 }, offer), "Walk to the keep")
-  assert.equal(raiseHint(true, { x: 40, y: 0 }, offer), "")
-  assert.equal(raiseHint(false, { x: -122, y: -252 }, offer), "")
-  assert.equal(raiseHint(true, { x: -122, y: -252 }, null), "")
+  assert.equal(raiseHint({ x: -122, y: -252 }, offer), "Walk to the keep")
+  assert.equal(raiseHint({ x: 120, y: 0 }, offer), "Walk to the keep")
+  assert.equal(raiseHint({ x: 40, y: 0 }, offer), "")
+  assert.equal(raiseHint({ x: 80, y: 0 }, offer), "")
+  assert.equal(raiseHint({ x: -122, y: -252 }, null), "")
 })
 
 test("an edge call beside the roster stops short of the names", () => {

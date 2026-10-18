@@ -351,9 +351,10 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - The deploy of 7d056a4 left the host at x 73.5, y 0, and the chest wait of 45 seconds ran out. The detour had already stepped aside, then the diagonal walk clipped the keep and sat there. `steerPast` now keeps orbiting while the hero is inside radius 160 and the line still hits the keep, and a clear slice is 6 seconds so a pin does not spend the whole budget. The chest wait stays 45 seconds. The portal wait stays 70 seconds. Night 1 stays two goblins. This does not change the simulation. The coverage floor stays 77.
 
-## 2026-10-18 a disabled raise says to walk
+## 2026-10-18 a raise needs the keep
 
-- Round 10 left Ada at (-122, -252) with the raise control disabled. The click spent nothing and wrote nothing. Hover on that control says `Walk to the keep`, and so does a click or a tap. The words hide when a hover leaves, and they stay for the reason hold after a click or a tap. A hero already inside radius 100 does not get that line. A paid raise from the woods still stakes the ring. Night 1 stays two goblins. This does not change the simulation. The coverage floor stays 77.
+- Round 10 left Ada at (-122, -252) with the raise control disabled. The click spent nothing and wrote nothing. Hover on that control says `Walk to the keep`, and so does a click or a tap. The words hide when a hover leaves, and they stay for the reason hold after a click or a tap.
+- A raise spends wood and gold only while the hero is inside radius 100. Outside that radius the bar button and the phone context button stay visible and disabled, and the server refuses with `Walk to the keep`. Inside the radius, once wood and gold cover the cost, the control enables and the raise stakes the ring. `a raise outside the keep is refused` and `a raise beside the keep spends the purse and stakes houses` cover the server. `raiseNeedsTheKeep` funds the purse, reads the hint, walks in, and raises on the desktop bar and on the phone context button. Night 1 stays two goblins. The coverage floor stays 77.
 
 ## 2026-10-18 the match paints without a yard read
 

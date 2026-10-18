@@ -378,6 +378,9 @@ function start(code, seat, ui) {
       pad.place = true
       input.place = true
       fingers.set(event.pointerId, "place")
+    } else if (touchAction?.id === "raise" && touchAction.enabled === false) {
+      cueRaise()
+      return
     } else if (touchAction?.id === "raise") {
       pad.raise = true
       input.raise = true
@@ -472,11 +475,10 @@ function start(code, seat, ui) {
     }
   })
   const raiseHit = ui.hud.querySelector("[data-raise-hit]")
-  const cueRaise = () => {
-    const button = raiseHit.querySelector("[data-raise]")
+  function cueRaise() {
     const meNow = (latest?.players || []).find((player) => player.id === selfId)
     const offer = latest?.upgrade
-    const text = raiseHint(!!button?.disabled, meNow, offer)
+    const text = raiseHint(meNow, offer)
     if (!text) return
     raiseCue = showReason(raiseCue, text, performance.now(), 2200, true)
     refresh()
@@ -622,7 +624,7 @@ function start(code, seat, ui) {
     const raise = ui.hud.querySelector("[data-raise]")
     if (raise) {
       raise.textContent = raiseLabel(snap.upgrade)
-      raise.disabled = !raiseReady(snap.upgrade, snap.resources)
+      raise.disabled = !raiseReady(snap.upgrade, snap.resources, me)
     }
     const start = ui.hud.querySelector("[data-start]")
     start.hidden = !snap.hold
@@ -643,7 +645,7 @@ function start(code, seat, ui) {
     })
     const cost = armed && me?.costs ? me.costs[armed] : null
     const now = performance.now()
-    const raiseNote = raiseHint(!!raise?.disabled && (raiseHover || reasonOpen(raiseCue, now)), me, snap.upgrade)
+    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, snap.upgrade) : ""
     const preview = armed ? placementReason({ ...me, cost }, aim, snap.resources) : raiseNote
     const denied = (snap.events || []).find((ev) => ev.type === "deny" && ev.reason)
     if (denied) reasonEntry = showReason(reasonEntry, denied.reason, now, 2200, true)
@@ -710,9 +712,11 @@ function start(code, seat, ui) {
     if (!touchAction) {
       button.hidden = true
       button.textContent = ""
+      button.removeAttribute("aria-disabled")
       return
     }
     button.hidden = false
+    button.setAttribute("aria-disabled", touchAction.enabled === false ? "true" : "false")
     button.textContent = touchAction.id === "place" ? PLACE_WORD[touchAction.kind] || "Build" : touchAction.id === "raise" ? "Raise" : "Feed"
   }
 }

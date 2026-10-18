@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, disabledRaiseSaysWalk, exploreLand, heroSilhouettes, joinFromForm, matchPaintsWithoutARead, paradeShowsEveryKind, prepareProof, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, townGrows, twoPlayerNight } = require("./scenarios")
+const { captionsClearTheBuilds, exploreLand, heroSilhouettes, joinFromForm, matchPaintsWithoutARead, paradeShowsEveryKind, prepareProof, raiseNeedsTheKeep, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, townGrows, twoPlayerNight } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -50,8 +50,8 @@ test("six seats hold the match budgets across three waves", async ({ browser }) 
   await sixSeatMatch(browser)
 })
 
-test("a disabled raise away from the keep says to walk there", async ({ browser }) => {
-  await disabledRaiseSaysWalk(browser)
+test("a raise stays disabled until the hero reaches the keep", async ({ browser }) => {
+  await raiseNeedsTheKeep(browser)
 })
 
 test("a walk opens a chest and a broken portal skips the night", async ({ browser }) => {
