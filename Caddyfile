@@ -1,3 +1,10 @@
 {$DOMAIN} {
 	reverse_proxy app:4000
 }
+
+# Container-local probe. It is not published. The caddy healthcheck uses it
+# so "healthy" means this process can reach the current app, not the one it
+# replaced.
+http://127.0.0.1:8081 {
+	reverse_proxy app:4000
+}

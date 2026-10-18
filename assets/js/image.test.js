@@ -71,6 +71,25 @@ function missingCopies(dockerfile, entry) {
   return problems
 }
 
+test("the deploy recreates caddy after the app and asks /health again before the smoke", () => {
+  const remote = fs.readFileSync(path.join(root, "deploy/remote.sh"), "utf8")
+  const compose = fs.readFileSync(path.join(root, "docker-compose.prod.yml"), "utf8")
+  const caddy = fs.readFileSync(path.join(root, "Caddyfile"), "utf8")
+  const workflow = fs.readFileSync(path.join(root, ".github/workflows/deploy.yml"), "utf8")
+  const ready = fs.readFileSync(path.join(root, "deploy/ready.sh"), "utf8")
+  const appUp = remote.indexOf("up -d --wait --remove-orphans --no-deps app")
+  const caddyUp = remote.indexOf("up -d --wait --force-recreate --no-deps caddy")
+  assert.ok(appUp > -1 && caddyUp > appUp, "caddy has to be recreated after the new app is healthy")
+  assert.ok(!remote.includes("up -d --wait --remove-orphans\n"), "one up leaves the previous proxy running")
+  assert.match(compose, /127\.0\.0\.1:8081\/health/)
+  assert.match(caddy, /127\.0\.0\.1:8081/)
+  assert.match(ready, /READY_STREAK:-3/)
+  const install = workflow.indexOf("npx playwright install chromium --with-deps")
+  const again = workflow.indexOf("bash deploy/ready.sh", install)
+  const smoke = workflow.indexOf("npx playwright test", install)
+  assert.ok(install > -1 && again > install && smoke > again, "the smoke has to wait until the new proxy is still answering")
+})
+
 test("the production image copies every module the client bundle imports", () => {
   const dockerfile = fs.readFileSync(path.join(root, "Dockerfile.prod"), "utf8")
   const entry = path.join(assetsDir, "js/app.js")

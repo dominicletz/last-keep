@@ -1,5 +1,10 @@
 name: Deploy production
 
+# A second deploy must not recreate the stack while the first smoke is running.
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
 on:
   workflow_run:
     workflows: ["Build and push image"]
@@ -74,17 +79,7 @@ jobs:
             "cd '$DEPLOY_PATH' && IMAGE_TAG='$IMAGE_TAG' GHCR_USERNAME='$GHCR_USERNAME' GITHUB_TOKEN='$GITHUB_TOKEN' DEPLOY_PATH='$DEPLOY_PATH' bash remote.sh"
 
       - name: Wait until the live game answers
-        run: |
-          set -eu
-          for i in $(seq 1 60); do
-            if curl -fsS "https://agentyard.letz.tw/health"; then
-              echo "ready after ${i}"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "the game did not answer /health"
-          exit 1
+        run: bash deploy/ready.sh
 
       - name: Install the browser smoke harness
         uses: actions/setup-node@v4
@@ -99,4 +94,7 @@ jobs:
           set -eu
           npm ci
           npx playwright install chromium --with-deps
+          # The install takes about two minutes. Ask again so the smoke does
+          # not start into the gap where the old proxy has already stopped.
+          bash deploy/ready.sh
           npx playwright test
