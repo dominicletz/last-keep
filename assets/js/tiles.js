@@ -7,12 +7,13 @@ function decode(b64) {
   return rgb
 }
 
-const grass = Object.fromEntries(
-  Object.entries(phaseTiles).map(([phase, tiles]) => [phase, decode(tiles.grass.b64)])
+const decoded = Object.fromEntries(
+  Object.entries(phaseTiles).map(([phase, tiles]) => [
+    phase,
+    Object.fromEntries(Object.entries(tiles).map(([name, tile]) => [name, decode(tile.b64)]))
+  ])
 )
-const masonry = Object.fromEntries(
-  Object.entries(phaseTiles).map(([phase, tiles]) => [phase, decode(tiles.masonry.b64)])
-)
+const grass = Object.fromEntries(Object.entries(decoded).map(([phase, tiles]) => [phase, tiles.grass]))
 
 export function grassAt(ix, iy, phase) {
   const tile = phaseTiles[phase].grass
@@ -23,9 +24,9 @@ export function grassAt(ix, iy, phase) {
   return [bytes[offset], bytes[offset + 1], bytes[offset + 2]]
 }
 
-export function masonryBytes(phase) {
-  const tile = phaseTiles[phase].masonry
-  const bytes = masonry[phase]
+function rgbaTile(name, phase) {
+  const tile = phaseTiles[phase][name]
+  const bytes = decoded[phase][name]
   const rgba = new Uint8Array(tile.w * tile.h * 4)
   for (let i = 0; i < bytes.length; i += 3) {
     const dest = (i / 3) * 4
@@ -35,4 +36,12 @@ export function masonryBytes(phase) {
     rgba[dest + 3] = 255
   }
   return { rgba, w: tile.w, h: tile.h }
+}
+
+export function masonryBytes(phase) {
+  return rgbaTile("masonry", phase)
+}
+
+export function propBytes(name, phase) {
+  return rgbaTile(name, phase)
 }

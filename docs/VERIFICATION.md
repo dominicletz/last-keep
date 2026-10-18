@@ -359,7 +359,6 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - `docs/concepts/WORLD.md` is the contract for a seeded land of radius 7200. The keep disc of radius 400 stays meadow. Points of interest, role walks, portal bearings, fog, and the 2-to-15 seat scale are on that page. The chest, the portal, the quarry, and the meadow sow are already in the simulation, and the walk clamp is 7200. Pine wood and the performance slice stay planned. LK-089 stays open. Night 1 stays two goblins. This does not change the simulation. The coverage floor stays 77.
 
-
 ## 2026-10-18 the chest detour steps off the face
 
 - CI on the swing pin failed `exploreLand` at x 73.5, y 0. The offset via still had `|dx|` above 28, and `keysToward` treats that as due west, so the hero never left the face. The via now shares x. The hop ends when the cardinal step misses the keep body, radius 54 plus the hero radius 14. The detour stays inside 20 seconds. The chest wait stays 45 seconds and the portal wait stays 70 seconds. `e2e/steer.test.js` walks that face and the spawn to a chest. This does not change the simulation. The coverage floor stays 77.
@@ -379,3 +378,15 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 a focused blur keeps the swing
 
 - Deploy of the swing-cooldown commit failed the live smoke on one flaky run of `focusClickDoesNotAttack`. The retry passed, and `failOnFlakyTests` failed the job. The same flake failed the motion-cap deploy. The blurred click still has to stay at 0, and the focused click still has to set `attackPeak`. A window `blur` that leaves `document.hasFocus()` true no longer clears the swing flag. The spec's `focus()` sticks until `blur()`, so a guest page that takes the document after that mark cannot throw the click away. `saw_swing` still rides on the snapshot that is pushed, and the spec still waits on that latch. `retainFocus` and `swingFocus` cover the focus cases. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 sheet props
+
+- Houses, fields, fences, and the dirt path draw phase tiles. The house window is theme.jpg 500,200 96×110, the thatched pair. The field is the wheat figure 740,300 250×140, laid on the ground. The fence is 224,308 48×64 inside the palisade figure. The path token at 610,400 sits in a crop row, and that 48×48 scores hard edge 0.021. The path window is the dirt at 700,324 32×32. `tiles.test.js` still fails a pixel off the phase palette, a block p25 under 8, or a hard edge under 0.05.
+- The pine figure at 0,500 180×210 scores block p25 4 and hard edge 0.019 by day, 4 and 0.020 at dusk, and 4 and 0.017 at night. The pine stays the mesh. The crown sample at (-22, 30, -62) still reads it. The gallery raster still draws the voxel house, field, and wall.
+- The thatch card is dark after the snap. 0.7% of its pixels sit at luma 113 or above, and the far house on the ring, the first house `townGrows` samples, scored 140 against the floor of 619. Six unlit panes of flame `#eea821`, each 12 by 8, bring that house to 787. The floor stays 619. The camera stays at distance 150.
+- A height-matched register, uniform scale to the taller ink and a center crop to the shared width, drops the hero close-ups under their floors. Warrior day SSIM is 0.102 against 0.19, and the scout is 0.116 against 0.32. Letterboxing instead of the center crop leaves the warrior at 0.134. The gallery keep falls to SSIM 0.004. `register` still stretches both ink boxes to 64×80. The hero floors stay. The gameplay camera stays at distance 150: at rank 0 the keep is 177 internal pixels, 44% of the 400-tall buffer, against a 230px concept crop.
+
+## 2026-10-18 the sheet branch keeps the face detour
+
+- The sheet branch uses the detour already on main. The via on the west face shares x, `e2e/steer.test.js` walks that face and the spawn to a chest, and the hop ends when the cardinal step misses the keep body. The chest wait stays 45 seconds and the portal wait stays 70 seconds.
+- `phoneClear` still requires the goblin call on the side opposite the pack. The steer returns on a frame where the label is up, and the next paint can be empty, so the text is polled for 4 seconds. This does not change the simulation. The coverage floor stays 77.
