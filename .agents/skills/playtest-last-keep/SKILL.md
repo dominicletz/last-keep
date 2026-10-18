@@ -48,4 +48,4 @@ The waiting yard is a whole frame, not one patch. `frameMood` fails contrast und
 
 A bat or a dark rider that is darker than the night grass is not on the yard, even when the snapshot says the body is in frame. The wings are bone, the rider's helm and cuirass are plate, and both wear a bone rim. `paradeShowsEveryKind` reads those pixels.
 
-The town ring of houses is staked by the keep raise, and wheat beyond a click is farmer labor. The town cottages are timber and thatch and the outer ring is felled wood.
+The town ring of houses is staked by the keep raise, and wheat beyond a click is farmer labor. The town cottages are timber and thatch and the outer ring is felled wood. A raise whose wood and gold cover the offer stakes that ring from the woods. Feed still needs the hero beside the keep. The wave clock moves on every tick while the keep stands and the room is not waiting to start. Frenzy does not freeze the phase.
