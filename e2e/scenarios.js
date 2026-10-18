@@ -1,7 +1,7 @@
 const { expect } = require("@playwright/test")
 const fs = require("fs")
 const path = require("path")
-const { clearanceVia, keysToward, walkHitsKeep } = require("./steer")
+const { clearanceVia, walkHitsKeep } = require("./steer")
 
 const proofDir = path.join("tmp", "verify-artifacts")
 
@@ -1429,19 +1429,15 @@ async function steer(page, goal, done, timeout, label) {
   let last = null
   try {
     while (Date.now() < deadline) {
-      const state = await page.evaluate(() => {
+      const state = await page.evaluate((goal) => {
         const me = window.__lastKeep.self
         const call = [...document.querySelectorAll(".hint-arrow")].some((node) => /goblin/i.test(node.textContent || ""))
+        const keys = window.__lastKeepTest.around(goal.x, goal.y)
+        for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
         return me ? { x: me.x, y: me.y, alive: me.alive !== false, call } : null
-      })
+      }, goal)
       last = state
       if (state && done(state)) return state
-      if (state) {
-        const keys = keysToward(state, goal)
-        await page.evaluate((down) => {
-          for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, down.includes(key))
-        }, keys)
-      }
       await page.waitForTimeout(80)
     }
   } finally {

@@ -1,7 +1,7 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
+import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, swingSeen } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
@@ -163,6 +163,11 @@ function start(code, seat, ui) {
       if (down) keys.add(code)
       else keys.delete(code)
       send()
+    },
+    around(goalX, goalY) {
+      const me = window.__lastKeep && window.__lastKeep.self
+      if (!me) return []
+      return keysAround(me.x, me.y, goalX, goalY)
     },
     // The co-op night used to leave the mage standing on the far side of the
     // ring. The goblins killed that mage before they walked into the host's
