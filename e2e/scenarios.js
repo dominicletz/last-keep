@@ -1,8 +1,6 @@
 const { expect } = require("@playwright/test")
 const fs = require("fs")
 const path = require("path")
-const { clearanceVia, walkHitsKeep } = require("./steer")
-
 const proofDir = path.join("tmp", "verify-artifacts")
 
 function prepareProof() {
@@ -1550,7 +1548,9 @@ async function phoneClear(browser) {
     "goblin call away from the pack"
   )
   await assertPhoneClear(page)
-  let call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  const callText = () =>
+    page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  let call = await callText()
   if (!/goblin/i.test(call)) {
     // The viewport sweep keeps the night moving, and a goblin that walks into
     // frame takes the arrow with it. Step away again. The text still has to say goblin.
@@ -1567,9 +1567,10 @@ async function phoneClear(browser) {
       15_000,
       "goblin call after the resize"
     )
-    call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+    call = await callText()
   }
-  expect(call).toMatch(/goblin/i)
+  if (!/goblin/i.test(call)) await expect.poll(callText, { timeout: 4_000 }).toMatch(/goblin/i)
+  else expect(call).toMatch(/goblin/i)
   expect(errors, errors.join("\n")).toEqual([])
   for (const seat of seats) await seat.context.close()
   await context.close()
@@ -1666,23 +1667,9 @@ async function scoreList(request) {
 }
 
 async function steerPast(page, goal, done, timeout, label) {
-  const me = await page.evaluate(() => window.__lastKeep.self)
-  if (me && walkHitsKeep(me, goal)) {
-    const around = Date.now() + 20_000
-    for (let hop = 0; hop < 4; hop += 1) {
-      const here = await page.evaluate(() => window.__lastKeep.self)
-      if (!here || !walkHitsKeep(here, goal)) break
-      const left = around - Date.now()
-      if (left <= 0) break
-      const via = clearanceVia(here, goal)
-      try {
-        await steer(page, via, (state) => !walkHitsKeep(state, goal), Math.min(left, 5_000), `${label} around the keep`)
-      } catch (error) {
-        if (!String(error && error.message).includes("around the keep")) throw error
-      }
-    }
-  }
-  await steer(page, goal, done, timeout, label)
+  // steer() holds keysAround. A cardinal via on top of that step aims due
+  // west again and sits on the face at x 73.5. The tangent is the detour.
+  return steer(page, goal, done, timeout, label)
 }
 
 async function exploreLand(browser) {
