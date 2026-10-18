@@ -5,6 +5,32 @@ export const spriteHeight = 32
 export const spriteDirections = 8
 export const spriteFrames = 4
 
+// The yard shows the card at about 33 internal pixels, and the close-up frames
+// it at 80. A 160px source keeps that close-up under the likeness ceiling.
+// The full crop's atlas is about 46MB and stalls the page.
+export const cardSourceHeight = 160
+
+export function scaleFront(image, height) {
+  const h = Math.max(1, height)
+  const w = Math.max(1, Math.round((image.w * h) / image.h))
+  const rgb = new Uint8Array(w * h * 3)
+  const mask = new Uint8Array(w * h)
+  for (let y = 0; y < h; y++) {
+    const sy = Math.min(image.h - 1, Math.floor(((y + 0.5) * image.h) / h))
+    for (let x = 0; x < w; x++) {
+      const sx = Math.min(image.w - 1, Math.floor(((x + 0.5) * image.w) / w))
+      const s = sy * image.w + sx
+      if (!image.mask[s]) continue
+      const d = y * w + x
+      mask[d] = 1
+      rgb[d * 3] = image.rgb[s * 3]
+      rgb[d * 3 + 1] = image.rgb[s * 3 + 1]
+      rgb[d * 3 + 2] = image.rgb[s * 3 + 2]
+    }
+  }
+  return { rgb, mask, w, h }
+}
+
 const MARKS = {
   warrior: ["shoulders", "shield"],
   mage: ["robe", "hat", "staff"],

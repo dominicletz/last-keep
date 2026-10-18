@@ -294,7 +294,8 @@ function chromaDist(a, b) {
 // is 3.6%, so a 16% gate reports no color on the crop itself. 3% sits under
 // that bin. Every card color above it matched the crop. RGB tolerance 52 leaves
 // room for the day light. Chroma tolerance 0.09 rejects a brown body that sits
-// near a grey only because both are dark.
+// near a grey only because both are dark. The close-up uses the same luma floor
+// as the crop, so a shadow the crop sample never counted is not a miss.
 export const heroColorTolerance = 52
 export const heroChromaTolerance = 0.09
 const heroConceptLuma = 48
@@ -313,7 +314,7 @@ export function heroColorProblems(listed, sheet) {
     }
     const concept = quantize(cropRgb(sheet, crop), crop.w, crop.h, null, heroConceptLuma)
     const close = renderCloseup(model.parts, "day")
-    const shot = quantize(close.rgb, close.width, close.height, close.mask, 24)
+    const shot = quantize(close.rgb, close.width, close.height, close.mask, heroConceptLuma)
     const samples = concept.colors.filter((color) => color.n >= concept.total * heroConceptShare)
     const keep = shot.colors.filter((color) => color.n >= shot.total * heroCloseShare)
     if (shot.total === 0 || keep.length === 0 || samples.length === 0) {
@@ -355,7 +356,7 @@ export const heroKeepRatio = 0.42
 // Whole-figure match of the player-camera close-up against the concept crop.
 // The yard mask is about 32px, and resampling that into the scorer is not the
 // crop. On the 80px close-up the voxel meshes top out at 0.568 intersection
-// and 62.7 color error. The crop cards clear 0.777 and stay under 43.8.
+// and 62.7 color error. The 160px crop cards clear 0.783 and stay under 39.7.
 export const heroLikenessIou = 0.72
 export const heroLikenessRmse = 46
 

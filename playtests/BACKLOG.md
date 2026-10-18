@@ -124,6 +124,6 @@ Scores are 1 to 5 against the concept sheets. A later row for the same area may 
 | town | 2026-10-18 | 4 | The cottages are timber and thatch with a lit window, the plaza is a grass disc with a round stone curb, and the outer ring is stumps and felled logs. |
 | mood | 2026-10-18 | 4 | Round 9 room 6DB8UR samples day rgb(98, 136, 52), luminance 122, hue 87, and dusk rgb(87, 75, 89), luminance 79, hue 291. Night is rgb(48, 50, 23), luminance 48. The mustard day and the orange dusk are gone. The yard is still a flat wash. |
 | heroes | 2026-10-18 | 4 | The helmet has a visor slit, the shield is a kite with a gold cross, and steel and blue stay readable at dusk and night. The bodies are still voxels beside the painted crop. |
-| heroes | 2026-10-18 | 4 | The yard card is the concept crop at world height 32, clear of the door and of the other heroes' ground disks. Close-up intersection-over-union is 0.777 to 0.905. The other seven directions are a mirror and a center slice of that one painting, and attack and death frames are not on the sheet. |
+| heroes | 2026-10-18 | 4 | The yard card is the concept crop at world height 32, clear of the door and of the other heroes' ground disks. Close-up intersection-over-union is 0.783 to 0.885. The other seven directions are a mirror and a center slice of that one painting, and attack and death frames are not on the sheet. |
 
 No implemented hero is isolated. Farmer, engineer, scout, warrior, and mage each have an outgoing edge in `docs/interactions.json`.

@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { fitSlack, horizontalRadius, models } from "../models/registry.js"
 import { heroCrops, conceptFigure } from "../models/sprites.js"
-import { pictureColumn, spriteHeight } from "./pictures.js"
+import { cardSourceHeight, pictureColumn, scaleFront, spriteHeight } from "./pictures.js"
 import { heroKinds, heroParts, heroSignature } from "./heroes.js"
 
 test("each hero builds a distinct mesh signature", () => {
@@ -37,7 +37,8 @@ test("each hero builds a distinct mesh signature", () => {
   assert.notEqual(pictureColumn(Math.PI / 4, Math.PI / 4), 0)
   for (const kind of kinds) {
     const embedded = heroParts(kind)[0].image
-    const crop = conceptFigure(kind)
+    const crop = scaleFront(conceptFigure(kind), cardSourceHeight)
+    assert.equal(embedded.h, cardSourceHeight, kind)
     assert.equal(embedded.w, crop.w, kind)
     assert.equal(embedded.h, crop.h, kind)
     for (let i = 0; i < embedded.mask.length; i++) {
