@@ -141,5 +141,6 @@ Scores are 1 to 5 against the concept sheets. A later row for the same area may 
 | monsters | 2026-10-18 | 5 | Wave 1 was two goblins. Wave 2 had goblins, skeletons, and a wolf. The troll, the bat, and the rider were not in this night. The meshes are still voxels. |
 | ui | 2026-10-18 | 4 | Wave 1 is one "2 goblins" call, Raise is disabled at gold 3, and the phone health line, sacks, and Shot do not share a box. The glass bar remains. |
 | town | 2026-10-18 | 4 | Houses, fields, fences, and the path are phase tiles from theme.jpg. The far cottage scored 140 until six flame panes brought it to 787. The pine figure scores block p25 4 and hard edge 0.019, so the pine stays the mesh. |
+| town | 2026-10-18 | 4 | Matching the concept crop to the live ink height drops warrior day SSIM to 0.102, under the floor of 0.19, and the scout to 0.116 under 0.32. The scorer still stretches both boxes to 64×80. The camera stays at distance 150. Rank 0 keep height is 177 internal pixels against a 230px concept crop. |
 
 No implemented hero is isolated. Farmer, engineer, scout, warrior, and mage each have an outgoing edge in `docs/interactions.json`.
