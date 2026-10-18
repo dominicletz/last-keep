@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { monsterKinds, monsterParts } from "./monsters.js"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend } from "./input"
+import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, retainFocus, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, swingSeen } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
@@ -266,10 +266,10 @@ function start(code, seat, ui) {
     }
   }
   window.addEventListener("blur", () => {
-    focused = false
-    // A blur that does not leave the document used to stick, and the next
-    // click was thrown away. Restoring only when the document is focused
-    // leaves an explicit test focus() in place on a covered page.
+    // A second window can fire blur while this document still has focus.
+    // Clearing the flag in that gap throws away the next click. A covered
+    // page has no focus, and the timeout still restores the flag only then.
+    focused = retainFocus(focused, document.hasFocus())
     window.setTimeout(() => {
       if (focusedAfterBlur(document.hasFocus())) focused = true
     }, 0)

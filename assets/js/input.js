@@ -33,6 +33,13 @@ export function focusedAfterBlur(documentHasFocus) {
   return !!documentHasFocus
 }
 
+// A blur event that leaves the document focused must keep the swing flag.
+// Clearing it throws away the next click. An explicit blur still sticks
+// when the flag was already down.
+export function retainFocus(wasFocused, documentHasFocus) {
+  return focusedAfterBlur(documentHasFocus) ? !!wasFocused : false
+}
+
 export function blurHiddenFocus(doc) {
   if (blurBusy || !doc) return false
   const active = doc.activeElement
