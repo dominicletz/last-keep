@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, bonusCopy, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rosterAnchor, sackLine, showReason, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rosterAnchor, sackLine, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -104,7 +104,9 @@ test("the glass keeps ten controls after the sacks leave it", () => {
 
 test("wood, food, and gold each sit in their own sack", () => {
   const marks = sackLine({ wood: 40, food: 12, gold: 3 })
-  assert.deepEqual(marks.map((mark) => mark.text), ["Wood 40", "Food 12", "Gold 3"])
+  assert.deepEqual(marks.map((mark) => mark.text), ["Wood 40", "Food 12\nFeast 10", "Gold 3"])
+  assert.match(marks[1].text, /Food 12/)
+  assert.match(marks[1].text, /Feast 10/)
   assert.equal(new Set(marks.map((mark) => `${mark.x},${mark.y}`)).size, 3)
 })
 
@@ -139,4 +141,44 @@ test("offscreen monsters in one direction share a counted call", () => {
   ])
   const labels = calls.map((call) => call.label).sort()
   assert.deepEqual(labels, ["2 goblins", "skeleton"])
+})
+
+test("a west pack that crosses the seam is one call", () => {
+  const at = (angle, radius) => ({
+    kind: "goblin",
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius
+  })
+  const calls = edgeCalls([at(-2.2, 600), at(-3.05, 620), at(3.05, 640)])
+  assert.deepEqual(
+    calls.map((call) => call.label),
+    ["3 goblins"]
+  )
+})
+
+test("a goblin pair across a compass boundary is one call, and it stays under the raise bar", () => {
+  const left = { kind: "goblin", x: Math.cos(0.35) * 640, y: Math.sin(0.35) * 640 }
+  const right = { kind: "goblin", x: Math.cos(0.44) * 620, y: Math.sin(0.44) * 620 }
+  const calls = edgeCalls([left, right])
+  assert.deepEqual(calls.map((call) => call.label), ["2 goblins"])
+  const covered = callAnchor(0.2, 0.04, null, { bottom: 0.16 })
+  assert.ok(covered.top >= 0.2)
+  const stacked = spreadCalls([
+    { left: 0.2, top: 0.3, label: "goblin" },
+    { left: 0.22, top: 0.31, label: "skeleton" }
+  ])
+  assert.ok(stacked[1].top - stacked[0].top >= 0.06)
+})
+
+test("the wave sign follows the hero and stays inside the window", () => {
+  assert.deepEqual(waveAnchor(null), { x: KEEP_SIGN.x, y: KEEP_SIGN.y })
+  const near = waveAnchor({ x: 40, y: 10 })
+  assert.equal(near.x, 68)
+  assert.equal(near.y, -26)
+  const pinned = visiblePin({ left: -80, top: -40 }, { width: 1280, height: 800 }, { width: 280, height: 22 })
+  assert.ok(pinned.left >= 8 + 140)
+  assert.ok(pinned.top >= 8 + 22 * 1.2)
+  const far = visiblePin({ left: 2000, top: 2000 }, { width: 1280, height: 800 }, { width: 280, height: 22 })
+  assert.ok(far.left <= 1280 - 8 - 140)
+  assert.ok(far.top <= 800 - 8)
 })

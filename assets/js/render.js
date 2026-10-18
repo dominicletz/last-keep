@@ -273,7 +273,7 @@ export function createView(stage) {
     draw(snap, selfId) {
       const name = lightName(snap)
       const rig = cycleLight[name]
-      if (keep.userData.torch) keep.userData.torch.intensity = name === "night" ? 22 : name === "dusk" ? 10 : 4
+      if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
       sky.color.set(rig.sky)
       sky.groundColor.set(rig.ground)
       sky.intensity = rig.hemisphere

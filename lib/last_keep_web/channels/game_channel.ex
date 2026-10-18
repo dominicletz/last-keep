@@ -45,6 +45,11 @@ defmodule LastKeepWeb.GameChannel do
     {:reply, :ok, socket}
   end
 
+  def handle_in("parade", _payload, socket) do
+    if System.get_env("PLAYWRIGHT") == "1", do: Room.parade(socket.assigns.code)
+    {:reply, :ok, socket}
+  end
+
   def handle_in(_event, _payload, socket), do: {:noreply, socket}
 
   @impl true

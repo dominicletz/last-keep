@@ -210,6 +210,13 @@ input[type="text"], input:not([type="radio"]) {
   box-shadow: 2px 2px 0 #0a0705;
   font-size: 0.78rem;
 }
+#hud button:disabled {
+  background: #241c16;
+  border-color: #4a3d32;
+  color: #7a6c5c;
+  box-shadow: none;
+  cursor: default;
+}
 .roster { z-index: 4; }
 .hud-bottom { align-items: flex-end; justify-content: space-between; width: 100%; }
 
@@ -222,11 +229,12 @@ input[type="text"], input:not([type="radio"]) {
 }
 .chip {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.08rem 0.7rem;
   align-items: baseline;
   font-size: 0.82rem;
   line-height: 1.25;
+  white-space: nowrap;
 }
 .chip > div:not([hidden]) { display: inline; }
 .chip > [data-build-reason]:not([hidden]) { flex-basis: 100%; }
@@ -242,7 +250,7 @@ input[type="text"], input:not([type="radio"]) {
   position: absolute;
   z-index: 3;
   transform: translate(-50%, -120%);
-  max-width: 16rem;
+  max-width: none;
   pointer-events: none;
 }
 .heart.world-pin { transform: translate(-50%, 10px); max-width: 9rem; }
@@ -261,16 +269,17 @@ input[type="text"], input:not([type="radio"]) {
 .sack {
   position: absolute;
   transform: translate(-50%, -100%);
-  width: 4.6rem;
-  min-height: 3.5rem;
+  width: 5.6rem;
+  min-height: 4.4rem;
   box-sizing: border-box;
-  padding: 1.25rem 0.35rem 0.55rem;
+  padding: 1.35rem 0.25rem 0.4rem;
   text-align: center;
   color: #f6e6c4;
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   line-height: 1.15;
+  white-space: pre-line;
   text-shadow: 1px 1px 0 #1a1008;
   background-color: transparent;
   border: 0;

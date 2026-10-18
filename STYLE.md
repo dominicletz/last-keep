@@ -29,6 +29,7 @@ A model spec names a token. It does not paste a fresh hex. Lighting may darken a
 | leather | #261e0e | heroes.jpg | 640,400,8,8 | boots |
 | goblin | #676f3c | monsters.jpg | 194,444,8,8 | goblin hide |
 | bone | #908b8a | monsters.jpg | 400,388,8,8 | skeleton |
+| rib | #b2ada6 | monsters.jpg | 388,460,4,4 | skeleton ribs |
 | ogre | #70724d | monsters.jpg | 672,344,8,8 | ogre |
 | wolf | #6e6767 | monsters.jpg | 894,500,8,8 | wolf |
 | hide | #4d433b | monsters.jpg | 524,148,8,8 | bat hide and scenery trunk |
@@ -46,19 +47,21 @@ A model spec names a token. It does not paste a fresh hex. Lighting may darken a
 The old stone patch at 636,124 was a brown shaft course, `#554034`. The stone token is now the lit belfry block. Course and joint are the greyer block and the mortar beside it, both inside the keep crop. The keep roof stays thatch. The check fails when the keep body's dominant color is more than 18 from this stone, or when the body is fewer than three tones.
 | thatch | #43382e | theme.jpg | 660,230,8,8 | keep roof |
 | wheat | #976122 | theme.jpg | 872,364,8,8 | crop field |
-| grass | #374115 | theme.jpg | 648,408,8,8 | ground |
+| grass | #5c642f | theme.jpg | 366,314,4,4 | ground |
+| moss | #374115 | theme.jpg | 648,408,8,8 | pine shadow |
 | path | #5e4529 | theme.jpg | 610,400,8,8 | dirt path |
 | palisade | #795237 | theme.jpg | 390,458,8,8 | palisade and keep door |
 | flame | #eea821 | theme.jpg | 658,172,8,8 | brazier and window |
 
 ## Scene
 
-The yard ground is the grass token, sampled from the moss in the clearing. The old patch at 460,374 was a shadow, and the gallery sky was a brick fill that was not on the sheet. Day uses the sky median below. Dusk and night are darker shades of that sky, not the thatch roof. The check fails when the grass token is closer to the roof than to this moss, or when a gallery background's mix is not this sky.
+The yard ground is the grass token, sampled from the lit clearing. The shadow moss at 648,408 (`#374115`) is dark olive: its luminance is under 90, and a day field lit from it fails. The upper sky is the violet at 24,0. The horizon is the warm orange band. Day uses the violet sky. Dusk uses the horizon, and an in-game dusk frame has to share the theme sheet's warm hue and stay at least as bright, with a torch that reads. Gallery backgrounds stay shades of the violet sky, not the thatch roof. The check fails when the grass token is closer to the roof than to this clearing, when the day field is dark olive, or when a gallery background's mix is not this sky.
 
 | role | sheet | region |
 | --- | --- | --- |
-| ground | theme.jpg | 648,408,8,8 |
+| ground | theme.jpg | 366,314,4,4 |
 | sky | theme.jpg | 24,0,8,8 |
+| horizon | theme.jpg | 1008,36,16,8 |
 
 ## Kinds
 

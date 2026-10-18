@@ -2,7 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, isTypingTarget, seatFromQuery } from "./input"
-import { KEEP_SIGN, RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, showReason, waveLabel } from "./hud"
+import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
@@ -165,6 +165,9 @@ function start(code, seat, ui) {
       const cues = audio.hear(snap)
       publishAudio()
       return cues
+    },
+    parade() {
+      channel.push("parade", {})
     }
   }
   window.addEventListener("blur", () => {
@@ -480,9 +483,19 @@ function drawWorld(ui, snap, selfId) {
     pin(stock?.querySelector(`[data-sack="${mark.key}"]`), screenPoint(ui, mark.x, mark.y))
   }
   const sign = ui.hud.querySelector("[data-clock]")?.closest("[data-world]")
-  pin(sign, screenPoint(ui, KEEP_SIGN.x, KEEP_SIGN.y))
-  pin(ui.hud.querySelector("[data-bonuses]"), screenPoint(ui, RELIC_SIGN.x, RELIC_SIGN.y))
   const me = (snap.players || []).find((player) => player.id === selfId)
+  const hudBox = ui.hud.getBoundingClientRect()
+  const waveSpot = screenPoint(ui, waveAnchor(me).x, waveAnchor(me).y)
+  pin(
+    sign,
+    waveSpot
+      ? visiblePin(waveSpot, { width: hudBox.width, height: hudBox.height }, {
+          width: sign?.offsetWidth || 0,
+          height: sign?.offsetHeight || 0
+        })
+      : null
+  )
+  pin(ui.hud.querySelector("[data-bonuses]"), screenPoint(ui, RELIC_SIGN.x, RELIC_SIGN.y))
   pin(ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
   const party = rosterAnchor(snap.players)
   pin(ui.hud.querySelector("[data-roster]"), screenPoint(ui, party.x, party.y))
@@ -504,13 +517,22 @@ function drawYou(ui, snap, selfId) {
 
 function drawHints(ui, snap) {
   const layer = ui.hud.querySelector("[data-hints]")
+  const hud = ui.hud.getBoundingClientRect()
+  const roster = rosterNorm(ui, hud)
+  const bar = barNorm(ui, hud)
   const beacons =
     snap.phase === "build"
       ? hintBeacons(snap.hints).map((row) => marker(ui, row.x, row.y, row.label, false, " beacon"))
       : []
-  const offscreen = edgeCalls(snap.monsters || [])
-    .map((call) => marker(ui, call.x, call.y, call.label, true))
-    .filter(Boolean)
+  const pending = []
+  for (const call of edgeCalls(snap.monsters || [])) {
+    const projected = projectNorm(ui, call.x, call.y)
+    if (!projected) continue
+    const inside = projected.x > 0.08 && projected.x < 0.92 && projected.y > 0.12 && projected.y < 0.78
+    if (inside) continue
+    pending.push({ ...callAnchor(projected.x, projected.y, roster, bar), label: call.label })
+  }
+  const offscreen = spreadCalls(pending).map((anchor) => paintCall(ui, anchor, ""))
   layer.innerHTML = [...beacons, ...offscreen].filter(Boolean).join("")
   const next = ui.hud.querySelector("[data-next]")
   const hints = snap.hints || []
@@ -565,19 +587,36 @@ function drawFx(ui, snap, fx, seen) {
 }
 
 function marker(ui, worldX, worldY, label, onlyOffscreen, extra = "") {
-  const point = ui.view.project(worldX, worldY)
-  const x = point.x * 0.5 + 0.5
-  const y = -point.y * 0.5 + 0.5
-  const inside = x > 0.08 && x < 0.92 && y > 0.12 && y < 0.78
+  const projected = projectNorm(ui, worldX, worldY)
+  if (!projected) return ""
+  const inside = projected.x > 0.08 && projected.x < 0.92 && projected.y > 0.12 && projected.y < 0.78
   if (onlyOffscreen && inside) return ""
+  const hud = ui.hud.getBoundingClientRect()
+  const anchor = callAnchor(projected.x, projected.y, rosterNorm(ui, hud), barNorm(ui, hud))
+  return paintCall(ui, { ...anchor, label }, extra)
+}
+
+function projectNorm(ui, worldX, worldY) {
+  const point = ui.view.project(worldX, worldY)
+  if (!point) return null
+  return { x: point.x * 0.5 + 0.5, y: -point.y * 0.5 + 0.5, behind: point.behind }
+}
+
+function paintCall(ui, anchor, extra = "") {
   const layer = ui.hud.querySelector("[data-hints]")
   const hud = ui.hud.getBoundingClientRect()
   const layerBox = layer.getBoundingClientRect()
-  const anchor = callAnchor(x, y, rosterNorm(ui, hud))
   const left = anchor.left * hud.width - (layerBox.left - hud.left)
   const top = anchor.top * hud.height - (layerBox.top - hud.top)
   const end = anchor.end ? " end" : ""
-  return `<div class="hint-arrow${extra}${end}" style="left:${left}px;top:${top}px">${label}</div>`
+  return `<div class="hint-arrow${extra}${end}" style="left:${left}px;top:${top}px">${anchor.label}</div>`
+}
+
+function barNorm(ui, hud) {
+  const bar = ui.hud.querySelector(".actions")
+  if (!bar || hud.height < 1) return null
+  const box = bar.getBoundingClientRect()
+  return { bottom: (box.bottom - hud.top) / hud.height }
 }
 
 function rosterNorm(ui, hud) {

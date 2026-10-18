@@ -61,10 +61,17 @@ export function nextLine(phase, hints) {
 export function sackLine(resources = {}) {
   return ["wood", "food", "gold"].map((key) => ({
     key,
-    text: `${key[0].toUpperCase()}${key.slice(1)} ${Number(resources[key]) || 0}`,
+    text: sackText(key, resources[key]),
     x: SACK_SPOT[key].x,
     y: SACK_SPOT[key].y
   }))
+}
+
+function sackText(key, value) {
+  const count = Number(value) || 0
+  const name = `${key[0].toUpperCase()}${key.slice(1)} ${count}`
+  if (key === "food") return `${name}\nFeast 10`
+  return name
 }
 
 export function hintBeacon(hint, radius = 520) {
@@ -131,21 +138,45 @@ export function raiseReady(upgrade, resources) {
   return (resources?.wood ?? 0) >= upgrade.wood && (resources?.gold ?? 0) >= upgrade.gold
 }
 
+const CALL_GAP = Math.PI / 3.6
+
 export function edgeCalls(monsters) {
-  const groups = new Map()
+  const rows = []
   for (const monster of monsters || []) {
     if (!Number.isFinite(monster?.x) || !Number.isFinite(monster?.y)) continue
-    const bucket = Math.round(Math.atan2(monster.y, monster.x) / (Math.PI / 4))
-    const current = groups.get(bucket) || { x: 0, y: 0, kind: monster.kind, count: 0, mixed: false }
-    current.x += monster.x
-    current.y += monster.y
-    current.count += 1
-    if (current.count > 1 && current.kind !== monster.kind) current.mixed = true
-    groups.set(bucket, current)
+    rows.push({
+      x: monster.x,
+      y: monster.y,
+      kind: monster.kind,
+      angle: Math.atan2(monster.y, monster.x)
+    })
   }
-  return [...groups.values()].map((row) => {
-    const kind = row.mixed ? "monster" : row.kind
-    const word = row.count === 1 ? kind : row.mixed ? "monsters" : PLURAL[kind] || `${kind}s`
+  rows.sort((a, b) => a.angle - b.angle)
+  const groups = []
+  for (const row of rows) {
+    const last = groups[groups.length - 1]
+    if (last && last.kind === row.kind && row.angle - last.end < CALL_GAP) {
+      last.x += row.x
+      last.y += row.y
+      last.count += 1
+      last.end = row.angle
+    } else {
+      groups.push({ x: row.x, y: row.y, kind: row.kind, count: 1, angle: row.angle, end: row.angle })
+    }
+  }
+  if (groups.length > 1) {
+    const first = groups[0]
+    const last = groups[groups.length - 1]
+    const wrap = first.angle + Math.PI * 2 - last.end
+    if (first.kind === last.kind && wrap < CALL_GAP) {
+      first.x += last.x
+      first.y += last.y
+      first.count += last.count
+      groups.pop()
+    }
+  }
+  return groups.map((row) => {
+    const word = row.count === 1 ? row.kind : PLURAL[row.kind] || `${row.kind}s`
     return {
       x: row.x / row.count,
       y: row.y / row.count,
@@ -154,9 +185,11 @@ export function edgeCalls(monsters) {
   })
 }
 
-export function callAnchor(x, y, roster) {
+export function callAnchor(x, y, roster, bar) {
   let left = clamp(x, 0.06, 0.94)
   let top = clamp(y, 0.08, 0.88)
+  const barBottom = Number(bar?.bottom) || 0
+  if (barBottom > 0 && top < barBottom + 0.03) top = barBottom + 0.05
   if (roster && roster.right > roster.left && roster.bottom > roster.top) {
     const covers =
       left >= roster.left - 0.02 &&
@@ -166,6 +199,39 @@ export function callAnchor(x, y, roster) {
     if (covers) left = roster.left - 0.03
   }
   return { left: clamp(left, 0.04, 0.96), top: clamp(top, 0.06, 0.9), end: left > 0.5 }
+}
+
+export function spreadCalls(anchors) {
+  const placed = []
+  for (const anchor of anchors || []) {
+    let top = anchor.top
+    for (const other of placed) {
+      if (Math.abs(other.left - anchor.left) < 0.14 && Math.abs(other.top - top) < 0.055) {
+        top = Math.min(0.9, other.top + 0.07)
+      }
+    }
+    placed.push({ ...anchor, top })
+  }
+  return placed
+}
+
+export function waveAnchor(hero) {
+  if (!hero || !Number.isFinite(hero.x) || !Number.isFinite(hero.y)) return { x: KEEP_SIGN.x, y: KEEP_SIGN.y }
+  return { x: hero.x + 28, y: hero.y - 36 }
+}
+
+export function visiblePin(spot, view, box) {
+  if (!spot || !(view?.width > 0) || !(view?.height > 0)) return spot
+  const shiftX = (box?.width || 0) / 2
+  const shiftY = (box?.height || 0) * 1.2
+  const minX = 8 + shiftX
+  const maxX = Math.max(minX, view.width - 8 - shiftX)
+  const minY = 8 + shiftY
+  const maxY = Math.max(minY, view.height - 8)
+  return {
+    left: clamp(spot.left, minX, maxX),
+    top: clamp(spot.top, minY, maxY)
+  }
 }
 
 export function rangeRingState(armed, range) {

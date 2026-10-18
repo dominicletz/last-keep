@@ -47,6 +47,8 @@ defmodule LastKeep.Game.Room do
 
   def snapshot(code), do: GenServer.call(via(code), :snapshot)
 
+  def parade(code), do: GenServer.cast(via(code), :parade)
+
   def via(code), do: {:via, Registry, {LastKeep.Game.Registry, code}}
 
   @impl true
@@ -134,6 +136,10 @@ defmodule LastKeep.Game.Room do
 
   def handle_cast(:restart, state) do
     {:noreply, %{state | sim: Sim.restart(state.sim), scored: false}}
+  end
+
+  def handle_cast(:parade, state) do
+    {:noreply, %{state | sim: Sim.parade(state.sim)}}
   end
 
   @impl true
