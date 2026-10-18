@@ -9,7 +9,8 @@ export function releaseGeometries(root) {
   const seen = new Set()
   root.traverse((node) => {
     const geometry = node.geometry
-    if (!geometry || seen.has(geometry) || geometry.userData.pooled) return
+    // Sprites share one plane on the Three.js module. Disposing it blanks every card.
+    if (!geometry || seen.has(geometry) || geometry.userData.pooled || node.isSprite) return
     seen.add(geometry)
     geometry.dispose()
   })

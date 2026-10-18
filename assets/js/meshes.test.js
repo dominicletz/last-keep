@@ -26,6 +26,26 @@ test("a dropped mesh disposes a shared geometry once and leaves a pooled sphere"
   assert.equal(pooled, 0)
 })
 
+test("a dropped hero leaves the shared sprite plane", () => {
+  const card = new THREE.Sprite()
+  const other = new THREE.Sprite()
+  assert.equal(card.geometry, other.geometry)
+  let disposed = 0
+  card.geometry.dispose = () => {
+    disposed += 1
+  }
+  const bar = new THREE.BoxGeometry(1, 1, 1)
+  let bars = 0
+  bar.dispose = () => {
+    bars += 1
+  }
+  card.add(new THREE.Mesh(bar))
+  releaseGeometries(card)
+  assert.equal(disposed, 0)
+  assert.equal(bars, 1)
+  assert.equal(other.geometry, card.geometry)
+})
+
 test("a burst sphere is reused and takes the next color", () => {
   const first = takeBurst(0xff0000)
   giveBurst(first)
