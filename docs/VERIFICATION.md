@@ -289,6 +289,12 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - The concept branch failed `twoPlayerNight` because the dusk wait expired. Mood and ground each read the whole frame, and the second read finished after dusk. The hue gap stays 25 degrees, the plate floor stays 0.2, and the wait stays 8 seconds. The keep pine stays at (-22, 30, -62). The assertion uses the dusk frame that passed. This does not change the simulation. The coverage floor stays 74.
 
+## 2026-10-18 the yard wears the concept tiles
+
+- The ground base is `theme.jpg` at 312,276, 48×48. The keep's stone, course, and joint use `theme.jpg` at 640,100, 48×64. Both crops are snapped to the style tokens at 1, 0.60, 0.50, and 0.40. `tiles.test.js` rebuilds those bytes and fails if a pixel leaves the palette. The grass tile scores block p25 13 and hard edge 0.075. The masonry tile scores block p25 16 and hard edge 0.118. The floors stay 8 and 0.05.
+- A live day frame against the town crop scores block p25 8, hard edge 0.113, luma SSIM 0.069, and silhouette IoU 0.68. Dusk scores 4, 0.067, 0.027, and 0.61. Night scores 3, 0.044, 0.096, and 0.63. SSIM stays under 0.35, and the dusk and night block scores stay under 8. Those floors do not move.
+- Night greens at or under luma 62 become the night soil, and the brighter greens become the pine token, so the plaza spread stays at or above 8. Dusk flecks stay off the pine band. The keep pine and the stone sample stay on their meshes. This does not change the simulation. The coverage floor stays 74.
+
 ## 2026-10-18 concept cards at the keep's scale
 
 - The voxel heroes stood over half the keep. `heroScaleProblems` fails a card taller than 1.75 keep doors, 1.05 palisade posts, or 0.42 of the keep, and a height that leaves 32. The door is 20, the post is 40, and the keep top is 165. The five join-ring disks do not meet. On the player camera the card does not cover the door or the tower. The mage and the engineer share a view ray, 37.9 apart on the ground against a combined reach of 17.8, so the overlap test is the ground disk.

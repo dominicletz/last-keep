@@ -5,6 +5,7 @@ import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { masonryBytes } from "./tiles.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -101,6 +102,18 @@ export function createView(stage) {
     yardTorches.push(light)
   }
   scene.add(brazierPool, windowPool, ...yardTorches)
+
+  const stoneTile = masonryBytes()
+  const stoneMap = new THREE.DataTexture(stoneTile.rgba, stoneTile.w, stoneTile.h)
+  stoneMap.colorSpace = THREE.SRGBColorSpace
+  stoneMap.magFilter = THREE.NearestFilter
+  stoneMap.minFilter = THREE.NearestFilter
+  stoneMap.wrapS = THREE.RepeatWrapping
+  stoneMap.wrapT = THREE.RepeatWrapping
+  stoneMap.repeat.set(2, 4)
+  stoneMap.needsUpdate = true
+  const stoneMat = new THREE.MeshLambertMaterial({ map: stoneMap, color: 0xffffff })
+  const stoneColors = new Set([0x4b3c33, 0x654e41, 0x2c2a2a])
 
   const mats = new Map()
   const mat = (color, emissive = 0x000000) => {
@@ -979,9 +992,10 @@ export function createView(stage) {
           ? new THREE.CylinderGeometry(piece.rt, piece.rb, piece.h, piece.segments || 5)
           : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
     const emissive = piece.color === 0xeea821 || piece.color === 0xf5751e ? piece.color : 0x000000
+    const mapped = !piece.hold && stoneColors.has(piece.color)
     const mesh = new THREE.Mesh(
       geometry,
-      piece.hold ? new THREE.MeshBasicMaterial({ color: piece.color }) : mat(piece.color, emissive)
+      piece.hold ? new THREE.MeshBasicMaterial({ color: piece.color }) : mapped ? stoneMat : mat(piece.color, emissive)
     )
     mesh.position.set(piece.x, piece.y, piece.z)
     mesh.castShadow = true
