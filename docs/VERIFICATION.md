@@ -314,3 +314,8 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - `art_score.js` reads a frame the way `docs/concepts/ART-PIPELINE.md` describes. The town crop scores block p25 of 13 and a hard edge of 0.069, against the published 12 and 0.070. It matches itself at SSIM 1 and IoU 1. The gallery keep still misses block 8, SSIM 0.35, IoU 0.55, and membership 0.98.
 - Each hero close-up, day, dusk, and night, holds the measured floors. Block p25 is 12 to 19. SSIM is 0.118 to 0.398. Silhouette IoU is 0.404 to 0.502. Palette membership is under 0.01. Block clears the floor of 8. SSIM, IoU, and membership do not clear 0.35, 0.55, and 0.98. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 shade steps are the pixel
+
+- Day locks the style tokens at 1, 0.60, 0.50, and 0.40. Dusk locks 0.60 and 0.50. Night locks 0.50 and 0.40. `phaseScales` is that table. Grass and masonry for each phase come from `theme.jpg` at 312,276 and 640,100. `tiles.test.js` rebuilds every phase and fails a pixel more than distance 1 from that phase's palette, a block p25 under 8, or a hard edge under 0.05.
+- The night two-color split, luma above 62 as pine and the rest as night soil, scored block p25 7 on the plaza. The night shade step keeps those greens dark. Plaza spread stays at or above 8 without the split. The ground, the plaza wear, and the stone tile are unlit, so the shade step is the pixel. Flame `#eea821` and torch `#f5751e` stay the full token on an unlit material. This does not change the simulation. The coverage floor stays 77.

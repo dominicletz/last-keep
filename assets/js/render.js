@@ -103,7 +103,7 @@ export function createView(stage) {
   }
   scene.add(brazierPool, windowPool, ...yardTorches)
 
-  const stoneTile = masonryBytes()
+  const stoneTile = masonryBytes("day")
   const stoneMap = new THREE.DataTexture(stoneTile.rgba, stoneTile.w, stoneTile.h)
   stoneMap.colorSpace = THREE.SRGBColorSpace
   stoneMap.magFilter = THREE.NearestFilter
@@ -112,8 +112,9 @@ export function createView(stage) {
   stoneMap.wrapT = THREE.RepeatWrapping
   stoneMap.repeat.set(2, 4)
   stoneMap.needsUpdate = true
-  const stoneMat = new THREE.MeshLambertMaterial({ map: stoneMap, color: 0xffffff })
+  const stoneMat = new THREE.MeshBasicMaterial({ map: stoneMap, color: 0xffffff })
   const stoneColors = new Set([0x4b3c33, 0x654e41, 0x2c2a2a])
+  const litTokens = new Set([0xeea821, 0xf5751e])
 
   const mats = new Map()
   const mat = (color, emissive = 0x000000) => {
@@ -144,7 +145,7 @@ export function createView(stage) {
   groundMap.needsUpdate = true
   const yard = new THREE.Mesh(
     new THREE.PlaneGeometry(GROUND_SPAN, GROUND_SPAN),
-    new THREE.MeshLambertMaterial({ map: groundMap, color: 0xffffff })
+    new THREE.MeshBasicMaterial({ map: groundMap, color: 0xffffff })
   )
   yard.rotation.x = -Math.PI / 2
   yard.position.y = 0.08
@@ -160,7 +161,7 @@ export function createView(stage) {
   plazaMap.needsUpdate = true
   const plazaWear = new THREE.Mesh(
     new THREE.CircleGeometry(PLAZA_SPAN / 2, plazaSides),
-    new THREE.MeshLambertMaterial({ map: plazaMap, color: 0xffffff })
+    new THREE.MeshBasicMaterial({ map: plazaMap, color: 0xffffff })
   )
   plazaWear.rotation.x = -Math.PI / 2
   plazaWear.position.y = 0.24
@@ -231,6 +232,9 @@ export function createView(stage) {
     groundMap.needsUpdate = true
     plazaMap.image.data.set(plazaPixels(phase))
     plazaMap.needsUpdate = true
+    const stone = masonryBytes(phase)
+    stoneMap.image.data.set(stone.rgba)
+    stoneMap.needsUpdate = true
     painted = phase
   }
 
@@ -1003,11 +1007,14 @@ export function createView(stage) {
         : piece.shape === "prism"
           ? new THREE.CylinderGeometry(piece.rt, piece.rb, piece.h, piece.segments || 5)
           : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
-    const emissive = piece.color === 0xeea821 || piece.color === 0xf5751e ? piece.color : 0x000000
     const mapped = !piece.hold && stoneColors.has(piece.color)
     const mesh = new THREE.Mesh(
       geometry,
-      piece.hold ? new THREE.MeshBasicMaterial({ color: piece.color }) : mapped ? stoneMat : mat(piece.color, emissive)
+      piece.hold || litTokens.has(piece.color)
+        ? new THREE.MeshBasicMaterial({ color: piece.color })
+        : mapped
+          ? stoneMat
+          : mat(piece.color)
     )
     mesh.position.set(piece.x, piece.y, piece.z)
     mesh.castShadow = true
@@ -1067,7 +1074,11 @@ export function createView(stage) {
     mesh.userData.bar = plate
     const look = eliteLook(row)
     if (look === "plated" || look === "lean" || look === "spiked") {
-      const mark = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 5), mat(look === "spiked" ? 0xf5751e : 0xd8cfc3))
+      const markColor = look === "spiked" ? 0xf5751e : 0xd8cfc3
+      const mark = new THREE.Mesh(
+        new THREE.BoxGeometry(5, 8, 5),
+        litTokens.has(markColor) ? new THREE.MeshBasicMaterial({ color: markColor }) : mat(markColor)
+      )
       mark.position.y = bounds.height + 10
       mesh.add(mark)
     }

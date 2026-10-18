@@ -3,9 +3,9 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { bakeTiles, citedHexes, lockedColors, tileModule, tileScales } from "../models/tiles.js"
+import { bakeTiles, citedHexes, lockedColors, phaseScales, tileModule } from "../models/tiles.js"
 import { loadSheet } from "../models/sheets.js"
-import { grassTile, masonryTile } from "./tile-data.js"
+import { phaseTiles } from "./tile-data.js"
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..")
 
@@ -46,30 +46,41 @@ function hardEdge(bytes, width, height) {
   return n ? hit / n : 0
 }
 
-test("the concept tiles match the bake and stay on the four-step palette", () => {
+test("the concept tiles match the bake and stay on the phase palette", () => {
   const markdown = fs.readFileSync(path.join(root, "STYLE.md"), "utf8")
   const hexes = citedHexes(markdown)
   assert.equal(hexes.length, 40)
-  assert.deepEqual(tileScales, [1, 0.6, 0.5, 0.4])
+  assert.deepEqual(phaseScales, {
+    day: [1, 0.6, 0.5, 0.4],
+    dusk: [0.6, 0.5],
+    night: [0.5, 0.4]
+  })
   const sheet = loadSheet(path.join(root, "docs/concept/theme.jpg"))
   const baked = bakeTiles(sheet, hexes)
   const written = fs.readFileSync(path.join(root, "assets/js/tile-data.js"), "utf8")
   assert.equal(written, tileModule(baked))
-  const palette = lockedColors(hexes)
-  for (const tile of [baked.grass, baked.masonry]) {
-    const bytes = tile.rgb
-    for (let i = 0; i < bytes.length; i += 3) {
-      let best = Infinity
-      for (const color of palette) {
-        const dist =
-          (bytes[i] - color[0]) ** 2 + (bytes[i + 1] - color[1]) ** 2 + (bytes[i + 2] - color[2]) ** 2
-        if (dist < best) best = dist
+  for (const phase of Object.keys(phaseScales)) {
+    const palette = lockedColors(hexes, phaseScales[phase])
+    for (const [name, tile] of [
+      ["grass", baked[phase].grass],
+      ["masonry", baked[phase].masonry]
+    ]) {
+      const bytes = tile.rgb
+      for (let i = 0; i < bytes.length; i += 3) {
+        let best = Infinity
+        for (const color of palette) {
+          const dist =
+            (bytes[i] - color[0]) ** 2 + (bytes[i + 1] - color[1]) ** 2 + (bytes[i + 2] - color[2]) ** 2
+          if (dist < best) best = dist
+        }
+        assert.ok(Math.sqrt(best) <= 1, `${phase} ${name} pixel ${i / 3} is ${Math.sqrt(best)} from the palette`)
       }
-      assert.ok(Math.sqrt(best) <= 1)
+      const block = blockP25(bytes, tile.w, tile.h)
+      const edge = hardEdge(bytes, tile.w, tile.h)
+      assert.ok(block >= 8, `${phase} ${name} block p25 ${block}`)
+      assert.ok(edge >= 0.05, `${phase} ${name} hard edge ${edge}`)
     }
-    assert.ok(blockP25(bytes, tile.w, tile.h) >= 8)
-    assert.ok(hardEdge(bytes, tile.w, tile.h) >= 0.05)
   }
-  assert.equal(grassTile.w, 48)
-  assert.equal(masonryTile.w, 48)
+  assert.equal(phaseTiles.day.grass.w, 48)
+  assert.equal(phaseTiles.day.masonry.w, 48)
 })

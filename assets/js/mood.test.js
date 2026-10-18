@@ -107,6 +107,24 @@ test("dusk sunset flecks stay off the pine wall", () => {
   assert.ok(plazaSunset > 100, `plaza sunset ${plazaSunset}`)
 })
 
+function blockP25(bytes, width, height) {
+  const counts = []
+  for (let y = 0; y + 8 <= height; y += 8) {
+    for (let x = 0; x + 8 <= width; x += 8) {
+      const seen = new Set()
+      for (let yy = 0; yy < 8; yy++) {
+        for (let xx = 0; xx < 8; xx++) {
+          const offset = ((y + yy) * width + (x + xx)) * 4
+          seen.add(`${bytes[offset] >> 4},${bytes[offset + 1] >> 4},${bytes[offset + 2] >> 4}`)
+        }
+      }
+      counts.push(seen.size)
+    }
+  }
+  counts.sort((a, b) => a - b)
+  return counts[Math.floor(0.25 * (counts.length - 1))]
+}
+
 test("the painted yard keeps texture, a moss day, and a warm dusk edge", () => {
   for (const phase of ["day", "dusk", "night"]) {
     const pixels = groundPixels(phase)
@@ -115,5 +133,7 @@ test("the painted yard keeps texture, a moss day, and a warm dusk edge", () => {
     const plaza = plazaPixels(phase)
     const wash = groundProblems(groundSpread(plaza, PLAZA_TEX, PLAZA_TEX))
     assert.deepEqual(wash, [], `${phase} plaza ${wash.join("; ")}`)
+    const block = blockP25(plaza, PLAZA_TEX, PLAZA_TEX)
+    assert.ok(block >= 8, `${phase} plaza block p25 ${block}`)
   }
 })

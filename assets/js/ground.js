@@ -1,8 +1,7 @@
 import { grassAt } from "./tiles.js"
 
 // Grass, path, pine shade, stone, and the sunset band. Hexes are the STYLE.md tokens.
-// The base is the concept clearing tile. Path, dusk flecks, and night still follow
-// the rules the yard tests already pin.
+// The base is the concept clearing tile.
 // The outer plane covers the camera. The plaza disc covers the flat town circle
 // the camera stands on, without replacing that circle's mesh.
 export const GROUND_TEX = 512
@@ -15,7 +14,6 @@ const SHADE = [0x2c, 0x34, 0x16]
 const STONE = [0x4b, 0x3c, 0x33]
 const PEBBLE = [0x65, 0x4e, 0x41]
 const SUNSET = [0xe5, 0x8e, 0x54]
-const NIGHT = [0x12, 0x16, 0x0c]
 
 function mix(a, b, t) {
   const clamped = Math.max(0, Math.min(1, t))
@@ -44,7 +42,7 @@ function paint(phase, size, span) {
       const radius = Math.hypot(worldX, worldZ)
       const n = hash(ix, iy)
       const n2 = hash(ix + 19, iy - 7)
-      let color = grassAt(ix, iy)
+      let color = grassAt(ix, iy, phase)
       if (n2 < 0.07) color = STONE
       else if (n2 < 0.12) color = PEBBLE
       // The inner pine crown is a few pixels. The dusk sample around it is mostly
@@ -61,10 +59,6 @@ function paint(phase, size, span) {
         const edge = Math.min(1, (radius - 300) / 70)
         if (phase === "dusk") color = mix(color, SUNSET, 0.2 + edge * 0.6)
         else color = mix(color, SHADE, 0.15 + edge * 0.4)
-      }
-      if (phase === "night" && color[1] > color[0] && color[1] >= color[2]) {
-        const luma = 0.2126 * color[0] + 0.7152 * color[1] + 0.0722 * color[2]
-        color = luma > 62 ? [0x35, 0x3e, 0x27] : NIGHT
       }
       const offset = (iy * size + ix) * 4
       rgba[offset] = color[0]
