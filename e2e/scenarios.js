@@ -606,11 +606,17 @@ async function twoPlayerNight(browser) {
     const mood = game.frameMood()
     const ground = game.frameGround()
     if (mood.problems.length || ground.problems.length) return false
+    const hero = game.self
     const stone = game.sampleWorld(0, 36, 6)
     const pine = game.sampleWorld(201, 18, 73)
-    if (!stone || !pine) return false
+    // Height 18 is the gap between the boots, so that patch reads the plaza.
+    // The torso is solid armor.
+    const plate = hero ? game.sampleWorld(hero.x, 40, hero.y) : null
+    if (!stone || !pine || !plate) return false
     const span = Math.abs(stone.hue - pine.hue) % 360
-    return Math.min(span, 360 - span) >= 25
+    const plateSat =
+      (Math.max(plate.r, plate.g, plate.b) - Math.min(plate.r, plate.g, plate.b)) / Math.max(plate.r, 1)
+    return Math.min(span, 360 - span) >= 25 && plateSat < 0.2
   }, undefined, { timeout: 8_000, polling: 400 })
   const duskMood = await page.evaluate(() => {
     const game = window.__lastKeep
@@ -619,7 +625,7 @@ async function twoPlayerNight(browser) {
       mood: game.frameMood(),
       ground: game.frameGround(),
       stone: game.sampleWorld(0, 36, 6),
-      plate: game.sampleWorld(hero.x, 18, hero.y),
+      plate: game.sampleWorld(hero.x, 40, hero.y),
       // The inner pine's crown. The tip is a few pixels and reads as the trunk.
       pine: game.sampleWorld(201, 18, 73)
     }
