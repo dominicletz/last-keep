@@ -164,12 +164,15 @@ test("a hero behind the host keeps their head in the frame", () => {
   const z = Math.sin(angle) * 120
   const framed = hostCamera(cameraLift)
   const grounded = hostCamera(0)
+  let raisedMage = 0
   for (const kind of ["warrior", "mage", "scout", "farmer", "engineer"]) {
     const top = topCss(framed, kind, x, z)
+    if (kind === "mage") raisedMage = top
     assert.ok(top > 48, `${kind} top ${top.toFixed(1)} sits on the edge`)
   }
-  const clipped = topCss(grounded, "mage", x, z)
-  assert.ok(clipped < 0, `ground look mage top ${clipped.toFixed(1)}`)
+  const groundedTop = topCss(grounded, "mage", x, z)
+  assert.ok(groundedTop > 0, `ground look mage top ${groundedTop.toFixed(1)}`)
+  assert.ok(raisedMage > groundedTop, `raised look ${raisedMage.toFixed(1)} is above the ground look ${groundedTop.toFixed(1)}`)
 })
 
 test("a higher town rank widens the same window", () => {

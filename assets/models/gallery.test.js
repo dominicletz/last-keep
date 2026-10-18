@@ -3,8 +3,9 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { heroKinds, heroParts } from "../js/heroes.js"
+import { engineerVoxels, farmerVoxels, mageVoxels, scoutVoxels, warriorVoxels } from "./figures.js"
 import { cycleLight, groundColor, litGround, pathColor, plazaColor, ringColor, skyColor, yardLight } from "../js/scene.js"
-import { checkModels, farmerHatProblems, heroColorProblems, heroFeatureProblems, heroHeightProblems, heroHueProblems, heroPixelFloor, heroZoomProblems, repoRoot } from "./run.js"
+import { checkModels, farmerHatProblems, heroColorProblems, heroFeatureProblems, heroHeightProblems, heroHueProblems, heroLikenessProblems, heroPixelFloor, heroScaleProblems, heroZoomProblems, repoRoot } from "./run.js"
 import { conceptProblems, coverageProblems, fitSlack, iouLimit, keepStoneProblems, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
 import { galleryRigs, maskBounds, maskIou } from "./raster.js"
 import { citationProblems, loadSheet, medianHex, sceneColorProblems } from "./sheets.js"
@@ -17,7 +18,7 @@ test("the gallery matches the goldens and a second run", () => {
   assert.equal(result.present["monsters.jpg"], true)
   assert.equal(fitSlack, 2)
   assert.equal(iouLimit, 0.85)
-  assert.equal(heroPixelFloor, 56)
+  assert.equal(heroPixelFloor, 20)
   for (const row of result.rendered) {
     if (row.family !== "hero" && row.family !== "monster") continue
     const height = maskBounds(row.closeup).height
@@ -37,7 +38,7 @@ test("a brown warrior close-up fails the concept palette", () => {
         id: "warrior",
         family: "hero",
         concept: { crop },
-        parts: heroParts("warrior").map((part) => (armor.has(part.name) ? { ...part, color: 0x8a5a32 } : part))
+        parts: warriorVoxels().map((part) => (armor.has(part.name) ? { ...part, color: 0x8a5a32 } : part))
       }
     ],
     heroes
@@ -61,7 +62,7 @@ test("daylight does not clip grey plate to orange", () => {
   assert.ok(plate.r - plate.b < 40, `plate ${plate.r} ${plate.g} ${plate.b}`)
 })
 
-test("a hero under 56 internal pixels fails at rank 0 and at rank 4", () => {
+test("a hero under the pixel floor fails at rank 0 and at rank 4", () => {
   const short = heroHeightProblems([
     { id: "scout", family: "hero", parts: [{ name: "body", shape: "box", w: 4, h: 8, d: 4, x: 0, y: 4, z: 0, color: 0xd99b64 }] }
   ])
@@ -73,7 +74,7 @@ test("a fight-zoom hero missing its prop fails the palette read", () => {
   const drop = (kind, names) => ({
     id: kind,
     family: "hero",
-    parts: heroParts(kind).map((part) => (names.includes(part.name) ? { ...part, color: 0x111111 } : part))
+    parts: voxelParts(kind).map((part) => (names.includes(part.name) ? { ...part, color: 0x111111 } : part))
   })
   const steel = heroZoomProblems([drop("warrior", ["sword", "breast"])])
   assert.ok(steel.some((line) => line.includes("warrior") && line.includes("steel")))
@@ -93,15 +94,28 @@ test("a fight-zoom hero missing its prop fails the palette read", () => {
   assert.deepEqual(tall, [])
 })
 
+function voxelParts(kind) {
+  if (kind === "warrior") return warriorVoxels()
+  if (kind === "mage") return mageVoxels()
+  if (kind === "scout") return scoutVoxels()
+  if (kind === "engineer") return engineerVoxels()
+  return farmerVoxels()
+}
+
 test("each hero keeps its colors and its concept shape at fight zoom", () => {
   const heroes = heroKinds().map((id) => ({ id, family: "hero", parts: heroParts(id) }))
+  const voxels = heroKinds().map((id) => ({ id, family: "hero", parts: voxelParts(id) }))
   assert.deepEqual(heroHueProblems(heroes), [])
   assert.deepEqual(heroFeatureProblems(heroes), [])
+  assert.deepEqual(heroLikenessProblems(heroes), [])
+  assert.ok(heroLikenessProblems(voxels).length > 0)
+  assert.ok(heroScaleProblems(voxels).some((line) => line.includes("keep")))
+  assert.deepEqual(heroScaleProblems(heroes), [])
   const slab = {
     id: "warrior",
     family: "hero",
     parts: [
-      ...heroParts("warrior").filter((part) => part.name !== "shield"),
+      ...warriorVoxels().filter((part) => part.name !== "shield"),
       { name: "shield", shape: "box", color: 0x38516f, w: 14, h: 30, d: 4, x: -16, y: 28, z: 4, hold: 0.78 }
     ]
   }
@@ -109,15 +123,15 @@ test("each hero keeps its colors and its concept shape at fight zoom", () => {
   const bare = {
     id: "warrior",
     family: "hero",
-    parts: heroParts("warrior").map((part) => (part.name === "slit" ? { ...part, color: 0xd8cfc3 } : part))
+    parts: warriorVoxels().map((part) => (part.name === "slit" ? { ...part, color: 0xd8cfc3 } : part))
   }
   assert.ok(heroFeatureProblems([bare]).some((line) => line.includes("visor")))
 })
 
 test("a farmer hat that covers the body fails at fight zoom", () => {
-  const hat = farmerHatProblems(heroParts("farmer"))
+  const hat = farmerHatProblems(farmerVoxels())
   assert.deepEqual(hat, [])
-  const slab = heroParts("farmer").map((part) =>
+  const slab = farmerVoxels().map((part) =>
     part.name === "brim" ? { ...part, w: part.w * 3, d: part.d * 3 } : part
   )
   const wide = farmerHatProblems(slab)

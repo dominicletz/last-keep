@@ -622,9 +622,9 @@ async function twoPlayerNight(browser) {
       ground: grade.ground,
       stone,
       pine,
-      // Height 18 is the cape hem. Dusk cloth there is saturated, and the
-      // cuirass at 40 is the steel the floor is about.
-      plate: game.sampleWorld(hero.x, 40, hero.y)
+      // The card is 32 world units. Height 40 is above it and reads dusk
+      // saturation 0.60. The steel on the card is height 18.
+      plate: game.sampleWorld(hero.x, 18, hero.y)
     }
   }, undefined, { timeout: 8_000, polling: 400 })
   const duskMood = await duskHandle.jsonValue()
@@ -936,8 +936,10 @@ async function heroSilhouettes(browser) {
   for (const figure of figures) {
     expect(figure.parts).toBeGreaterThanOrEqual(5)
     expect(figure.marks.length).toBeGreaterThan(0)
-    expect(figure.bounds.h).toBeGreaterThanOrEqual(72)
-    expect(figure.px).toBeGreaterThanOrEqual(56)
+    expect(figure.bounds.h).toBeLessThanOrEqual(36)
+    expect(figure.bounds.h).toBeGreaterThanOrEqual(28)
+    expect(figure.px).toBeGreaterThanOrEqual(20)
+    expect(figure.px).toBeLessThan(96)
   }
   await host.page.screenshot({ path: shot("heroes-host.png") })
   expect(errors, errors.join("\n")).toEqual([])

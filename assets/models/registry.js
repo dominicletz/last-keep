@@ -69,11 +69,11 @@ function building(id, r, minArea, frame, parts, figure = id) {
 // measured dusk mask). A shrink below it fails. It also has to stay at least
 // half of whatever the current render measures.
 const REGISTRY = [
-  hero("warrior", 2092, crop(24, 158, 268, 412)),
-  hero("mage", 1772, crop(312, 124, 196, 448)),
-  hero("scout", 2074, crop(524, 100, 216, 480)),
-  hero("farmer", 1621, crop(752, 98, 250, 480)),
-  hero("engineer", 1987, crop(1016, 158, 224, 432)),
+  hero("warrior", 217, crop(24, 158, 268, 412)),
+  hero("mage", 191, crop(312, 124, 196, 448)),
+  hero("scout", 198, crop(524, 100, 216, 480)),
+  hero("farmer", 282, crop(752, 98, 250, 480)),
+  hero("engineer", 224, crop(1016, 158, 224, 432)),
   monster("goblin", 16, 682, crop(16, 328, 236, 246), goblinVoxels()),
   monster("skeleton", 13, 835, crop(260, 328, 260, 246), skeletonVoxels()),
   monster("wolf", 13, 445, crop(760, 340, 270, 245), wolfVoxels()),
@@ -296,13 +296,12 @@ export function horizontalRadius(parts) {
 }
 
 function radialX(part) {
-  if (part.shape === "box") return part.w / 2
-  if (part.shape === "cone") return part.w / 2
+  if (part.shape === "box" || part.shape === "billboard" || part.shape === "cone") return part.w / 2
   return Math.max(part.rt || 0, part.rb || 0)
 }
 
 function radialZ(part) {
-  if (part.shape === "box") return part.d / 2
+  if (part.shape === "box" || part.shape === "billboard") return part.d / 2
   return radialX(part)
 }
 

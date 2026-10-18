@@ -9,6 +9,7 @@ import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
+import { pictureColumn } from "./pictures.js"
 import { houseParts, houseVariant, keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterRim, monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
@@ -319,8 +320,8 @@ export function createView(stage) {
         scene.add(mesh)
       }
       remember(key, row.x, row.y)
-      placeMesh(key, mesh)
       if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
+      placeMesh(key, mesh)
       if (mesh.userData.hp) {
         const ratio = row.max ? row.hp / row.max : 1
         mesh.userData.hp.scale.x = Math.max(ratio, 0.05)
@@ -859,12 +860,48 @@ export function createView(stage) {
     const pose = smoothed(key)
     const spread = mesh.userData.spread || { x: 0, z: 0 }
     mesh.position.set(pose.x + spread.x, mesh.userData.lift || 0, pose.z + spread.z)
+    const card = mesh.userData.card
+    if (!card) return
+    const picture = mesh.userData.picture
+    const viewYaw = Math.atan2(camera.position.x - mesh.position.x, camera.position.z - mesh.position.z)
+    const facing = Number.isFinite(mesh.rotation.y) ? -mesh.rotation.y : 0
+    const column = pictureColumn(viewYaw, facing)
+    const track = tracks.get(key)
+    const step = track ? Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ) : 0
+    const frame = step > 0.4 ? Math.floor(performance.now() / 160) % picture.frames : 0
+    card.material.map.offset.set(column / picture.directions, 1 - (frame + 1) / picture.frames)
+  }
+
+  function heroCard(picture) {
+    const map = new THREE.DataTexture(picture.atlas, picture.atlasW, picture.atlasH, THREE.RGBAFormat)
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.colorSpace = THREE.SRGBColorSpace
+    map.flipY = true
+    map.wrapS = THREE.ClampToEdgeWrapping
+    map.wrapT = THREE.ClampToEdgeWrapping
+    map.repeat.set(1 / picture.directions, 1 / picture.frames)
+    map.needsUpdate = true
+    const material = new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 })
+    const card = new THREE.Sprite(material)
+    card.center.set(0.5, 0)
+    card.scale.set(picture.w, picture.h, 1)
+    card.position.y = 0
+    return card
   }
 
   function buildHero(row, selfId) {
     const sig = heroSignature(row.hero)
     const group = new THREE.Group()
-    for (const piece of sig.parts) group.add(pieceMesh(piece))
+    const picture = sig.parts.find((part) => part.shape === "billboard")
+    if (picture) {
+      const card = heroCard(picture)
+      group.add(card)
+      group.userData.card = card
+      group.userData.picture = picture
+    } else {
+      for (const piece of sig.parts) group.add(pieceMesh(piece))
+    }
     const top = sig.bounds.h + 4
     const plate = new THREE.Mesh(new THREE.BoxGeometry(Math.max(22, sig.bounds.w * 0.45), 3, 2), mat(0x1a100c))
     const fill = new THREE.Mesh(new THREE.BoxGeometry(Math.max(20, sig.bounds.w * 0.4), 2, 2), mat(0x7ea35a))
@@ -875,7 +912,7 @@ export function createView(stage) {
     group.userData.face = true
     group.userData.role = "hero"
     group.userData.hero = row.hero
-    group.userData.parts = sig.parts.length
+    group.userData.parts = picture ? picture.directions * picture.frames : sig.parts.length
     group.userData.marks = sig.marks.slice()
     group.userData.bounds = sig.bounds
     if (row.id === selfId) {
