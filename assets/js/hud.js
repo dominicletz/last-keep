@@ -58,6 +58,24 @@ export function nextLine(phase, hints) {
   return `Next: ${parts.join(", ")}`
 }
 
+const BUILD_FACE = {
+  wall: ["1", "Wall"],
+  tower: ["2", "Tower"],
+  trap: ["3", "Trap"],
+  field: ["4", "Field"],
+  forge: ["5", "Forge"],
+  mage_tower: ["6", "Spire"]
+}
+
+export function buildFace(kind, cost, touch) {
+  const row = BUILD_FACE[kind] || ["", "Build"]
+  const title = touch ? row[1] : `${row[0]} ${row[1]}`
+  if (!cost) return { title, price: "" }
+  const gold = Number(cost.gold) || 0
+  const price = `${Number(cost.wood) || 0} wood${gold ? ` ${gold} gold` : ""}`
+  return { title, price }
+}
+
 export function sackLine(resources = {}) {
   return ["wood", "food", "gold"].map((key) => ({
     key,
@@ -65,6 +83,23 @@ export function sackLine(resources = {}) {
     x: SACK_SPOT[key].x,
     y: SACK_SPOT[key].y
   }))
+}
+
+export function seatSacks(spots, view, boxes, keep) {
+  const seated = []
+  const obstacles = keep ? [keep] : []
+  for (let i = 0; i < (spots || []).length; i += 1) {
+    const spot = spots[i]
+    const box = boxes?.[i] || { width: 0, height: 0 }
+    if (!spot || !(view?.width > 0) || !(view?.height > 0)) {
+      seated.push(spot)
+      continue
+    }
+    const placed = seatPin(spot, view, box, obstacles, "sack")
+    seated.push({ ...spot, left: placed.left, top: placed.top })
+    obstacles.push(pinRect(placed, box, "sack"))
+  }
+  return seated
 }
 
 function sackText(key, value) {
@@ -240,14 +275,17 @@ export function waveAnchor(hero) {
 
 const SEAT_STEP = 16
 
-function pinLimits(view, box, anchor, floor) {
+function pinMetrics(box, anchor) {
   const width = box?.width || 0
   const height = box?.height || 0
+  if (anchor === "corner") return { shiftX: 0, shiftY: 0, tailX: width, tailY: height, hang: 0 }
+  if (anchor === "sack") return { shiftX: width / 2, shiftY: height, tailX: width / 2, tailY: 0, hang: 1 }
+  return { shiftX: width / 2, shiftY: height * 1.2, tailX: width / 2, tailY: 0, hang: 1.2 }
+}
+
+function pinLimits(view, box, anchor, floor) {
+  const { shiftX, shiftY, tailX, tailY } = pinMetrics(box, anchor)
   const corner = anchor === "corner"
-  const shiftX = corner ? 0 : width / 2
-  const shiftY = corner ? 0 : height * 1.2
-  const tailX = corner ? width : shiftX
-  const tailY = corner ? height : 0
   const minX = 8 + shiftX
   const maxX = Math.max(minX, view.width - 8 - tailX)
   const minY = Math.max(8 + shiftY, Number(floor) || 0)
@@ -260,9 +298,10 @@ export function pinRect(spot, box, anchor = "chip") {
   const height = box?.height || 0
   const left = Number(spot?.left) || 0
   const top = Number(spot?.top) || 0
+  const { hang } = pinMetrics(box, anchor)
   if (anchor === "corner") return { left, top, right: left + width, bottom: top + height }
   const x = left - width / 2
-  const y = top - height * 1.2
+  const y = top - height * hang
   return { left: x, top: y, right: x + width, bottom: y + height }
 }
 

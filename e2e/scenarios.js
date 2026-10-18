@@ -881,6 +881,57 @@ async function pressStick(page) {
   })
 }
 
+async function assertPhoneHud(page) {
+  const report = await page.evaluate(() => {
+    const shown = (node) => {
+      if (!node || node.hidden) return false
+      const style = getComputedStyle(node)
+      if (style.display === "none" || style.visibility === "hidden") return false
+      const box = node.getBoundingClientRect()
+      return box.width >= 1 && box.height >= 1 ? box : null
+    }
+    const hints = []
+    for (const node of document.querySelectorAll("#hud .build, #hud .skill, #hud .thumb")) {
+      const box = shown(node)
+      if (!box) continue
+      const text = (node.innerText || "").trim()
+      if (/\bLMB\b/.test(text) || /^[1-6]\s/.test(text) || /^(Q|E|R|Hit)$/.test(text)) hints.push(text)
+    }
+    const targets = [...document.querySelectorAll("[data-touch], [data-touch-context], [data-build]")]
+      .map((node) => {
+        const box = shown(node)
+        if (!box) return null
+        const key = node.dataset.touch || node.dataset.build || "context"
+        return { key, w: box.width, h: box.height }
+      })
+      .filter(Boolean)
+    const sacks = [...document.querySelectorAll(".sack")]
+      .map((node) => {
+        const box = shown(node)
+        if (!box) return null
+        return { key: node.dataset.sack, left: box.left, top: box.top, right: box.right, bottom: box.bottom }
+      })
+      .filter(Boolean)
+    const overlaps = []
+    for (let i = 0; i < sacks.length; i += 1) {
+      for (let j = i + 1; j < sacks.length; j += 1) {
+        const a = sacks[i]
+        const b = sacks[j]
+        if (a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) overlaps.push(`${a.key}-${b.key}`)
+      }
+    }
+    return { hints, targets, overlaps, sacks: sacks.length }
+  })
+  expect(report.hints).toEqual([])
+  expect(report.sacks).toBe(3)
+  expect(report.overlaps).toEqual([])
+  expect(report.targets.map((target) => target.key)).toEqual(
+    expect.arrayContaining(["q", "attack", "e", "r", "context", "wall", "tower", "trap", "field", "forge", "mage_tower"])
+  )
+  const small = report.targets.filter((target) => target.w < 44 || target.h < 44)
+  expect(small).toEqual([])
+}
+
 async function releaseStick(page) {
   await page.evaluate(() => {
     window.__lastKeepStick?.("pointerup", 110, 80)
@@ -922,13 +973,29 @@ async function mobileTouch(browser) {
   await page.locator('[data-build="wall"]').tap()
   await expect(page.locator("[data-touch-context]")).toBeVisible()
   await expect(page.locator("[data-touch-context]")).toHaveText("Wall")
+  await assertPhoneHud(page)
   await page.locator("[data-touch-context]").tap()
   await page.waitForFunction((before) => window.__lastKeep.buildings > 0 && window.__lastKeep.wood < before, wood)
   await pressStick(page)
   await page.screenshot({ path: shot("mobile-landscape.png") })
   await releaseStick(page)
   await page.setViewportSize({ width: 390, height: 844 })
-  await expect(page.locator("#turn")).toHaveText("Rotate your device")
+  await expect(page.locator("#turn")).toContainText("Rotate your device")
+  await expect(page.locator("[data-turn-icon]")).toBeVisible()
+  const cover = await page.evaluate(() => {
+    const turn = document.querySelector("#turn")
+    const box = turn.getBoundingClientRect()
+    const style = getComputedStyle(turn)
+    const match = String(style.backgroundColor).match(/rgba?\(([^)]+)\)/)
+    const parts = match ? match[1].split(",").map((part) => Number(part.trim())) : []
+    const alpha = parts.length < 4 ? 1 : parts[3]
+    return { left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: window.innerWidth, height: window.innerHeight, alpha }
+  })
+  expect(cover.left).toBeLessThanOrEqual(0)
+  expect(cover.top).toBeLessThanOrEqual(0)
+  expect(cover.right).toBeGreaterThanOrEqual(cover.width)
+  expect(cover.bottom).toBeGreaterThanOrEqual(cover.height)
+  expect(cover.alpha).toBeGreaterThanOrEqual(0.75)
   await page.screenshot({ path: shot("mobile-portrait.png") })
   expect(errors, errors.join("\n")).toEqual([])
   await context.close()

@@ -419,21 +419,29 @@ html.playing, html.playing body {
 
 #turn {
   position: fixed;
-  z-index: 6;
-  top: 22%;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
   margin: 0;
-  padding: 0.28rem 0.7rem;
+  padding: 1.5rem;
   color: var(--gold);
-  background: #140e12cc;
-  border: 1px solid var(--line);
-  font-size: 0.78rem;
+  background: #0c0808e0;
+  pointer-events: auto;
+}
+#turn .turn-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.85rem;
+  text-align: center;
+}
+#turn p {
+  margin: 0;
+  font-size: 1.15rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  pointer-events: none;
-  white-space: nowrap;
 }
+#turn [data-turn-icon] { display: block; }
 
 html.touch-play #hud {
   padding-top: max(0.6rem, env(safe-area-inset-top));
@@ -443,7 +451,21 @@ html.touch-play #hud {
 }
 
 html.touch-play .skills { display: none; }
-html.touch-play .hud-bottom { padding-right: 15rem; }
+html.touch-play .hud-bottom { padding-right: 15.5rem; }
+html.touch-play .builds { flex-wrap: nowrap; gap: 0.35rem; }
+html.touch-play #hud .build {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 0.28rem 0.45rem;
+  border: 1px solid #6a4a30;
+  border-radius: 8px;
+  background: #140e12cc;
+  box-shadow: none;
+  text-align: center;
+  font-size: 0.72rem;
+}
 
 .thumb-pad, .stick { display: none; }
 html.touch-play .thumb-pad {

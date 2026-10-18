@@ -24,7 +24,7 @@ node e2e/playtest/cli.js stop playtests/live
 
 Unset `BASE_URL` for a local server. Set it to `https://agentyard.letz.tw` to play the deployed game. The local Chrome path is `CHROME_PATH`.
 
-Phones play with the touch joystick and the portrait buttons, in landscape. A feed tap uses the `f` bit, and lifting the thumb clears it so the next heal can rise. This harness stays the 1280 by 800 mouse and keyboard room. Do not drive a specialist with the stick.
+Phones play with the touch joystick and the portrait buttons, in landscape. A feed tap uses the `f` bit, and lifting the thumb clears it so the next heal can rise. The build row names the building and its cost, and portrait is a full-screen rotate card. This harness stays the 1280 by 800 mouse and keyboard room. Do not drive a specialist with the stick.
 
 `e2e/playtest.spec.js` is the harness check: five heroes, one roster, and a warrior who walks. The HUD captions (wave, relics, resources, roster, abilities, builds) should read on the yard without a stack of panels.
 
