@@ -21,10 +21,15 @@ function decodeFront(entry) {
   return { rgb, mask, w: entry.w, h: entry.h }
 }
 
+const heroCache = new Map()
+
 export function heroParts(kind) {
+  if (heroCache.has(kind)) return heroCache.get(kind)
   const entry = heroFronts[kind]
   if (!entry) throw new Error(`no hero picture for ${kind}`)
-  return buildCard(decodeFront(entry), kind)
+  const parts = buildCard(decodeFront(entry), kind)
+  heroCache.set(kind, parts)
+  return parts
 }
 
 export function heroSignature(kind) {

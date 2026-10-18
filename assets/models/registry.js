@@ -1,5 +1,5 @@
 import { heroParts } from "../js/heroes.js"
-import { batVoxels, goblinVoxels, ogreVoxels, riderVoxels, skeletonVoxels, wolfVoxels } from "./figures.js"
+import { monsterParts } from "../js/monsters.js"
 import { sceneryForest } from "../js/scenery.js"
 import { carve } from "./voxels.js"
 
@@ -57,8 +57,8 @@ function hero(id, minArea, frame) {
   return entry(id, "hero", { r: HERO_RADIUS }, { sheet: "heroes.jpg", figure: id, crop: frame }, minArea, null)
 }
 
-function monster(id, r, minArea, frame, parts, figure = id) {
-  return entry(id, "monster", { r }, { sheet: "monsters.jpg", figure, crop: frame }, minArea, parts)
+function monster(id, r, minArea, frame, figure = id) {
+  return entry(id, "monster", { r }, { sheet: "monsters.jpg", figure, crop: frame }, minArea, null)
 }
 
 function building(id, r, minArea, frame, parts, figure = id) {
@@ -74,12 +74,12 @@ const REGISTRY = [
   hero("scout", 198, crop(524, 100, 216, 480)),
   hero("farmer", 282, crop(752, 98, 250, 480)),
   hero("engineer", 224, crop(1016, 158, 224, 432)),
-  monster("goblin", 16, 682, crop(16, 328, 236, 246), goblinVoxels()),
-  monster("skeleton", 13, 835, crop(260, 328, 260, 246), skeletonVoxels()),
-  monster("wolf", 13, 445, crop(760, 340, 270, 245), wolfVoxels()),
-  monster("troll", 22, 1884, crop(524, 292, 226, 286), ogreVoxels(), "ogre"),
-  monster("bat", 12, 347, crop(408, 68, 260, 96), batVoxels(), "bat"),
-  monster("boss", 34, 4898, crop(1000, 70, 275, 520), riderVoxels(), "dark rider"),
+  monster("goblin", 16, 144, crop(16, 328, 236, 246)),
+  monster("skeleton", 13, 236, crop(260, 328, 260, 246)),
+  monster("wolf", 13, 96, crop(760, 340, 270, 245)),
+  monster("troll", 22, 433, crop(524, 292, 226, 286), "ogre"),
+  monster("bat", 12, 76, crop(408, 68, 260, 96), "bat"),
+  monster("boss", 34, 231, crop(1000, 70, 275, 520), "dark rider"),
   building("wall", 16, 1411, crop(160, 280, 250, 220), palisadeParts(), "palisade"),
   building("tower", 16, 1028, crop(590, 36, 120, 130), [
     box("shaft", 18, 32, 18, 0, 16, 0, STONE),
@@ -257,34 +257,38 @@ export function keepParts(rank = 0) {
   return parts
 }
 
+const partCache = new Map()
+
+function partsFor(model) {
+  if (partCache.has(model.id)) return partCache.get(model.id)
+  let parts
+  if (model.family === "hero") parts = heroParts(model.id)
+  else if (model.family === "monster") parts = monsterParts(model.id)
+  else if (model.id === "keep") parts = keepParts(0)
+  else if (model.id === "house") parts = houseParts(0)
+  else if (model.id === "scenery") parts = sceneryParts()
+  else if (model.id === "field") {
+    parts = model.parts.map((part) => ({ ...part }))
+    parts.voxelCount = model.parts.voxelCount
+  } else parts = model.parts.map((part) => ({ ...part }))
+  partCache.set(model.id, parts)
+  return parts
+}
+
 export function models() {
   return REGISTRY.map((model) => {
-    if (model.family === "hero") {
-      const parts = heroParts(model.id)
+    const parts = partsFor(model)
+    if (model.family === "hero" || model.family === "monster" || model.id === "house" || model.id === "field") {
       return { ...model, parts, voxels: parts.voxelCount }
     }
-    if (model.family === "monster") {
-      return { ...model, parts: model.parts.map((part) => ({ ...part })), voxels: model.parts.voxelCount }
-    }
-    if (model.id === "keep") return { ...model, parts: keepParts(0) }
-    if (model.id === "house") {
-      const parts = houseParts(0)
-      return { ...model, parts, voxels: parts.voxelCount }
-    }
-    if (model.id === "scenery") return { ...model, parts: sceneryParts() }
-    if (model.id === "field") {
-      const parts = model.parts.map((part) => ({ ...part }))
-      parts.voxelCount = model.parts.voxelCount
-      return { ...model, parts, voxels: parts.voxelCount }
-    }
-    return { ...model, parts: model.parts.map((part) => ({ ...part })) }
+    return { ...model, parts }
   })
 }
 
 export function modelParts(id) {
-  const model = models().find((row) => row.id === id)
+  const model = REGISTRY.find((row) => row.id === id)
   if (!model) throw new Error(`no model for ${id}`)
-  return model.parts
+  return partsFor(model)
 }
 
 export function horizontalRadius(parts) {

@@ -19,12 +19,35 @@ const CROPS = {
   engineer: { x: 1016, y: 158, w: 224, h: 432 }
 }
 
+export const MONSTER_CROPS = {
+  goblin: { x: 16, y: 328, w: 236, h: 246 },
+  skeleton: { x: 260, y: 328, w: 260, h: 246 },
+  wolf: { x: 760, y: 340, w: 270, h: 245 },
+  troll: { x: 524, y: 292, w: 226, h: 286 },
+  bat: { x: 408, y: 68, w: 260, h: 96 },
+  boss: { x: 1000, y: 70, w: 275, h: 520 }
+}
+
 const cache = new Map()
 let sheet
+let monsterSheet
 
 function heroesSheet() {
   if (!sheet) sheet = loadSheet(path.join(root, "docs/concept/heroes.jpg"))
   return sheet
+}
+
+function monstersSheet() {
+  if (!monsterSheet) monsterSheet = loadSheet(path.join(root, "docs/concept/monsters.jpg"))
+  return monsterSheet
+}
+
+export function monsterCropFigure(kind) {
+  const crop = MONSTER_CROPS[kind]
+  if (!crop) throw new Error(`no monster crop for ${kind}`)
+  // A dark rider, a wolf, and a bat break into separate bright islands.
+  // The crop is one figure, so every island stays.
+  return cutFigure(monstersSheet(), crop, "all", "dense")
 }
 
 function luma(r, g, b) {
@@ -32,8 +55,10 @@ function luma(r, g, b) {
 }
 
 function cropFigure(kind) {
-  const crop = CROPS[kind]
-  const source = heroesSheet()
+  return cutFigure(heroesSheet(), CROPS[kind])
+}
+
+function cutFigure(source, crop, parts = "largest", ink = "hero") {
   const rgb = new Uint8Array(crop.w * crop.h * 3)
   const raw = new Uint8Array(crop.w * crop.h)
   for (let y = 0; y < crop.h; y++) {
@@ -48,10 +73,11 @@ function cropFigure(kind) {
       rgb[i * 3 + 2] = b
       const L = luma(r, g, b)
       const chroma = Math.max(r, g, b) - Math.min(r, g, b)
-      if (L >= 28 && (L >= 36 || chroma >= 12)) raw[i] = 1
+      const on = ink === "dense" ? L >= 16 || chroma >= 12 : L >= 28 && (L >= 36 || chroma >= 12)
+      if (on) raw[i] = 1
     }
   }
-  const mask = largest(raw, crop.w, crop.h)
+  const mask = parts === "all" ? raw : largest(raw, crop.w, crop.h)
   return trim({ rgb, mask, w: crop.w, h: crop.h })
 }
 

@@ -336,3 +336,9 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 meshes dispose and shots are pooled
 
 - `sync` used to `scene.remove` a mesh and leave its geometry on the GPU. Bursts and a rebuilt keep did the same, and every bolt allocated a new sphere. `releaseGeometries` disposes each geometry once and skips a pooled one and the shared sprite plane. Shot spheres are shared by radius. Burst meshes go back to a pool. `shotsDoNotGrowGeometries` holds a mage attack until more than one bolt is in flight, then requires `window.__lastKeepPerf.geometries` to stay within two of the count from before the volley. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 monster cards from the sheet
+
+- Each monster is its crop on `monsters.jpg`, with eight directions, four walk frames, three attack frames, and four death frames. Walk 0 of direction 0 is the crop. Goblin height is 18, skeleton 22, wolf 16, and bat 10, all under the hero. The troll and the rider are 34, under 1.75 keep doors. The dusk silhouette floors are goblin 144, skeleton 236, wolf 96, troll 433, bat 76, and rider 231. The night read is bat 16 and rider 48. The voxel records were the oversized meshes. These card floors only rise.
+- `art_score.test.js` pins the close-up. Block p25 is 5 to 16. SSIM is 0.689 to 0.912. Silhouette IoU is 0.641 to 0.876. Palette membership is under 0.04. A bite publishes `attack_cd` in milliseconds. The card strikes when that value jumps. A monster that leaves the snapshot plays the fall and then drops. The likeness floors stay 0.72 and 46. The coverage floor stays 77.
+- The yard spawns 30 trees. Asking for each mesh rebuilt every hero sheet and every monster sheet, and the phone caption walk then sat until the 150s test timeout. `modelParts` builds the one kind and reuses it. `thirty trees share one mesh` loops those 30 calls and fails at a second. The phone timeout stays 150s.

@@ -40,7 +40,13 @@ const MARKS = {
   mage: ["robe", "hat", "staff"],
   scout: ["hood", "bow"],
   farmer: ["brim", "fork"],
-  engineer: ["apron", "hammer"]
+  engineer: ["apron", "hammer"],
+  goblin: ["ears", "spear"],
+  skeleton: ["ribs", "blade"],
+  wolf: ["muzzle", "tail"],
+  troll: ["tusks", "club"],
+  bat: ["wings", "fangs"],
+  boss: ["helm", "horse"]
 }
 
 function mirror(image, gain) {
@@ -232,7 +238,7 @@ function paste(cellW, cellH, image) {
 }
 
 /** @returns {any} */
-export function buildCard(front, kind) {
+export function buildCard(front, kind, height = spriteHeight) {
   const views = directionsOf(front)
   const cellW = front.w
   const cellH = front.h
@@ -263,7 +269,7 @@ export function buildCard(front, kind) {
   const image = frames[0]
   let opaque = 0
   for (let i = 0; i < image.mask.length; i++) opaque += image.mask[i]
-  const worldH = spriteHeight
+  const worldH = height
   const worldW = Math.round((worldH * cellW * 10) / cellH) / 10
   const depth = Math.max(4, Math.round(worldW * 0.28 * 10) / 10)
   const part = {
