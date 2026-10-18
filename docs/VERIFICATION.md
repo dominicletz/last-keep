@@ -354,3 +354,12 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 the match paints without a yard read
 
 - `paintFrame` no longer calls `sampleYard`. That read was four `readPixels` calls after every submit, and it flushed the frame. `matchPaintsWithoutARead` joins one farmer, waits for four paints, and requires the read count to stay 0. `brightNear` still samples the yard on purpose, and that call has to raise the count and return a field luma above 0. The parade still uses that grade. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 the world outside the keep
+
+- `docs/concepts/WORLD.md` is the contract for a seeded land of radius 7200. The keep disc of radius 400 stays meadow. Points of interest, role walks, portal bearings, fog, and the 2-to-15 seat scale are on that page. The chest, the portal, the quarry, and the meadow sow are already in the simulation, and the walk clamp is 7200. Pine wood and the performance slice stay planned. LK-089 stays open. Night 1 stays two goblins. This does not change the simulation. The coverage floor stays 77.
+
+
+## 2026-10-18 the chest detour steps off the face
+
+- CI on the swing pin failed `exploreLand` at x 73.5, y 0. The offset via still had `|dx|` above 28, and `keysToward` treats that as due west, so the hero never left the face. The via now shares x. The hop ends when the cardinal step misses the keep body, radius 54 plus the hero radius 14. The detour stays inside 20 seconds. The chest wait stays 45 seconds and the portal wait stays 70 seconds. `e2e/steer.test.js` walks that face and the spawn to a chest. This does not change the simulation. The coverage floor stays 77.

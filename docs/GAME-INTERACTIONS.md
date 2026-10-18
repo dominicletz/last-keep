@@ -77,6 +77,20 @@ flowchart LR
   wall -->|stakes the next ring| city
   house -->|town tax| gold
   farmer -->|labor stakes a croft| field
+
+  pine[Pine forest] -.->|chop after the yard is cut| wood
+  meadow[Meadow] -->|sow only here| field
+  chest[Chest] -->|24 gold once| gold
+  portal[Portal] -->|wave bearing| monsters
+  warrior -->|strike until it breaks| portal
+  quarry[Quarry] -->|gather| stone[Stone]
+  engineer -->|2 stone a tick| quarry
+  stone -->|280 health| wall
+  camp[Camp] -.->|wake an ally| vagrant[Vagrant]
+  shrine[Shrine] -.->|one relic| relics
+  hermit[Hermit] -.->|reveal the next ring| scout
+  merchant[Merchant] -.->|sell food| food
+  merchant -.->|sell stone| stone
 ```
 
 ## Roles
@@ -148,7 +162,7 @@ Raising the keep stakes four timber houses on the new ring, paid by the wood and
 
 Goblins, skeletons, wolves, and trolls walk at the keep or at the nearest hero and bite. Elites change that body: fast lunges, armored hits take less, enraged bites harder and sooner. A boss slams the keep harder. Killing any monster pays gold. Killing a boss also grants one relic the party does not hold: heartwood, whetstone, swiftness, banner, or granary.
 
-Wave 1 is two slower, softer goblins, spawned about 620 to 659 units from the origin. Their bearings are the two nearest portals that still stand. Later nights spawn farther, about 760 to 839, and split that same count across the living portals. Heroes stand near radius 120. The map clamps at 7200. A wave-1 goblin still has time to reach the keep inside the minute.
+Wave 1 is two slower, softer goblins, spawned about 620 to 659 units from the origin. Their bearings are the two nearest portals that still stand. Later nights spawn farther, about 760 to 839, and split that same count across the living portals. Heroes stand near radius 120. The map clamps at 7200. A wave-1 goblin still has time to reach the keep inside the minute. The rest of that land is [`concepts/WORLD.md`](concepts/WORLD.md).
 
 On screen the five heroes do not share a body. A warrior reads as broad shoulders and a shield, a mage as a robe, hat, and staff, a scout as a hood and a bow, a farmer as a straw brim and a fork, and an engineer as an apron and a hammer. Two monsters drawn on the same ground step apart, each with its own outline and bar, so a pair at the door is two bodies.
 
@@ -156,14 +170,22 @@ The night has its own sound. Day and building play one loop, the wave plays anot
 
 ## Empty roles
 
-No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, and gold has a producer and a consumer. The test fails if that stops being true.
+No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, gold, and stone has a producer and a consumer. The test fails if that stops being true.
 
 Trees with wood are entities. A living hero standing on one chops it, and the tree leaves the world when the wood is gone. Those trees are drawn as a layered pine: a wood trunk and stacked boughs. The client also draws seventy bare trunks in three rings. That ring is not an entity. It has no crown and no wood, so it cannot be chopped. `Rules.scenery_ring/0` says so.
 
 A chest on the seeded land pays 24 gold the first time a living hero stands on it. The same spot pays nothing after that. A portal breaks under a strike. Night 1 stays two goblins, and the broken portal's bearing is not one of them.
 
-## Planned, not in the simulation
+## World edges
 
-Dotted arrows in the graph are these edges. They are `planned` in `interactions.json` and open in the backlog.
+Solid arrows in the graph are in the simulation. Dotted arrows are still `planned` in `interactions.json`. The chest, the portal, the quarry, the meadow sow, and the stone wall are implemented. Pine wood, the camp, the shrine, the hermit, and the merchant stay planned. LK-089 stays open. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is in the resource list.
 
-Every edge in the graph is implemented. An elite drops a relic, the spire unlocks the meteor, and raising the keep stakes the next ring of houses.
+Pine forest is the wood that refills a wall line after the yard trees are cut. Any living hero chops a pine that still has wood. The seventy bare trunks stay bare.
+
+A quarry is the engineer's walk. It holds 40 stone. An engineer takes 2 per work tick and any other living hero takes 1. The stock caps at 200. A stone wall costs 8 stone and 4 wood and has 280 health, because a troll bite eats a wood wall. A wood wall stays 8 wood, or 4 for an engineer, at 170 health.
+
+A field can be sown only on meadow. Pine, ruins, river, ford, and cliff refuse the sow and spend nothing. The keep disc is meadow, so the crofts already staked in the yard still place. Meadow outside that disc is why a farmer leaves the yard.
+
+A chest holds 24 gold, once. Field gold stays the small daytime mint. The chest is the hoard that pays a keep raise. A living scout reveals one extra chunk ring, which is how the party finds the next chest before the day ends.
+
+A portal is a wave origin. Destroying it removes its bearing from the next plan. Wave 1 stays two goblins. A camp spends 8 gold to wake one ally who does not take a seat. A shrine grants one relic the party does not hold. A merchant sells food or stone for gold. A hermit reveals the next chunk ring.
