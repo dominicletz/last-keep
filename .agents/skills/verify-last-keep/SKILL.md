@@ -60,7 +60,7 @@ BASE_URL=https://agentyard.letz.tw npx playwright test
 
 The browser reads `window.__lastKeep` (phase, wood, buildings, monsters, figures, rangeRing, audio, projectiles, log, labels, kinds, attackCd, shownWave, smoothing, renders, `toClient`, `redNear`) and `window.__lastKeepTest` (`blur`, `hold`, `mute`, `volume`, `hear`). Those hooks are the same ones this skill's run uses. Do not add a second script. The five-player walk also requires an idle seat to paint fewer than 12 frames in one second, and the warrior still has to travel more than 20.
 
-Server rules that the browser cannot force (a refused cost, Fireball damage, the shown-wave step, elite armor, a fast lunge, a boss slam) are ExUnit tests in `test/last_keep/game/sim_test.exs`. `test/last_keep/game/room_test.exs` requires an empty room to stop ticking, five abandoned rooms to terminate, and the supervisor count to return to the count from before those rooms existed. Run `mix test` as well.
+Server rules that the browser cannot force (a refused cost, Fireball damage, the shown-wave step, elite armor, a fast lunge, a boss slam, a wounded hero staying wounded when the keep falls) are ExUnit tests in `test/last_keep/game/sim_test.exs`. `test/last_keep/game/room_test.exs` requires an empty room to stop ticking, five abandoned rooms to terminate, and the supervisor count to return to the count from before those rooms existed. Run `mix test` as well.
 
 ## Evidence
 
