@@ -835,6 +835,41 @@ defmodule LastKeep.Game.SimTest do
     assert state.town == 4
   end
 
+  test "a wounded hero keeps that health when the keep falls, and a downed hero is not refilled" do
+    wounded = fall_beside(fn bram -> %{bram | hp: 81, x: 800.0, y: 800.0} end)
+    me = bram_snap(wounded)
+    assert wounded.phase == :over
+    assert wounded.keep.hp == 0
+    assert me.hp == 81
+    assert me.max == 125
+    assert me.alive
+
+    downed =
+      fall_beside(fn bram -> %{bram | hp: 0, alive: false, respawn: 1, x: 800.0, y: 800.0} end)
+
+    me = bram_snap(downed)
+    assert downed.phase == :over
+    assert downed.keep.hp == 0
+    assert me.hp == 0
+    assert me.max == 125
+    assert me.alive == false
+  end
+
+  defp fall_beside(change) do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 50, hold: false)
+    {:ok, state} = Sim.join(state, player("bram", :engineer))
+    state = put_hero(state, change.(hero(state, "bram")))
+    state = %{state | phase: {:wave, 400}, wave: 1, keep: %{state.keep | hp: 6}}
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 70, y: 0, damage: 20, wave: 1})
+    Sim.tick(state)
+  end
+
+  defp bram_snap(state) do
+    Snapshot.render(state).players |> Enum.find(&(&1.name == "bram"))
+  end
+
+  defp put_hero(state, hero), do: %{state | entities: Map.put(state.entities, hero.id, hero)}
+
   defp place_wall(hero) do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 400)
     {:ok, state} = Sim.join(state, player("ada", hero))
