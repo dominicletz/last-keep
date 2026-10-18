@@ -180,3 +180,8 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 ## 2026-10-18 the day clearing and the warm dusk
 
 - The waiting yard was luminance 51 and hue 65. The same patch at dusk was luminance 31 and hue 38. The day illuminant is the grass token lifted toward white, so the lit patch stays at luminance 100 or above and hue 70 or above. Dusk is lit by the horizon token and the sunset token. Its patch stays between hue 28 and 48, at luminance 72 or above, and under the day. The round-7 olive bytes fail that floor. `twoPlayerNight` reads the same patch off the canvas. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-18 bats and the dark rider read on the night yard
+
+- Hide on the night grass is luminance 32.7 against a field of 47.6. The rider cloth is 34.4. Bone is 73.1 and plate is 111.7, each at least 18 above that grass. The bat wings are bone and three voxels deep, inside radius 24. The rider's cuirass and helm are plate, the eyes are the torch, and the horse stays the rider token. The rider radius is 54, inside the cap of 68. Both wear a bone rim at 1.2 times the body box.
+- The night frame counts pixels at or above the live night grass. The bat record is 80 (measured 96) and the rider record is 1000 (measured 1240). A record under half the measured count fails. The dusk silhouette floors are 347 and 4898. A hero at the round-7 spot keeps both bats in frame. `paradeShowsEveryKind` requires 24 canvas pixels at least 18 luma above the yard on the bat and on the rider. This does not change the simulation. The coverage floor stays 69.

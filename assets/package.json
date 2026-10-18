@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test js/input.test.js js/present.test.js js/hud.test.js js/motion.test.js js/elite.test.js js/frame.test.js js/town.test.js js/scenery.test.js js/cull.test.js js/audio.test.js js/heroes.test.js js/bodies.test.js js/fidelity.test.js js/paint.test.js js/image.test.js js/scene.test.js models/read.test.js models/gallery.test.js models/voxels.test.js",
+    "test": "node --test js/input.test.js js/present.test.js js/hud.test.js js/motion.test.js js/elite.test.js js/frame.test.js js/town.test.js js/scenery.test.js js/cull.test.js js/audio.test.js js/heroes.test.js js/bodies.test.js js/fidelity.test.js js/paint.test.js js/image.test.js js/scene.test.js js/monsters.test.js models/read.test.js models/gallery.test.js models/voxels.test.js",
     "check": "tsc --noEmit -p jsconfig.json"
   },
   "dependencies": {

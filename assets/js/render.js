@@ -8,10 +8,10 @@ import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { keepParts, modelBounds, modelParts } from "../models/registry.js"
-import { monsterSpread } from "./bodies"
+import { monsterRim, monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, partyPositions } from "./paint.js"
-import { cycleLight, groundColor, lightName, patchStats, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
+import { cycleLight, groundColor, lightName, lumaOf, patchStats, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -104,7 +104,8 @@ export function createView(stage) {
   rangeRing.position.y = 0.45
   rangeRing.visible = false
   scene.add(rangeRing)
-  const outlineMat = new THREE.MeshLambertMaterial({ color: 0x140c0a, side: THREE.BackSide })
+  const darkOutline = new THREE.MeshLambertMaterial({ color: 0x140c0a, side: THREE.BackSide })
+  const boneOutline = new THREE.MeshBasicMaterial({ color: 0x908b8a, side: THREE.BackSide })
   let bearer = { x: 0, z: 0, range: 160 }
   const raycaster = new THREE.Raycaster()
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
@@ -471,6 +472,7 @@ export function createView(stage) {
         renders,
         toClient,
         redNear,
+        brightNear,
         tick: snap.tick,
         alive: me ? !!me.alive : !!kept.alive,
         hp: me ? me.hp : kept.hp,
@@ -554,6 +556,31 @@ export function createView(stage) {
       if (bodyPixel(buf[i], buf[i + 1], buf[i + 2])) count += 1
     }
     return count
+  }
+
+  function brightNear(x, z, height = 16) {
+    paintFrame()
+    const gl = renderer.getContext()
+    const point = new THREE.Vector3(x, height, z).project(camera)
+    const canvas = renderer.domElement
+    const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
+    const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)
+    const size = 160
+    const sx0 = Math.max(0, px - 80)
+    const sy0 = Math.max(0, py - 80)
+    const width = Math.min(size, canvas.width - sx0)
+    const heightPx = Math.min(size, canvas.height - sy0)
+    const buf = new Uint8Array(width * heightPx * 4)
+    gl.readPixels(sx0, Math.max(0, canvas.height - (sy0 + heightPx)), width, heightPx, gl.RGBA, gl.UNSIGNED_BYTE, buf)
+    const field = fieldSample ? fieldSample.luma : 0
+    let max = 0
+    let above = 0
+    for (let i = 0; i < buf.length; i += 4) {
+      const luma = lumaOf(buf[i], buf[i + 1], buf[i + 2])
+      if (luma > max) max = luma
+      if (luma >= field + 18) above += 1
+    }
+    return { max, above, field }
   }
 
   function remember(key, x, z) {
@@ -679,12 +706,16 @@ export function createView(stage) {
     mesh.userData.role = "monster"
     const scale = mesh.userData.bodyScale || 1
     const span = mesh.userData.span
-    const rim = new THREE.Mesh(
-      span ? new THREE.BoxGeometry(span.w, span.h, span.d) : new THREE.BoxGeometry(15 * scale, 22 * scale, 11 * scale),
-      outlineMat
+    const rim = monsterRim(row.kind)
+    const grow = rim.scale
+    const halo = new THREE.Mesh(
+      span
+        ? new THREE.BoxGeometry(span.w * grow, span.h * grow, span.d * grow)
+        : new THREE.BoxGeometry(15 * scale * grow, 22 * scale * grow, 11 * scale * grow),
+      grow > 1 ? boneOutline : darkOutline
     )
-    rim.position.y = span ? span.y : 14 * scale
-    mesh.add(rim)
+    halo.position.y = span ? span.y : 14 * scale
+    mesh.add(halo)
     if (spread.bar && mesh.userData.hp && mesh.userData.bar) {
       mesh.userData.hp.position.y += spread.bar
       mesh.userData.bar.position.y += spread.bar

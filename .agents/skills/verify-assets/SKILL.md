@@ -44,6 +44,7 @@ All of these fail the command:
 - A hero or monster is below the voxel detail floor of 12. The count is the voxel grid when the model has one, otherwise the part count. Three boxes fail. Buildings are exempt.
 - A hero's dominant close-up colors are outside the colors that occupy that hero's concept crop. A brown warrior plate fails this. The day light stays neutral so grey plate is not clipped to orange.
 - A Rules monster has no gallery model. The six are goblin, skeleton, wolf, troll (the ogre), bat, and boss (the dark rider).
+- The bat or the dark rider night frame has fewer pixels at or above the live night grass than the recorded read (bat 80, rider 1000), or that record is under half the measured count. Hide wings fail it. Plate and bone clear it.
 - Two kinds in the same family have a silhouette intersection-over-union at or above 0.85. They must read as different bodies.
 - The mesh bounds do not fit the gameplay collider for that kind. The fit slack is 2.
 - A Rules kind has no model, no `STYLE.md` entry, or no concept mapping.
