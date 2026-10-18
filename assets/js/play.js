@@ -2,6 +2,7 @@ import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
+import { combineAxes, contextAction, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, partyPositions } from "./paint"
 import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatPin, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
@@ -14,6 +15,14 @@ const BUILD_LABEL = {
   field: "4 Field",
   forge: "5 Forge",
   mage_tower: "6 Spire"
+}
+const PLACE_WORD = {
+  wall: "Wall",
+  tower: "Tower",
+  trap: "Trap",
+  field: "Field",
+  forge: "Forge",
+  mage_tower: "Spire"
 }
 const SKILL_NAME = {
   warrior: { attack: "Strike", q: "Dash", e: "Guard", r: "Nova" },
@@ -112,6 +121,14 @@ function start(code, seat, ui) {
     build: null
   }
   const keys = new Set()
+  let stickId = null
+  let stickOrigin = { x: 0, y: 0 }
+  let stickDx = 0
+  let stickDy = 0
+  let touchAim = null
+  let touchAction = null
+  const pad = { attack: false, q: false, e: false, r: false, f: false, place: false, raise: false }
+  const fingers = new Map()
   let selfId = null
   let latest = null
   let build = null
@@ -223,11 +240,16 @@ function start(code, seat, ui) {
     const hit = ui.view.aim(event.clientX, event.clientY)
     if (hit) aim = hit
   }
+  function finger(event) {
+    return event.pointerType === "touch" || event.pointerType === "pen"
+  }
   ui.view.canvas.addEventListener("pointermove", (event) => {
+    if (finger(event)) return
     look(event)
     if (build) refresh()
   })
   ui.view.canvas.addEventListener("pointerdown", (event) => {
+    if (finger(event)) return
     const focusing = ignoreFocusClick(focused)
     focused = true
     if (event.button !== 0) return
@@ -238,11 +260,94 @@ function start(code, seat, ui) {
     else input.attack = true
     send()
   })
-  window.addEventListener("pointerup", () => {
-    input.attack = false
-    input.place = false
+  window.addEventListener("pointerdown", (event) => {
+    if (!finger(event)) return
+    if (event.target.closest && event.target.closest("button, a, input, label")) return
+    if (event.clientX > window.innerWidth * 0.5) return
+    stickId = event.pointerId
+    stickOrigin = { x: event.clientX, y: event.clientY }
+    stickDx = 0
+    stickDy = 0
+    const stick = ui.hud.querySelector("[data-stick]")
+    const box = ui.hud.getBoundingClientRect()
+    if (stick) {
+      stick.hidden = false
+      stick.style.left = `${event.clientX - box.left}px`
+      stick.style.top = `${event.clientY - box.top}px`
+    }
+    const knob = ui.hud.querySelector("[data-stick-knob]")
+    if (knob) knob.style.transform = "translate(0px, 0px)"
+    event.preventDefault()
+    event.stopPropagation()
+    send()
+  }, true)
+  window.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== stickId) return
+    stickDx = event.clientX - stickOrigin.x
+    stickDy = event.clientY - stickOrigin.y
+    const knob = ui.hud.querySelector("[data-stick-knob]")
+    const offset = stickOffset(stickDx, stickDy)
+    if (knob) knob.style.transform = `translate(${offset.x}px, ${offset.y}px)`
+    send()
+  }, true)
+  ui.hud.querySelector("[data-touch-pad]").addEventListener("pointerdown", (event) => {
+    const button = event.target.closest("[data-touch], [data-touch-context]")
+    if (!button) return
+    if (event.pointerType === "mouse" && event.button !== 0) return
+    event.preventDefault()
+    event.stopPropagation()
+    if (button.dataset.touch) {
+      pad[button.dataset.touch] = true
+      fingers.set(event.pointerId, button.dataset.touch)
+    } else if (touchAction?.id === "place") {
+      touchAim = { x: touchAction.aim.x, y: touchAction.aim.y, monster: false }
+      pad.place = true
+      input.place = true
+      fingers.set(event.pointerId, "place")
+    } else if (touchAction?.id === "raise") {
+      pad.raise = true
+      input.raise = true
+      fingers.set(event.pointerId, "raise")
+    } else if (touchAction?.id === "feed") {
+      pad.f = true
+      fingers.set(event.pointerId, "feed")
+    }
     send()
   })
+  window.addEventListener("pointerup", (event) => {
+    releaseTouch(event)
+  })
+  window.addEventListener("pointercancel", (event) => {
+    releaseTouch(event)
+  })
+  function releaseTouch(event) {
+    let touched = false
+    const held = fingers.get(event.pointerId)
+    if (held) {
+      fingers.delete(event.pointerId)
+      pad[held] = false
+      if (held === "attack") input.attack = false
+      if (held === "place") {
+        input.place = false
+        touchAim = null
+      }
+      if (held === "raise") input.raise = false
+      touched = true
+    }
+    if (event.pointerId === stickId) {
+      stickId = null
+      stickDx = 0
+      stickDy = 0
+      const stick = ui.hud.querySelector("[data-stick]")
+      if (stick) stick.hidden = true
+      touched = true
+    }
+    if (!finger(event)) {
+      input.attack = false
+      input.place = false
+    }
+    if (touched || !finger(event)) send()
+  }
 
   window.addEventListener("keydown", (event) => {
     if (typing(event)) return
@@ -294,22 +399,58 @@ function start(code, seat, ui) {
 
   function send() {
     blurHiddenFocus(document)
-    const skill = keys.has("KeyQ") || keys.has("KeyE") || keys.has("KeyR") || keys.has("KeyF")
+    const skill =
+      pad.q || pad.e || pad.r || pad.f || keys.has("KeyQ") || keys.has("KeyE") || keys.has("KeyR") || keys.has("KeyF")
     if (!shouldSend({ joined: joined && !!selfId, typing: typing(), skill })) return
-    const move = axes(keys)
+    const stick = stickId === null ? { x: 0, y: 0 } : stickVector(stickDx, stickDy)
+    const move = combineAxes(axes(keys), stick)
     input.mx = move.x
     input.my = move.y
+    const meNow = (latest?.players || []).find((player) => player.id === selfId)
+    if (meNow && (stick.x || stick.y)) aim = { x: meNow.x + stick.x * 90, y: meNow.y + stick.y * 90, monster: false }
+    if (touchAim) aim = touchAim
     input.ax = aim.x
     input.ay = aim.y
-    input.q = keys.has("KeyQ")
-    input.e = keys.has("KeyE")
-    input.r = keys.has("KeyR")
-    input.f = keys.has("KeyF")
+    input.q = pad.q || keys.has("KeyQ")
+    input.e = pad.e || keys.has("KeyE")
+    input.r = pad.r || keys.has("KeyR")
+    input.f = pad.f || keys.has("KeyF")
+    if (pad.attack) input.attack = true
+    if (pad.place) input.place = true
+    if (pad.raise) input.raise = true
     input.build = build
     channel.push("input", inputFrame(input))
   }
 
   window.setInterval(send, 50)
+  syncTouchShell()
+  window.addEventListener("resize", syncTouchShell)
+  window.addEventListener("touchmove", (event) => {
+    if (document.documentElement.classList.contains("playing")) event.preventDefault()
+  }, { passive: false })
+  window.addEventListener("contextmenu", (event) => {
+    if (document.documentElement.classList.contains("playing")) event.preventDefault()
+  })
+  window.addEventListener("selectstart", (event) => {
+    if (document.documentElement.classList.contains("playing")) event.preventDefault()
+  })
+  function syncTouchShell() {
+    const probe = {
+      maxTouchPoints: navigator.maxTouchPoints || 0,
+      coarse: window.matchMedia("(pointer: coarse)").matches,
+      width: window.innerWidth,
+      height: window.innerHeight
+    }
+    const on = touchCapable(probe)
+    document.documentElement.classList.toggle("touch-play", on)
+    document.documentElement.classList.add("playing")
+    const turn = document.querySelector("#turn")
+    if (turn) turn.hidden = !turnPrompt(probe)
+    const padEl = ui.hud.querySelector("[data-touch-pad]")
+    if (padEl) padEl.hidden = !on
+    const meta = document.querySelector('meta[name="viewport"]')
+    if (meta) meta.setAttribute("content", viewportContent(true))
+  }
 
   function publishAudio() {
     if (!window.__lastKeep) return
@@ -360,11 +501,20 @@ function start(code, seat, ui) {
         const node = ui.hud.querySelector(`[data-skill="${key}"] .cool`)
         const left = me.cds[key]
         const max = me.cd_max[key] || 1
-        node.style.height = left > 0 ? `${Math.min(100, (left / max) * 100)}%` : "0%"
-        const label = ui.hud.querySelector(`[data-skill-name="${key}"]`)
+        const height = left > 0 ? `${Math.min(100, (left / max) * 100)}%` : "0%"
+        node.style.height = height
+        const caption = ui.hud.querySelector(`[data-skill-name="${key}"]`)
         const seconds = left > 0 ? ` ${Math.ceil(left / 1000)}s` : ""
-        label.textContent = `${names[key]}${seconds}`
+        caption.textContent = `${names[key]}${seconds}`
+        const thumbCool = ui.hud.querySelector(`[data-touch-cool="${key}"]`)
+        const thumbName = ui.hud.querySelector(`[data-touch-name="${key}"]`)
+        if (thumbCool) thumbCool.style.height = height
+        if (thumbName) thumbName.textContent = `${names[key]}${seconds}`
       }
+      const portrait = `/images/portraits/${me.hero}.png`
+      ui.hud.querySelectorAll("[data-touch-portrait]").forEach((img) => {
+        if (img.getAttribute("src") !== portrait) img.setAttribute("src", portrait)
+      })
     }
     const raise = ui.hud.querySelector("[data-raise]")
     if (raise) {
@@ -420,6 +570,7 @@ function start(code, seat, ui) {
     drawYou(ui, snap, selfId)
     seatWave(ui, snap, selfId)
     drawFx(ui, snap, fx, seen)
+    syncContext(snap, me)
     audio.hear(snap)
     if (window.__lastKeep) {
       window.__lastKeep.log = seen.log
@@ -433,6 +584,27 @@ function start(code, seat, ui) {
 
   function refresh() {
     if (latest) paint(ui, latest, selfId, build)
+  }
+
+  function syncContext(snap, me) {
+    const button = ui.hud.querySelector("[data-touch-context]")
+    if (!button) return
+    touchAction = contextAction({
+      hero: me ? { x: me.x, y: me.y, range: me.range } : null,
+      keepR: snap.keep?.r,
+      resources: snap.resources,
+      upgrade: snap.upgrade,
+      armed: build,
+      cost: build && me?.costs ? me.costs[build] : null,
+      buildings: snap.buildings
+    })
+    if (!touchAction) {
+      button.hidden = true
+      button.textContent = ""
+      return
+    }
+    button.hidden = false
+    button.textContent = touchAction.id === "place" ? PLACE_WORD[touchAction.kind] || "Build" : touchAction.id === "raise" ? "Raise" : "Feed"
   }
 }
 
@@ -472,7 +644,18 @@ function hudMarkup() {
       <div class="skills">${skills}</div>
       <div class="builds">${builds}</div>
     </div>
+    ${thumbMarkup()}
   `
+}
+
+function thumbMarkup() {
+  const slots = ["q", "attack", "e", "r"]
+    .map((slot) => {
+      const mark = slot === "attack" ? "Hit" : slot.toUpperCase()
+      return `<button type="button" class="thumb ${slot}" data-touch="${slot}"><img data-touch-portrait alt="" draggable="false" src="/images/portraits/warrior.png" /><b>${mark}</b><small data-touch-name="${slot}"></small><span class="cool" data-touch-cool="${slot}"></span></button>`
+    })
+    .join("")
+  return `<div class="thumb-pad" data-touch-pad hidden>${slots}<button type="button" class="thumb context" data-touch-context hidden></button></div><div class="stick" data-stick hidden><div class="stick-knob" data-stick-knob></div></div>`
 }
 
 function drawSacks(stock, resources) {

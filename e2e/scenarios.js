@@ -494,6 +494,8 @@ async function twoPlayerNight(browser) {
   await expect(page.locator("[data-wave]")).toHaveText("Wave 1")
   await expect(page.locator('[data-skill-name="attack"]')).toHaveText("Strike")
   await expect(friend.locator('[data-skill-name="q"]')).toHaveText("Fireball")
+  await expect(page.locator("[data-touch-pad]")).toBeHidden()
+  await expect(page.locator("#turn")).toBeHidden()
   await expect(page.locator('[data-build="wall"]')).toContainText("8 wood")
   await expect(page.locator("[data-score]")).toHaveText("Score 0")
   await assertBonuses(page)
@@ -815,6 +817,82 @@ async function heroSilhouettes(browser) {
   for (const seat of seats) await seat.context.close()
 }
 
+async function pressStick(page) {
+  await page.evaluate(() => {
+    const node = document.querySelector("#stage canvas")
+    const fire = (type, x, y) => {
+      node.dispatchEvent(new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        clientX: x,
+        clientY: y,
+        pointerId: 7,
+        pointerType: "touch",
+        isPrimary: true,
+        button: 0,
+        buttons: type === "pointerup" ? 0 : 1
+      }))
+    }
+    fire("pointerdown", 110, 220)
+    fire("pointermove", 110, 80)
+    window.__lastKeepStick = fire
+  })
+}
+
+async function releaseStick(page) {
+  await page.evaluate(() => {
+    window.__lastKeepStick?.("pointerup", 110, 80)
+  })
+}
+
+async function mobileTouch(browser) {
+  const errors = []
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    hasTouch: true,
+    isMobile: true
+  })
+  const page = await context.newPage()
+  watch(page, "phone", errors)
+  await page.goto(gameUrl("/"))
+  await page.waitForFunction(() => {
+    const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
+    return imgs.length === 5 && imgs.every((img) => img.complete && img.naturalHeight >= 64 && img.naturalHeight <= 128)
+  })
+  await page.locator("#player-name").fill("Nia")
+  await page.locator('input[value="warrior"]').check()
+  await page.locator("#create-button").click()
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Nia"))
+  await expect(page.locator("[data-touch-pad]")).toBeVisible()
+  await expect(page.locator("#turn")).toBeHidden()
+  await expect(page.locator('[data-touch="attack"] img')).toBeVisible()
+  const start = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
+  await pressStick(page)
+  await page.waitForFunction((from) => {
+    const me = window.__lastKeep.self
+    return Math.hypot(me.x - from.x, me.y - from.y) > 20
+  }, start)
+  await releaseStick(page)
+  await page.locator('[data-touch="q"]').tap()
+  await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) > 0)
+  const wood = await page.evaluate(() => window.__lastKeep.wood)
+  await page.locator('[data-build="wall"]').tap()
+  await expect(page.locator("[data-touch-context]")).toBeVisible()
+  await expect(page.locator("[data-touch-context]")).toHaveText("Wall")
+  await page.locator("[data-touch-context]").tap()
+  await page.waitForFunction((before) => window.__lastKeep.buildings > 0 && window.__lastKeep.wood < before, wood)
+  await pressStick(page)
+  await page.screenshot({ path: shot("mobile-landscape.png") })
+  await releaseStick(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator("#turn")).toHaveText("Rotate your device")
+  await page.screenshot({ path: shot("mobile-portrait.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
 async function scoreList(request) {
   const response = await request.get("/api/highscores")
   expect(response.ok()).toBeTruthy()
@@ -836,5 +914,6 @@ module.exports = {
   squarePixels,
   scoreList,
   heroSilhouettes,
-  paradeShowsEveryKind
+  paradeShowsEveryKind,
+  mobileTouch
 }

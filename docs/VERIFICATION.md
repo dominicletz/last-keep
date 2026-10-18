@@ -189,3 +189,8 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 - Hide on the night grass is luminance 32.7 against a field of 47.6. The rider cloth is 34.4. Bone is 73.1 and plate is 111.7, each at least 18 above that grass. The bat wings are bone and three voxels deep, inside radius 24. The rider's cuirass and helm are plate, the eyes are the torch, and the horse stays the rider token. The rider radius is 54, inside the cap of 68. Both wear a bone rim at 1.2 times the body box.
 - The night frame counts pixels at or above the live night grass. The bat record is 80 (measured 96) and the rider record is 1000 (measured 1240). A record under half the measured count fails. The dusk silhouette floors are 347 and 4898. A hero at the round-7 spot keeps both bats in frame. `paradeShowsEveryKind` requires 24 canvas pixels at least 18 luma above the yard on the bat and on the rider. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-18 phone touch
+
+- `mobileTouch` joins on a landscape phone viewport with touch, walks on the joystick, casts from a portrait button, and places a wall from the context button. Portrait shows the rotate prompt. `twoPlayerNight` still requires the touch pad to stay hidden on a mouse. `stickVector` matches WASD, and a user-agent string does not turn touch on.
+- The post-deploy smoke is `npx playwright test`, which now includes `e2e/mobile.spec.js`. Timeouts and retries are unchanged. This does not change the simulation. The coverage floor stays 69.
