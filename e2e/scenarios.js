@@ -714,9 +714,12 @@ async function movementIsInterpolated(page) {
   await holdKey(page, "KeyW", true)
   // The blend is 45ms on the motion track the socket publishes. Counting
   // animation frames inside 900ms fails when a loaded runner paints four
-  // times in that window, before the track has been read.
+  // times in that window, before the track has been read. The first open
+  // sample can arrive before the hero has walked 20, so the loop stays
+  // until both are true.
   const rows = []
   const started = Date.now()
+  const travelOf = (row) => Math.hypot(row.sx - origin.x, row.sz - origin.y)
   try {
     while (Date.now() - started < 4_000) {
       const row = await page.evaluate(() => {
@@ -728,7 +731,8 @@ async function movementIsInterpolated(page) {
         return { step, age, sx: game.self.x, sz: game.self.y, open: step > 0.4 && step < 14 && age >= 0 && age < 45 }
       })
       if (row) rows.push(row)
-      if (rows.length > 5 && rows.some((sample) => sample.open)) break
+      const open = rows.some((sample) => sample.open)
+      if (rows.length > 5 && open && row && travelOf(row) > 20) break
       await page.waitForTimeout(20)
     }
   } finally {
