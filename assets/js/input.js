@@ -40,6 +40,13 @@ export function retainFocus(wasFocused, documentHasFocus) {
   return focusedAfterBlur(documentHasFocus) ? !!wasFocused : false
 }
 
+// The spec marks the game focused before the swing. A guest window can
+// blur the host after that mark. The mark sticks until the spec blurs it.
+export function swingFocus(wasFocused, documentHasFocus, pinned) {
+  if (pinned) return true
+  return retainFocus(wasFocused, documentHasFocus)
+}
+
 export function blurHiddenFocus(doc) {
   if (blurBusy || !doc) return false
   const active = doc.activeElement
