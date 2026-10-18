@@ -1561,6 +1561,48 @@ async function phoneClear(browser) {
   await context.close()
 }
 
+async function shotsDoNotGrowGeometries(browser) {
+  const errors = []
+  const { context, page } = await createHost(browser, "Lux", "mage")
+  watch(page, "host", errors)
+  await page.waitForFunction(() => {
+    const perf = window.__lastKeepPerf
+    if (!perf?.geometries) return false
+    if (perf.mark !== perf.geometries) {
+      perf.mark = perf.geometries
+      perf.markAt = performance.now()
+      return false
+    }
+    return performance.now() - perf.markAt > 500
+  }, undefined, { timeout: 15_000 })
+  const before = await page.evaluate(() => window.__lastKeepPerf.geometries)
+  const canvas = page.locator("canvas")
+  const box = await canvas.boundingBox()
+  const x = box.x + box.width * 0.72
+  const y = box.y + box.height * 0.42
+  await page.mouse.click(x, y)
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  let seen = 0
+  const started = Date.now()
+  try {
+    while (Date.now() - started < 3_000) {
+      seen = Math.max(seen, await page.evaluate(() => (window.__lastKeep.projectiles || []).length))
+      if (seen > 1) break
+      await page.waitForTimeout(100)
+    }
+  } finally {
+    await page.mouse.up()
+  }
+  expect(seen).toBeGreaterThan(1)
+  await page.waitForFunction(() => (window.__lastKeep.projectiles || []).length === 0, undefined, { timeout: 8_000 })
+  await page.waitForFunction(() => (window.__lastKeep.renders || 0) > 0)
+  const after = await page.evaluate(() => window.__lastKeepPerf.geometries)
+  expect(after).toBeLessThanOrEqual(before + 2)
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
 async function scoreList(request) {
   const response = await request.get("/api/highscores")
   expect(response.ok()).toBeTruthy()
@@ -1697,6 +1739,7 @@ module.exports = {
   scoreList,
   heroSilhouettes,
   paradeShowsEveryKind,
+  shotsDoNotGrowGeometries,
   mobileTouch,
   townGrows,
   captionsClearTheBuilds,

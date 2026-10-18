@@ -332,3 +332,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 a quarry pays stone
 
 - `Rules.cap(:stone)` is 200. A quarry holds 40. An engineer standing on it takes 2 a tick, and any other living hero takes 1. The take stops when the quarry is empty, and a tick that would pass the cap takes only the room that is left. A sow on pine is denied and spends nothing. A sow on meadow still plants a field. A wall placed while the room can pay 8 stone and 4 wood is a stone wall with 280 health. A wood wall stays at 170. The six build buttons stay. Pine wood stays planned. Night 1 stays two goblins. The coverage floor stays 77.
+
+## 2026-10-18 meshes dispose and shots are pooled
+
+- `sync` used to `scene.remove` a mesh and leave its geometry on the GPU. Bursts and a rebuilt keep did the same, and every bolt allocated a new sphere. `releaseGeometries` disposes each geometry once and skips a pooled one. Shot spheres are shared by radius. Burst meshes go back to a pool. `shotsDoNotGrowGeometries` holds a mage attack until more than one bolt is in flight, then requires `window.__lastKeepPerf.geometries` to stay within two of the count from before the volley. This does not change the simulation. The coverage floor stays 77.
