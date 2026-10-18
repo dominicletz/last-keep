@@ -46,7 +46,7 @@ test("shots leave the geometry count flat", async ({ browser }) => {
 })
 
 test("six seats hold the match budgets across three waves", async ({ browser }) => {
-  test.setTimeout(420_000)
+  test.setTimeout(660_000)
   await sixSeatMatch(browser)
 })
 

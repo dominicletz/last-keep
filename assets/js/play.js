@@ -190,12 +190,56 @@ function start(code, seat, ui) {
       let nearest = null
       if (down && self) {
         for (const monster of game.monsters || []) {
-          const dist = Math.hypot(monster.x - self.x, monster.y - self.y)
-          if (!nearest || dist < nearest.dist) nearest = monster
+          const dist = Math.hypot(monster.x, monster.y)
+          const threat = monster.kind === "boss" ? -2 : monster.kind === "troll" ? -1 : 0
+          const score = threat * 100000 + dist
+          if (!nearest || score < nearest.score) nearest = { ...monster, dist, score }
         }
       }
-      if (nearest) aim = { x: nearest.x, y: nearest.y, monster: true }
+      const want = new Set()
+      if (nearest && self) {
+        aim = { x: nearest.x, y: nearest.y, monster: true }
+        const reach = self.hero === "mage" || self.hero === "scout" ? 160 : 48
+        const gap = Math.hypot(nearest.x - self.x, nearest.y - self.y)
+        if (gap > reach) {
+          for (const code of keysToward(nearest.x - self.x, nearest.y - self.y)) want.add(code)
+        }
+      }
+      const hero = self && self.hero
+      const pulse = down && Math.floor(performance.now() / 500) % 4 === 0
+      if (pulse && hero && hero !== "farmer" && hero !== "engineer") want.add("KeyQ")
+      if (pulse && hero && hero !== "engineer") want.add("KeyR")
+      for (const code of ["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyR"]) {
+        if (want.has(code)) keys.add(code)
+        else keys.delete(code)
+      }
       input.attack = !!nearest
+      send()
+    },
+    home() {
+      const game = window.__lastKeep
+      const self = game && game.self
+      const want = new Set()
+      if (self && Math.hypot(self.x, self.y) >= 24) {
+        for (const code of keysToward(-self.x, -self.y)) want.add(code)
+      }
+      for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) {
+        if (want.has(code)) keys.add(code)
+        else keys.delete(code)
+      }
+      send()
+    },
+    order(kind, x, y) {
+      build = kind
+      aim = { x, y, monster: false }
+      input.ax = x
+      input.ay = y
+      input.build = kind
+      input.place = true
+      send()
+      input.place = false
+      build = null
+      input.build = null
       send()
     },
     mute(muted) {

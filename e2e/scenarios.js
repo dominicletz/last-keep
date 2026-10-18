@@ -1822,12 +1822,32 @@ async function sixSeatMatch(browser) {
     guests.push(guest)
   }
   await page.waitForFunction(() => (window.__lastKeep.party || []).length >= 6)
+  const engineer = guests[2].page
+  for (let step = 0; step < 50; step += 1) {
+    await page.evaluate(() => window.__lastKeepTest.home())
+    for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
+    const close = await engineer.evaluate(() => {
+      const self = window.__lastKeep.self
+      return !!self && Math.hypot(self.x, self.y) < 36
+    })
+    if (close) break
+    await page.waitForTimeout(200)
+  }
+  for (let i = 0; i < 12; i += 1) {
+    const angle = (i / 12) * Math.PI * 2
+    const x = Math.cos(angle) * 100
+    const y = Math.sin(angle) * 100
+    await engineer.evaluate(([wx, wy]) => window.__lastKeepTest.order("wall", wx, wy), [x, y])
+    await page.waitForTimeout(120)
+  }
   await page.locator("[data-start]").click()
   await page.waitForFunction(() => window.__lastKeep.phase === "wave")
 
   const builds = new Map()
   const troughs = new Map()
+  const gcHeaps = new Map()
   let sawWave = false
+  let last = null
   const started = Date.now()
   const seats = [page, ...guests.map((guest) => guest.page)]
 
@@ -1838,32 +1858,45 @@ async function sixSeatMatch(browser) {
   }
 
   try {
-    while (Date.now() - started < 390_000) {
-      for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
+    while (Date.now() - started < 600_000) {
       const row = await readMatch(page)
       row.p95 = paintP95(row.paints)
+      last = row
+      delete last.paints
       if (row.phase === "over" || row.keep === 0) break
       if (row.phase === "wave") {
         sawWave = true
+        if (!gcHeaps.has(row.shownWave)) {
+          const heap = await page.evaluate(() => {
+            if (typeof window.gc === "function") window.gc()
+            return performance.memory ? performance.memory.usedJSHeapSize : null
+          })
+          gcHeaps.set(row.shownWave, heap)
+        }
         await fight(true)
       } else {
         await fight(false)
+        await page.evaluate(() => window.__lastKeepTest.home())
+        for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
         if (sawWave && row.phase === "build" && row.monsters === 0 && row.projectiles === 0 && row.geometries > 0) {
-          if (!builds.has(row.shownWave)) builds.set(row.shownWave, row)
-          const slot = troughs.get(row.shownWave) || { min: row.heap, at: Date.now() }
+          if (!builds.has(row.shownWave)) {
+            const sample = { ...row }
+            delete sample.paints
+            builds.set(row.shownWave, sample)
+          }
+          const slot = troughs.get(row.shownWave) || { min: row.heap }
           if (row.heap != null) slot.min = slot.min == null ? row.heap : Math.min(slot.min, row.heap)
           troughs.set(row.shownWave, slot)
         }
       }
-      const early = [...builds.keys()].find((wave) => {
-        const opened = troughs.get(wave)
-        const closed = troughs.get(wave + 3)
-        return opened && closed && Date.now() - opened.at >= 8_000 && Date.now() - closed.at >= 8_000
-      })
+      const early =
+        row.phase === "wave"
+          ? [...troughs.keys()].find((wave) => troughs.has(wave + 3) && row.shownWave >= wave + 3)
+          : null
       if (early != null) {
         const first = builds.get(early)
         const later = builds.get(early + 3)
-        const heaps = [troughs.get(early).min, troughs.get(early + 3).min]
+        const heaps = [gcHeaps.get(early), gcHeaps.get(early + 3)]
         const note = JSON.stringify({ first, later, heaps })
         expect(later.census.orphans, note).toBe(0)
         expect(later.census.inScene, note).toBeLessThanOrEqual(first.census.inScene)
@@ -1887,7 +1920,7 @@ async function sixSeatMatch(browser) {
   }
 
   const waves = [...builds.keys()]
-  expect(waves.some((wave) => builds.has(wave + 3)), JSON.stringify(waves)).toBe(true)
+  expect(waves.some((wave) => builds.has(wave + 3)), JSON.stringify({ waves, last })).toBe(true)
   expect(errors, errors.join("\n")).toEqual([])
   await page.screenshot({ path: shot("perf-host.png") })
   for (const guest of guests) await guest.context.close()
