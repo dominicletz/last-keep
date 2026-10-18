@@ -283,14 +283,35 @@ function pinMetrics(box, anchor) {
   return { shiftX: width / 2, shiftY: height * 1.2, tailX: width / 2, tailY: 0, hang: 1.2 }
 }
 
-function pinLimits(view, box, anchor, floor) {
+function pinLimits(view, box, anchor, floor, cap) {
   const { shiftX, shiftY, tailX, tailY } = pinMetrics(box, anchor)
   const corner = anchor === "corner"
   const minX = 8 + shiftX
   const maxX = Math.max(minX, view.width - 8 - tailX)
   const minY = Math.max(8 + shiftY, Number(floor) || 0)
-  const maxY = Math.max(minY, view.height - (corner ? 8 + tailY : 72))
+  let maxY = Math.max(minY, view.height - (corner ? 8 + tailY : 72))
+  if (Number.isFinite(cap)) maxY = Math.max(minY, Math.min(maxY, cap))
   return { minX, maxX, minY, maxY }
+}
+
+export function captionCap(anchor, box, limit) {
+  const height = box?.height || 0
+  if (anchor === "corner") return limit - height
+  if (anchor === "sack") return limit
+  return limit + height * 0.2
+}
+
+export function seatCaptions(roster, relic, view, limit, floor = 0) {
+  const rosterBox = roster?.box || { width: 0, height: 0 }
+  const relicBox = relic?.box || { width: 0, height: 0 }
+  const rosterSpot = roster?.spot
+    ? seatPin(roster.spot, view, rosterBox, [], "corner", floor, captionCap("corner", rosterBox, limit))
+    : null
+  const blocks = rosterSpot ? [pinRect(rosterSpot, rosterBox, "corner")] : []
+  const relicSpot = relic?.spot
+    ? seatPin(relic.spot, view, relicBox, blocks, "chip", 0, captionCap("chip", relicBox, limit))
+    : null
+  return { roster: rosterSpot, relic: relicSpot }
 }
 
 export function pinRect(spot, box, anchor = "chip") {
@@ -317,17 +338,17 @@ function overlapArea(a, b) {
   return width * height
 }
 
-export function visiblePin(spot, view, box, anchor = "chip", floor = 0) {
+export function visiblePin(spot, view, box, anchor = "chip", floor = 0, cap = Infinity) {
   if (!spot || !(view?.width > 0) || !(view?.height > 0)) return spot
-  const { minX, maxX, minY, maxY } = pinLimits(view, box, anchor, floor)
+  const { minX, maxX, minY, maxY } = pinLimits(view, box, anchor, floor, cap)
   return {
     left: clamp(spot.left, minX, maxX),
     top: clamp(spot.top, minY, maxY)
   }
 }
 
-export function seatPin(spot, view, box, obstacles, anchor = "chip", floor = 0) {
-  const home = visiblePin(spot, view, box, anchor, floor)
+export function seatPin(spot, view, box, obstacles, anchor = "chip", floor = 0, cap = Infinity) {
+  const home = visiblePin(spot, view, box, anchor, floor, cap)
   if (!home || !(view?.width > 0) || !(view?.height > 0)) return home
   const blocks = (obstacles || []).filter((block) => block && block.right > block.left && block.bottom > block.top)
   const covered = (candidate) => {
@@ -337,7 +358,7 @@ export function seatPin(spot, view, box, obstacles, anchor = "chip", floor = 0) 
     return area
   }
   if (covered(home) === 0) return home
-  const { minX, maxX, minY, maxY } = pinLimits(view, box, anchor, floor)
+  const { minX, maxX, minY, maxY } = pinLimits(view, box, anchor, floor, cap)
   const stepsX = Math.max(1, Math.ceil((maxX - minX) / SEAT_STEP))
   const stepsY = Math.max(1, Math.ceil((maxY - minY) / SEAT_STEP))
   let best = home

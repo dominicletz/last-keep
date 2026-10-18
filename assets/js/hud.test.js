@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -206,6 +206,42 @@ test("a goblin pair across a compass boundary is one call, and it stays under th
     { left: 0.22, top: 0.31, label: "skeleton" }
   ])
   assert.ok(stacked[1].top - stacked[0].top >= 0.06)
+})
+
+test("a far roster and the relic lines stay above the build bar", () => {
+  const view = { width: 1280, height: 800 }
+  const limit = 740
+  const bar = { left: 0, top: limit, right: view.width, bottom: view.height }
+  const roster = { spot: { left: -200, top: 2000 }, box: { width: 180, height: 120 } }
+  const relic = { spot: { left: 40, top: 1900 }, box: { width: 260, height: 54 } }
+  const seated = seatCaptions(roster, relic, view, limit, 48)
+  const rosterRect = pinRect(seated.roster, roster.box, "corner")
+  const relicRect = pinRect(seated.relic, relic.box, "chip")
+  assert.equal(rectsOverlap(rosterRect, bar), false)
+  assert.equal(rectsOverlap(relicRect, bar), false)
+  assert.equal(rectsOverlap(rosterRect, relicRect), false)
+  const phoneBar = { left: 0, top: 300, right: 844, bottom: 390 }
+  const phone = seatCaptions(
+    { spot: { left: -80, top: 900 }, box: { width: 150, height: 100 } },
+    { spot: { left: 20, top: 880 }, box: { width: 220, height: 48 } },
+    { width: 844, height: 390 },
+    phoneBar.top,
+    36
+  )
+  const phoneRoster = pinRect(phone.roster, { width: 150, height: 100 }, "corner")
+  const phoneRelic = pinRect(phone.relic, { width: 220, height: 48 }, "chip")
+  assert.equal(rectsOverlap(phoneRoster, phoneBar), false)
+  assert.equal(rectsOverlap(phoneRelic, phoneBar), false)
+  assert.equal(rectsOverlap(phoneRoster, phoneRelic), false)
+  const clear = seatCaptions(
+    { spot: { left: 40, top: 80 }, box: { width: 160, height: 90 } },
+    { spot: { left: 900, top: 200 }, box: { width: 200, height: 40 } },
+    view,
+    limit,
+    8
+  )
+  assert.deepEqual(clear.roster, { left: 40, top: 80 })
+  assert.deepEqual(clear.relic, { left: 900, top: 200 })
 })
 
 test("the wave sign follows the hero and stays inside the window", () => {

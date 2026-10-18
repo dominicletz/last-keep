@@ -201,6 +201,7 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - A guest left behind another window can still be chewing through old snaps, and a mage who waits out the whole frenzy dies before Q. `castFireball` runs when the night starts, brings that page forward, and waits until its tick is advancing at the live rate. The shot is aimed at the keep. It still has to be on screen within 5 seconds.
 - A feed tap writes the same pad bit it releases. `padSlot("feed")` is `f`, so the finger-up clears `pad.f` and the next keep heal can rise again. Place and raise keep their own names.
 - On a touch phone the build row is the building name and its cost, at least 44px on each side. `1 Wall` and `LMB` stay on the desktop captions. Portrait covers the viewport with the rotate card, dimmed at alpha 0.75 or more. At 844×390 the three sacks do not overlap. A desktop mouse still shows the digit and the key.
+- Far from the keep, the roster and the relic lines stay above the build bar and off each other. `seatCaptions` caps them at the control row. `captionsClearTheBuilds` walks west of x=-700 at rank 0. `townGrows` does the same after the keep is raised. `mobileTouch` does it on the phone. This does not change the simulation.
 
 ## 2026-10-18 a repeated snapshot keeps the blend
 
