@@ -68,7 +68,7 @@ The land does not grow with the party. Portal count, chest count, and chunk coun
 
 Monster health from the wave scales as it does today. For each connected hero past 2, that health also gains 6 percent, and the bonus stops at 15 heroes. Two players see no bonus. Night 1 with two players is still the stock goblin a fireball deletes.
 
-Vagrants do not take the seats those players use. The seat cap stays 16.
+Vagrants do not take the seats those players use. The seat cap stays 15, which is `Rules.max_players/0`.
 
 The server keeps one discovered set. Each snapshot carries the chunks within Chebyshev distance 2 of that hero, not the whole 7200-radius grid. A farmer in the yard and a scout in the pines do not force one payload.
 
