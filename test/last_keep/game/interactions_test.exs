@@ -33,7 +33,7 @@ defmodule LastKeep.Game.InteractionsTest do
 
   test "every resource has a producer and a consumer", %{doc: doc} do
     ids = Enum.map(doc["resources"], & &1["id"])
-    assert Enum.sort(ids) == ["food", "gold", "wood"]
+    assert Enum.sort(ids) == ["food", "gold", "stone", "wood"]
 
     for resource <- doc["resources"] do
       assert resource["producers"] != []

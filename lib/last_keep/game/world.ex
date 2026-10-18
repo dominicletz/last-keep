@@ -48,6 +48,18 @@ defmodule LastKeep.Game.World do
     generate(seed).chunks[{cx, cy}]
   end
 
+  def biome(seed, x, y) when is_integer(seed) and is_number(x) and is_number(y) do
+    i = round(x / @cell)
+    j = round(y / @cell)
+    cx = Integer.floor_div(i * @cell, @chunk)
+    cy = Integer.floor_div(j * @cell, @chunk)
+
+    case get_in(generate(seed).chunks, [{cx, cy}, :cells, {i, j}, :biome]) do
+      nil -> :void
+      biome -> biome
+    end
+  end
+
   defp layout(seed) do
     Enum.find_value(0..7, fn attempt ->
       grid = grid(seed, attempt)

@@ -328,3 +328,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 hero sheets walk, strike, and fall
 
 - Each direction has four walk frames, three attack frames, and four death frames. Walk 0 of direction 0 is still the crop. The attack row shifts the upper body. The death row folds the figure down, and the last frame keeps under half the ink in the top of the cell. A rising attack cooldown starts the strike. A dead hero plays the fall and holds the last frame. The likeness floors stay 0.72 and 46. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 a quarry pays stone
+
+- `Rules.cap(:stone)` is 200. A quarry holds 40. An engineer standing on it takes 2 a tick, and any other living hero takes 1. The take stops when the quarry is empty, and a tick that would pass the cap takes only the room that is left. A sow on pine is denied and spends nothing. A sow on meadow still plants a field. A wall placed while the room can pay 8 stone and 4 wood is a stone wall with 280 health. A wood wall stays at 170. The six build buttons stay. Pine wood stays planned. Night 1 stays two goblins. The coverage floor stays 77.
