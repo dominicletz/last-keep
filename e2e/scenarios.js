@@ -604,33 +604,30 @@ async function twoPlayerNight(browser) {
     timeout: 20_000,
     polling: 100
   })
-  await page.waitForFunction(() => {
+  // One framebuffer read per poll. Mood and ground used to read it twice,
+  // and the second read finished after dusk on a slow runner.
+  const duskHandle = await page.waitForFunction(() => {
     const game = window.__lastKeep
-    if (!game || game.light !== "dusk") return false
-    const mood = game.frameMood()
-    const ground = game.frameGround()
-    if (mood.problems.length || ground.problems.length) return false
+    if (!game || game.light !== "dusk" || !game.frameGrade) return false
+    const grade = game.frameGrade()
+    if (grade.mood.problems.length || grade.ground.problems.length) return false
     const stone = game.sampleWorld(0, 36, 6)
     const pine = game.sampleWorld(-22, 30, -62)
     if (!stone || !pine) return false
     const span = Math.abs(stone.hue - pine.hue) % 360
-    return Math.min(span, 360 - span) >= 25
-  }, undefined, { timeout: 8_000, polling: 400 })
-  const duskMood = await page.evaluate(() => {
-    const game = window.__lastKeep
+    if (Math.min(span, 360 - span) < 25) return false
     const hero = game.self
     return {
-      mood: game.frameMood(),
-      ground: game.frameGround(),
-      stone: game.sampleWorld(0, 36, 6),
+      mood: grade.mood,
+      ground: grade.ground,
+      stone,
+      pine,
       // Height 18 is the cape hem. Dusk cloth there is saturated, and the
       // cuirass at 40 is the steel the floor is about.
-      plate: game.sampleWorld(hero.x, 40, hero.y),
-      // Keep pine, centered on the wide cone. The forest pine at the
-      // southeast edge mixes with the sky once the hero has walked.
-      pine: game.sampleWorld(-22, 30, -62)
+      plate: game.sampleWorld(hero.x, 40, hero.y)
     }
-  })
+  }, undefined, { timeout: 8_000, polling: 400 })
+  const duskMood = await duskHandle.jsonValue()
   expect(duskMood.mood.problems).toEqual([])
   expect(duskMood.mood.cool).toBeLessThanOrEqual(0.25)
   expect(duskMood.mood.warm).toBeGreaterThanOrEqual(0.03)
@@ -652,14 +649,14 @@ async function twoPlayerNight(browser) {
     timeout: 20_000,
     polling: 100
   })
-  await page.waitForFunction(() => {
+  const nightHandle = await page.waitForFunction(() => {
     const game = window.__lastKeep
-    if (!game || game.light !== "night") return false
-    const mood = game.frameMood()
-    const ground = game.frameGround()
-    return mood.problems.length === 0 && ground.problems.length === 0
+    if (!game || game.light !== "night" || !game.frameGrade) return false
+    const grade = game.frameGrade()
+    if (grade.mood.problems.length || grade.ground.problems.length) return false
+    return grade.ground
   }, undefined, { timeout: 8_000, polling: 400 })
-  const nightGround = await page.evaluate(() => window.__lastKeep.frameGround())
+  const nightGround = await nightHandle.jsonValue()
   expect(nightGround.spread).toBeGreaterThanOrEqual(8)
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
