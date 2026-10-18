@@ -538,6 +538,16 @@ defmodule LastKeep.Game.SimTest do
     assert Enum.any?(projectiles(state), &(&1.kind == :fireball))
   end
 
+  test "an idle mage is dead when both goblins reach the host" do
+    idle = wave_until_host_sees(1, false)
+    closed = wave_until_host_sees(1, true)
+
+    refute idle.alive
+    assert idle.hp == 0
+    assert closed.alive
+    assert closed.hp == 90
+  end
+
   test "a mage fireball damages a goblin and bursts" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :mage))
@@ -930,6 +940,70 @@ defmodule LastKeep.Game.SimTest do
   end
 
   defp put_hero(state, hero), do: %{state | entities: Map.put(state.entities, hero.id, hero)}
+
+  # The co-op page is 1280 by 800. The yard camera is the orthographic frame
+  # from that window, and a monster is on screen inside 0.72 by 0.62.
+  defp host_sees_both?(state) do
+    host = hero(state, "bob")
+    half_w = 268.8
+    half_h = 168.0
+
+    goblins =
+      Sim.monsters(state)
+      |> Enum.filter(&(&1.kind == :goblin))
+
+    length(goblins) >= 2 and
+      Enum.all?(goblins, fn goblin ->
+        fx = host.x * 0.72
+        fz = host.y * 0.72
+        dx = goblin.x - (fx + 150)
+        dy = 16 - 135
+        dz = goblin.y - (fz + 150)
+        nx = (dx * 0.707107 + dz * -0.707107) / half_w
+        ny = (dx * -0.379642 + dy * 0.843649 + dz * -0.379642) / half_h
+        abs(nx) < 0.72 and abs(ny) < 0.62
+      end)
+  end
+
+  defp wave_until_host_sees(seed, close_on_host) do
+    state = Sim.new("KEEP01", seed: seed)
+    {:ok, state} = Sim.join(state, player("bob", :warrior))
+    {:ok, state} = Sim.join(state, player("lll", :mage))
+    bob = hero(state, "bob")
+    state = Sim.spawn_building(state, %{kind: :wall, x: bob.x + 100, y: bob.y + 36})
+    state = Sim.release(state, "bob")
+
+    {_state, mage} =
+      Enum.reduce_while(1..2_000, {state, nil}, fn _, {state, _} ->
+        state =
+          if close_on_host do
+            warrior = hero(state, "bob")
+            mage = hero(state, "lll")
+            dx = warrior.x - mage.x
+            dy = warrior.y - mage.y
+            dist = :math.sqrt(dx * dx + dy * dy)
+
+            {mx, my} =
+              if mage.alive and dist > 36, do: {dx / dist, dy / dist}, else: {0.0, 0.0}
+
+            state
+            |> Sim.input("lll", %{"mx" => mx, "my" => my})
+            |> Sim.tick()
+          else
+            Sim.tick(state)
+          end
+
+        mage = hero(state, "lll")
+
+        if host_sees_both?(state) or state.tick > 1_800 do
+          {:halt, {state, mage}}
+        else
+          {:cont, {state, mage}}
+        end
+      end)
+
+    mage
+  end
 
   defp place_wall(hero) do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 400)

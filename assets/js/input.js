@@ -77,6 +77,33 @@ export function inputFrame(input) {
   }
 }
 
+// Eight ways the movement keys can point. A short gap means stop: standing
+// on the host is close enough, and holding a key there walks past them.
+export function keysToward(dx, dy, slack = 42) {
+  if (Math.hypot(dx, dy) <= slack) return []
+  const f = Math.SQRT1_2
+  const dirs = [
+    [["KeyW"], -f, -f],
+    [["KeyW", "KeyD"], 0, -1],
+    [["KeyD"], f, -f],
+    [["KeyD", "KeyS"], 1, 0],
+    [["KeyS"], f, f],
+    [["KeyS", "KeyA"], 0, 1],
+    [["KeyA"], -f, f],
+    [["KeyA", "KeyW"], -1, 0]
+  ]
+  let best = dirs[0]
+  let score = -Infinity
+  for (const dir of dirs) {
+    const dot = dir[1] * dx + dir[2] * dy
+    if (dot > score) {
+      score = dot
+      best = dir
+    }
+  }
+  return best[0]
+}
+
 export function axes(keys) {
   // The camera sits on the +x +z diagonal, so W moves toward the top of the screen.
   const f = Math.SQRT1_2

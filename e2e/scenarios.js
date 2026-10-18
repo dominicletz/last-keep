@@ -494,6 +494,10 @@ async function twoPlayerNight(browser) {
   await expect(page.locator("[data-start]")).toHaveText("Start the night")
   await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
   const notes = blankNotes()
+  // Close on the warrior before the goblins do. An idle mage on the far
+  // side of the ring is dead by the time both of them reach this camera,
+  // and the fireball key then hits a corpse.
+  await walkTowardHost(friend)
   await page.locator("[data-start]").click()
   await page.waitForFunction((dayLuma) => {
     const field = window.__lastKeep.field
@@ -522,6 +526,7 @@ async function twoPlayerNight(browser) {
   await page.screenshot({ path: shot("wave-host.png") })
   await friend.screenshot({ path: shot("wave-guest.png") })
 
+  await stopWalk(friend)
   await castFireball(friend, notes)
   await fight(page, friend, notes)
   await friend.waitForFunction(() => (window.__lastKeep.log || []).some((row) => row.type === "boom"), {
@@ -657,6 +662,20 @@ async function joinFromForm(browser) {
   expect(errors, errors.join("\n")).toEqual([])
   await context.close()
   await host.context.close()
+}
+
+async function walkTowardHost(page) {
+  await page.evaluate(() => {
+    window.__lastKeepWalk = window.setInterval(() => window.__lastKeepTest.follow(), 50)
+  })
+}
+
+async function stopWalk(page) {
+  await page.evaluate(() => {
+    window.clearInterval(window.__lastKeepWalk)
+    window.__lastKeepWalk = 0
+    for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(code, false)
+  })
 }
 
 async function buildRangeRing(page) {

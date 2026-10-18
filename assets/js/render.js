@@ -10,7 +10,7 @@ import { heroSignature } from "./heroes"
 import { keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
-import { absorbShots, bodyPixel } from "./paint.js"
+import { absorbShots, bodyPixel, partyPositions } from "./paint.js"
 import { cycleLight, groundColor, lightName, patchStats, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
 
 export function createView(stage) {
@@ -474,6 +474,7 @@ export function createView(stage) {
         tick: snap.tick,
         alive: me ? !!me.alive : !!kept.alive,
         hp: me ? me.hp : kept.hp,
+        party: partyPositions(snap.players),
         kinds: absorbShots(kept.kinds, snap.projectiles),
         log: kept.log || [],
         labels: kept.labels || [],

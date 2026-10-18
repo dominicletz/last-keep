@@ -12,6 +12,17 @@ export function absorbShots(kinds, projectiles) {
   return next
 }
 
+export function partyPositions(players) {
+  return (players || []).map((player) => ({
+    id: player.id,
+    x: player.x,
+    y: player.y,
+    host: !!player.host,
+    alive: !!player.alive,
+    hero: player.hero
+  }))
+}
+
 export function bodyPixel(r, g, b) {
   if (r > 150 && r > g + 40 && r > b + 20) return true
   return r < 48 && g < 48 && b < 40
