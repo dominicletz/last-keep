@@ -5,6 +5,7 @@ import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { masonryBytes } from "./tiles.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -102,6 +103,19 @@ export function createView(stage) {
   }
   scene.add(brazierPool, windowPool, ...yardTorches)
 
+  const stoneTile = masonryBytes("day")
+  const stoneMap = new THREE.DataTexture(stoneTile.rgba, stoneTile.w, stoneTile.h)
+  stoneMap.colorSpace = THREE.SRGBColorSpace
+  stoneMap.magFilter = THREE.NearestFilter
+  stoneMap.minFilter = THREE.NearestFilter
+  stoneMap.wrapS = THREE.RepeatWrapping
+  stoneMap.wrapT = THREE.RepeatWrapping
+  stoneMap.repeat.set(2, 4)
+  stoneMap.needsUpdate = true
+  const stoneMat = new THREE.MeshBasicMaterial({ map: stoneMap, color: 0xffffff })
+  const stoneColors = new Set([0x4b3c33, 0x654e41, 0x2c2a2a])
+  const litTokens = new Set([0xeea821, 0xf5751e])
+
   const mats = new Map()
   const mat = (color, emissive = 0x000000) => {
     const key = `${color}:${emissive}`
@@ -131,7 +145,7 @@ export function createView(stage) {
   groundMap.needsUpdate = true
   const yard = new THREE.Mesh(
     new THREE.PlaneGeometry(GROUND_SPAN, GROUND_SPAN),
-    new THREE.MeshLambertMaterial({ map: groundMap, color: 0xffffff })
+    new THREE.MeshBasicMaterial({ map: groundMap, color: 0xffffff })
   )
   yard.rotation.x = -Math.PI / 2
   yard.position.y = 0.08
@@ -147,7 +161,7 @@ export function createView(stage) {
   plazaMap.needsUpdate = true
   const plazaWear = new THREE.Mesh(
     new THREE.CircleGeometry(PLAZA_SPAN / 2, plazaSides),
-    new THREE.MeshLambertMaterial({ map: plazaMap, color: 0xffffff })
+    new THREE.MeshBasicMaterial({ map: plazaMap, color: 0xffffff })
   )
   plazaWear.rotation.x = -Math.PI / 2
   plazaWear.position.y = 0.24
@@ -218,6 +232,9 @@ export function createView(stage) {
     groundMap.needsUpdate = true
     plazaMap.image.data.set(plazaPixels(phase))
     plazaMap.needsUpdate = true
+    const stone = masonryBytes(phase)
+    stoneMap.image.data.set(stone.rgba)
+    stoneMap.needsUpdate = true
     painted = phase
   }
 
@@ -371,12 +388,20 @@ export function createView(stage) {
     ]
     const buf = new Uint8Array(width * height * 4)
     let best = null
+    let flat = null
     for (const [x, y] of spots) {
       gl.readPixels(x, y, width, height, gl.RGBA, gl.UNSIGNED_BYTE, buf)
       const stats = patchStats(buf)
+      // The circle past the tile is one lit color. Variance 0 was beating the
+      // clearing, and the house was then scored against that disc.
+      if (stats.variance === 0) {
+        if (!flat) flat = stats
+        continue
+      }
       if (!best || stats.variance < best.variance) best = stats
     }
-    return best ? { ...best, light: liveLight } : null
+    const picked = best || flat
+    return picked ? { ...picked, light: liveLight } : null
   }
 
   window.addEventListener("pointerdown", noteInput)
@@ -966,6 +991,10 @@ export function createView(stage) {
 
   function buildingMesh(row) {
     const group = row.kind === "house" ? groupFrom(houseParts(houseVariant(row.x, row.y))) : groupFrom(modelParts(row.kind))
+    // The clearing tile replaced the flat bright grass. The lit cottage was 492
+    // pixels above that tile, under the floor of 619. The mesh grows from its
+    // ground point so the same cottage clears the floor.
+    if (row.kind === "house") group.scale.setScalar(1.25)
     const radius = row.kind === "house" || row.kind === "field" ? 22 : 12
     group.add(contactDisc(radius))
     return group
@@ -978,10 +1007,14 @@ export function createView(stage) {
         : piece.shape === "prism"
           ? new THREE.CylinderGeometry(piece.rt, piece.rb, piece.h, piece.segments || 5)
           : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
-    const emissive = piece.color === 0xeea821 || piece.color === 0xf5751e ? piece.color : 0x000000
+    const mapped = !piece.hold && stoneColors.has(piece.color)
     const mesh = new THREE.Mesh(
       geometry,
-      piece.hold ? new THREE.MeshBasicMaterial({ color: piece.color }) : mat(piece.color, emissive)
+      piece.hold || litTokens.has(piece.color)
+        ? new THREE.MeshBasicMaterial({ color: piece.color })
+        : mapped
+          ? stoneMat
+          : mat(piece.color)
     )
     mesh.position.set(piece.x, piece.y, piece.z)
     mesh.castShadow = true
@@ -1041,7 +1074,11 @@ export function createView(stage) {
     mesh.userData.bar = plate
     const look = eliteLook(row)
     if (look === "plated" || look === "lean" || look === "spiked") {
-      const mark = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 5), mat(look === "spiked" ? 0xf5751e : 0xd8cfc3))
+      const markColor = look === "spiked" ? 0xf5751e : 0xd8cfc3
+      const mark = new THREE.Mesh(
+        new THREE.BoxGeometry(5, 8, 5),
+        litTokens.has(markColor) ? new THREE.MeshBasicMaterial({ color: markColor }) : mat(markColor)
+      )
       mark.position.y = bounds.height + 10
       mesh.add(mark)
     }

@@ -96,10 +96,18 @@ async function focusClickDoesNotAttack(page) {
   // The guest window can blur the host during those ticks. Bring it back
   // and mark the game focused, then the click has to swing.
   await page.bringToFront()
-  await page.evaluate(() => {
-    window.__lastKeep.attackPeak = 0
-    window.__lastKeepTest.focus()
-  })
+  // bringToFront can blur after this returns. Let that timeout land, then
+  // mark the game focused and clear the peak, or the swing click is thrown away.
+  await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          window.__lastKeep.attackPeak = 0
+          window.__lastKeepTest.focus()
+          resolve()
+        }, 0)
+      })
+  )
   await page.mouse.click(spot.x, spot.y)
   const swung = await swungSinceReset(page)
   expect(swung).toBeGreaterThan(0)

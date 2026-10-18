@@ -238,6 +238,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 - A raised house is a voxel cottage. Timber, whitewash, thatch, and a lit window vary by the snapped cell. `a house is a timber cottage with a lit window` checks the three variants. The voxel detail floor includes the house and the field. Other buildings stay exempt.
 - The plaza disc, the stone curb, and the ground disc use `plazaSides` 48. The disc is grass `#5c642f` and the curb is stone `#4b3c33`. The live page reports `plazaSides` on `townLook`.
 - The outer ring is seventy stumps and felled logs at the same three distances, with wood 0 and no crown. `townGrows` requires one house to read above the grass. The sample floor is 619, half of a measured 1238. This does not change the simulation. The coverage floor stays 74.
+- The concept clearing is darker than that flat grass. A corner of the untextured disc is variance 0, and it was the field sample, so the cottage was scored against the disc. The sample now prefers a textured patch. The lit cottage on the tile was 492 pixels above the grass, under 619. The house mesh is scaled 1.25 from its ground point, and the same sample then read 790. The floor stays 619.
 
 ## 2026-10-18 the frame, not the patch
 
@@ -289,6 +290,12 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - The concept branch failed `twoPlayerNight` because the dusk wait expired. Mood and ground each read the whole frame, and the second read finished after dusk. The hue gap stays 25 degrees, the plate floor stays 0.2, and the wait stays 8 seconds. The keep pine stays at (-22, 30, -62). The assertion uses the dusk frame that passed. This does not change the simulation. The coverage floor stays 74.
 
+## 2026-10-18 the yard wears the concept tiles
+
+- The ground base is `theme.jpg` at 312,276, 48×48. The keep's stone, course, and joint use `theme.jpg` at 640,100, 48×64. Both crops are snapped to the style tokens at 1, 0.60, 0.50, and 0.40. `tiles.test.js` rebuilds those bytes and fails if a pixel leaves the palette. The grass tile scores block p25 13 and hard edge 0.075. The masonry tile scores block p25 16 and hard edge 0.118. The floors stay 8 and 0.05.
+- A live day frame against the town crop scores block p25 8, hard edge 0.113, luma SSIM 0.069, and silhouette IoU 0.68. Dusk scores 4, 0.067, 0.027, and 0.61. Night scores 3, 0.044, 0.096, and 0.63. SSIM stays under 0.35, and the dusk and night block scores stay under 8. Those floors do not move.
+- Night greens at or under luma 62 become the night soil, and the brighter greens become the pine token, so the plaza spread stays at or above 8. Dusk flecks stay off the pine band. The keep pine and the stone sample stay on their meshes. This does not change the simulation. The coverage floor stays 74.
+
 ## 2026-10-18 concept cards at the keep's scale
 
 - The voxel heroes stood over half the keep. `heroScaleProblems` fails a card taller than 1.75 keep doors, 1.05 palisade posts, or 0.42 of the keep, and a height that leaves 32. The door is 20, the post is 40, and the keep top is 165. The five join-ring disks do not meet. On the player camera the card does not cover the door or the tower. The mage and the engineer share a view ray, 37.9 apart on the ground against a combined reach of 17.8, so the overlap test is the ground disk.
@@ -307,3 +314,9 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - `art_score.js` reads a frame the way `docs/concepts/ART-PIPELINE.md` describes. The town crop scores block p25 of 13 and a hard edge of 0.069, against the published 12 and 0.070. It matches itself at SSIM 1 and IoU 1. The gallery keep still misses block 8, SSIM 0.35, IoU 0.55, and membership 0.98.
 - Each hero close-up, day, dusk, and night, holds the measured floors. Block p25 is 12 to 19. SSIM is 0.118 to 0.398. Silhouette IoU is 0.404 to 0.502. Palette membership is under 0.01. Block clears the floor of 8. SSIM, IoU, and membership do not clear 0.35, 0.55, and 0.98. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 shade steps are the pixel
+
+- Day locks the style tokens at 1, 0.60, 0.50, and 0.40. Dusk locks 0.60 and 0.50. Night locks 0.50 and 0.40. `phaseScales` is that table. Grass and masonry for each phase come from `theme.jpg` at 312,276 and 640,100. `tiles.test.js` rebuilds every phase and fails a pixel more than distance 1 from that phase's palette, a block p25 under 8, or a hard edge under 0.05.
+- The night two-color split, luma above 62 as pine and the rest as night soil, scored block p25 7 on the plaza. The night shade step keeps those greens dark. Plaza spread stays at or above 8 without the split. The ground, the plaza wear, and the stone tile are unlit, so the shade step is the pixel. Flame `#eea821` and torch `#f5751e` stay the full token on an unlit material. This does not change the simulation. The coverage floor stays 77.
+- A live 640×400 frame, box-downsampled from the 1280×800 shot, scores block p25 8 by day, 6 at dusk, and 7 at night. The yard band from 42% to 90% of the height scores 9 in every light. The full frame still misses 8 at dusk and night. The sky and the remaining Lambert meshes are the flat blocks. The floor stays 8.

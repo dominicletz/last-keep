@@ -1,4 +1,7 @@
+import { grassAt } from "./tiles.js"
+
 // Grass, path, pine shade, stone, and the sunset band. Hexes are the STYLE.md tokens.
+// The base is the concept clearing tile.
 // The outer plane covers the camera. The plaza disc covers the flat town circle
 // the camera stands on, without replacing that circle's mesh.
 export const GROUND_TEX = 512
@@ -6,15 +9,11 @@ export const GROUND_SPAN = 760
 export const PLAZA_TEX = 256
 export const PLAZA_SPAN = 300
 
-const GRASS = [0x5c, 0x64, 0x2f]
-const TUFT = [0x3a, 0x42, 0x18]
-const LIGHT = [0x6e, 0x7a, 0x38]
 const PATH = [0x5e, 0x45, 0x29]
 const SHADE = [0x2c, 0x34, 0x16]
 const STONE = [0x4b, 0x3c, 0x33]
 const PEBBLE = [0x65, 0x4e, 0x41]
 const SUNSET = [0xe5, 0x8e, 0x54]
-const NIGHT = [0x12, 0x16, 0x0c]
 
 function mix(a, b, t) {
   const clamped = Math.max(0, Math.min(1, t))
@@ -43,10 +42,7 @@ function paint(phase, size, span) {
       const radius = Math.hypot(worldX, worldZ)
       const n = hash(ix, iy)
       const n2 = hash(ix + 19, iy - 7)
-      let color = GRASS
-      if (n < 0.42) color = SHADE
-      else if (n < 0.62) color = TUFT
-      else if (n > 0.74) color = LIGHT
+      let color = grassAt(ix, iy, phase)
       if (n2 < 0.07) color = STONE
       else if (n2 < 0.12) color = PEBBLE
       // The inner pine crown is a few pixels. The dusk sample around it is mostly
@@ -63,9 +59,6 @@ function paint(phase, size, span) {
         const edge = Math.min(1, (radius - 300) / 70)
         if (phase === "dusk") color = mix(color, SUNSET, 0.2 + edge * 0.6)
         else color = mix(color, SHADE, 0.15 + edge * 0.4)
-      }
-      if (phase === "night") {
-        if (color === SHADE || color === TUFT || color === GRASS) color = NIGHT
       }
       const offset = (iy * size + ix) * 4
       rgba[offset] = color[0]
