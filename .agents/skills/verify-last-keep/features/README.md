@@ -18,4 +18,4 @@ The executable checks are `e2e/scenarios.js`. `npx playwright test` runs them th
 - [Scores](./wave.md) also covers `scoreList` and the in-game `[data-score]` chip.
 - Square pixels are `squarePixels`, the spec "the picture stays square when the window changes shape".
 - Role interactions are `docs/GAME-INTERACTIONS.md`, checked by `test/last_keep/game/interactions_test.exs`.
-- Phone touch is `mobileTouch` in `e2e/mobile.spec.js`. A landscape touch viewport joins, walks, casts, and builds. Portrait is the rotate prompt.
+- Phone touch is `mobileTouch` in `e2e/mobile.spec.js`. A landscape touch viewport joins, walks, casts, and builds. Portrait is the rotate prompt. `phoneClear` asserts no HUD overlap at 844×390, 667×375, and 932×430 beside the keep, west of x=-700, after the raise, and during a goblin call.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -206,6 +206,66 @@ test("a goblin pair across a compass boundary is one call, and it stays under th
     { left: 0.22, top: 0.31, label: "skeleton" }
   ])
   assert.ok(stacked[1].top - stacked[0].top >= 0.06)
+})
+
+test("on a phone the food sack, the roster, and the goblin call keep their own seats", () => {
+  const sizes = [
+    { width: 844, height: 390 },
+    { width: 667, height: 375 },
+    { width: 932, height: 430 }
+  ]
+  for (const view of sizes) {
+    const heart = { left: view.width * 0.46, top: view.height * 0.46, right: view.width * 0.46 + 120, bottom: view.height * 0.46 + 28 }
+    const shot = { left: view.width - 150, top: view.height - 140, right: view.width - 64, bottom: view.height - 54 }
+    const builds = { left: 8, top: view.height - 58, right: view.width - 250, bottom: view.height - 8 }
+    const stick = { left: 12, top: view.height - 150, right: 124, bottom: view.height - 28 }
+    const sackBox = { width: 90, height: 78 }
+    const sacks = [
+      { key: "wood", left: view.width * 0.42, top: view.height * 0.62 },
+      { key: "food", left: heart.left + 40, top: heart.bottom + 10 },
+      { key: "gold", left: view.width * 0.58, top: view.height * 0.66 }
+    ]
+    const foodHome = pinRect(sacks[1], sackBox, "sack")
+    assert.equal(rectsOverlap(foodHome, heart), true, `${view.width} food starts on the health line`)
+    const keep = { left: view.width * 0.44, top: view.height * 0.28, right: view.width * 0.56, bottom: view.height * 0.55 }
+    const roster = { spot: { left: 36, top: view.height * 0.34 }, box: { width: 168, height: 118 } }
+    const relic = { spot: { left: 150, top: view.height * 0.5 }, box: { width: 230, height: 52 } }
+    assert.equal(rectsOverlap(pinRect(roster.spot, roster.box, "corner"), pinRect(relic.spot, relic.box, "chip")), true)
+    const seated = seatPhoneHud({
+      view,
+      sacks,
+      boxes: [sackBox, sackBox, sackBox],
+      keep,
+      heart,
+      controls: [shot, builds, stick],
+      roster,
+      relic,
+      limit: shot.top - 8,
+      floor: 46
+    })
+    const placed = [
+      ...seated.sacks.map((spot) => pinRect(spot, sackBox, "sack")),
+      pinRect(seated.roster, roster.box, "corner"),
+      pinRect(seated.relic, relic.box, "chip")
+    ]
+    const blocked = [heart, shot, builds, stick, keep, ...placed]
+    for (let i = 0; i < placed.length; i += 1) {
+      for (let j = 0; j < blocked.length; j += 1) {
+        if (placed[i] === blocked[j]) continue
+        assert.equal(rectsOverlap(placed[i], blocked[j]), false, `${view.width} seat ${i} hits ${j}`)
+      }
+    }
+    const raw = callAnchor(0.93, 0.74, null, null)
+    assert.equal(rectsOverlap(callRect(raw, { width: 84, height: 18 }, view), shot), true)
+    const volume = { left: view.width - 170, top: 6, right: view.width - 12, bottom: 34 }
+    const onVolume = { left: (volume.left + 8) / view.width, top: 8 / view.height, end: false, label: "2 goblins" }
+    assert.equal(rectsOverlap(callRect(onVolume, { width: 84, height: 18 }, view), volume), true)
+    const parked = parkCall(onVolume, { width: 84, height: 18 }, [volume, shot, builds, stick, heart, ...placed], view)
+    const call = callRect(parked, { width: 84, height: 18 }, view)
+    for (const block of [volume, shot, builds, stick, heart, ...placed]) {
+      assert.equal(rectsOverlap(call, block), false, `${view.width} call`)
+    }
+  }
 })
 
 test("a far roster and the relic lines stay above the build bar", () => {

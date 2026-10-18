@@ -4,7 +4,7 @@ import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, partyPositions } from "./paint"
-import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
@@ -558,10 +558,12 @@ function start(code, seat, ui) {
         return `<div class="who ${mine} ${player.connected ? "" : "off"}"><span>${escapeHtml(player.name)}</span><span>${escapeHtml(heroLabel(player.hero))}</span><div class="meter"><span style="width:${width}%"></span></div></div>`
       })
       .join("")
-    drawWorld(ui, snap, selfId)
-    drawHints(ui, snap)
     drawYou(ui, snap, selfId)
+    drawWorld(ui, snap, selfId)
     seatWave(ui, snap, selfId)
+    drawHints(ui, snap)
+    settleCalls(ui)
+    settleHeroTags(ui)
     drawFx(ui, snap, fx, seen)
     syncContext(snap, me)
     audio.hear(snap)
@@ -697,10 +699,13 @@ function drawWorld(ui, snap, selfId) {
   const keep = keepSpot
     ? { left: keepSpot.left - 42, top: keepSpot.top - 88, right: keepSpot.left + 42, bottom: keepSpot.top + 10 }
     : null
-  const seated = seatSacks(spots, { width: hudBox.width, height: hudBox.height }, boxes, keep)
-  seated.forEach((spot, i) => pin(nodes[i], spot))
   const me = (snap.players || []).find((player) => player.id === selfId)
   pin(ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
+  const controls = shownRects(ui, ".hud-top, .builds, .skills, [data-touch-pad], [data-volume], [data-raise], [data-copy], [data-mute], [data-start], .stick", 4)
+  const heroBits = shownRects(ui, ".heart, [data-you]", 2)
+  const seated = seatSacks(spots, { width: hudBox.width, height: hudBox.height }, boxes, keep, [...controls, ...heroBits])
+  seated.forEach((spot, i) => pin(nodes[i], spot))
+  const sackRects = seated.map((spot, i) => (spot ? pinRect(spot, boxes[i], "sack") : null)).filter(Boolean)
   const rosterNode = ui.hud.querySelector("[data-roster]")
   const bonusNode = ui.hud.querySelector("[data-bonuses]")
   const party = rosterAnchor(snap.players)
@@ -718,21 +723,127 @@ function drawWorld(ui, snap, selfId) {
     },
     { width: hudBox.width, height: hudBox.height },
     controlLimit(ui, hudBox),
-    belowBar
+    belowBar,
+    [...controls, ...heroBits, ...sackRects, keep].filter(Boolean)
   )
   pin(rosterNode, captions.roster)
   pin(bonusNode, captions.relic)
 }
 
+function shownRects(ui, selector, pad) {
+  const hudBox = ui.hud.getBoundingClientRect()
+  const rects = []
+  for (const node of ui.hud.querySelectorAll(selector)) {
+    if (node.hidden) continue
+    const style = getComputedStyle(node)
+    if (style.display === "none" || style.visibility === "hidden") continue
+    const box = node.getBoundingClientRect()
+    if (box.width <= 0 || box.height <= 0) continue
+    rects.push({
+      left: box.left - hudBox.left - pad,
+      top: box.top - hudBox.top - pad,
+      right: box.right - hudBox.left + pad,
+      bottom: box.bottom - hudBox.top + pad
+    })
+  }
+  return rects
+}
+
+function settleCalls(ui) {
+  const hudBox = ui.hud.getBoundingClientRect()
+  const top = bandTop(ui, hudBox)
+  const limit = controlLimit(ui, hudBox)
+  const bounds = {
+    left: 4,
+    top,
+    right: Math.max(4, hudBox.width - 4),
+    bottom: Math.max(top + 8, limit)
+  }
+  const parked = []
+  for (const node of ui.hud.querySelectorAll(".hint-arrow")) {
+    const box = node.getBoundingClientRect()
+    if (box.width <= 0 || box.height <= 0) continue
+    const rect = {
+      left: box.left - hudBox.left,
+      top: box.top - hudBox.top,
+      right: box.right - hudBox.left,
+      bottom: box.bottom - hudBox.top
+    }
+    const obstacles = [
+      ...shownRects(
+        ui,
+        ".hud-top, .builds, .skills, [data-touch-pad], [data-touch], [data-build], [data-volume], [data-raise], [data-copy], [data-mute], [data-start], .stick, .sack, [data-bonuses], [data-roster], .heart, [data-you], .chip",
+        4
+      ),
+      ...parked
+    ]
+    const next = parkRect(rect, obstacles, bounds)
+    const dx = next.left - rect.left
+    const dy = next.top - rect.top
+    if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+      node.style.left = `${(parseFloat(node.style.left) || 0) + dx}px`
+      node.style.top = `${(parseFloat(node.style.top) || 0) + dy}px`
+    }
+    parked.push(next)
+  }
+}
+
+const HERO_BLOCKS = ".hud-top, .builds, .skills, [data-touch-pad], [data-touch], [data-build], [data-volume], [data-raise], [data-copy], [data-mute], [data-start], .stick, .sack, [data-bonuses], [data-roster], .chip, .hint-arrow"
+
+function settleHeroTags(ui) {
+  const heart = ui.hud.querySelector(".heart")
+  const name = ui.hud.querySelector("[data-you]")
+  settleNode(ui, heart, shownRects(ui, HERO_BLOCKS, 4))
+  settleNode(ui, name, [...shownRects(ui, HERO_BLOCKS, 4), ...shownRects(ui, ".heart", 2)])
+}
+
+function settleNode(ui, node, obstacles) {
+  if (!node || node.hidden) return
+  const hudBox = ui.hud.getBoundingClientRect()
+  const box = node.getBoundingClientRect()
+  if (box.width <= 0 || box.height <= 0) return
+  const rect = {
+    left: box.left - hudBox.left,
+    top: box.top - hudBox.top,
+    right: box.right - hudBox.left,
+    bottom: box.bottom - hudBox.top
+  }
+  const next = parkRect(rect, obstacles, {
+    left: 4,
+    top: 4,
+    right: Math.max(4, hudBox.width - 4),
+    bottom: Math.max(4, hudBox.height - 4)
+  })
+  const dx = next.left - rect.left
+  const dy = next.top - rect.top
+  if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+    node.style.left = `${(parseFloat(node.style.left) || 0) + dx}px`
+    node.style.top = `${(parseFloat(node.style.top) || 0) + dy}px`
+  }
+}
+
 function controlLimit(ui, hudBox) {
   let limit = hudBox.height - 8
-  for (const node of ui.hud.querySelectorAll(".hud-bottom, [data-touch-pad]")) {
+  for (const node of ui.hud.querySelectorAll(".builds, .skills")) {
     if (node.hidden) continue
     const box = node.getBoundingClientRect()
     if (box.width <= 0 || box.height <= 0) continue
     limit = Math.min(limit, box.top - hudBox.top - 8)
   }
   return limit
+}
+
+function bandTop(ui, hudBox) {
+  let top = 8
+  for (const node of ui.hud.querySelectorAll(".hud-top, [data-volume], [data-raise], [data-copy], [data-mute], [data-start]")) {
+    if (node.hidden) continue
+    const style = getComputedStyle(node)
+    if (style.display === "none" || style.visibility === "hidden") continue
+    const box = node.getBoundingClientRect()
+    if (box.width <= 0 || box.height <= 0) continue
+    top = Math.max(top, box.bottom - hudBox.top + 6)
+  }
+  return top
 }
 
 function seatWave(ui, snap, selfId) {
@@ -746,13 +857,26 @@ function seatWave(ui, snap, selfId) {
   }
   const hudBox = ui.hud.getBoundingClientRect()
   const box = { width: sign.offsetWidth || 0, height: sign.offsetHeight || 0 }
-  pin(sign, seatPin(waveSpot, { width: hudBox.width, height: hudBox.height }, box, obstacleRects(ui, hudBox)))
+  const floor = bandTop(ui, hudBox)
+  const limit = controlLimit(ui, hudBox)
+  pin(
+    sign,
+    seatPin(
+      waveSpot,
+      { width: hudBox.width, height: hudBox.height },
+      box,
+      obstacleRects(ui, hudBox),
+      "chip",
+      floor,
+      captionCap("chip", box, limit)
+    )
+  )
 }
 
 function obstacleRects(ui, hudBox) {
   const rects = []
   for (const node of ui.hud.querySelectorAll(
-    ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .actions, .skills, .builds"
+    ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .actions, .skills, .builds, .hud-top, [data-volume], [data-raise], [data-copy], [data-mute], [data-start], [data-touch-pad], [data-touch], .stick"
   )) {
     if (node.hidden) continue
     const box = node.getBoundingClientRect()

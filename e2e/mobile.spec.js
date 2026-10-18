@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { mobileTouch, prepareProof } = require("./scenarios")
+const { mobileTouch, phoneClear, prepareProof } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({
@@ -10,4 +10,8 @@ test.use({
 
 test("a phone joins, walks with the stick, casts, and builds", async ({ browser }) => {
   await mobileTouch(browser)
+})
+
+test("a phone keeps every caption off the others and off the buttons", async ({ browser }) => {
+  await phoneClear(browser)
 })

@@ -1241,6 +1241,201 @@ async function captionsClearTheBuilds(browser) {
   await host.context.close()
 }
 
+const PHONE_SIZES = [
+  [844, 390],
+  [667, 375],
+  [932, 430]
+]
+
+function phoneOverlaps() {
+  const shown = (node) => {
+    if (!node || node.hidden) return null
+    const style = getComputedStyle(node)
+    if (style.display === "none" || style.visibility === "hidden") return null
+    const box = node.getBoundingClientRect()
+    if (box.width < 1 || box.height < 1) return null
+    return box
+  }
+  const tag = (node) => {
+    if (node.dataset.sack) return node.dataset.sack
+    if (node.dataset.touch) return node.dataset.touch
+    if (node.hasAttribute("data-touch-context")) return "context"
+    if (node.dataset.build) return node.dataset.build
+    if (node.hasAttribute("data-raise")) return "raise"
+    if (node.hasAttribute("data-copy")) return "copy"
+    if (node.hasAttribute("data-mute")) return "mute"
+    if (node.hasAttribute("data-volume")) return "volume"
+    if (node.hasAttribute("data-start")) return "start"
+    if (node.hasAttribute("data-bonuses")) return "relics"
+    if (node.hasAttribute("data-roster")) return "roster"
+    if (node.classList.contains("heart")) return "heart"
+    if (node.hasAttribute("data-you")) return "you"
+    if (node.classList.contains("hint-arrow")) return (node.textContent || "call").trim()
+    if (node.classList.contains("chip")) return "wave"
+    if (node.classList.contains("stick")) return "stick"
+    return "hud"
+  }
+  const nodes = [
+    ...document.querySelectorAll(
+      ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .chip, [data-touch], [data-touch-context], [data-build], .stick, [data-raise], [data-copy], [data-mute], [data-volume], [data-start]"
+    )
+  ]
+  const boxes = nodes.map((node) => ({ node, tag: tag(node), box: shown(node) })).filter((row) => row.box)
+  const hits = []
+  for (let i = 0; i < boxes.length; i += 1) {
+    for (let j = i + 1; j < boxes.length; j += 1) {
+      const a = boxes[i]
+      const b = boxes[j]
+      if (a.node.contains(b.node) || b.node.contains(a.node)) continue
+      const width = Math.min(a.box.right, b.box.right) - Math.max(a.box.left, b.box.left)
+      const height = Math.min(a.box.bottom, b.box.bottom) - Math.max(a.box.top, b.box.top)
+      if (width >= 1 && height >= 1) hits.push(`${a.tag}/${b.tag}`)
+    }
+  }
+  return hits
+}
+
+async function assertPhoneClear(page) {
+  for (const [width, height] of PHONE_SIZES) {
+    await page.setViewportSize({ width, height })
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await expect.poll(() => page.evaluate(phoneOverlaps), { timeout: 4_000 }).toEqual([])
+  }
+}
+
+async function walkHome(page) {
+  await page.bringToFront()
+  const published = { timeout: 20_000, polling: 100 }
+  await page.evaluate(() => {
+    window.__lastKeepTest.hold("KeyS", true)
+    window.__lastKeepTest.hold("KeyD", true)
+  })
+  try {
+    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.x > 45, undefined, published)
+  } finally {
+    await page.evaluate(() => {
+      window.__lastKeepTest.hold("KeyS", false)
+      window.__lastKeepTest.hold("KeyD", false)
+    })
+  }
+  await page.evaluate(() => {
+    window.__lastKeepTest.hold("KeyS", true)
+    window.__lastKeepTest.hold("KeyA", true)
+  })
+  try {
+    await page.waitForFunction(() => {
+      const me = window.__lastKeep.self
+      return me && me.x > 40 && me.y > -80 && Math.hypot(me.x, me.y) <= 104
+    }, undefined, published)
+  } finally {
+    await page.evaluate(() => {
+      window.__lastKeepTest.hold("KeyS", false)
+      window.__lastKeepTest.hold("KeyA", false)
+    })
+  }
+}
+
+async function phoneClear(browser) {
+  const errors = []
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    hasTouch: true,
+    isMobile: true
+  })
+  const page = await context.newPage()
+  watch(page, "phone", errors)
+  await page.goto(gameUrl("/"))
+  await page.waitForFunction(() => {
+    const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
+    return imgs.length === 5 && imgs.every((img) => img.complete && img.naturalHeight >= 64 && img.naturalHeight <= 128)
+  })
+  await page.locator("#player-name").fill("Nia")
+  await page.locator('input[value="farmer"]').check()
+  await page.locator("#create-button").click()
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Nia"))
+  const code = await page.evaluate(() => document.body.dataset.code)
+  const seats = []
+  for (const [name, hero] of [
+    ["Ada", "warrior"],
+    ["Lux", "mage"],
+    ["Bram", "engineer"],
+    ["Pip", "scout"]
+  ]) {
+    const seat = await joinQuery(browser, code, name, hero)
+    seats.push(seat)
+    watch(seat.page, name, errors)
+  }
+  await page.waitForFunction(() => {
+    const roster = document.querySelector("[data-roster]")?.innerText || ""
+    return ["Nia", "Ada", "Lux", "Bram", "Pip"].every((name) => roster.includes(name))
+  })
+  await assertPhoneClear(page)
+  await assertFarCaptions(page)
+  await assertPhoneClear(page)
+  await walkHome(page)
+  const aims = [
+    [144, 0],
+    [180, 0],
+    [144, -36],
+    [180, -36]
+  ]
+  for (const [x, y] of aims) {
+    const before = await page.evaluate(() => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length)
+    const spot = await page.evaluate((point) => window.__lastKeep.toClient(point.x, point.y), { x, y })
+    await page.mouse.move(spot.x, spot.y)
+    await pressKey(page, "KeyQ")
+    await page.waitForFunction(
+      (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
+      before
+    )
+    await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) === 0)
+  }
+  await page.waitForFunction(
+    () => {
+      const text = document.querySelector("[data-sack='gold']")?.textContent || ""
+      const match = text.match(/(\d+)/)
+      return match && Number(match[1]) >= 8
+    },
+    undefined,
+    { timeout: 25_000 }
+  )
+  await page.locator("[data-raise]").click()
+  await page.waitForFunction(() => window.__lastKeep.town === 1)
+  await assertPhoneClear(page)
+  await page.locator("[data-start]").click()
+  await page.waitForFunction(() => window.__lastKeep.phase === "wave")
+  const published = { timeout: 20_000, polling: 100 }
+  await page.evaluate(() => window.__lastKeepTest.hold("KeyW", true))
+  try {
+    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -180, undefined, published)
+  } finally {
+    await page.evaluate(() => window.__lastKeepTest.hold("KeyW", false))
+  }
+  await page.evaluate(() => {
+    window.__lastKeepTest.hold("KeyA", true)
+    window.__lastKeepTest.hold("KeyW", true)
+  })
+  try {
+    await page.waitForFunction(() => {
+      const call = [...document.querySelectorAll(".hint-arrow")].some((node) => /goblin/i.test(node.textContent || ""))
+      const me = window.__lastKeep.self
+      return call && me && me.x < -400
+    }, undefined, published)
+  } finally {
+    await page.evaluate(() => {
+      window.__lastKeepTest.hold("KeyA", false)
+      window.__lastKeepTest.hold("KeyW", false)
+    })
+  }
+  await assertPhoneClear(page)
+  const call = await page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
+  expect(call).toMatch(/goblin/i)
+  expect(errors, errors.join("\n")).toEqual([])
+  for (const seat of seats) await seat.context.close()
+  await context.close()
+}
+
 async function scoreList(request) {
   const response = await request.get("/api/highscores")
   expect(response.ok()).toBeTruthy()
@@ -1265,5 +1460,6 @@ module.exports = {
   paradeShowsEveryKind,
   mobileTouch,
   townGrows,
-  captionsClearTheBuilds
+  captionsClearTheBuilds,
+  phoneClear
 }

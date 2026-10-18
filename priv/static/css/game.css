@@ -451,20 +451,41 @@ html.touch-play #hud {
 }
 
 html.touch-play .skills { display: none; }
-html.touch-play .hud-bottom { padding-right: 15.5rem; }
-html.touch-play .builds { flex-wrap: nowrap; gap: 0.35rem; }
+html.touch-play .hud-bottom { padding-right: 16rem; min-width: 0; }
+html.touch-play .builds {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
 html.touch-play #hud .build {
-  flex: 0 0 auto;
+  flex: 1 1 0;
   min-width: 44px;
   min-height: 44px;
+  width: auto;
+  max-width: 100%;
   box-sizing: border-box;
-  padding: 0.28rem 0.45rem;
+  overflow: hidden;
+  padding: 0.2rem 0.2rem;
   border: 1px solid #6a4a30;
   border-radius: 8px;
   background: #140e12cc;
   box-shadow: none;
   text-align: center;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+}
+html.touch-play #hud .build small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.touch-play .chip {
+  flex-wrap: wrap;
+  max-width: 10.5rem;
+  white-space: normal;
+  font-size: 0.68rem;
+  gap: 0.04rem 0.35rem;
 }
 
 .thumb-pad, .stick { display: none; }
