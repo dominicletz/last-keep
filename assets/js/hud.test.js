@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -206,6 +206,17 @@ test("a goblin pair across a compass boundary is one call, and it stays under th
     { left: 0.22, top: 0.31, label: "skeleton" }
   ])
   assert.ok(stacked[1].top - stacked[0].top >= 0.06)
+})
+
+test("a seat on a large view clears a block without a full-screen fine scan", () => {
+  const block = { left: 400, top: 300, right: 520, bottom: 380 }
+  const bounds = { left: 0, top: 0, right: 1280, bottom: 800 }
+  const started = performance.now()
+  for (let i = 0; i < 40; i += 1) {
+    const parked = parkRect({ left: 430, top: 320, right: 520, bottom: 400 }, [block], bounds)
+    assert.equal(rectsOverlap(parked, block), false)
+  }
+  assert.ok(performance.now() - started < 150)
 })
 
 test("on a phone the food sack, the roster, and the goblin call keep their own seats", () => {

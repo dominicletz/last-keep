@@ -1303,36 +1303,37 @@ async function assertPhoneClear(page) {
   }
 }
 
+function keysToward(me, goal) {
+  const dx = goal.x - me.x
+  const dy = goal.y - me.y
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
+  return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
+}
+
 async function walkHome(page) {
   await page.bringToFront()
-  const published = { timeout: 20_000, polling: 100 }
-  await page.evaluate(() => {
-    window.__lastKeepTest.hold("KeyS", true)
-    window.__lastKeepTest.hold("KeyD", true)
-  })
+  // South of the keep, inside the sow ring. An open east-then-north hold
+  // runs past x=104 on a slow frame, and no later north step can re-enter it.
+  const goal = { x: 55, y: -72 }
+  const deadline = Date.now() + 20_000
   try {
-    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.x > 45, undefined, published)
+    while (Date.now() < deadline) {
+      const me = await page.evaluate(() => window.__lastKeep.self)
+      if (me && me.x > 40 && me.y > -80 && Math.hypot(me.x, me.y) <= 104) return
+      if (me) {
+        const keys = keysToward(me, goal)
+        await page.evaluate((down) => {
+          for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, down.includes(key))
+        }, keys)
+      }
+      await page.waitForTimeout(80)
+    }
   } finally {
     await page.evaluate(() => {
-      window.__lastKeepTest.hold("KeyS", false)
-      window.__lastKeepTest.hold("KeyD", false)
+      for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, false)
     })
   }
-  await page.evaluate(() => {
-    window.__lastKeepTest.hold("KeyS", true)
-    window.__lastKeepTest.hold("KeyA", true)
-  })
-  try {
-    await page.waitForFunction(() => {
-      const me = window.__lastKeep.self
-      return me && me.x > 40 && me.y > -80 && Math.hypot(me.x, me.y) <= 104
-    }, undefined, published)
-  } finally {
-    await page.evaluate(() => {
-      window.__lastKeepTest.hold("KeyS", false)
-      window.__lastKeepTest.hold("KeyA", false)
-    })
-  }
+  throw new Error("walk home timed out")
 }
 
 async function phoneClear(browser) {

@@ -360,48 +360,47 @@ export function parkRect(rect, obstacles, bounds) {
   const blocks = (obstacles || []).filter((block) => block && block.right > block.left && block.bottom > block.top)
   const hit = (box) => {
     let area = 0
-    for (const block of blocks) area += overlapArea(box, block)
+    for (const block of blocks) {
+      area += overlapArea(box, {
+        left: block.left - 1,
+        top: block.top - 1,
+        right: block.right + 1,
+        bottom: block.bottom + 1
+      })
+    }
     return area
   }
   if (hit(home) === 0) return home
   let best = home
   let bestArea = hit(home)
   let bestDist = Infinity
-  const search = (step) => {
-    const stepsX = Math.max(1, Math.ceil((maxL - minL) / step))
-    const stepsY = Math.max(1, Math.ceil((maxT - minT) / step))
-    for (let ix = 0; ix <= stepsX; ix += 1) {
-      const left = minL + ((maxL - minL) * ix) / stepsX
-      for (let iy = 0; iy <= stepsY; iy += 1) {
-        const top = minT + ((maxT - minT) * iy) / stepsY
-        const box = { left, top, right: left + width, bottom: top + height }
-        const area = hit(box)
-        const dist = (left - home.left) ** 2 + (top - home.top) ** 2
-        if (area < bestArea || (area === bestArea && dist < bestDist)) {
-          best = box
-          bestArea = area
-          bestDist = dist
-        }
-      }
+  const consider = (left, top) => {
+    const x = clamp(left, minL, maxL)
+    const y = clamp(top, minT, maxT)
+    const box = { left: x, top: y, right: x + width, bottom: y + height }
+    const area = hit(box)
+    const dist = (x - home.left) ** 2 + (y - home.top) ** 2
+    if (area < bestArea || (area === bestArea && dist < bestDist)) {
+      best = box
+      bestArea = area
+      bestDist = dist
     }
+    return box
   }
-  search(16)
-  if (bestArea > 0) search(4)
-  let current = best
+  // Push clear of each block, then a coarse grid. The 4px sweep runs only
+  // when those two still overlap something.
+  let current = home
   for (let pass = 0; pass < 8 && hit(current) > 0; pass += 1) {
     let moved = false
     for (const block of blocks) {
       if (!rectsOverlap(current, block)) continue
       const options = [
-        { left: current.left, top: block.top - height },
-        { left: current.left, top: block.bottom },
-        { left: block.left - width, top: current.top },
-        { left: block.right, top: current.top }
+        consider(current.left, block.top - height),
+        consider(current.left, block.bottom),
+        consider(block.left - width, current.top),
+        consider(block.right, current.top)
       ]
-      for (const option of options) {
-        const left = clamp(option.left, minL, maxL)
-        const top = clamp(option.top, minT, maxT)
-        const box = { left, top, right: left + width, bottom: top + height }
+      for (const box of options) {
         if (hit(box) < hit(current)) {
           current = box
           moved = true
@@ -410,7 +409,30 @@ export function parkRect(rect, obstacles, bounds) {
     }
     if (!moved) break
   }
-  return current
+  if (bestArea === 0) return best
+  const step = 16
+  const stepsX = Math.max(1, Math.ceil((maxL - minL) / step))
+  const stepsY = Math.max(1, Math.ceil((maxT - minT) / step))
+  for (let ix = 0; ix <= stepsX; ix += 1) {
+    const left = minL + ((maxL - minL) * ix) / stepsX
+    for (let iy = 0; iy <= stepsY; iy += 1) {
+      const top = minT + ((maxT - minT) * iy) / stepsY
+      consider(left, top)
+    }
+  }
+  if (bestArea > 0) {
+    const fine = 4
+    const fineX = Math.max(1, Math.ceil((maxL - minL) / fine))
+    const fineY = Math.max(1, Math.ceil((maxT - minT) / fine))
+    for (let ix = 0; ix <= fineX; ix += 1) {
+      const left = minL + ((maxL - minL) * ix) / fineX
+      for (let iy = 0; iy <= fineY; iy += 1) {
+        const top = minT + ((maxT - minT) * iy) / fineY
+        consider(left, top)
+      }
+    }
+  }
+  return best
 }
 
 export function pinRect(spot, box, anchor = "chip") {
