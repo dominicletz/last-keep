@@ -190,7 +190,6 @@ defmodule LastKeep.Game.Rules do
   def build?(kind), do: kind in @builds
   def builds, do: @builds
 
-  # Pre-snapped to the 36 grid. A polar ring lands on a dirt path or inside the keep pad after snap.
   defp house_ring(1), do: [{108.0, 108.0}, {-108.0, 108.0}, {-108.0, -108.0}, {108.0, -108.0}]
   defp house_ring(2), do: [{180.0, 108.0}, {180.0, -108.0}, {-180.0, 108.0}, {-180.0, -108.0}]
   defp house_ring(3), do: [{216.0, 108.0}, {216.0, -108.0}, {-216.0, 108.0}, {-216.0, -108.0}]

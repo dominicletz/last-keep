@@ -654,10 +654,21 @@ export function createView(stage) {
   }
 
   function houseMesh() {
-    // y 20 puts the cone base on the wall. The wall center is 7 and its height is 14.
+    const wallY = 7
+    const wallH = 14
+    const roofH = 12
     return groupFrom([
-      { shape: "box", w: 22, h: 14, d: 18, x: 0, y: 7, z: 0, color: 0x8e755b },
-      { shape: "cone", w: 28, h: 12, d: 28, x: 0, y: 20, z: 0, color: 0x43382e }
+      { shape: "box", w: 22, h: wallH, d: 18, x: 0, y: wallY, z: 0, color: 0x8e755b },
+      {
+        shape: "cone",
+        w: 28,
+        h: roofH,
+        d: 28,
+        x: 0,
+        y: wallY + wallH / 2 + roofH / 2,
+        z: 0,
+        color: 0x43382e
+      }
     ])
   }
 
