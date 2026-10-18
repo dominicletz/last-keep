@@ -537,12 +537,16 @@ async function twoPlayerNight(browser) {
   expect(await page.evaluate(() => window.__lastKeep.light)).toBe("day")
   await page.waitForFunction(() => {
     const mood = window.__lastKeep.frameMood && window.__lastKeep.frameMood()
-    return mood && mood.light === "day" && mood.problems.length === 0
+    const ground = window.__lastKeep.frameGround && window.__lastKeep.frameGround()
+    return mood && mood.light === "day" && mood.problems.length === 0 && ground && ground.problems.length === 0
   })
   const dayMood = await page.evaluate(() => window.__lastKeep.frameMood())
+  const dayGround = await page.evaluate(() => window.__lastKeep.frameGround())
   expect(dayMood.problems).toEqual([])
   expect(dayMood.lime).toBeLessThanOrEqual(0.08)
   expect(dayMood.contrast).toBeGreaterThanOrEqual(9)
+  expect(dayGround.problems).toEqual([])
+  expect(dayGround.spread).toBeGreaterThanOrEqual(8)
   const town = await page.evaluate(() => window.__lastKeep.townLook)
   expect(town.rank).toBe(0)
   expect(town.path).toBe(true)
@@ -589,13 +593,15 @@ async function twoPlayerNight(browser) {
   await page.locator("[data-start]").click()
   await page.waitForFunction(() => {
     const mood = window.__lastKeep.frameMood && window.__lastKeep.frameMood()
-    return mood && mood.light === "dusk" && mood.problems.length === 0
+    const ground = window.__lastKeep.frameGround && window.__lastKeep.frameGround()
+    return mood && mood.light === "dusk" && mood.problems.length === 0 && ground && ground.problems.length === 0
   })
   const duskMood = await page.evaluate(() => {
     const game = window.__lastKeep
     const hero = game.self
     return {
       mood: game.frameMood(),
+      ground: game.frameGround(),
       stone: game.sampleWorld(0, 36, 6),
       plate: game.sampleWorld(hero.x, 18, hero.y),
       // The inner pine's crown. The tip is a few pixels and reads as the trunk.
@@ -605,6 +611,8 @@ async function twoPlayerNight(browser) {
   expect(duskMood.mood.problems).toEqual([])
   expect(duskMood.mood.cool).toBeLessThanOrEqual(0.25)
   expect(duskMood.mood.warm).toBeGreaterThanOrEqual(0.03)
+  expect(duskMood.ground.problems).toEqual([])
+  expect(duskMood.ground.spread).toBeGreaterThanOrEqual(8)
   expect(duskMood.stone && duskMood.plate && duskMood.pine).toBeTruthy()
   const plateSat =
     (Math.max(duskMood.plate.r, duskMood.plate.g, duskMood.plate.b) -
@@ -619,8 +627,11 @@ async function twoPlayerNight(browser) {
   await page.screenshot({ path: shot("dusk-host.png") })
   await page.waitForFunction(() => {
     const mood = window.__lastKeep.frameMood()
-    return mood.light === "night" && mood.problems.length === 0
+    const ground = window.__lastKeep.frameGround()
+    return mood.light === "night" && mood.problems.length === 0 && ground.problems.length === 0
   })
+  const nightGround = await page.evaluate(() => window.__lastKeep.frameGround())
+  expect(nightGround.spread).toBeGreaterThanOrEqual(8)
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
   // A stock goblin has 22 hp and the fireball deals 30. Casting first removes

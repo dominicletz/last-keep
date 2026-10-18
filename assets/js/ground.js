@@ -1,21 +1,27 @@
-// Grass, path, pine shade, and the sunset band. Hexes are the STYLE.md tokens.
-// The plane covers the camera, not the whole 1900 map, so a texel stays
-// bigger than a flat wash.
-export const GROUND_TEX = 128
+// Grass, path, pine shade, stone, and the sunset band. Hexes are the STYLE.md tokens.
+// The outer plane covers the camera. The plaza disc covers the flat town circle
+// the camera stands on, without replacing that circle's mesh.
+export const GROUND_TEX = 256
 export const GROUND_SPAN = 760
+export const PLAZA_TEX = 256
+export const PLAZA_SPAN = 300
 
 const GRASS = [0x5c, 0x64, 0x2f]
 const TUFT = [0x3a, 0x42, 0x18]
 const LIGHT = [0x6e, 0x7a, 0x38]
 const PATH = [0x5e, 0x45, 0x29]
 const SHADE = [0x2c, 0x34, 0x16]
+const STONE = [0x4b, 0x3c, 0x33]
+const PEBBLE = [0x65, 0x4e, 0x41]
 const SUNSET = [0xe5, 0x8e, 0x54]
+const NIGHT = [0x12, 0x16, 0x0c]
 
 function mix(a, b, t) {
+  const clamped = Math.max(0, Math.min(1, t))
   return [
-    Math.round(a[0] + (b[0] - a[0]) * t),
-    Math.round(a[1] + (b[1] - a[1]) * t),
-    Math.round(a[2] + (b[2] - a[2]) * t)
+    Math.round(a[0] + (b[0] - a[0]) * clamped),
+    Math.round(a[1] + (b[1] - a[1]) * clamped),
+    Math.round(a[2] + (b[2] - a[2]) * clamped)
   ]
 }
 
@@ -26,7 +32,7 @@ function hash(x, y) {
   return h / 4294967296
 }
 
-export function groundPixels(phase, size = GROUND_TEX, span = GROUND_SPAN) {
+function paint(phase, size, span) {
   const rgba = new Uint8Array(size * size * 4)
   for (let iy = 0; iy < size; iy++) {
     for (let ix = 0; ix < size; ix++) {
@@ -35,22 +41,28 @@ export function groundPixels(phase, size = GROUND_TEX, span = GROUND_SPAN) {
       const worldX = (u - 0.5) * span
       const worldZ = -(v - 0.5) * span
       const radius = Math.hypot(worldX, worldZ)
-      const clump = hash(ix >> 1, iy >> 1)
-      const grain = hash(ix, iy)
+      const n = hash(ix, iy)
+      const n2 = hash(ix + 19, iy - 7)
       let color = GRASS
-      if (clump < 0.28) color = TUFT
-      else if (clump > 0.8) color = LIGHT
-      if (grain < 0.16) color = SHADE
-      else if (grain > 0.9) color = LIGHT
-      if (phase === "night" && grain < 0.22) color = [0x12, 0x16, 0x0c]
-      else if (phase === "night" && grain > 0.78) color = [0x8a, 0x96, 0x44]
-      if (radius > 230 && radius < 290) color = mix(color, SHADE, 0.65)
-      if (Math.abs(worldX) < 16 || Math.abs(worldZ) < 16) color = mix(PATH, color, radius > 170 ? 0.35 : 0)
-      if (radius > 270) {
-        const edge = Math.min(1, (radius - 270) / 90)
-        if (phase === "dusk") color = mix(color, SUNSET, 0.35 + edge * 0.65)
-        else if (phase === "night") color = mix(color, SHADE, 0.45 + edge * 0.4)
-        else color = mix(color, SHADE, 0.25 + edge * 0.35)
+      if (n < 0.34) color = SHADE
+      else if (n < 0.55) color = TUFT
+      else if (n > 0.8) color = LIGHT
+      if (n2 < 0.07) color = STONE
+      else if (n2 < 0.12) color = PEBBLE
+      const pathBand = Math.min(Math.abs(worldX), Math.abs(worldZ))
+      const along = Math.max(Math.abs(worldX), Math.abs(worldZ))
+      if (pathBand < 12 + n * 14 && along < span * 0.46) color = mix(PATH, color, pathBand / 30)
+      if (radius > 34 && radius < 82 && n > 0.35) color = mix(PATH, color, (radius - 34) / 70)
+      if (radius < 48) color = mix(SHADE, color, 0.25 + (radius / 48) * 0.75)
+      if (radius > 300) {
+        const edge = Math.min(1, (radius - 300) / 70)
+        if (phase === "dusk") color = mix(color, SUNSET, 0.2 + edge * 0.6)
+        else color = mix(color, SHADE, 0.15 + edge * 0.4)
+      }
+      if (phase === "night") {
+        if (color === SHADE) color = NIGHT
+        else if (color === TUFT) color = SHADE
+        else if (color === GRASS) color = TUFT
       }
       const offset = (iy * size + ix) * 4
       rgba[offset] = color[0]
@@ -60,4 +72,12 @@ export function groundPixels(phase, size = GROUND_TEX, span = GROUND_SPAN) {
     }
   }
   return rgba
+}
+
+export function groundPixels(phase, size = GROUND_TEX, span = GROUND_SPAN) {
+  return paint(phase, size, span)
+}
+
+export function plazaPixels(phase, size = PLAZA_TEX, span = PLAZA_SPAN) {
+  return paint(phase, size, span)
 }
