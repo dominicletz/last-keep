@@ -131,6 +131,8 @@ async function expectGoblinsOnYard(page) {
   // redNear reads the framebuffer. Doing that on every poll stalls the page
   // while the server keeps biting, and the mage is dead before Q is held.
   // The shot assertion stays: one read, after the goblins are already in frame.
+  // A page left in the background does not draw, so onScreen stays stale.
+  await page.bringToFront()
   await page.waitForFunction(() => {
     const game = window.__lastKeep
     return (
