@@ -2,8 +2,8 @@ import { heroParts } from "../js/heroes.js"
 import { batVoxels, goblinVoxels, ogreVoxels, riderVoxels, skeletonVoxels, wolfVoxels } from "./figures.js"
 import { sceneryForest } from "../js/scenery.js"
 
-// A mesh may extend this many times past the gameplay radius. The farmer brim
-// is the wide mark (26 against 14) and still fits. A mesh at 3x does not.
+// A mesh may extend this many times past the gameplay radius. The farmer hat
+// is a brim past the shoulders and still fits. A mesh at 3x does not.
 export const fitSlack = 2
 
 // Same-family silhouettes at or above this IoU fail. They have to read apart.
@@ -70,7 +70,7 @@ const REGISTRY = [
   hero("warrior", 2092, crop(24, 158, 268, 412)),
   hero("mage", 1772, crop(312, 124, 196, 448)),
   hero("scout", 2074, crop(524, 100, 216, 480)),
-  hero("farmer", 2071, crop(752, 98, 250, 480)),
+  hero("farmer", 1621, crop(752, 98, 250, 480)),
   hero("engineer", 1987, crop(1016, 158, 224, 432)),
   monster("goblin", 16, 682, crop(16, 328, 236, 246), goblinVoxels()),
   monster("skeleton", 13, 835, crop(260, 328, 260, 246), skeletonVoxels()),

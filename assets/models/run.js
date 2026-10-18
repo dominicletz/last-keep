@@ -31,6 +31,7 @@ import {
   meanLuma,
   missingConcept,
   countShadedTokens,
+  shadedTokenBox,
   nightContrast,
   pixelDiff,
   renderCloseup,
@@ -110,6 +111,8 @@ export function checkModels({ writeGolden = false } = {}) {
       problems.push(...yardReadProblems(first))
       problems.push(...heroHeightProblems(listed))
       problems.push(...heroZoomProblems(listed))
+      const farmer = listed.find((model) => model.id === "farmer" && model.family === "hero")
+      if (farmer) problems.push(...farmerHatProblems(farmer.parts))
       problems.push(...detailProblems(listed))
       problems.push(...closeupProblems(first))
       if (sheets["heroes.jpg"]) problems.push(...heroColorProblems(listed, sheets["heroes.jpg"]))
@@ -347,7 +350,7 @@ export const heroZoomRead = {
     { token: "wood", hex: 0x8e755b, min: 150 }
   ],
   farmer: [
-    { token: "straw", hex: 0xe5b268, min: 360 },
+    { token: "straw", hex: 0xe5b268, min: 190 },
     { token: "denim", hex: 0x3a4a60, min: 130 },
     { token: "wood", hex: 0x8e755b, min: 150 }
   ],
@@ -411,6 +414,22 @@ export function heroZoomProblems(listed) {
     }
   }
   return problems
+}
+
+// The concept brim sits on the head. A hat whose fight-zoom width is most of
+// the body is the slab that reads as a table.
+export const farmerHatSpan = 0.4
+
+export function farmerHatProblems(parts) {
+  const image = renderParts(parts, "day", 0)
+  const figure = maskBounds(image)
+  const straw = shadedTokenBox(image, heroShadeTokens, "day", 0xe5b268)
+  if (!straw || !(figure.height > 0)) return ["farmer straw hat is missing at fight zoom"]
+  const span = straw.width / figure.height
+  if (span > farmerHatSpan) {
+    return [`farmer straw hat is ${straw.width}px wide on a ${figure.height}px body`]
+  }
+  return []
 }
 
 function closeupProblems(rendered) {

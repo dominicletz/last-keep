@@ -496,6 +496,38 @@ export function shadeSample(hex, rig, ndotl, pointScale) {
   ]
 }
 
+export function shadedTokenBox(image, tokens, light, hex) {
+  const rig = galleryRigs[light]
+  if (!rig) throw new Error(`unknown light ${light}`)
+  const seen = new Map()
+  let minX = image.width
+  let minY = image.height
+  let maxX = -1
+  let maxY = -1
+  let count = 0
+  for (let i = 0; i < image.mask.length; i++) {
+    if (!image.mask[i]) continue
+    const offset = i * 3
+    const pixel = [image.rgb[offset], image.rgb[offset + 1], image.rgb[offset + 2]]
+    const key = (pixel[0] << 16) | (pixel[1] << 8) | pixel[2]
+    let match = seen.get(key)
+    if (match === undefined) {
+      match = nearestToken(pixel, tokens, rig) === hex
+      seen.set(key, match)
+    }
+    if (!match) continue
+    const x = i % image.width
+    const y = (i / image.width) | 0
+    if (x < minX) minX = x
+    if (y < minY) minY = y
+    if (x > maxX) maxX = x
+    if (y > maxY) maxY = y
+    count += 1
+  }
+  if (count === 0) return null
+  return { width: maxX - minX + 1, height: maxY - minY + 1, count }
+}
+
 export function countShadedTokens(image, tokens, light) {
   const rig = galleryRigs[light]
   if (!rig) throw new Error(`unknown light ${light}`)

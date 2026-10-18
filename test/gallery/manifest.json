@@ -72,11 +72,11 @@
     {
       "id": "farmer",
       "family": "hero",
-      "area": 2589,
-      "minArea": 2071,
-      "day": 106.65,
-      "dusk": 50.05,
-      "night": 40.01,
+      "area": 2027,
+      "minArea": 1621,
+      "day": 94.04,
+      "dusk": 47.54,
+      "night": 40.87,
       "sheet": "heroes.jpg",
       "figure": "farmer",
       "crop": [

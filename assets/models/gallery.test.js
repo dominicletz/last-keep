@@ -4,7 +4,7 @@ import path from "node:path"
 import test from "node:test"
 import { heroKinds, heroParts } from "../js/heroes.js"
 import { cycleLight, groundColor, litGround, pathColor, plazaColor, ringColor, skyColor, yardLight } from "../js/scene.js"
-import { checkModels, heroColorProblems, heroHeightProblems, heroPixelFloor, heroZoomProblems, repoRoot } from "./run.js"
+import { checkModels, farmerHatProblems, heroColorProblems, heroHeightProblems, heroPixelFloor, heroZoomProblems, repoRoot } from "./run.js"
 import { conceptProblems, coverageProblems, fitSlack, iouLimit, keepStoneProblems, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
 import { galleryRigs, maskBounds, maskIou } from "./raster.js"
 import { citationProblems, loadSheet, medianHex, sceneColorProblems } from "./sheets.js"
@@ -91,6 +91,16 @@ test("a fight-zoom hero missing its prop fails the palette read", () => {
   assert.deepEqual(whole, [])
   const tall = heroHeightProblems(heroKinds().map((id) => ({ id, family: "hero", parts: heroParts(id) })))
   assert.deepEqual(tall, [])
+})
+
+test("a farmer hat that covers the body fails at fight zoom", () => {
+  const hat = farmerHatProblems(heroParts("farmer"))
+  assert.deepEqual(hat, [])
+  const slab = heroParts("farmer").map((part) =>
+    part.name === "brim" ? { ...part, w: part.w * 3, d: part.d * 3 } : part
+  )
+  const wide = farmerHatProblems(slab)
+  assert.ok(wide.some((line) => line.includes("straw hat")))
 })
 
 test("a palette token matches the jpeg median of its cited patch", () => {
