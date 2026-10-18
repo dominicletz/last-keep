@@ -79,13 +79,13 @@ flowchart LR
   farmer -->|labor stakes a croft| field
 
   pine[Pine forest] -.->|chop after the yard is cut| wood
-  meadow[Meadow] -.->|sow only here| field
-  chest[Chest] -.->|24 gold once| gold
-  portal[Portal] -.->|wave bearing| monsters
-  warrior -.->|strike until it breaks| portal
-  quarry[Quarry] -.->|gather| stone[Stone]
-  engineer -.->|2 stone a tick| quarry
-  stone -.->|280 health| wall
+  meadow[Meadow] -->|sow only here| field
+  chest[Chest] -->|24 gold once| gold
+  portal[Portal] -->|wave bearing| monsters
+  warrior -->|strike until it breaks| portal
+  quarry[Quarry] -->|gather| stone[Stone]
+  engineer -->|2 stone a tick| quarry
+  stone -->|280 health| wall
   camp[Camp] -.->|wake an ally| vagrant[Vagrant]
   shrine[Shrine] -.->|one relic| relics
   hermit[Hermit] -.->|reveal the next ring| scout
@@ -170,15 +170,15 @@ The night has its own sound. Day and building play one loop, the wave plays anot
 
 ## Empty roles
 
-No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, and gold has a producer and a consumer. The test fails if that stops being true.
+No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, gold, and stone has a producer and a consumer. The test fails if that stops being true.
 
 Trees with wood are entities. A living hero standing on one chops it, and the tree leaves the world when the wood is gone. Those trees are drawn as a layered pine: a wood trunk and stacked boughs. The client also draws seventy bare trunks in three rings. That ring is not an entity. It has no crown and no wood, so it cannot be chopped. `Rules.scenery_ring/0` says so.
 
 A chest on the seeded land pays 24 gold the first time a living hero stands on it. The same spot pays nothing after that. A portal breaks under a strike. Night 1 stays two goblins, and the broken portal's bearing is not one of them.
 
-## Planned, not in the simulation
+## World edges
 
-Dotted arrows in the graph are the world edges that are still `planned` in `interactions.json`. The chest and the portal are implemented. LK-088 and LK-089 stay open. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is not in the resource list until `Rules.cap(:stone)` exists.
+Solid arrows in the graph are in the simulation. Dotted arrows are still `planned` in `interactions.json`. The chest, the portal, the quarry, the meadow sow, and the stone wall are implemented. Pine wood, the camp, the shrine, the hermit, and the merchant stay planned. LK-089 stays open. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is in the resource list.
 
 Pine forest is the wood that refills a wall line after the yard trees are cut. Any living hero chops a pine that still has wood. The seventy bare trunks stay bare.
 
