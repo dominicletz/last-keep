@@ -59,6 +59,8 @@ BASE_URL=https://agentyard.letz.tw npx playwright test
 - `heroSilhouettes` — Ada, Lux, Bram, Pip, and Nia stand in one room as warrior, mage, engineer, scout, and farmer. `window.__lastKeep.figures` has five distinct mark, bounds, and part-count signatures.
 - `paradeShowsEveryKind` — the scripted parade puts goblin, skeleton, wolf, troll, bat, and boss on screen around the host. `brightNear` reads the bat and the rider. Each needs at least 24 pixels 18 luma above the yard patch. The parade is skipped when `BASE_URL` is set.
 
+`assertWaveClear` runs while the party waits at the keep and again after the host walks. The wave line stays inside the window and off the sacks, the relic lines, the heart, the roster, the name, the calls, and the top and bottom bars.
+
 The browser reads `window.__lastKeep` (phase, wood, buildings, monsters, figures, rangeRing, audio, projectiles, log, labels, kinds, attackCd, shownWave, smoothing, renders, `toClient`, `redNear`, `brightNear`) and `window.__lastKeepTest` (`blur`, `hold`, `mute`, `volume`, `hear`, `parade`). Those hooks are the same ones this skill's run uses. Do not add a second script. The five-player walk also requires an idle seat to paint fewer than 12 frames in one second, and the warrior still has to travel more than 20.
 
 Server rules that the browser cannot force (a refused cost, Fireball damage, the shown-wave step, elite armor, a fast lunge, a boss slam, a wounded hero staying wounded when the keep falls) are ExUnit tests in `test/last_keep/game/sim_test.exs`. `test/last_keep/game/room_test.exs` requires an empty room to stop ticking, five abandoned rooms to terminate, and the supervisor count to return to the count from before those rooms existed. Run `mix test` as well.

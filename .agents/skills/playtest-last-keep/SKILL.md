@@ -31,7 +31,7 @@ Unset `BASE_URL` for a local server. Set it to `https://agentyard.letz.tw` to pl
 They share one room. The hero is only the seat they play.
 
 1. Gameplay, Ada, warrior, host. Starts the night. Judges whether a minute of play is readable, fair, and worth another minute. Reads `docs/GAME-INTERACTIONS.md`.
-2. Graphics, Lux, mage. Judges whether bodies, buildings, the yard, and the night read at a glance.
+2. Graphics, Lux, mage. Judges whether bodies, buildings, the yard, and the night read at a glance. The wave line sits in the yard and stays off the sacks and the other world pins.
 3. Music and sound, Bram, engineer. Judges what is heard. Name the day loop, the night loop, the horn, the clear, and the hit, kill, build, keep, and fall cues if they play. If the build is silent, the report says so. Mute and volume should survive a reload.
 4. Game logic, Pip, scout. Cross-checks the screenshot against the saved snapshot and against `docs/GAME-INTERACTIONS.md`. A planned edge is a finding. Screen and state that disagree are a finding. A hero's health on the fallen screen is the same snapshot the fight HUD reads. A downed hero is not refilled because the keep died on that tick.
 5. Character design, Nia, farmer. Judges whether each hero and monster reads as that character, and whether the roster says who is who.

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rosterAnchor, sackLine, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, callAnchor, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, pinRect, placementReason, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatPin, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -193,4 +193,27 @@ test("the wave sign follows the hero and stays inside the window", () => {
   assert.ok(below.top >= 72)
   const low = callAnchor(0.2, 0.96, null)
   assert.ok(low.top <= 0.78)
+})
+
+test("the wave line seats clear of the sacks", () => {
+  const view = { width: 1280, height: 800 }
+  const box = { width: 640, height: 22 }
+  const obstacles = [
+    { left: 470, top: 300, right: 560, bottom: 370 },
+    { left: 560, top: 360, right: 650, bottom: 430 },
+    { left: 400, top: 380, right: 490, bottom: 450 },
+    { left: 600, top: 470, right: 720, bottom: 510 }
+  ]
+  const spot = { left: 640, top: 420 }
+  const home = visiblePin(spot, view, box)
+  assert.ok(obstacles.some((block) => rectsOverlap(pinRect(home, box), block)))
+  const seated = seatPin(spot, view, box, obstacles)
+  const rect = pinRect(seated, box)
+  for (const block of obstacles) assert.equal(rectsOverlap(rect, block), false)
+  assert.ok(rect.left >= 8)
+  assert.ok(rect.top >= 8)
+  assert.ok(rect.right <= view.width - 8)
+  assert.ok(rect.bottom <= view.height - 72)
+  const clearSpot = { left: 960, top: 140 }
+  assert.deepEqual(seatPin(clearSpot, view, { width: 180, height: 22 }, obstacles), visiblePin(clearSpot, view, { width: 180, height: 22 }))
 })

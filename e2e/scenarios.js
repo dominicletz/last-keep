@@ -498,6 +498,7 @@ async function twoPlayerNight(browser) {
   await expect(page.locator("[data-score]")).toHaveText("Score 0")
   await assertBonuses(page)
   await assertDiegeticHud(page)
+  await assertWaveClear(page)
   await page.screenshot({ path: shot("coop-host.png") })
   await friend.screenshot({ path: shot("coop-guest.png") })
 
@@ -617,6 +618,7 @@ async function movementIsInterpolated(page) {
   expect(wave.y).toBeGreaterThanOrEqual(0)
   expect(wave.x + wave.width).toBeLessThanOrEqual(view.width + 1)
   expect(wave.y + wave.height).toBeLessThanOrEqual(view.height + 1)
+  await assertWaveClear(page)
 }
 
 async function squarePixels(browser) {
@@ -714,6 +716,23 @@ async function assertNightAudio(page) {
   expect(audio.cues).toContain("night")
   expect(audio.unlocked).toBe(true)
   expect(audio.loop).toBe("night")
+}
+
+async function assertWaveClear(page) {
+  const hits = await page.evaluate(() => {
+    const chip = document.querySelector(".chip")?.getBoundingClientRect()
+    if (!chip || chip.width <= 0 || chip.height <= 0) return ["missing"]
+    const view = { width: window.innerWidth, height: window.innerHeight }
+    if (chip.left < 0 || chip.top < 0 || chip.right > view.width + 1 || chip.bottom > view.height + 1) return ["window"]
+    return [...document.querySelectorAll(".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .hud-top, .hud-bottom")]
+      .filter((node) => !node.hidden && node.getBoundingClientRect().width > 0)
+      .filter((node) => {
+        const box = node.getBoundingClientRect()
+        return box.left < chip.right && box.right > chip.left && box.top < chip.bottom && box.bottom > chip.top
+      })
+      .map((node) => node.getAttribute("data-sack") || node.getAttribute("data-bonuses") || node.className)
+  })
+  expect(hits).toEqual([])
 }
 
 async function hintsClearTheRoster(page) {

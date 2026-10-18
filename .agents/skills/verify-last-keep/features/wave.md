@@ -9,6 +9,7 @@ Inside `twoPlayerNight`, read these functions in `e2e/scenarios.js`:
 - After the clear, `[data-score]` matches `window.__lastKeep.score`.
 - `assertWaveStable` — sampled `[data-wave]` values match `Wave N`, the numbers never go backwards, and both 1 and 2 appear.
 - `assertBonuses` — forge copy contains `15%`, spire copy contains `recover faster`, relic copy mentions a relic, and `smoothing` is true.
+- `assertWaveClear` — the wave line stays inside the window and off the sacks, relic lines, heart, roster, name, calls, and the top and bottom bars. `twoPlayerNight` calls it while the party waits and again after the host walks.
 
 `scoreList` checks `GET /api/highscores` for a score above 0 and a non-blank name on every row.
 

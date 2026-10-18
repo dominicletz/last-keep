@@ -235,12 +235,12 @@ export function spreadCalls(anchors) {
 
 export function waveAnchor(hero) {
   if (!hero || !Number.isFinite(hero.x) || !Number.isFinite(hero.y)) return { x: KEEP_SIGN.x, y: KEEP_SIGN.y }
-  // Screen-up is -x and -y together, so the sign clears the sacks at the hero's feet.
   return { x: hero.x - 64, y: hero.y - 64 }
 }
 
-export function visiblePin(spot, view, box, anchor = "chip", floor = 0) {
-  if (!spot || !(view?.width > 0) || !(view?.height > 0)) return spot
+const SEAT_STEP = 16
+
+function pinLimits(view, box, anchor, floor) {
   const width = box?.width || 0
   const height = box?.height || 0
   const corner = anchor === "corner"
@@ -252,10 +252,72 @@ export function visiblePin(spot, view, box, anchor = "chip", floor = 0) {
   const maxX = Math.max(minX, view.width - 8 - tailX)
   const minY = Math.max(8 + shiftY, Number(floor) || 0)
   const maxY = Math.max(minY, view.height - (corner ? 8 + tailY : 72))
+  return { minX, maxX, minY, maxY }
+}
+
+export function pinRect(spot, box, anchor = "chip") {
+  const width = box?.width || 0
+  const height = box?.height || 0
+  const left = Number(spot?.left) || 0
+  const top = Number(spot?.top) || 0
+  if (anchor === "corner") return { left, top, right: left + width, bottom: top + height }
+  const x = left - width / 2
+  const y = top - height * 1.2
+  return { left: x, top: y, right: x + width, bottom: y + height }
+}
+
+export function rectsOverlap(a, b) {
+  if (!a || !b) return false
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top
+}
+
+function overlapArea(a, b) {
+  const width = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+  const height = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+  if (width <= 0 || height <= 0) return 0
+  return width * height
+}
+
+export function visiblePin(spot, view, box, anchor = "chip", floor = 0) {
+  if (!spot || !(view?.width > 0) || !(view?.height > 0)) return spot
+  const { minX, maxX, minY, maxY } = pinLimits(view, box, anchor, floor)
   return {
     left: clamp(spot.left, minX, maxX),
     top: clamp(spot.top, minY, maxY)
   }
+}
+
+export function seatPin(spot, view, box, obstacles, anchor = "chip", floor = 0) {
+  const home = visiblePin(spot, view, box, anchor, floor)
+  if (!home || !(view?.width > 0) || !(view?.height > 0)) return home
+  const blocks = (obstacles || []).filter((block) => block && block.right > block.left && block.bottom > block.top)
+  const covered = (candidate) => {
+    const rect = pinRect(candidate, box, anchor)
+    let area = 0
+    for (const block of blocks) area += overlapArea(rect, block)
+    return area
+  }
+  if (covered(home) === 0) return home
+  const { minX, maxX, minY, maxY } = pinLimits(view, box, anchor, floor)
+  const stepsX = Math.max(1, Math.ceil((maxX - minX) / SEAT_STEP))
+  const stepsY = Math.max(1, Math.ceil((maxY - minY) / SEAT_STEP))
+  let best = home
+  let bestArea = covered(home)
+  let bestDist = Infinity
+  for (let ix = 0; ix <= stepsX; ix += 1) {
+    const left = minX + ((maxX - minX) * ix) / stepsX
+    for (let iy = 0; iy <= stepsY; iy += 1) {
+      const top = minY + ((maxY - minY) * iy) / stepsY
+      const area = covered({ left, top })
+      const dist = (left - home.left) ** 2 + (top - home.top) ** 2
+      if (area < bestArea || (area === bestArea && dist < bestDist)) {
+        best = { left, top }
+        bestArea = area
+        bestDist = dist
+      }
+    }
+  }
+  return best
 }
 
 export function rangeRingState(armed, range) {

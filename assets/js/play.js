@@ -3,7 +3,7 @@ import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
 import { absorbShots, partyPositions } from "./paint"
-import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatPin, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
@@ -418,6 +418,7 @@ function start(code, seat, ui) {
     drawWorld(ui, snap, selfId)
     drawHints(ui, snap)
     drawYou(ui, snap, selfId)
+    seatWave(ui, snap, selfId)
     drawFx(ui, snap, fx, seen)
     audio.hear(snap)
     if (window.__lastKeep) {
@@ -511,19 +512,8 @@ function drawWorld(ui, snap, selfId) {
   for (const mark of sackLine(snap.resources)) {
     pin(stock?.querySelector(`[data-sack="${mark.key}"]`), screenPoint(ui, mark.x, mark.y))
   }
-  const sign = ui.hud.querySelector("[data-clock]")?.closest("[data-world]")
   const me = (snap.players || []).find((player) => player.id === selfId)
   const hudBox = ui.hud.getBoundingClientRect()
-  const waveSpot = screenPoint(ui, waveAnchor(me).x, waveAnchor(me).y)
-  pin(
-    sign,
-    waveSpot
-      ? visiblePin(waveSpot, { width: hudBox.width, height: hudBox.height }, {
-          width: sign?.offsetWidth || 0,
-          height: sign?.offsetHeight || 0
-        })
-      : null
-  )
   pin(ui.hud.querySelector("[data-bonuses]"), screenPoint(ui, RELIC_SIGN.x, RELIC_SIGN.y))
   pin(ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
   const rosterNode = ui.hud.querySelector("[data-roster]")
@@ -543,6 +533,38 @@ function drawWorld(ui, snap, selfId) {
         )
       : null
   )
+}
+
+function seatWave(ui, snap, selfId) {
+  const sign = ui.hud.querySelector("[data-clock]")?.closest("[data-world]")
+  const me = (snap.players || []).find((player) => player.id === selfId)
+  const anchor = waveAnchor(me)
+  const waveSpot = screenPoint(ui, anchor.x, anchor.y)
+  if (!sign || !waveSpot) {
+    pin(sign, null)
+    return
+  }
+  const hudBox = ui.hud.getBoundingClientRect()
+  const box = { width: sign.offsetWidth || 0, height: sign.offsetHeight || 0 }
+  pin(sign, seatPin(waveSpot, { width: hudBox.width, height: hudBox.height }, box, obstacleRects(ui, hudBox)))
+}
+
+function obstacleRects(ui, hudBox) {
+  const rects = []
+  for (const node of ui.hud.querySelectorAll(
+    ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .hud-top, .hud-bottom"
+  )) {
+    if (node.hidden) continue
+    const box = node.getBoundingClientRect()
+    if (box.width <= 0 || box.height <= 0) continue
+    rects.push({
+      left: box.left - hudBox.left,
+      top: box.top - hudBox.top,
+      right: box.right - hudBox.left,
+      bottom: box.bottom - hudBox.top
+    })
+  }
+  return rects
 }
 
 function drawYou(ui, snap, selfId) {

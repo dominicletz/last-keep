@@ -169,6 +169,10 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - `cameraFocus` follows 72% of the way to the hero. A hero at the round-7 bat coordinates stays inside the rank-0 frame, and the bat under them does too. The old 0.22 pull toward the keep leaves that bat outside the frame. Following all the way leaves a goblin on the far side of the keep outside the frame of a hero on the join ring.
 - The scripted parade stands on a ring around the host at (120, 0), so all six kinds stay inside that same frame. The roster board is a corner pin, and a board that projects above the window is pulled back inside it. A long fight keeps the horn, the sting, the kill, the build cue, and the day cue after the hit buffer rolls over. Night plans are unchanged. The coverage floor stays 69.
 
+## 2026-10-18 the wave line clears the sacks
+
+- The wave line stays a world pin. When that pin would cover a sack, the relic lines, the heart, the roster, the name, a call, or a bar, it takes the nearest spot that misses them and still sits inside the window. `assertWaveClear` checks the waiting yard and the walk. This does not change the simulation. The coverage floor stays 69.
+
 ## 2026-10-18 the palisade reads as a wall
 
 - A placed wall is five posts at least 7 by 40 with two rails and a flame. The recorded silhouette floor is 1411. The thin 4 by 24 posts were the wall that did not read in round 7. This does not change the simulation. The coverage floor stays 69.
