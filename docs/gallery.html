@@ -8,6 +8,8 @@ body { margin: 0; background: #140e12; color: #f3e6cf; font: 16px/1.45 sans-seri
 main { padding: 24px; max-width: 1100px; }
 img { image-rendering: pixelated; background: #1a140f; max-width: 100%; height: auto; display: block; margin: 8px 0; }
 img.near { height: 384px; width: auto; max-width: none; }
+.swatches { display: flex; gap: 12px; margin: 12px 0 24px; }
+.swatches div { width: 140px; height: 88px; padding: 8px; color: #f3e6cf; font-weight: 700; }
 .miss { border: 1px solid #6a4a30; padding: 12px; }
 </style>
 </head>
@@ -15,6 +17,17 @@ img.near { height: 384px; width: auto; max-width: none; }
 <main>
 <h1>Gallery</h1>
 <p><code>npm run models</code> wrote these frames at game zoom through the pixel path. Heroes and monsters also have a close-up, about 80px tall, and the portrait card is that close-up. The pictures on this page are the goldens in <code>test/gallery/</code>. CI uploads the same bytes as <code>artifacts/gallery/</code>. A second run has to match. The concept sheets are heroes.jpg (present), monsters.jpg (present), theme.jpg (present). Do not invent a substitute sheet.</p>
+<section id="yard">
+<h2>Yard beside the concept</h2>
+<p>The sheet is the dusk town: violet sky, dark pines, warm windows. The day swatch is the lit clearing graded to the moss at 150,192 (hue 87.1, luminance 121.9). The dusk swatch is the far field (hue 291.4). The pool swatch is the ground by the brazier (hue 20.5).</p>
+<img src="concept/theme.jpg" alt="theme.jpg, the concept the yard is graded toward">
+<div class="swatches">
+<div style="background:#628834">day #628834</div>
+<div style="background:#574b59">dusk #574b59</div>
+<div style="background:#7f6659">pool #7f6659</div>
+<div style="background:#455c28">moss #455c28</div>
+</div>
+</section>
 <article id="warrior">
 <h2>warrior</h2>
 <p>hero. Figure warrior on heroes.jpg at 24,158,268,412. Silhouette 1430 pixels. Night 46.51, dusk 53.11, day 105.84.</p>

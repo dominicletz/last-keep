@@ -11,7 +11,20 @@ import { keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterRim, monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, partyPositions } from "./paint.js"
-import { cycleLight, groundColor, lightName, lumaOf, patchStats, pathColor, plazaColor, ringColor, skyColor, yardLight } from "./scene.js"
+import {
+  cycleLight,
+  flameColor,
+  groundColor,
+  lightName,
+  lumaOf,
+  patchStats,
+  pathColor,
+  plazaColor,
+  plazaSides,
+  ringColor,
+  skyColor,
+  yardLight
+} from "./scene.js"
 
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
@@ -48,6 +61,15 @@ export function createView(stage) {
   sun.shadow.camera.bottom = -280
   scene.add(sun)
   scene.add(sun.target)
+  const groundFill = new THREE.AmbientLight(yardLight.sky, 0)
+  groundFill.layers.set(1)
+  scene.add(groundFill)
+  camera.layers.enable(1)
+  const brazierPool = new THREE.PointLight(flameColor, 0, 120, 2)
+  brazierPool.position.set(26, 14, 26)
+  const windowPool = new THREE.PointLight(flameColor, 0, 100, 2)
+  windowPool.position.set(0, 16, 36)
+  scene.add(brazierPool, windowPool)
 
   const mats = new Map()
   const mat = (color, emissive = 0x000000) => {
@@ -61,22 +83,19 @@ export function createView(stage) {
     return mats.get(key)
   }
 
-  const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(1900, 8),
-    mat(groundColor)
-  )
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(1900, plazaSides), mat(groundColor))
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
+  ground.layers.enable(1)
   scene.add(ground)
 
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, 8), mat(plazaColor))
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
   plaza.position.y = 0.2
-  plaza.receiveShadow = true
-  const ring = new THREE.Mesh(new THREE.RingGeometry(146, 168, 8), mat(ringColor))
+  plaza.layers.enable(1)
+  const ring = new THREE.Mesh(new THREE.RingGeometry(146, 168, plazaSides), mat(ringColor))
   ring.rotation.x = -Math.PI / 2
   ring.position.y = 0.28
-  ring.receiveShadow = true
   scene.add(plaza, ring)
   const pathNS = new THREE.Mesh(new THREE.BoxGeometry(18, 0.45, 280), mat(pathColor))
   pathNS.position.y = 0.4
@@ -314,6 +333,10 @@ export function createView(stage) {
       liveLight = name
       const rig = cycleLight[name]
       if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
+      groundFill.color.set(rig.groundFill || 0x000000)
+      groundFill.intensity = rig.groundFillLevel || 0
+      brazierPool.intensity = rig.pool || 0
+      windowPool.intensity = rig.pool || 0
       sky.color.set(rig.sky)
       sky.groundColor.set(rig.ground)
       sky.intensity = rig.hemisphere
@@ -483,6 +506,7 @@ export function createView(stage) {
         toClient,
         redNear,
         brightNear,
+        patchAt,
         tick: snap.tick,
         alive: me ? !!me.alive : !!kept.alive,
         hp: me ? me.hp : kept.hp,
@@ -566,6 +590,25 @@ export function createView(stage) {
       if (bodyPixel(buf[i], buf[i + 1], buf[i + 2])) count += 1
     }
     return count
+  }
+
+  function patchAt(x, z) {
+    paintFrame()
+    const gl = renderer.getContext()
+    const canvas = renderer.domElement
+    const point = new THREE.Vector3(x, 2, z).project(camera)
+    if (point.z > 1) return null
+    const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
+    const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)
+    const size = 10
+    const sx0 = Math.max(0, px - size / 2)
+    const sy0 = Math.max(0, py - size / 2)
+    const width = Math.min(size, canvas.width - sx0)
+    const heightPx = Math.min(size, canvas.height - sy0)
+    if (width < 4 || heightPx < 4) return null
+    const buf = new Uint8Array(width * heightPx * 4)
+    gl.readPixels(sx0, Math.max(0, canvas.height - (sy0 + heightPx)), width, heightPx, gl.RGBA, gl.UNSIGNED_BYTE, buf)
+    return patchStats(buf)
   }
 
   function brightNear(x, z, height = 16) {
