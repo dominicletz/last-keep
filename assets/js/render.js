@@ -2,6 +2,7 @@ import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
 import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
+import { giveBurst, releaseGeometries, shotSphere, takeBurst } from "./meshes"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
@@ -348,6 +349,7 @@ export function createView(stage) {
     for (const [key, mesh] of meshes) {
       if (key.startsWith(`${kind}:`) && !seen.has(key)) {
         scene.remove(mesh)
+        if (mesh.userData.role !== "shot") releaseGeometries(mesh)
         meshes.delete(key)
         tracks.delete(key)
       }
@@ -424,6 +426,7 @@ export function createView(stage) {
       const age = (now - burst.at) / 520
       if (age >= 1) {
         scene.remove(burst.mesh)
+        giveBurst(burst.mesh)
         bursts.splice(i, 1)
       } else {
         burst.mesh.scale.setScalar(1 + age * 3.2)
@@ -440,8 +443,12 @@ export function createView(stage) {
       mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
     }
     if (drawDue(now, lastRender, lastInput)) {
+      const started = performance.now()
       paintFrame()
+      publishPerf(performance.now() - started)
       lastRender = now
+    } else {
+      publishPerf(null)
     }
     requestAnimationFrame(frame)
   }
@@ -518,6 +525,7 @@ export function createView(stage) {
       pathNS.scale.set(1, 1, pathSpan)
       pathEW.scale.set(pathSpan, 1, 1)
       if (keep.userData.rank !== townRank) {
+        releaseGeometries(keep)
         scene.remove(keep)
         keep = makeKeep(townRank)
         scene.add(keep)
@@ -562,7 +570,7 @@ export function createView(stage) {
         const fire = row.kind === "fireball" || row.kind === "meteor"
         const color = fire ? 0xff7a2a : 0xf2e2b0
         const size = row.kind === "fireball" ? 11 : row.kind === "meteor" ? 14 : 6
-        const mesh = new THREE.Mesh(new THREE.SphereGeometry(size, 6, 5), mat(color, color))
+        const mesh = new THREE.Mesh(shotSphere(size), mat(color, color))
         mesh.userData.lift = row.kind === "meteor" ? 28 : row.kind === "fireball" ? 18 : 12
         mesh.userData.role = "shot"
         return mesh
@@ -1066,11 +1074,19 @@ export function createView(stage) {
     camera.updateProjectionMatrix()
   }
 
+  function publishPerf(paintMs) {
+    const perf = window.__lastKeepPerf || (window.__lastKeepPerf = { paints: [] })
+    perf.geometries = renderer.info.memory.geometries
+    perf.textures = renderer.info.memory.textures
+    perf.calls = renderer.info.render.calls
+    perf.triangles = renderer.info.render.triangles
+    if (paintMs == null) return
+    perf.paints.push(paintMs)
+    if (perf.paints.length > 400) perf.paints.shift()
+  }
+
   function addBurst(x, z, color) {
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(8, 6, 5),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
-    )
+    const mesh = takeBurst(color)
     mesh.position.set(x, 18, z)
     scene.add(mesh)
     bursts.push({ mesh, at: performance.now() })
