@@ -3,7 +3,7 @@ import { createView } from "./render"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
-import { absorbShots, partyPositions } from "./paint"
+import { absorbShots, nextAttackPeak, partyPositions, swingSeen } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
@@ -480,14 +480,18 @@ function start(code, seat, ui) {
       window.__lastKeep.kinds = seen.kinds
       window.__lastKeep.tick = snap.tick
       window.__lastKeep.party = partyPositions(snap.players)
+      const cd = me?.cds?.attack || 0
       if (me) {
         window.__lastKeep.alive = me.alive
         window.__lastKeep.hp = me.hp
         // The swing is 8 ticks. draw() is the only other writer, and an idle
         // page does not paint, so the click check never saw the cooldown.
-        window.__lastKeep.attackCd = me.cds?.attack || 0
-        if (window.__lastKeep.self) window.__lastKeep.self.attackCd = me.cds.attack || 0
+        window.__lastKeep.attackCd = cd
+        if (window.__lastKeep.self) window.__lastKeep.self.attackCd = cd
       }
+      // draw() replaces this object. The peak is copied there too, or the
+      // next frame would forget a swing the channel had already cooled.
+      window.__lastKeep.attackPeak = nextAttackPeak(window.__lastKeep.attackPeak, cd, swingSeen(snap))
     }
     const wave = ui.hud.querySelector("[data-wave]")
     const clock = ui.hud.querySelector("[data-clock]")

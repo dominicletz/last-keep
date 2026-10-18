@@ -23,6 +23,19 @@ export function partyPositions(players) {
   }))
 }
 
+// A backed-up channel can deliver the swing only as saw_swing, after the
+// 8-tick cooldown has already reached 0. The latch has to outlive that pulse.
+export function swingSeen(snap) {
+  if (!snap) return false
+  if (snap.saw_swing) return true
+  return (snap.events || []).some((ev) => ev && ev.type === "swing")
+}
+
+export function nextAttackPeak(previous, cooldown, sawSwing) {
+  const seen = Math.max(Number(previous) || 0, Number(cooldown) || 0)
+  return sawSwing ? Math.max(seen, 1) : seen
+}
+
 export function bodyPixel(r, g, b) {
   if (r > 150 && r > g + 40 && r > b + 20) return true
   return r < 48 && g < 48 && b < 40

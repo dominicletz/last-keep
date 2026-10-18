@@ -13,7 +13,7 @@ import { pictureColumn } from "./pictures.js"
 import { houseParts, houseVariant, keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterRim, monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
-import { absorbShots, bodyPixel, partyPositions } from "./paint.js"
+import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, swingSeen } from "./paint.js"
 import {
   cycleLight,
   flameColor,
@@ -615,6 +615,7 @@ export function createView(stage) {
             }
           : null,
         attackCd: me?.cds?.attack || 0,
+        attackPeak: nextAttackPeak(kept.attackPeak, me?.cds?.attack || 0, swingSeen(snap)),
         cds: me?.cds || null,
         monsters,
         figures,
