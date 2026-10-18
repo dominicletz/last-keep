@@ -1300,6 +1300,10 @@ async function assertPhoneClear(page) {
 function keysToward(me, goal) {
   const dx = goal.x - me.x
   const dy = goal.y - me.y
+  // Finish the east-west lane before turning. Turning where the errors match
+  // walks north through the house at (-108, -108) and the body stops.
+  if (Math.abs(dx) > 28) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
+  if (Math.abs(dy) > 18) return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
   if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? ["KeyS", "KeyD"] : ["KeyA", "KeyW"]
   return dy >= 0 ? ["KeyS", "KeyA"] : ["KeyW", "KeyD"]
 }
@@ -1334,28 +1338,15 @@ async function steer(page, goal, done, timeout, label) {
 
 async function walkHome(page) {
   await page.bringToFront()
-  // South of the keep, inside the sow ring. An open east-then-north hold
-  // runs past x=104 on a slow frame, and no later north step can re-enter it.
-  const goal = { x: 55, y: -72 }
-  const deadline = Date.now() + 20_000
-  try {
-    while (Date.now() < deadline) {
-      const me = await page.evaluate(() => window.__lastKeep.self)
-      if (me && me.x > 40 && me.y > -80 && Math.hypot(me.x, me.y) <= 104) return
-      if (me) {
-        const keys = keysToward(me, goal)
-        await page.evaluate((down) => {
-          for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, down.includes(key))
-        }, keys)
-      }
-      await page.waitForTimeout(80)
-    }
-  } finally {
-    await page.evaluate(() => {
-      for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, false)
-    })
-  }
-  throw new Error("walk home timed out")
+  // South of the keep, inside the sow ring. The lane stays on y of the far
+  // walk until x is near 55, so the north step misses the corner house.
+  await steer(
+    page,
+    { x: 55, y: -72 },
+    (state) => state.alive && state.x > 40 && state.y > -80 && Math.hypot(state.x, state.y) <= 104,
+    20_000,
+    "walk home"
+  )
 }
 
 async function phoneClear(browser) {
