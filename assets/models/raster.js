@@ -67,6 +67,8 @@ export function renderParts(parts, light, rank = 0) {
 export const closeupFigure = 80
 
 export function renderCloseup(parts, light) {
+  const card = parts.find((part) => part.shape === "billboard" && part.image)
+  if (card) return closeupCard(parts, light, card)
   const vertices = verticesOf(parts)
   const center = centroid(vertices)
   const probe = lookCamera(center, 40, 40)
@@ -92,6 +94,34 @@ export function renderCloseup(parts, light) {
   return paint(parts, light, camera, width, height)
 }
 
+function closeupCard(parts, light, card) {
+  const center = [card.x, card.y, card.z]
+  const probe = lookCamera(center, 40, 40)
+  const foot = project(probe, 160, 160, [card.x, card.y - card.h / 2, card.z])
+  const head = project(probe, 160, 160, [card.x, card.y + card.h / 2, card.z])
+  const pxH = Math.max(1, Math.abs(head.y - foot.y))
+  const pxW = Math.max(1, (pxH * card.image.w) / card.image.h)
+  const worldPerPx = 80 / 160
+  const worldH = pxH * worldPerPx
+  const worldW = pxW * worldPerPx
+  const pad = 8
+  const figH = closeupFigure
+  const figW = Math.max(1, Math.round((worldW * figH) / worldH))
+  const width = figW + pad * 2
+  const height = figH + pad * 2
+  const halfH = (worldH * height) / (2 * figH)
+  const halfW = halfH * (width / height)
+  const shiftX = ((head.x + foot.x) / 2 - 80) * worldPerPx
+  const shiftY = ((head.y + foot.y) / 2 - 80) * worldPerPx
+  const camera = lookCamera(center, halfW, halfH)
+  camera.left += shiftX
+  camera.right += shiftX
+  camera.top -= shiftY
+  camera.bottom -= shiftY
+  camera.updateProjectionMatrix()
+  return paint(parts, light, camera, width, height)
+}
+
 function lookCamera(center, halfW, halfH) {
   const dist = cameraDistance(0)
   const camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, 2400)
@@ -105,6 +135,13 @@ function lookCamera(center, halfW, halfH) {
 function verticesOf(parts) {
   const vertices = []
   for (const part of parts) {
+    if (part.shape === "billboard") {
+      const y0 = part.y - part.h / 2
+      const y1 = part.y + part.h / 2
+      const x = part.w / 2
+      vertices.push([part.x - x, y0, part.z], [part.x + x, y0, part.z], [part.x - x, y1, part.z], [part.x + x, y1, part.z])
+      continue
+    }
     for (const face of facesOf(part)) {
       for (const point of face.poly) vertices.push(point)
     }
@@ -137,9 +174,14 @@ function paint(parts, light, camera, width, height) {
     rgb[i * 3 + 1] = rig.bg[1]
     rgb[i * 3 + 2] = rig.bg[2]
   }
+  const gain = light === "night" ? 0.88 : light === "dusk" ? 0.96 : 1
+  for (const part of parts) {
+    if (part.shape === "billboard") drawBillboard(rgb, mask, width, height, camera, part, gain)
+  }
   const faces = []
   let order = 0
   for (const part of parts) {
+    if (part.shape === "billboard") continue
     for (const face of facesOf(part)) {
       const projected = face.poly.map((point) => project(camera, width, height, point))
       let depth = 0
@@ -162,6 +204,34 @@ function paint(parts, light, camera, width, height) {
   }
   if (parts.some((part) => part.hold > 0)) traceRim(rgb, mask, width, height)
   return { rgb, mask, width, height }
+}
+
+function drawBillboard(rgb, mask, width, height, camera, part, gain) {
+  const image = part.image
+  if (!image) return
+  const foot = project(camera, width, height, [part.x, part.y - part.h / 2, part.z])
+  const head = project(camera, width, height, [part.x, part.y + part.h / 2, part.z])
+  const pxH = Math.max(1, Math.abs(head.y - foot.y))
+  const pxW = Math.max(1, (pxH * image.w) / image.h)
+  const x0 = (head.x + foot.x) / 2 - pxW / 2
+  const y0 = Math.min(head.y, foot.y)
+  const maxX = Math.ceil(x0 + pxW)
+  const maxY = Math.ceil(y0 + pxH)
+  for (let y = Math.floor(y0); y < maxY; y++) {
+    if (y < 0 || y >= height) continue
+    const sy = Math.min(image.h - 1, Math.max(0, Math.floor(((y + 0.5 - y0) * image.h) / pxH)))
+    for (let x = Math.floor(x0); x < maxX; x++) {
+      if (x < 0 || x >= width) continue
+      const sx = Math.min(image.w - 1, Math.max(0, Math.floor(((x + 0.5 - x0) * image.w) / pxW)))
+      const s = sy * image.w + sx
+      if (!image.mask[s]) continue
+      const d = y * width + x
+      mask[d] = 1
+      rgb[d * 3] = Math.round(image.rgb[s * 3] * gain)
+      rgb[d * 3 + 1] = Math.round(image.rgb[s * 3 + 1] * gain)
+      rgb[d * 3 + 2] = Math.round(image.rgb[s * 3 + 2] * gain)
+    }
+  }
 }
 
 function traceRim(rgb, mask, width, height) {

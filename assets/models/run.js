@@ -2,6 +2,9 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import * as THREE from "three"
+import { cameraFocus, cameraLift, frameFor } from "../js/frame.js"
+import { cameraDistance } from "../js/town.js"
 import {
   conceptProblems,
   conceptSheets,
@@ -42,6 +45,7 @@ import {
 import { cycleLight, groundColor, litGround, litPool, litYard, lumaOf, mossColor, pathColor, plazaColor, ringColor, skyColor } from "../js/scene.js"
 import { detailFloor, detailProblems } from "./voxels.js"
 import { citationProblems, loadSheet, sceneColorProblems } from "./sheets.js"
+import { conceptFigure, likenessScore, spriteHeight } from "./sprites.js"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
 
@@ -111,11 +115,13 @@ export function checkModels({ writeGolden = false } = {}) {
       problems.push(...nightLightProblems(listed, first))
       problems.push(...yardReadProblems(first))
       problems.push(...heroHeightProblems(listed))
-      problems.push(...heroZoomProblems(listed))
-      problems.push(...heroHueProblems(listed))
+      problems.push(...heroZoomProblems(listed.filter((model) => !billboard(model))))
+      problems.push(...heroHueProblems(listed.filter((model) => !billboard(model))))
       problems.push(...heroFeatureProblems(listed))
+      problems.push(...heroScaleProblems(listed))
+      problems.push(...heroLikenessProblems(listed))
       const farmer = listed.find((model) => model.id === "farmer" && model.family === "hero")
-      if (farmer) problems.push(...farmerHatProblems(farmer.parts))
+      if (farmer && !billboard(farmer)) problems.push(...farmerHatProblems(farmer.parts))
       problems.push(...detailProblems(listed))
       problems.push(...closeupProblems(first))
       if (sheets["heroes.jpg"]) problems.push(...heroColorProblems(listed, sheets["heroes.jpg"]))
@@ -282,15 +288,18 @@ function chromaDist(a, b) {
   return Math.hypot(a[0] / left - b[0] / right, a[1] / left - b[1] / right, a[2] / left - b[2] / right)
 }
 
-// A close-up color is dominant at 16% of the lit figure. It has to match one crop
-// color that occupies at least 1.5% of the crop once the near-black backdrop is
-// gone. RGB tolerance 52 leaves room for the day light. Chroma tolerance 0.09
-// rejects a brown body that sits near a grey only because both are dark.
+// A close-up color has to match one crop color that occupies at least 1.5% of
+// the crop once the near-black backdrop is gone. A flat mesh puts one token
+// over 16% of the figure. A painted crop spreads, and the farmer's largest bin
+// is 3.6%, so a 16% gate reports no color on the crop itself. 3% sits under
+// that bin. Every card color above it matched the crop. RGB tolerance 52 leaves
+// room for the day light. Chroma tolerance 0.09 rejects a brown body that sits
+// near a grey only because both are dark.
 export const heroColorTolerance = 52
 export const heroChromaTolerance = 0.09
 const heroConceptLuma = 48
 const heroConceptShare = 0.015
-const heroCloseShare = 0.16
+const heroCloseShare = 0.03
 
 export function heroColorProblems(listed, sheet) {
   const problems = []
@@ -328,7 +337,204 @@ export function heroColorProblems(listed, sheet) {
   return problems
 }
 
-export const heroPixelFloor = 56
+function billboard(model) {
+  return !!model.parts?.some((part) => part.shape === "billboard")
+}
+
+// The yard floor used to be 56, the height of meshes that stood over half the
+// keep. The concept ratio replaced that yard floor. The number is the shortest
+// rank-4 picture, and it still cannot sit under half of what the raster measures.
+export const heroPixelFloor = 20
+
+// A hero taller than the palisade, or more than a head above the keep door, or
+// more than two fifths of the keep, is the giant the live yard was drawing.
+export const heroDoorRatio = 1.75
+export const heroWallRatio = 1.05
+export const heroKeepRatio = 0.42
+
+// Whole-figure match of the player-camera close-up against the concept crop.
+// The yard mask is about 32px, and resampling that into the scorer is not the
+// crop. On the 80px close-up the voxel meshes top out at 0.568 intersection
+// and 62.7 color error. The crop cards clear 0.777 and stay under 43.8.
+export const heroLikenessIou = 0.72
+export const heroLikenessRmse = 46
+
+export function heroScaleProblems(listed) {
+  const problems = []
+  const catalog = models()
+  const keep = catalog.find((model) => model.id === "keep")
+  const wall = catalog.find((model) => model.id === "wall")
+  const door = keep?.parts.find((part) => part.name === "door")
+  const post = wall?.parts.find((part) => part.name === "post")
+  const keepTop = keep ? Math.max(...keep.parts.map((part) => part.y + part.h / 2)) : 0
+  const heroes = (listed || []).filter((model) => model.family === "hero")
+  for (const model of heroes) {
+    let minY = Infinity
+    let maxY = -Infinity
+    for (const part of model.parts) {
+      minY = Math.min(minY, part.y - part.h / 2)
+      maxY = Math.max(maxY, part.y + part.h / 2)
+    }
+    const height = maxY - minY
+    if (!(door && post && keepTop > 0) || height <= 0) {
+      problems.push(`${model.id} has no scale`)
+      continue
+    }
+    const doorRatio = height / door.h
+    const wallRatio = height / post.h
+    const keepRatio = height / keepTop
+    if (doorRatio > heroDoorRatio) problems.push(`${model.id} is ${doorRatio.toFixed(2)} times the keep door`)
+    if (wallRatio > heroWallRatio) problems.push(`${model.id} is ${wallRatio.toFixed(2)} times the palisade`)
+    if (keepRatio > heroKeepRatio) problems.push(`${model.id} is ${keepRatio.toFixed(2)} of the keep`)
+    if (Math.abs(height - spriteHeight) > 0.5) problems.push(`${model.id} height ${height.toFixed(1)} leaves the concept scale`)
+  }
+  problems.push(...restOverlap(heroes))
+  return problems
+}
+
+// Seats one and four share a view ray, so their screen boxes overlap while the
+// ground disks stay apart. The rest check is that disk. The door and the tower
+// are still tested on the player camera, because a hero can cover the keep
+// without standing on it.
+function reachOf(model) {
+  const bounds = model.parts.bounds
+  if (bounds) return Math.max(bounds.w, bounds.d) / 2
+  let reach = 0
+  for (const part of model.parts) {
+    reach = Math.max(reach, Math.hypot(part.x || 0, part.z || 0) + Math.max(part.w, part.d) / 2)
+  }
+  return reach
+}
+
+function restOverlap(heroes) {
+  if (heroes.length === 0) return []
+  const seats = heroes.map((model, index) => {
+    const angle = index * 2.2
+    return { id: model.id, x: Math.cos(angle) * 120, z: Math.sin(angle) * 120, reach: reachOf(model) }
+  })
+  const problems = []
+  for (let i = 0; i < seats.length; i++) {
+    for (let j = i + 1; j < seats.length; j++) {
+      const gap = Math.hypot(seats[i].x - seats[j].x, seats[i].z - seats[j].z)
+      if (gap < seats[i].reach + seats[j].reach) problems.push(`${seats[i].id} overlaps ${seats[j].id} at rest`)
+    }
+  }
+  const frame = frameFor(1280, 800, 0)
+  const dist = cameraDistance(0)
+  const focus = cameraFocus(120, 0)
+  const camera = new THREE.OrthographicCamera(frame.left, frame.right, frame.top, frame.bottom, 0.1, 2400)
+  camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
+  camera.lookAt(focus.x, cameraLift, focus.z)
+  camera.updateProjectionMatrix()
+  camera.updateMatrixWorld(true)
+  const boxes = heroes.map((model, index) => {
+    const seat = seats[index]
+    const part = model.parts.find((row) => row.shape === "billboard") || model.parts[0]
+    return {
+      id: model.id,
+      box: cardScreen(camera, frame.bufferWidth, frame.bufferHeight, part, seat.x, seat.z)
+    }
+  })
+  const keep = models().find((model) => model.id === "keep")
+  for (const name of ["door", "tower"]) {
+    const part = keep.parts.find((row) => row.name === name)
+    const block = boxScreen(camera, frame.bufferWidth, frame.bufferHeight, part)
+    for (const hero of boxes) {
+      if (overlap(hero.box, block)) problems.push(`${hero.id} overlaps the keep ${name} at rest`)
+    }
+  }
+  return problems
+}
+
+const projected = new THREE.Vector3()
+
+function projectPoint(camera, width, height, x, y, z) {
+  projected.set(x, y, z).project(camera)
+  return { x: (projected.x * 0.5 + 0.5) * width, y: (-projected.y * 0.5 + 0.5) * height }
+}
+
+function cardScreen(camera, width, height, part, x, z) {
+  const cx = x + (part.x || 0)
+  const cy = part.y
+  const cz = z + (part.z || 0)
+  const fx = camera.position.x - cx
+  const fz = camera.position.z - cz
+  const flat = Math.hypot(fx, fz) || 1
+  const rx = -fz / flat
+  const rz = fx / flat
+  const points = []
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      points.push(projectPoint(camera, width, height, cx + sx * (part.w / 2) * rx, cy + sy * (part.h / 2), cz + sx * (part.w / 2) * rz))
+    }
+  }
+  return span(points)
+}
+
+function boxScreen(camera, width, height, part) {
+  const points = []
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        points.push(
+          projectPoint(
+            camera,
+            width,
+            height,
+            part.x + sx * (part.w / 2),
+            part.y + sy * (part.h / 2),
+            part.z + sz * (part.d / 2)
+          )
+        )
+      }
+    }
+  }
+  return span(points)
+}
+
+function span(points) {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const point of points) {
+    if (point.x < minX) minX = point.x
+    if (point.y < minY) minY = point.y
+    if (point.x > maxX) maxX = point.x
+    if (point.y > maxY) maxY = point.y
+  }
+  return { minX, minY, maxX, maxY }
+}
+
+function overlap(a, b) {
+  return a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY
+}
+
+export function heroLikenessProblems(listed) {
+  const problems = []
+  for (const model of listed || []) {
+    if (model.family !== "hero") continue
+    let figure
+    try {
+      figure = conceptFigure(model.id)
+    } catch {
+      problems.push(`${model.id} has no concept figure`)
+      continue
+    }
+    for (const light of lightNames) {
+      const shot = renderCloseup(model.parts, light)
+      const score = likenessScore(shot, figure)
+      if (score.iou < heroLikenessIou) {
+        problems.push(`${model.id} ${light} silhouette ${score.iou.toFixed(3)} is below ${heroLikenessIou}`)
+      }
+      if (score.rmse > heroLikenessRmse) {
+        problems.push(`${model.id} ${light} color rmse ${score.rmse.toFixed(1)} is above ${heroLikenessRmse}`)
+      }
+    }
+  }
+  return problems
+}
+
 
 // Fight-zoom read of the signature tokens. Each record is under the smallest
 // shaded count at rank 0 and rank 4, and at least half of that count.
@@ -385,7 +591,7 @@ export function heroHeightProblems(listed) {
 export function heroZoomProblems(listed) {
   const problems = []
   for (const model of listed) {
-    if (model.family !== "hero") continue
+    if (model.family !== "hero" || billboard(model)) continue
     const marks = heroZoomRead[model.id]
     if (!marks) {
       problems.push(`${model.id} has no fight-zoom palette`)
@@ -442,7 +648,7 @@ function hueGap(left, right) {
 export function heroHueProblems(listed) {
   const problems = []
   for (const model of listed) {
-    if (model.family !== "hero") continue
+    if (model.family !== "hero" || billboard(model)) continue
     const marks = heroHueRead[model.id]
     if (!marks) continue
     for (const light of lightNames) {
@@ -481,11 +687,12 @@ function rowWidths(points) {
 
 export function heroFeatureProblems(listed) {
   const problems = []
-  const warrior = listed.find((model) => model.id === "warrior" && model.family === "hero")
+  const voxels = listed.filter((model) => !billboard(model))
+  const warrior = voxels.find((model) => model.id === "warrior" && model.family === "hero")
   if (warrior) problems.push(...warriorRead(warrior))
-  const mage = listed.find((model) => model.id === "mage" && model.family === "hero")
+  const mage = voxels.find((model) => model.id === "mage" && model.family === "hero")
   if (mage) problems.push(...mageRead(mage))
-  const scout = listed.find((model) => model.id === "scout" && model.family === "hero")
+  const scout = voxels.find((model) => model.id === "scout" && model.family === "hero")
   if (scout) problems.push(...scoutRead(scout))
   return problems
 }
@@ -565,6 +772,7 @@ function scoutRead(model) {
   if (head.length < 12) return ["scout hood does not cover the head"]
   return []
 }
+
 
 export function farmerHatProblems(parts) {
   const image = renderParts(parts, "day", 0)

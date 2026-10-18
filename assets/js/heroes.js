@@ -1,4 +1,5 @@
-import { engineerVoxels, farmerVoxels, mageVoxels, scoutVoxels, warriorVoxels } from "../models/figures.js"
+import { heroFronts } from "./hero-data.js"
+import { buildCard } from "./pictures.js"
 
 const HEROES = ["warrior", "mage", "scout", "farmer", "engineer"]
 
@@ -6,10 +7,24 @@ export function heroKinds() {
   return HEROES.slice()
 }
 
+function decodeFront(entry) {
+  const raw = Uint8Array.from(atob(entry.b64), (char) => char.charCodeAt(0))
+  const rgb = new Uint8Array(entry.w * entry.h * 3)
+  const mask = new Uint8Array(entry.w * entry.h)
+  for (let i = 0; i < mask.length; i++) {
+    if (!raw[i * 4 + 3]) continue
+    mask[i] = 1
+    rgb[i * 3] = raw[i * 4]
+    rgb[i * 3 + 1] = raw[i * 4 + 1]
+    rgb[i * 3 + 2] = raw[i * 4 + 2]
+  }
+  return { rgb, mask, w: entry.w, h: entry.h }
+}
+
 export function heroParts(kind) {
-  const source = partsFor(kind)
-  const parts = source.map((part) => ({ ...part }))
-  return Object.assign(parts, { voxelCount: source.voxelCount })
+  const entry = heroFronts[kind]
+  if (!entry) throw new Error(`no hero picture for ${kind}`)
+  return buildCard(decodeFront(entry), kind)
 }
 
 export function heroSignature(kind) {
@@ -17,41 +32,7 @@ export function heroSignature(kind) {
   return {
     kind,
     parts,
-    marks: parts.filter((part) => part.mark).map((part) => part.name),
-    bounds: boundsOf(parts)
+    marks: parts.marks.slice(),
+    bounds: parts.bounds
   }
-}
-
-function partsFor(kind) {
-  if (kind === "warrior") return warriorVoxels()
-  if (kind === "mage") return mageVoxels()
-  if (kind === "scout") return scoutVoxels()
-  if (kind === "engineer") return engineerVoxels()
-  return farmerVoxels()
-}
-
-function boundsOf(parts) {
-  let minX = Infinity
-  let maxX = -Infinity
-  let minY = Infinity
-  let maxY = -Infinity
-  let minZ = Infinity
-  let maxZ = -Infinity
-  for (const part of parts) {
-    minX = Math.min(minX, part.x - part.w / 2)
-    maxX = Math.max(maxX, part.x + part.w / 2)
-    minY = Math.min(minY, part.y - part.h / 2)
-    maxY = Math.max(maxY, part.y + part.h / 2)
-    minZ = Math.min(minZ, part.z - part.d / 2)
-    maxZ = Math.max(maxZ, part.z + part.d / 2)
-  }
-  return {
-    w: round(maxX - minX),
-    h: round(maxY - minY),
-    d: round(maxZ - minZ)
-  }
-}
-
-function round(value) {
-  return Math.round(value * 10) / 10
 }

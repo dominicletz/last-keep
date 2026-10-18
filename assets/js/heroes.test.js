@@ -1,6 +1,8 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { fitSlack, horizontalRadius } from "../models/registry.js"
+import { fitSlack, horizontalRadius, models } from "../models/registry.js"
+import { heroCrops, conceptFigure } from "../models/sprites.js"
+import { pictureColumn, spriteHeight } from "./pictures.js"
 import { heroKinds, heroParts, heroSignature } from "./heroes.js"
 
 test("each hero builds a distinct mesh signature", () => {
@@ -20,34 +22,38 @@ test("each hero builds a distinct mesh signature", () => {
   }
   for (const sig of sigs) {
     assert.deepEqual(sig.marks, expected[sig.kind])
-    assert.ok(sig.bounds.h >= 72, sig.kind)
-    assert.ok(sig.bounds.w >= 14, sig.kind)
-    const marked = sig.parts.filter((part) => part.mark)
-    assert.ok(marked.every((part) => Math.max(part.w, part.h, part.d) >= 12), sig.kind)
+    assert.equal(sig.bounds.h, spriteHeight, sig.kind)
+    assert.ok(sig.bounds.w >= 8 && sig.bounds.w <= 28, sig.kind)
+    assert.equal(sig.parts[0].shape, "billboard")
+    assert.equal(sig.parts[0].directions, 8)
+    assert.equal(sig.parts[0].frames, 4)
   }
-  const farmer = sigs.find((sig) => sig.kind === "farmer")
-  const warrior = sigs.find((sig) => sig.kind === "warrior")
-  const mage = sigs.find((sig) => sig.kind === "mage")
-  const scout = sigs.find((sig) => sig.kind === "scout")
-  const brim = farmer.parts.find((part) => part.mark && part.name === "brim")
-  const torso = farmer.parts.find((part) => part.name === "torso")
-  assert.ok(brim.w > torso.w)
-  assert.ok(brim.w < farmer.bounds.h * 0.4, `${brim.w} on ${farmer.bounds.h}`)
-  assert.ok(brim.d < farmer.bounds.h * 0.4, `${brim.d} on ${farmer.bounds.h}`)
-  assert.ok(mage.bounds.h > warrior.bounds.h)
-  assert.ok(scout.bounds.w < warrior.bounds.w)
+  const crops = heroCrops()
+  for (const model of models()) {
+    if (model.family !== "hero") continue
+    assert.deepEqual(crops[model.id], model.concept.crop)
+  }
+  assert.equal(pictureColumn(Math.PI / 4, 0), 0)
+  assert.notEqual(pictureColumn(Math.PI / 4, Math.PI / 4), 0)
+  for (const kind of kinds) {
+    const embedded = heroParts(kind)[0].image
+    const crop = conceptFigure(kind)
+    assert.equal(embedded.w, crop.w, kind)
+    assert.equal(embedded.h, crop.h, kind)
+    for (let i = 0; i < embedded.mask.length; i++) {
+      assert.equal(embedded.mask[i], crop.mask[i], kind)
+      if (!embedded.mask[i]) continue
+      assert.equal(embedded.rgb[i * 3], crop.rgb[i * 3], kind)
+      assert.equal(embedded.rgb[i * 3 + 1], crop.rgb[i * 3 + 1], kind)
+      assert.equal(embedded.rgb[i * 3 + 2], crop.rgb[i * 3 + 2], kind)
+    }
+  }
 })
 
-test("each hero wears the prop from the hero sheet", () => {
-  const color = (kind, name) => heroParts(kind).find((part) => part.name === name).color
-  assert.equal(color("warrior", "shield"), 0x38516f)
-  assert.equal(color("warrior", "torso"), 0xb5afaa)
-  assert.equal(color("mage", "gem"), 0x23d9f3)
-  assert.equal(color("mage", "robe"), 0x142a48)
-  assert.equal(color("scout", "hood"), 0x374a26)
-  assert.equal(color("farmer", "brim"), 0xe5b268)
-  assert.equal(color("engineer", "apron"), 0x472a17)
+test("each hero picture stays inside the gameplay radius", () => {
   for (const kind of heroKinds()) {
     assert.ok(horizontalRadius(heroParts(kind)) <= 14 * fitSlack, kind)
+    const image = heroParts(kind)[0].image
+    assert.ok(image.mask.some((bit) => bit), kind)
   }
 })
