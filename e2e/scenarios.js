@@ -1126,8 +1126,11 @@ async function sowFour(page) {
     const before = await page.evaluate(
       () => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length
     )
-    const spot = await page.evaluate((point) => window.__lastKeep.toClient(point.x, point.y), { x, y })
-    await page.mouse.move(spot.x, spot.y)
+    await page.bringToFront()
+    // A covered phone drops the mouse, and Q then aims at the keep. The hook
+    // sets the meadow point, and the next push is the sow.
+    await page.evaluate((point) => window.__lastKeepTest.aim(point.x, point.y), { x, y })
+    await page.waitForTimeout(80)
     await pressKey(page, "KeyQ")
     await page.waitForFunction(
       (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
