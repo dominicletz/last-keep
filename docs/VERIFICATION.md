@@ -166,5 +166,5 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 
 ## 2026-10-18 the camera stays on the hero
 
-- `cameraFocus` puts the camera on the hero. A hero at the round-7 bat coordinates stays inside the rank-0 frame, and the bat under them does too. The old 0.22 pull toward the keep leaves that bat outside the frame.
-- The scripted parade stands on a ring around the host at (120, 0), so all six kinds stay inside that same frame. The roster board is a corner pin, and a board that projects above the window is pulled back inside it. Night plans are unchanged. The coverage floor stays 69.
+- `cameraFocus` follows 72% of the way to the hero. A hero at the round-7 bat coordinates stays inside the rank-0 frame, and the bat under them does too. The old 0.22 pull toward the keep leaves that bat outside the frame. Following all the way leaves a goblin on the far side of the keep outside the frame of a hero on the join ring.
+- The scripted parade stands on a ring around the host at (120, 0), so all six kinds stay inside that same frame. The roster board is a corner pin, and a board that projects above the window is pulled back inside it. A long fight keeps the horn, the sting, the kill, the build cue, and the day cue after the hit buffer rolls over. Night plans are unchanged. The coverage floor stays 69.

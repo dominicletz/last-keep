@@ -166,9 +166,9 @@ defmodule LastKeep.Game.Sim do
     insert(state, monster)
   end
 
-  # The host stands at angle 0 on the join ring, (120, 0). The camera sits on
+  # The host stands at angle 0 on the join ring, (120, 0). The camera follows
   # that hero, so these six stand on a ring around the host. The old ring
-  # around the keep left the troll and the rider outside that frame.
+  # around the keep left the rider outside that frame.
   @parade [
     {:goblin, 120.0, -55.0},
     {:skeleton, 167.63, -27.5},

@@ -63,6 +63,8 @@ export function createConductor(options) {
   let prev = null
   let loop = "silent"
   const heard = []
+  const latched = []
+  const latchNames = new Set(["day", "night", "horn", "sting", "kill", "build", "fall"])
   let loopNodes = []
 
   function ensure() {
@@ -164,7 +166,8 @@ export function createConductor(options) {
       return { muted: prefs.muted, volume: prefs.volume, unlocked, loop }
     },
     heard() {
-      return heard.slice()
+      const recent = heard.filter((cue) => !latched.includes(cue))
+      return latched.concat(recent)
     },
     unlock() {
       const first = !unlocked
@@ -195,6 +198,7 @@ export function createConductor(options) {
       for (const cue of cues) {
         heard.push(cue)
         if (heard.length > 64) heard.shift()
+        if (latchNames.has(cue) && !latched.includes(cue)) latched.push(cue)
         voice(cue)
       }
       return cues
