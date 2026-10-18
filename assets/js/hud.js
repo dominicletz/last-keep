@@ -187,7 +187,7 @@ export function edgeCalls(monsters) {
 
 export function callAnchor(x, y, roster, bar) {
   let left = clamp(x, 0.06, 0.94)
-  let top = clamp(y, 0.08, 0.88)
+  let top = clamp(y, 0.08, 0.78)
   const barBottom = Number(bar?.bottom) || 0
   if (barBottom > 0 && top < barBottom + 0.03) top = barBottom + 0.05
   if (roster && roster.right > roster.left && roster.bottom > roster.top) {
@@ -198,7 +198,7 @@ export function callAnchor(x, y, roster, bar) {
       top <= roster.bottom + 0.02
     if (covers) left = roster.left - 0.03
   }
-  return { left: clamp(left, 0.04, 0.96), top: clamp(top, 0.06, 0.9), end: left > 0.5 }
+  return { left: clamp(left, 0.04, 0.96), top: clamp(top, 0.06, 0.78), end: left > 0.5 }
 }
 
 export function spreadCalls(anchors) {
@@ -207,7 +207,7 @@ export function spreadCalls(anchors) {
     let top = anchor.top
     for (const other of placed) {
       if (Math.abs(other.left - anchor.left) < 0.14 && Math.abs(other.top - top) < 0.055) {
-        top = Math.min(0.9, other.top + 0.07)
+        top = Math.min(0.78, other.top + 0.07)
       }
     }
     placed.push({ ...anchor, top })
@@ -217,7 +217,8 @@ export function spreadCalls(anchors) {
 
 export function waveAnchor(hero) {
   if (!hero || !Number.isFinite(hero.x) || !Number.isFinite(hero.y)) return { x: KEEP_SIGN.x, y: KEEP_SIGN.y }
-  return { x: hero.x + 28, y: hero.y - 36 }
+  // Screen-up is -x and -y together, so the sign clears the sacks at the hero's feet.
+  return { x: hero.x - 64, y: hero.y - 64 }
 }
 
 export function visiblePin(spot, view, box) {
@@ -227,7 +228,7 @@ export function visiblePin(spot, view, box) {
   const minX = 8 + shiftX
   const maxX = Math.max(minX, view.width - 8 - shiftX)
   const minY = 8 + shiftY
-  const maxY = Math.max(minY, view.height - 8)
+  const maxY = Math.max(minY, view.height - 72)
   return {
     left: clamp(spot.left, minX, maxX),
     top: clamp(spot.top, minY, maxY)

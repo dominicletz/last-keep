@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { heroParts } from "../js/heroes.js"
-import { groundColor, pathColor, plazaColor, ringColor, skyColor, yardLight } from "../js/scene.js"
+import { cycleLight, groundColor, litGround, pathColor, plazaColor, ringColor, skyColor, yardLight } from "../js/scene.js"
 import { checkModels, heroColorProblems, heroHeightProblems, heroPixelFloor, repoRoot } from "./run.js"
 import { conceptProblems, coverageProblems, fitSlack, iouLimit, keepStoneProblems, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
 import { galleryRigs, maskBounds, maskIou } from "./raster.js"
@@ -52,11 +52,13 @@ test("a brown warrior close-up fails the concept palette", () => {
 
 test("daylight does not clip grey plate to orange", () => {
   assert.ok(yardLight.sunLevel < 1)
-  assert.ok(yardLight.ambientLevel < 1)
   assert.ok(yardLight.hemisphere < 1)
   const sunRed = (yardLight.sun >> 16) & 255
   const sunBlue = yardLight.sun & 255
   assert.ok(sunRed - sunBlue < 40)
+  const plate = litGround(0xd8cfc3, cycleLight.day)
+  assert.ok(plate.r < 240 && plate.g < 240 && plate.b < 240)
+  assert.ok(plate.r - plate.b < 40, `plate ${plate.r} ${plate.g} ${plate.b}`)
 })
 
 test("a hero under 24 internal pixels fails at rank 0 and at rank 4", () => {

@@ -64,3 +64,9 @@ npx playwright test
 ## Deploy
 
 `Dockerfile.prod` builds the release on `elixir:1.18.4-otp-28` and runs it on `debian:trixie-slim`, so the glibc matches. `.github/workflows/deploy.yml` generates `SECRET_KEY_BASE` on the server only when `.env` is missing. Do not bake that value into the image or the repo.
+
+## Pull requests
+
+As soon as a PR is open, turn on GitHub auto-merge with squash: `gh pr merge <number> --squash --auto`. The repo has `allow_auto_merge` on, and `main` requires the CI `test` check, so the PR merges itself once that check is green.
+
+Never end a run while one of your PRs is green and unmerged, or while a deploy on `main` is pending or red. Every run ends with an explicit next step you have already started.

@@ -19,11 +19,11 @@ export const sunDot = SUN_DIR[1]
 export const yardLight = {
   sky: 0xc8c6c2,
   ground: 0x5c642f,
-  hemisphere: 0.38,
+  hemisphere: 0.55,
   ambient: 0xd8d4cc,
-  ambientLevel: 0.4,
+  ambientLevel: 3.75,
   sun: 0xfff3e4,
-  sunLevel: 0.52,
+  sunLevel: 0.22,
   torch: 8
 }
 
@@ -34,22 +34,22 @@ export const cycleLight = {
   dusk: {
     sky: 0x6a5080,
     ground: 0x4a3820,
-    hemisphere: 0.28,
+    hemisphere: 0.45,
     ambient: 0xf0b090,
-    ambientLevel: 0.36,
+    ambientLevel: 2.7,
     sun: 0xffa060,
-    sunLevel: 0.42,
+    sunLevel: 0.85,
     torch: 26,
     background: horizonColor
   },
   night: {
     sky: 0x4e4651,
     ground: 0x2a221c,
-    hemisphere: 0.24,
+    hemisphere: 0.28,
     ambient: 0xd0c8dc,
-    ambientLevel: 0.3,
+    ambientLevel: 1.15,
     sun: 0xc8b8d0,
-    sunLevel: 0.18,
+    sunLevel: 0.22,
     torch: 34,
     background: 0x322c3c
   }
@@ -93,14 +93,17 @@ export function hueGap(left, right) {
   return Math.min(gap, 360 - gap)
 }
 
-// Up-facing Lambert, the same terms the yard's hemisphere, ambient, and sun use.
+// Up-facing MeshLambert. Three encodes the paint and the lights as sRGB and
+// the BRDF divides by pi, which is why a byte multiply of the same rigs
+// predicted a bright field while the yard stayed dark olive.
 export function litGround(albedo, rig) {
   const bytes = [16, 8, 0].map((shift) => {
-    const paint = ((albedo >> shift) & 255) / 255
-    const ambient = ((rig.ambient >> shift) & 255) / 255 * rig.ambientLevel
-    const sky = ((rig.sky >> shift) & 255) / 255 * rig.hemisphere
-    const sun = ((rig.sun >> shift) & 255) / 255 * rig.sunLevel * sunDot
-    return Math.min(255, Math.round(paint * (ambient + sky + sun) * 255))
+    const paint = srgbToLinear(((albedo >> shift) & 255) / 255)
+    const ambient = srgbToLinear(((rig.ambient >> shift) & 255) / 255) * rig.ambientLevel
+    const sky = srgbToLinear(((rig.sky >> shift) & 255) / 255) * rig.hemisphere
+    const sun = srgbToLinear(((rig.sun >> shift) & 255) / 255) * rig.sunLevel * sunDot
+    const linear = Math.min(1, (paint * (ambient + sky + sun)) / Math.PI)
+    return Math.round(linearToSrgb(linear) * 255)
   })
   return {
     r: bytes[0],
@@ -162,6 +165,14 @@ export function duskFrame(ground, rig = cycleLight.dusk, width = 96, height = 60
 
 function bytesOf(hex) {
   return [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]
+}
+
+function srgbToLinear(channel) {
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4
+}
+
+function linearToSrgb(channel) {
+  return channel <= 0.0031308 ? 12.92 * channel : 1.055 * channel ** (1 / 2.4) - 0.055
 }
 
 function normalize(vector) {
