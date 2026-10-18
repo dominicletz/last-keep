@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, blurHiddenFocus, inputFrame, isTypingTarget, seatFromQuery } from "./input.js"
+import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -72,6 +72,13 @@ test("blurring a hidden field does not chase focus", () => {
   assert.equal(blurHiddenFocus(doc), false)
 })
 
+test("a held skill is sent while a text field is focused", () => {
+  assert.equal(shouldSend({ joined: true, typing: true, skill: true }), true)
+  assert.equal(shouldSend({ joined: true, typing: true, skill: false }), false)
+  assert.equal(shouldSend({ joined: false, typing: false, skill: true }), false)
+  assert.equal(shouldSend({ joined: true, typing: false, skill: false }), true)
+})
+
 test("a skill tap keeps its value if the socket sends it later", () => {
   const input = { mx: 0, my: 0, ax: 1, ay: 2, attack: false, place: false, raise: false, q: true, e: false, r: false, f: false, build: null }
   const frame = inputFrame(input)
@@ -80,6 +87,16 @@ test("a skill tap keeps its value if the socket sends it later", () => {
   assert.equal(frame.q, true)
   assert.equal(frame.attack, false)
   assert.equal(frame.ax, 1)
+})
+
+test("closing on the host picks the movement keys that point that way", () => {
+  assert.deepEqual(keysToward(0, 0), [])
+  assert.deepEqual(keysToward(20, -10), [])
+  const east = new Set(keysToward(190, -97))
+  assert.equal(east.has("KeyD"), true)
+  const step = axes(east)
+  assert.ok(step.x > 0.5)
+  assert.ok(step.y < 0)
 })
 
 test("W moves toward the top of the isometric view", () => {

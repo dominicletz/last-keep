@@ -431,13 +431,19 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp maybe_skill(state, player, hero, slot) do
-    if edged?(player, slot) and hero.cooldowns[slot] <= 0 do
-      state = cast(state, player, hero, slot, Map.get(Rules.kit(hero.hero), slot))
+    ability = Map.get(Rules.kit(hero.hero), slot)
+
+    if edged?(player, slot) and hero.cooldowns[slot] <= 0 and spell_open?(state, ability) do
+      state = cast(state, player, hero, slot, ability)
       event(state, %{type: "shot", x: hero.x, y: hero.y})
     else
       state
     end
   end
+
+  defp spell_open?(%{upgrades: %{mage_tower: true}}, %{kind: :meteor}), do: true
+  defp spell_open?(_state, %{kind: :meteor}), do: false
+  defp spell_open?(_state, _ability), do: true
 
   defp maybe_feed(state, player, hero) do
     near = hypot(hero.x, hero.y) < 100
@@ -1220,10 +1226,18 @@ defmodule LastKeep.Game.Sim do
   defp remember_input(state) do
     players =
       Map.new(state.players, fn {id, player} ->
-        {id, %{player | prev: player.input, pressed: @empty_pressed}}
+        # A tick that cannot cast must not eat the edge. The key stays down,
+        # so the next tick the hero can act still sees it.
+        pressed = if keeps_edge?(state, player), do: player.pressed, else: @empty_pressed
+        {id, %{player | prev: player.input, pressed: pressed}}
       end)
 
     %{state | players: players}
+  end
+
+  defp keeps_edge?(state, player) do
+    hero = state.entities[player.hero_id]
+    player.connected and (hero == nil or not hero.alive)
   end
 
   defp hurt_monster(state, id, amount, bonus_gold) do

@@ -1,8 +1,8 @@
 import { Socket } from "phoenix"
 import { createView } from "./render"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, inputFrame, isTypingTarget, seatFromQuery } from "./input"
-import { absorbShots } from "./paint"
+import { axes, blurHiddenFocus, inputFrame, isTypingTarget, keysToward, seatFromQuery, shouldSend } from "./input"
+import { absorbShots, partyPositions } from "./paint"
 import { RELIC_SIGN, bonusCopy, callAnchor, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, placementReason, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, showReason, spreadCalls, visiblePin, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
@@ -152,6 +152,21 @@ function start(code, seat, ui) {
       else keys.delete(code)
       send()
     },
+    // The co-op night used to leave the mage standing on the far side of the
+    // ring. The goblins killed that mage before they walked into the host's
+    // camera, and Q arrived on a corpse.
+    follow() {
+      const game = window.__lastKeep
+      const me = game && game.self
+      const host = ((game && game.party) || []).find((player) => player.host)
+      if (!me || !host) return
+      const want = new Set(keysToward(host.x - me.x, host.y - me.y))
+      for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) {
+        if (want.has(code)) keys.add(code)
+        else keys.delete(code)
+      }
+      send()
+    },
     mute(muted) {
       audio.setMuted(muted)
       if (muteButton) muteButton.textContent = audio.prefs().muted ? "Muted" : "Sound"
@@ -279,7 +294,8 @@ function start(code, seat, ui) {
 
   function send() {
     blurHiddenFocus(document)
-    if (!joined || !selfId || typing()) return
+    const skill = keys.has("KeyQ") || keys.has("KeyE") || keys.has("KeyR") || keys.has("KeyF")
+    if (!shouldSend({ joined: joined && !!selfId, typing: typing(), skill })) return
     const move = axes(keys)
     input.mx = move.x
     input.my = move.y
@@ -314,11 +330,17 @@ function start(code, seat, ui) {
     // wait then dies when the test closes the page.
     if (window.__lastKeep) ui.view.queue(snap, selfId)
     else ui.view.draw(snap, selfId)
+    const me = (snap.players || []).find((player) => player.id === selfId)
     if (window.__lastKeep) {
       window.__lastKeep.projectiles = snap.projectiles || []
       window.__lastKeep.kinds = seen.kinds
+      window.__lastKeep.tick = snap.tick
+      window.__lastKeep.party = partyPositions(snap.players)
+      if (me) {
+        window.__lastKeep.alive = me.alive
+        window.__lastKeep.hp = me.hp
+      }
     }
-    const me = (snap.players || []).find((player) => player.id === selfId)
     const wave = ui.hud.querySelector("[data-wave]")
     const clock = ui.hud.querySelector("[data-clock]")
     const stock = ui.hud.querySelector("[data-stock]")

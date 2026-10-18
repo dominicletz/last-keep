@@ -128,15 +128,22 @@ async function placeWall(page) {
 }
 
 async function expectGoblinsOnYard(page) {
+  // redNear reads the framebuffer. Doing that on every poll stalls the page
+  // while the server keeps biting, and the mage is dead before Q is held.
+  // The shot assertion stays: one read, after the goblins are already in frame.
   await page.waitForFunction(() => {
     const game = window.__lastKeep
     return (
       game.phase === "wave" &&
       game.monsters.length >= 2 &&
-      game.monsters.every((monster) => monster.onScreen) &&
-      game.monsters.some((monster) => game.redNear(monster.x, monster.y) > 8)
+      game.monsters.every((monster) => monster.onScreen)
     )
   })
+  const visible = await page.evaluate(() => {
+    const game = window.__lastKeep
+    return (game.monsters || []).some((monster) => game.redNear(monster.x, monster.y) > 8)
+  })
+  expect(visible).toBe(true)
   const edgeLabels = await page.locator("[data-hints]").innerText()
   expect(edgeLabels).not.toMatch(/goblin \d/)
   const { waveClock } = await import("../assets/js/hud.js")
@@ -229,6 +236,9 @@ async function castFireball(friend, notes) {
       kinds: window.__lastKeep.kinds,
       projectiles: window.__lastKeep.projectiles,
       hero: window.__lastKeep.self && window.__lastKeep.self.hero,
+      alive: window.__lastKeep.alive,
+      hp: window.__lastKeep.hp,
+      tick: window.__lastKeep.tick,
       monsters: (window.__lastKeep.monsters || []).length,
       phase: window.__lastKeep.phase
     }))
@@ -484,6 +494,10 @@ async function twoPlayerNight(browser) {
   await expect(page.locator("[data-start]")).toHaveText("Start the night")
   await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
   const notes = blankNotes()
+  // Close on the warrior before the goblins do. An idle mage on the far
+  // side of the ring is dead by the time both of them reach this camera,
+  // and the fireball key then hits a corpse.
+  await walkTowardHost(friend)
   await page.locator("[data-start]").click()
   await page.waitForFunction((dayLuma) => {
     const field = window.__lastKeep.field
@@ -512,6 +526,7 @@ async function twoPlayerNight(browser) {
   await page.screenshot({ path: shot("wave-host.png") })
   await friend.screenshot({ path: shot("wave-guest.png") })
 
+  await stopWalk(friend)
   await castFireball(friend, notes)
   await fight(page, friend, notes)
   await friend.waitForFunction(() => (window.__lastKeep.log || []).some((row) => row.type === "boom"), {
@@ -647,6 +662,20 @@ async function joinFromForm(browser) {
   expect(errors, errors.join("\n")).toEqual([])
   await context.close()
   await host.context.close()
+}
+
+async function walkTowardHost(page) {
+  await page.evaluate(() => {
+    window.__lastKeepWalk = window.setInterval(() => window.__lastKeepTest.follow(), 50)
+  })
+}
+
+async function stopWalk(page) {
+  await page.evaluate(() => {
+    window.clearInterval(window.__lastKeepWalk)
+    window.__lastKeepWalk = 0
+    for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(code, false)
+  })
 }
 
 async function buildRangeRing(page) {

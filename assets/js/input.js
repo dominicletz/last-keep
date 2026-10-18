@@ -54,6 +54,12 @@ export function blurHiddenFocus(doc) {
 
 // The socket may encode a push after the next key change. The frame is the
 // tap that was true at the moment of the push.
+// A text field used to swallow the whole push, including a skill the test
+// is holding. Movement stays put while typing. The skill still goes out.
+export function shouldSend({ joined, typing, skill }) {
+  return !!joined && (!typing || !!skill)
+}
+
 export function inputFrame(input) {
   return {
     mx: input.mx,
@@ -69,6 +75,33 @@ export function inputFrame(input) {
     f: !!input.f,
     build: input.build
   }
+}
+
+// Eight ways the movement keys can point. A short gap means stop: standing
+// on the host is close enough, and holding a key there walks past them.
+export function keysToward(dx, dy, slack = 42) {
+  if (Math.hypot(dx, dy) <= slack) return []
+  const f = Math.SQRT1_2
+  const dirs = [
+    { keys: ["KeyW"], x: -f, y: -f },
+    { keys: ["KeyW", "KeyD"], x: 0, y: -1 },
+    { keys: ["KeyD"], x: f, y: -f },
+    { keys: ["KeyD", "KeyS"], x: 1, y: 0 },
+    { keys: ["KeyS"], x: f, y: f },
+    { keys: ["KeyS", "KeyA"], x: 0, y: 1 },
+    { keys: ["KeyA"], x: -f, y: f },
+    { keys: ["KeyA", "KeyW"], x: -1, y: 0 }
+  ]
+  let best = dirs[0]
+  let score = -Infinity
+  for (const dir of dirs) {
+    const dot = dir.x * dx + dir.y * dy
+    if (dot > score) {
+      score = dot
+      best = dir
+    }
+  }
+  return best.keys
 }
 
 export function axes(keys) {
