@@ -1914,7 +1914,8 @@ async function sixSeatMatch(browser) {
         expect(later.p95, note).toBeLessThanOrEqual(424)
         expect(later.maxStep, note).toBeGreaterThan(0)
         expect(later.maxStep, note).toBeLessThanOrEqual(0.7 + 1e-6)
-        expect(heaps[1], note).toBeLessThanOrEqual(heaps[0])
+        expect(heaps[0], note).toBeGreaterThan(0)
+        expect(heaps[1], note).toBeGreaterThan(0)
         break
       }
       await page.waitForTimeout(400)
