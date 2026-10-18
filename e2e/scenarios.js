@@ -1176,30 +1176,6 @@ async function townGrows(browser) {
   await guest.context.close()
 }
 
-function keysAway(x, y) {
-  const f = Math.SQRT1_2
-  const dirs = [
-    { keys: ["KeyW"], x: -f, y: -f },
-    { keys: ["KeyW", "KeyD"], x: 0, y: -1 },
-    { keys: ["KeyD"], x: f, y: -f },
-    { keys: ["KeyD", "KeyS"], x: 1, y: 0 },
-    { keys: ["KeyS"], x: f, y: f },
-    { keys: ["KeyS", "KeyA"], x: 0, y: 1 },
-    { keys: ["KeyA"], x: -f, y: f },
-    { keys: ["KeyA", "KeyW"], x: -1, y: 0 }
-  ]
-  let best = dirs[0]
-  let score = -Infinity
-  for (const dir of dirs) {
-    const dot = dir.x * x + dir.y * y
-    if (dot > score) {
-      score = dot
-      best = dir
-    }
-  }
-  return best.keys
-}
-
 async function returnNearTheKeep(page) {
   const far = await page.evaluate(() => {
     const me = window.__lastKeep.self
@@ -1222,64 +1198,79 @@ async function returnNearTheKeep(page) {
   }
 }
 
+async function holdCodes(page, codes) {
+  await page.evaluate((wanted) => {
+    for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) {
+      window.__lastKeepTest.hold(code, wanted.includes(code))
+    }
+  }, codes)
+}
+
+async function releaseCodes(page) {
+  await holdCodes(page, [])
+}
+
 async function assertFarCaptions(page) {
   await page.bringToFront()
-  // KeyW on the west face of the keep slides along x, so y never passes
-  // -220 and the walk sits until the timeout. Step out past the rim, then
-  // west. The mark is still x < -700. The position is published on the
-  // socket, so a covered page does not have to paint a frame.
+  // The position is published on the socket. A covered page does not have to
+  // paint a frame. North of the keep, then west. On the west face KeyW slides
+  // along x and y never passes -220, so a stalled north walk steps outward
+  // until the west line is clear of the keep.
   const published = { timeout: 20_000, polling: 100 }
-  const deadline = Date.now() + 20_000
-  let held = []
+  const startY = await page.evaluate(() => (window.__lastKeep.self ? window.__lastKeep.self.y : 0))
+  await holdCodes(page, ["KeyW"])
+  let north = false
   try {
-    while (Date.now() < deadline) {
-      const me = await page.evaluate(() => {
-        const self = window.__lastKeep.self
-        return self ? { x: self.x, y: self.y } : null
-      })
-      if (me && Math.hypot(me.x, me.y) > 160) break
-      const next = me ? keysAway(me.x, me.y) : ["KeyS"]
-      if (next.join() !== held.join()) {
-        await page.evaluate((codes) => {
-          for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) {
-            window.__lastKeepTest.hold(code, codes.includes(code))
-          }
-        }, next)
-        held = next
-      }
-      await page.waitForTimeout(100)
+    north = await page
+      .waitForFunction(
+        (from) => window.__lastKeep.self && window.__lastKeep.self.y < from - 40,
+        startY,
+        { timeout: 3_000, polling: 100 }
+      )
+      .then(() => true)
+      .catch(() => false)
+    if (north) {
+      await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -220, undefined, published)
     }
   } finally {
-    await page.evaluate(() => {
-      for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(code, false)
-    })
+    await releaseCodes(page)
   }
-  const clear = await page.evaluate(() => {
-    const me = window.__lastKeep.self
-    return me ? { x: me.x, y: me.y, dist: Math.hypot(me.x, me.y) } : { x: 0, y: 0, dist: 0 }
-  })
-  expect(clear.dist).toBeGreaterThan(160)
-  // Pure west from the east side of the keep runs into the wall. Step off
-  // that line first. A hero already west of x=-80 has a clear line.
-  if (clear.x > -80 && Math.abs(clear.y) < 90) {
-    const south = clear.y >= 0
-    await page.evaluate((goSouth) => {
-      window.__lastKeepTest.hold(goSouth ? "KeyS" : "KeyW", true)
-      window.__lastKeepTest.hold(goSouth ? "KeyA" : "KeyD", true)
-    }, south)
+  if (!north) {
+    const headings = [
+      ["KeyA", "KeyW"],
+      ["KeyW"],
+      ["KeyW", "KeyD"],
+      ["KeyD"],
+      ["KeyD", "KeyS"],
+      ["KeyS"],
+      ["KeyS", "KeyA"],
+      ["KeyA"]
+    ]
+    const deadline = Date.now() + 12_000
+    let spin = 0
+    let best = 0
+    let since = Date.now()
     try {
-      await page.waitForFunction(
-        (goSouth) => {
+      while (Date.now() < deadline) {
+        const me = await page.evaluate(() => {
           const self = window.__lastKeep.self
-          return self && (goSouth ? self.y > 90 : self.y < -90)
-        },
-        south,
-        published
-      )
+          return self ? { x: self.x, y: self.y } : null
+        })
+        if (!me) break
+        const dist = Math.hypot(me.x, me.y)
+        if (dist > 80 && (me.x < -80 || Math.abs(me.y) > 90)) break
+        if (dist > best + 4) {
+          best = dist
+          since = Date.now()
+        } else if (Date.now() - since > 700) {
+          spin = (spin + 1) % headings.length
+          since = Date.now()
+        }
+        await holdCodes(page, headings[spin])
+        await page.waitForTimeout(100)
+      }
     } finally {
-      await page.evaluate(() => {
-        for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(code, false)
-      })
+      await releaseCodes(page)
     }
   }
   await page.evaluate(() => {
