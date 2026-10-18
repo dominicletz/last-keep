@@ -1764,6 +1764,174 @@ async function exploreLand(browser) {
   await host.context.close()
 }
 
+function paintP95(paints) {
+  if (!paints || paints.length === 0) return null
+  const sorted = paints.slice().sort((a, b) => a - b)
+  return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)]
+}
+
+async function readMatch(page) {
+  return page.evaluate(() => {
+    const game = window.__lastKeep
+    const perf = window.__lastKeepPerf || {}
+    const self = game.self
+    const monsters = game.monsters || []
+    let nearest = null
+    for (const monster of monsters) {
+      if (!self) break
+      const dist = Math.hypot(monster.x - self.x, monster.y - self.y)
+      if (!nearest || dist < nearest.dist) nearest = { x: monster.x, y: monster.y, dist }
+    }
+    return {
+      phase: game.phase,
+      shownWave: game.shownWave,
+      monsters: monsters.length,
+      projectiles: (game.projectiles || []).length,
+      keep: game.keep && game.keep.hp,
+      party: (game.party || []).length,
+      geometries: perf.geometries || 0,
+      textures: perf.textures || 0,
+      calls: perf.calls || 0,
+      triangles: perf.triangles || 0,
+      census: perf.census || { inScene: 0, orphans: 0, pooled: 0, byRole: {} },
+      p95: null,
+      paints: perf.paints || [],
+      maxStep: perf.maxStep || 0,
+      heap: performance.memory ? performance.memory.usedJSHeapSize : null,
+      aim: nearest && self ? game.toClient(nearest.x, nearest.y) : null
+    }
+  })
+}
+
+async function sixSeatMatch(browser) {
+  const errors = []
+  const host = await createHost(browser, "Nia", "farmer")
+  const page = host.page
+  watch(page, "host", errors)
+  const code = new URL(page.url()).pathname.split("/").pop()
+  const guests = []
+  for (const [name, hero] of [
+    ["Ada", "warrior"],
+    ["Lux", "mage"],
+    ["Bram", "engineer"],
+    ["Pip", "scout"],
+    ["Ned", "warrior"]
+  ]) {
+    const guest = await joinQuery(browser, code, name, hero)
+    watch(guest.page, name, errors)
+    guests.push(guest)
+  }
+  await page.waitForFunction(() => (window.__lastKeep.party || []).length >= 6)
+  const engineer = guests[2].page
+  for (let step = 0; step < 50; step += 1) {
+    await page.evaluate(() => window.__lastKeepTest.home())
+    for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
+    const close = await engineer.evaluate(() => {
+      const self = window.__lastKeep.self
+      return !!self && Math.hypot(self.x, self.y) < 36
+    })
+    if (close) break
+    await page.waitForTimeout(200)
+  }
+  for (let i = 0; i < 12; i += 1) {
+    const angle = (i / 12) * Math.PI * 2
+    const x = Math.cos(angle) * 100
+    const y = Math.sin(angle) * 100
+    await engineer.evaluate(([wx, wy]) => window.__lastKeepTest.order("wall", wx, wy), [x, y])
+    await page.waitForTimeout(120)
+  }
+  await page.evaluate(() => window.__lastKeepTest.pictures())
+  await page.locator("[data-start]").click()
+  await page.waitForFunction(() => window.__lastKeep.phase === "wave")
+
+  const builds = new Map()
+  const troughs = new Map()
+  const gcHeaps = new Map()
+  let sawWave = false
+  let last = null
+  const started = Date.now()
+  const seats = [page, ...guests.map((guest) => guest.page)]
+
+  const fight = async (down) => {
+    for (const seat of seats) {
+      await seat.evaluate((attack) => window.__lastKeepTest.fight(attack), down)
+    }
+  }
+
+  try {
+    while (Date.now() - started < 600_000) {
+      const row = await readMatch(page)
+      row.p95 = paintP95(row.paints)
+      last = row
+      delete last.paints
+      if (row.phase === "over" || row.keep === 0) break
+      if (row.phase === "wave") {
+        sawWave = true
+        if (!gcHeaps.has(row.shownWave)) {
+          const heap = await page.evaluate(() => {
+            if (typeof window.gc === "function") {
+              window.gc()
+              window.gc()
+            }
+            return performance.memory ? performance.memory.usedJSHeapSize : null
+          })
+          gcHeaps.set(row.shownWave, heap)
+        }
+        await fight(true)
+      } else {
+        await fight(false)
+        await page.evaluate(() => window.__lastKeepTest.home())
+        for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
+        if (sawWave && row.phase === "build" && row.monsters === 0 && row.projectiles === 0 && row.geometries > 0) {
+          if (!builds.has(row.shownWave)) {
+            const sample = { ...row }
+            delete sample.paints
+            builds.set(row.shownWave, sample)
+          }
+          const slot = troughs.get(row.shownWave) || { min: row.heap }
+          if (row.heap != null) slot.min = slot.min == null ? row.heap : Math.min(slot.min, row.heap)
+          troughs.set(row.shownWave, slot)
+        }
+      }
+      const early =
+        row.phase === "wave"
+          ? [...troughs.keys()].find((wave) => troughs.has(wave + 3) && row.shownWave >= wave + 3)
+          : null
+      if (early != null) {
+        const first = builds.get(early)
+        const later = builds.get(early + 3)
+        const heaps = [gcHeaps.get(early), gcHeaps.get(early + 3)]
+        const note = JSON.stringify({ first, later, heaps })
+        expect(later.census.orphans, note).toBe(0)
+        expect(later.census.inScene, note).toBeLessThanOrEqual(first.census.inScene)
+        expect(later.geometries, note).toBeLessThanOrEqual(later.census.inScene + later.census.pooled)
+        expect(later.textures, note).toBeLessThanOrEqual(first.textures)
+        expect(first.calls, note).toBeLessThanOrEqual(868)
+        expect(later.calls, note).toBeLessThanOrEqual(868)
+        expect(first.triangles, note).toBeLessThanOrEqual(11552)
+        expect(later.triangles, note).toBeLessThanOrEqual(11552)
+        expect(first.p95, note).toBeLessThanOrEqual(424)
+        expect(later.p95, note).toBeLessThanOrEqual(424)
+        expect(later.maxStep, note).toBeGreaterThan(0)
+        expect(later.maxStep, note).toBeLessThanOrEqual(0.7 + 1e-6)
+        expect(heaps[0], note).toBeGreaterThan(0)
+        expect(heaps[1], note).toBeGreaterThan(0)
+        break
+      }
+      await page.waitForTimeout(400)
+    }
+  } finally {
+    await fight(false)
+  }
+
+  const waves = [...builds.keys()]
+  expect(waves.some((wave) => builds.has(wave + 3)), JSON.stringify({ waves, last })).toBe(true)
+  expect(errors, errors.join("\n")).toEqual([])
+  await page.screenshot({ path: shot("perf-host.png") })
+  for (const guest of guests) await guest.context.close()
+  await host.context.close()
+}
+
 module.exports = {
   prepareProof,
   proofDir,
@@ -1778,6 +1946,7 @@ module.exports = {
   paradeShowsEveryKind,
   matchPaintsWithoutARead,
   shotsDoNotGrowGeometries,
+  sixSeatMatch,
   mobileTouch,
   townGrows,
   captionsClearTheBuilds,

@@ -2,7 +2,7 @@ import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
 import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
-import { giveBurst, releaseGeometries, shotSphere, takeBurst } from "./meshes"
+import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
@@ -255,7 +255,7 @@ export function createView(stage) {
   }
 
   function contactDisc(radius) {
-    const mesh = new THREE.Mesh(new THREE.CircleGeometry(radius, 14), shadowMat)
+    const mesh = new THREE.Mesh(trackGeometry(new THREE.CircleGeometry(radius, 14)), shadowMat)
     mesh.rotation.x = -Math.PI / 2
     mesh.position.y = 0.46
     mesh.renderOrder = 2
@@ -317,6 +317,7 @@ export function createView(stage) {
   function makeKeep(rank) {
     const group = new THREE.Group()
     group.userData.rank = rank
+    group.userData.role = "keep"
     for (const piece of keepParts(rank)) group.add(pieceMesh(piece))
     const torch = new THREE.PointLight(0xeea821, 8, 220)
     torch.position.set(22, 40, 22)
@@ -333,6 +334,7 @@ export function createView(stage) {
       let mesh = meshes.get(key)
       if (!mesh) {
         mesh = build(row)
+        if (!mesh.userData.role) mesh.userData.role = kind
         meshes.set(key, mesh)
         scene.add(mesh)
       }
@@ -550,14 +552,14 @@ export function createView(stage) {
       sync("tree", snap.trees || [], () => groupFrom(modelParts("tree")))
 
       sync("chest", snap.chests || [], () => {
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(16, 12, 16), mat(0xf0c14a, 0xc9a227))
+        const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(16, 12, 16)), mat(0xf0c14a, 0xc9a227))
         mesh.userData.lift = 8
         mesh.userData.role = "chest"
         return mesh
       })
 
       sync("portal", snap.portals || [], () => {
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(18, 22, 18), mat(0xff7a2a, 0xc45c24))
+        const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(18, 22, 18)), mat(0xff7a2a, 0xc45c24))
         mesh.userData.lift = 11
         mesh.userData.role = "portal"
         return mesh
@@ -913,7 +915,12 @@ export function createView(stage) {
 
   function stepFacing(mesh) {
     if (!mesh.userData.face || !Number.isFinite(mesh.userData.yawTarget)) return
-    mesh.rotation.y = stepYaw(mesh.rotation.y, mesh.userData.yawTarget).yaw
+    const next = stepYaw(mesh.rotation.y, mesh.userData.yawTarget)
+    mesh.rotation.y = next.yaw
+    const step = Math.abs(next.step)
+    if (step === 0) return
+    const perf = window.__lastKeepPerf || (window.__lastKeepPerf = { paints: [] })
+    if (step > (perf.maxStep || 0)) perf.maxStep = step
   }
 
   function smoothed(key) {
@@ -1003,8 +1010,8 @@ export function createView(stage) {
       for (const piece of sig.parts) group.add(pieceMesh(piece))
     }
     const top = sig.bounds.h + 4
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(Math.max(22, sig.bounds.w * 0.45), 3, 2), mat(0x1a100c))
-    const fill = new THREE.Mesh(new THREE.BoxGeometry(Math.max(20, sig.bounds.w * 0.4), 2, 2), mat(0x7ea35a))
+    const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(22, sig.bounds.w * 0.45), 3, 2)), mat(0x1a100c))
+    const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(20, sig.bounds.w * 0.4), 2, 2)), mat(0x7ea35a))
     plate.position.y = top
     fill.position.set(0, top, 1.2)
     group.add(plate, fill)
@@ -1017,7 +1024,7 @@ export function createView(stage) {
     group.userData.bounds = sig.bounds
     if (row.id === selfId) {
       const gold = new THREE.Mesh(
-        new THREE.BoxGeometry(sig.bounds.w + 4, 1.2, Math.min(sig.bounds.d, 22) + 4),
+        trackGeometry(new THREE.BoxGeometry(sig.bounds.w + 4, 1.2, Math.min(sig.bounds.d, 22) + 4)),
         mat(0xf0c14a)
       )
       gold.position.y = 0.6
@@ -1045,12 +1052,13 @@ export function createView(stage) {
   }
 
   function pieceMesh(piece) {
-    const geometry =
+    const geometry = trackGeometry(
       piece.shape === "cone"
         ? new THREE.ConeGeometry(piece.w / 2, piece.h, piece.segments || 4)
         : piece.shape === "prism"
           ? new THREE.CylinderGeometry(piece.rt, piece.rb, piece.h, piece.segments || 5)
           : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
+    )
     const mapped = !piece.hold && stoneColors.has(piece.color)
     const mesh = new THREE.Mesh(
       geometry,
@@ -1099,6 +1107,7 @@ export function createView(stage) {
     perf.textures = renderer.info.memory.textures
     perf.calls = renderer.info.render.calls
     perf.triangles = renderer.info.render.triangles
+    perf.census = geometryCensus(scene)
     if (paintMs == null) return
     perf.paints.push(paintMs)
     if (perf.paints.length > 400) perf.paints.shift()
@@ -1123,8 +1132,8 @@ export function createView(stage) {
     mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: picture.y, height: picture.h }
     mesh.userData.face = true
     if (row.kind === "bat") mesh.userData.lift = 22
-    const plate = new THREE.Mesh(new THREE.BoxGeometry(22, 4, 2), mat(0x1a100c))
-    const fill = new THREE.Mesh(new THREE.BoxGeometry(20, 3, 2), mat(0x7ea35a))
+    const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(22, 4, 2)), mat(0x1a100c))
+    const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(20, 3, 2)), mat(0x7ea35a))
     plate.position.y = picture.h + 4
     fill.position.set(0, picture.h + 4, 1.2)
     mesh.add(plate, fill)
@@ -1134,7 +1143,7 @@ export function createView(stage) {
     if (look === "plated" || look === "lean" || look === "spiked") {
       const markColor = look === "spiked" ? 0xf5751e : 0xd8cfc3
       const mark = new THREE.Mesh(
-        new THREE.BoxGeometry(5, 8, 5),
+        trackGeometry(new THREE.BoxGeometry(5, 8, 5)),
         litTokens.has(markColor) ? new THREE.MeshBasicMaterial({ color: markColor }) : mat(markColor)
       )
       mark.position.y = picture.h + 10
