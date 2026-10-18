@@ -54,6 +54,12 @@ export function blurHiddenFocus(doc) {
 
 // The socket may encode a push after the next key change. The frame is the
 // tap that was true at the moment of the push.
+// A text field used to swallow the whole push, including a skill the test
+// is holding. Movement stays put while typing. The skill still goes out.
+export function shouldSend({ joined, typing, skill }) {
+  return !!joined && (!typing || !!skill)
+}
+
 export function inputFrame(input) {
   return {
     mx: input.mx,

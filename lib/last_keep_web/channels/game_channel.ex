@@ -54,11 +54,24 @@ defmodule LastKeepWeb.GameChannel do
 
   @impl true
   def handle_info({:snap, snap}, socket) do
+    # The browser falls behind on CI and this process blocks in `push`. The
+    # fireball key is then stuck behind every old snapshot, so the page still
+    # shows a wave with empty cooldowns when the wait gives up. Keep the newest
+    # snapshot only; the key is the next message and the shot is on the next tick.
+    snap = coalesce_snaps(snap)
     push(socket, "snap", Map.put(snap, :self, socket.assigns.public_id))
     {:noreply, socket}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
+
+  def coalesce_snaps(snap) do
+    receive do
+      {:snap, newer} -> coalesce_snaps(newer)
+    after
+      0 -> snap
+    end
+  end
 
   @impl true
   def terminate(_reason, socket) do

@@ -518,6 +518,26 @@ defmodule LastKeep.Game.SimTest do
     assert length(boss.relics) == 1
   end
 
+  test "a held fireball still casts after a tick the mage could not act" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :mage))
+    ada = hero(state, "ada")
+
+    state =
+      Sim.spawn_monster(state, %{kind: :goblin, x: ada.x + 80, y: ada.y, hp: 40, wave: 1})
+
+    state = Sim.input(state, "ada", %{"q" => true, "ax" => ada.x + 80, "ay" => ada.y})
+    ada = %{ada | alive: false, hp: 0, respawn: 5}
+    state = %{state | entities: Map.put(state.entities, ada.id, ada)}
+    state = Sim.tick(state)
+    refute Enum.any?(projectiles(state), &(&1.kind == :fireball))
+
+    ada = %{hero(state, "ada") | alive: true, hp: 90, respawn: 0}
+    state = %{state | entities: Map.put(state.entities, ada.id, ada)}
+    state = Sim.tick(state)
+    assert Enum.any?(projectiles(state), &(&1.kind == :fireball))
+  end
+
   test "a mage fireball damages a goblin and bursts" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :mage))

@@ -1226,10 +1226,18 @@ defmodule LastKeep.Game.Sim do
   defp remember_input(state) do
     players =
       Map.new(state.players, fn {id, player} ->
-        {id, %{player | prev: player.input, pressed: @empty_pressed}}
+        # A tick that cannot cast must not eat the edge. The key stays down,
+        # so the next tick the hero can act still sees it.
+        pressed = if keeps_edge?(state, player), do: player.pressed, else: @empty_pressed
+        {id, %{player | prev: player.input, pressed: pressed}}
       end)
 
     %{state | players: players}
+  end
+
+  defp keeps_edge?(state, player) do
+    hero = state.entities[player.hero_id]
+    player.connected and (hero == nil or not hero.alive)
   end
 
   defp hurt_monster(state, id, amount, bonus_gold) do

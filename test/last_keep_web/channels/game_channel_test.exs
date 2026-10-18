@@ -67,6 +67,18 @@ defmodule LastKeepWeb.GameChannelTest do
     assert kinds == ["bat", "boss", "goblin", "skeleton", "troll", "wolf"]
   end
 
+  test "a backed-up channel keeps the newest snapshot and leaves other messages" do
+    send(self(), {:snap, %{tick: 1, projectiles: []}})
+    send(self(), {:input, "q"})
+    send(self(), {:snap, %{tick: 4, projectiles: [%{kind: "fireball"}]}})
+
+    latest = LastKeepWeb.GameChannel.coalesce_snaps(%{tick: 0, projectiles: []})
+    assert latest.tick == 4
+    assert Enum.any?(latest.projectiles, &(&1.kind == "fireball"))
+    assert_received {:input, "q"}
+    refute_received {:snap, _}
+  end
+
   test "an unknown token cannot take a hero" do
     {:ok, code} = Rooms.create(auto_tick: false, seed: 1)
 

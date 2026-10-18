@@ -128,15 +128,22 @@ async function placeWall(page) {
 }
 
 async function expectGoblinsOnYard(page) {
+  // redNear reads the framebuffer. Doing that on every poll stalls the page
+  // while the server keeps biting, and the mage is dead before Q is held.
+  // The shot assertion stays: one read, after the goblins are already in frame.
   await page.waitForFunction(() => {
     const game = window.__lastKeep
     return (
       game.phase === "wave" &&
       game.monsters.length >= 2 &&
-      game.monsters.every((monster) => monster.onScreen) &&
-      game.monsters.some((monster) => game.redNear(monster.x, monster.y) > 8)
+      game.monsters.every((monster) => monster.onScreen)
     )
   })
+  const visible = await page.evaluate(() => {
+    const game = window.__lastKeep
+    return (game.monsters || []).some((monster) => game.redNear(monster.x, monster.y) > 8)
+  })
+  expect(visible).toBe(true)
   const edgeLabels = await page.locator("[data-hints]").innerText()
   expect(edgeLabels).not.toMatch(/goblin \d/)
   const { waveClock } = await import("../assets/js/hud.js")
@@ -229,6 +236,9 @@ async function castFireball(friend, notes) {
       kinds: window.__lastKeep.kinds,
       projectiles: window.__lastKeep.projectiles,
       hero: window.__lastKeep.self && window.__lastKeep.self.hero,
+      alive: window.__lastKeep.alive,
+      hp: window.__lastKeep.hp,
+      tick: window.__lastKeep.tick,
       monsters: (window.__lastKeep.monsters || []).length,
       phase: window.__lastKeep.phase
     }))
