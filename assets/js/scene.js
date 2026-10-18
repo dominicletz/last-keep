@@ -9,6 +9,7 @@ export const groundColor = 0x5c642f
 export const pathColor = 0x5e4529
 export const plazaColor = groundColor
 export const ringColor = 0x4b3c33
+export const plazaSides = 48
 export const flameColor = 0xeea821
 export const mossColor = 0x455c28
 export const mossRegion = { x: 150, y: 192, w: 4, h: 4 }

@@ -7,7 +7,7 @@ import { sceneryForest, scenerySlots } from "./scenery"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
-import { keepParts, modelBounds, modelParts } from "../models/registry.js"
+import { houseParts, houseVariant, keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterRim, monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, partyPositions } from "./paint.js"
@@ -20,6 +20,7 @@ import {
   patchStats,
   pathColor,
   plazaColor,
+  plazaSides,
   ringColor,
   skyColor,
   yardLight
@@ -100,7 +101,7 @@ export function createView(stage) {
   }
 
   const ground = new THREE.Mesh(
-    new THREE.CircleGeometry(1900, 8),
+    new THREE.CircleGeometry(1900, plazaSides),
     mat(groundColor)
   )
   ground.rotation.x = -Math.PI / 2
@@ -108,12 +109,12 @@ export function createView(stage) {
   ground.layers.enable(1)
   scene.add(ground)
 
-  const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, 8), mat(plazaColor))
+  const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
   plaza.position.y = 0.2
   plaza.receiveShadow = true
   plaza.layers.enable(1)
-  const ring = new THREE.Mesh(new THREE.RingGeometry(146, 168, 8), mat(ringColor))
+  const ring = new THREE.Mesh(new THREE.RingGeometry(154, 164, plazaSides), mat(ringColor))
   ring.rotation.x = -Math.PI / 2
   ring.position.y = 0.28
   ring.receiveShadow = true
@@ -163,20 +164,21 @@ export function createView(stage) {
   function forest() {
     const look = sceneryForest()
     const slots = scenerySlots()
-    if (!look.parts.includes("trunk") || slots.length === 0) return
-    const dummy = new THREE.Object3D()
-    const trunk = new THREE.CylinderGeometry(look.radiusTop, look.radiusBottom, look.height, look.segments)
-    const trunks = new THREE.InstancedMesh(trunk, mat(look.trunk), slots.length)
-    slots.forEach((slot, i) => {
-      dummy.position.set(slot.x, slot.y, slot.z)
-      dummy.scale.set(slot.scale, slot.scale, slot.scale)
-      dummy.rotation.set(0, 0, 0)
-      dummy.updateMatrix()
-      trunks.setMatrixAt(i, dummy.matrix)
+    if (!look.parts.includes("stump") || !look.parts.includes("log") || slots.length === 0) return
+    const parts = modelParts("scenery")
+    slots.forEach((slot, index) => {
+      const group = new THREE.Group()
+      group.position.set(slot.x, 0, slot.z)
+      group.scale.set(slot.scale, slot.scale, slot.scale)
+      for (const piece of parts) {
+        const mesh = pieceMesh(piece)
+        if (piece.name === "log") mesh.rotation.y = (index * Math.PI) / 5
+        mesh.castShadow = false
+        mesh.receiveShadow = false
+        group.add(mesh)
+      }
+      scene.add(group)
     })
-    trunks.castShadow = false
-    trunks.receiveShadow = false
-    scene.add(trunks)
   }
 
   function forestState() {
@@ -185,6 +187,7 @@ export function createView(stage) {
       trunks: scenerySlots().length,
       wood: look.wood,
       crowns: look.parts.includes("crown") || look.parts.includes("bough"),
+      stumps: look.parts.includes("stump") && look.parts.includes("log"),
       treeBoughs: modelParts("tree").filter((part) => part.name === "bough").length
     }
   }
@@ -512,6 +515,7 @@ export function createView(stage) {
           keep: keepParts(townRank).map((part) => part.name),
           keepColors: [...new Set(keepParts(townRank).map((part) => part.color))],
           plaza: plazaColor,
+          plazaSides,
           path: true,
           bestiary: ["goblin", "skeleton", "wolf", "troll", "bat", "boss"]
         },
@@ -708,27 +712,8 @@ export function createView(stage) {
   }
 
   function buildingMesh(row) {
-    if (row.kind === "house") return houseMesh()
+    if (row.kind === "house") return groupFrom(houseParts(houseVariant(row.x, row.y)))
     return groupFrom(modelParts(row.kind))
-  }
-
-  function houseMesh() {
-    const wallY = 7
-    const wallH = 14
-    const roofH = 12
-    return groupFrom([
-      { shape: "box", w: 22, h: wallH, d: 18, x: 0, y: wallY, z: 0, color: 0x8e755b },
-      {
-        shape: "cone",
-        w: 28,
-        h: roofH,
-        d: 28,
-        x: 0,
-        y: wallY + wallH / 2 + roofH / 2,
-        z: 0,
-        color: 0x43382e
-      }
-    ])
   }
 
   function pieceMesh(piece) {
@@ -738,7 +723,8 @@ export function createView(stage) {
         : piece.shape === "prism"
           ? new THREE.CylinderGeometry(piece.rt, piece.rb, piece.h, piece.segments || 5)
           : new THREE.BoxGeometry(piece.w, piece.h, piece.d)
-    const mesh = new THREE.Mesh(geometry, mat(piece.color))
+    const emissive = piece.color === 0xeea821 || piece.color === 0xf5751e ? piece.color : 0x000000
+    const mesh = new THREE.Mesh(geometry, mat(piece.color, emissive))
     mesh.position.set(piece.x, piece.y, piece.z)
     mesh.castShadow = true
     mesh.receiveShadow = true

@@ -1,6 +1,7 @@
 import { heroParts } from "../js/heroes.js"
 import { batVoxels, goblinVoxels, ogreVoxels, riderVoxels, skeletonVoxels, wolfVoxels } from "./figures.js"
 import { sceneryForest } from "../js/scenery.js"
+import { carve } from "./voxels.js"
 
 // A mesh may extend this many times past the gameplay radius. The farmer hat
 // is a brim past the shoulders and still fits. A mesh at 3x does not.
@@ -11,7 +12,7 @@ export const iouLimit = 0.85
 
 export const conceptSheets = ["heroes.jpg", "monsters.jpg", "theme.jpg"]
 
-export const yardProps = ["keep", "tree", "scenery"]
+export const yardProps = ["keep", "tree", "scenery", "house"]
 
 const HERO_RADIUS = 14
 const TREE_RADIUS = 16
@@ -24,6 +25,7 @@ const FLAME = 0xeea821
 const WHEAT = 0x976122
 const TORCH = 0xf5751e
 const WOOD = 0x8e755b
+const CLOTH = 0xe6ccad
 const PINE = 0x353e27
 const ROBE = 0x3e6dab
 const GEM = 0x23d9f3
@@ -86,7 +88,7 @@ const REGISTRY = [
     box("flame", 5, 6, 5, 0, 38, 0, FLAME)
   ], "stone tower"),
   building("trap", 15, 480, crop(520, 490, 100, 90), [box("trap", 22, 6, 22, 0, 3, 0, HIDE)], "ground torch"),
-  building("field", 16, 574, crop(740, 300, 250, 140), wheatParts(), "wheat"),
+  building("field", 16, 784, crop(740, 300, 250, 140), wheatParts(), "wheat"),
   building("forge", 18, 928, crop(500, 190, 200, 150), [
     box("wall", 26, 16, 22, 0, 8, 0, STONE),
     cone("roof", 32, 14, 28, 0, 22, 0, THATCH),
@@ -100,7 +102,8 @@ const REGISTRY = [
   ], "spell light"),
   entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 11930, null),
   entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 682, pineParts()),
-  entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "pine trunk", crop: crop(1080, 160, 180, 260) }, 220, null)
+  entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "felled wood", crop: crop(1080, 160, 180, 260) }, 253, null),
+  entry("house", "town", { r: 18 }, { sheet: "theme.jpg", figure: "cottage", crop: crop(500, 150, 180, 160) }, 1017, null)
 ]
 
 function pineParts() {
@@ -121,17 +124,76 @@ function palisadeParts() {
 }
 
 function wheatParts() {
-  const parts = [box("soil", 28, 2, 28, 0, 1, 0, HIDE)]
-  for (const [x, z] of [
-    [-8, -8],
-    [-8, 8],
-    [0, 0],
-    [8, -8],
-    [8, 8]
-  ]) {
-    parts.push(cone("stalk", 3, 14, 3, x, 9, z, WHEAT))
-  }
-  return parts
+  return carve(2, ({ fill }) => {
+    fill(0, 0, 0, 13, 0, 13, "soil", HIDE)
+    for (const [x, z] of [
+      [1, 1],
+      [6, 1],
+      [11, 1],
+      [1, 6],
+      [6, 6],
+      [11, 6],
+      [1, 11],
+      [6, 11],
+      [11, 11]
+    ]) {
+      fill(x, 1, z, x, 9, z, "stalk", WHEAT)
+    }
+  })
+}
+
+export function houseVariant(x, y) {
+  return Math.abs(Math.round(x / 36) * 3 + Math.round(y / 36)) % 3
+}
+
+export function houseParts(variant = 0) {
+  const which = ((Number(variant) % 3) + 3) % 3
+  return carve(2, ({ fill }) => {
+    const spanX = 13
+    const spanZ = 9
+    const wallTop = 6
+    fill(0, 0, 0, spanX, wallTop, 0, "panel", CLOTH)
+    fill(0, 0, spanZ, spanX, wallTop, spanZ, "panel", CLOTH)
+    fill(0, 0, 0, 0, wallTop, spanZ, "panel", CLOTH)
+    fill(spanX, 0, 0, spanX, wallTop, spanZ, "panel", CLOTH)
+    for (const [x, z] of [
+      [0, 0],
+      [spanX, 0],
+      [0, spanZ],
+      [spanX, spanZ],
+      [6, 0],
+      [6, spanZ],
+      [0, 4],
+      [spanX, 4]
+    ]) {
+      fill(x, 0, z, x, wallTop + 1, z, "frame", WOOD)
+    }
+    fill(0, wallTop, 0, spanX, wallTop, 0, "frame", WOOD)
+    fill(0, wallTop, spanZ, spanX, wallTop, spanZ, "frame", WOOD)
+    fill(0, wallTop, 0, 0, wallTop, spanZ, "frame", WOOD)
+    fill(spanX, wallTop, 0, spanX, wallTop, spanZ, "frame", WOOD)
+    fill(0, 3, 0, spanX, 3, 0, "frame", WOOD)
+    fill(0, 3, spanZ, spanX, 3, spanZ, "frame", WOOD)
+    fill(0, 3, 0, 0, 3, spanZ, "frame", WOOD)
+    fill(spanX, 3, 0, spanX, 3, spanZ, "frame", WOOD)
+    for (let z = -1; z <= spanZ + 1; z += 1) {
+      const dist = Math.abs(z - spanZ / 2)
+      const rise = Math.max(0, 4 - Math.round(dist * 0.7))
+      fill(-1, wallTop + 1, z, spanX + 1, wallTop + 1 + rise, z, "roof", THATCH)
+    }
+    const doorX = which === 1 ? 9 : which === 2 ? 5 : 2
+    const windowX = which === 0 ? 9 : which === 1 ? 2 : 10
+    fill(doorX, 0, spanZ, doorX + 1, 3, spanZ, "door", PALISADE)
+    fill(doorX - 1, 0, spanZ, doorX - 1, 4, spanZ, "frame", WOOD)
+    fill(doorX + 2, 0, spanZ, doorX + 2, 4, spanZ, "frame", WOOD)
+    fill(doorX - 1, 4, spanZ, doorX + 2, 4, spanZ, "frame", WOOD)
+    fill(windowX, 2, spanZ, windowX + 1, 4, spanZ, "window", FLAME)
+    if (which === 2) fill(10, 10, 6, 12, 14, 8, "chimney", STONE)
+  })
+}
+
+function sceneryParts() {
+  return [box("stump", 8, 10, 8, 0, 5, 0, WOOD), box("log", 18, 5, 5, 12, 2.5, 4, WOOD)]
 }
 
 // Stacked courses. Mortar separates the shadowed stone from the lit course,
@@ -196,7 +258,6 @@ export function keepParts(rank = 0) {
 }
 
 export function models() {
-  const look = sceneryForest()
   return REGISTRY.map((model) => {
     if (model.family === "hero") {
       const parts = heroParts(model.id)
@@ -206,13 +267,15 @@ export function models() {
       return { ...model, parts: model.parts.map((part) => ({ ...part })), voxels: model.parts.voxelCount }
     }
     if (model.id === "keep") return { ...model, parts: keepParts(0) }
-    if (model.id === "scenery") {
-      return {
-        ...model,
-        parts: [
-          prism("trunk", look.radiusTop, look.radiusBottom, look.height, look.segments, 0, look.height / 2, 0, look.trunk)
-        ]
-      }
+    if (model.id === "house") {
+      const parts = houseParts(0)
+      return { ...model, parts, voxels: parts.voxelCount }
+    }
+    if (model.id === "scenery") return { ...model, parts: sceneryParts() }
+    if (model.id === "field") {
+      const parts = model.parts.map((part) => ({ ...part }))
+      parts.voxelCount = model.parts.voxelCount
+      return { ...model, parts, voxels: parts.voxelCount }
     }
     return { ...model, parts: model.parts.map((part) => ({ ...part })) }
   })
@@ -304,7 +367,7 @@ export function styleTables(markdown) {
       tokens.set(token[2], token[1])
       cited.push({ name: token[1], hex: token[2], sheet: token[3], region })
     }
-    const kind = line.match(/^\| ([a-z][a-z0-9_]*) \| (hero|monster|building|prop) \| ((?:heroes|monsters|theme)\.jpg) \| ([^|]+?) \| (\d+),(\d+),(\d+),(\d+) \|/)
+    const kind = line.match(/^\| ([a-z][a-z0-9_]*) \| (hero|monster|building|prop|town) \| ((?:heroes|monsters|theme)\.jpg) \| ([^|]+?) \| (\d+),(\d+),(\d+),(\d+) \|/)
     if (kind && kind[1] !== "id") {
       kinds.set(kind[1], {
         family: kind[2],

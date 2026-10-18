@@ -554,6 +554,7 @@ async function twoPlayerNight(browser) {
   expect(forest.trunks).toBe(70)
   expect(forest.wood).toBe(0)
   expect(forest.crowns).toBe(false)
+  expect(forest.stumps).toBe(true)
   expect(forest.treeBoughs).toBeGreaterThanOrEqual(3)
   await expect(page.locator("[data-wave]")).toHaveText("Wave 1")
   await expect(page.locator('[data-skill-name="attack"]')).toHaveText("Strike")
@@ -1112,6 +1113,11 @@ async function townGrows(browser) {
   }
   await page.waitForFunction(grown)
   await friend.waitForFunction(grown)
+  const houseRead = await page.evaluate(() => {
+    const house = (window.__lastKeep.structures || []).find((row) => row.kind === "house")
+    return window.__lastKeep.brightNear(house.x, house.y, 12)
+  })
+  expect(houseRead.above).toBeGreaterThanOrEqual(619)
 
   await expect(page.locator("[data-chrome]")).toHaveCount(10)
   await expect(page.locator("[data-build]")).toHaveCount(6)

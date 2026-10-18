@@ -25,14 +25,14 @@ A model spec names a token. It does not paste a fresh hex. Lighting may darken a
 | cloth | #e6ccad | heroes.jpg | 904,274,8,8 | engineer shirt |
 | apron | #4c3d27 | heroes.jpg | 1120,458,8,8 | aprons |
 | jerkin | #472a17 | heroes.jpg | 1106,332,8,8 | engineer leather |
-| wood | #8e755b | heroes.jpg | 1180,344,8,8 | hafts, bows, and pine trunks |
+| wood | #8e755b | heroes.jpg | 1180,344,8,8 | hafts, bows, pine trunks, and felled logs |
 | leather | #261e0e | heroes.jpg | 640,400,8,8 | boots |
 | goblin | #676f3c | monsters.jpg | 194,444,8,8 | goblin hide |
 | bone | #908b8a | monsters.jpg | 400,388,8,8 | skeleton |
 | rib | #b2ada6 | monsters.jpg | 388,460,4,4 | skeleton ribs |
 | ogre | #70724d | monsters.jpg | 672,344,8,8 | ogre |
 | wolf | #6e6767 | monsters.jpg | 894,500,8,8 | wolf |
-| hide | #4d433b | monsters.jpg | 524,148,8,8 | bat hide and scenery trunk |
+| hide | #4d433b | monsters.jpg | 524,148,8,8 | bat hide |
 | rider | #4a464c | monsters.jpg | 1072,396,8,8 | dark rider and plate |
 | veil | #3a264d | monsters.jpg | 1226,508,8,8 | rider horns |
 | torch | #f5751e | monsters.jpg | 34,404,8,8 | torch and lit house |
@@ -88,7 +88,8 @@ Every Rules hero, every monster the simulation spawns, every building, and the y
 | mage_tower | building | theme.jpg | spell light | 470,330,160,140 |
 | keep | prop | theme.jpg | keep | 548,28,188,230 |
 | tree | prop | theme.jpg | pine | 0,500,180,210 |
-| scenery | prop | theme.jpg | pine trunk | 1080,160,180,260 |
+| scenery | prop | theme.jpg | felled wood | 1080,160,180,260 |
+| house | town | theme.jpg | cottage | 500,150,180,160 |
 
 ## Asset loop
 
@@ -96,7 +97,7 @@ The theming round starts with this loop. It does not start by sculpting the town
 
 1. Generate. Every model is data under `assets/models/`. Colors are palette tokens. `npm run models` builds the registry. The registry maps each kind from `Rules.heroes/0`, each monster kind, each building kind, and each yard prop to one model. The command is deterministic. A second run on the same spec produces the same bytes.
 2. Render. The same command writes a gallery. Each asset gets a contact sheet at game zoom through the low-res pixel path, under day, dusk, and night light, in `artifacts/gallery/`. CI uploads that folder. `docs/gallery.html` browses the same frames, stored as goldens in `test/gallery/`. Heroes and monsters also get a close-up. Portrait cards are that close-up, not a crop of the game-zoom frame.
-3. Verify. `.agents/skills/verify-assets/SKILL.md` is the check. An asset must render, use only palette tokens, keep a readable silhouette at game zoom, stay distinct from the other kinds in its family, and fit its gameplay collider. The fit slack is 2. Two kinds in one family fail when their silhouette intersection-over-union is at or above 0.85. Every Rules kind needs a model, a row in the table above, and a concept mapping. The pixel threshold is 0. A pixel diff past that threshold fails. An intentional change updates the golden in that pull request and puts the before and after in the pull request body. A hero or monster is a voxel grid meshed into boxes. The voxel detail floor is 12. A model of three boxes fails that floor. Buildings are exempt.
+3. Verify. `.agents/skills/verify-assets/SKILL.md` is the check. An asset must render, use only palette tokens, keep a readable silhouette at game zoom, stay distinct from the other kinds in its family, and fit its gameplay collider. The fit slack is 2. Two kinds in one family fail when their silhouette intersection-over-union is at or above 0.85. Every Rules kind needs a model, a row in the table above, and a concept mapping. The pixel threshold is 0. A pixel diff past that threshold fails. An intentional change updates the golden in that pull request and puts the before and after in the pull request body. A hero or monster is a voxel grid meshed into boxes. The voxel detail floor is 12. A model of three boxes fails that floor. The house and the field meet that floor. Other buildings stay exempt.
 4. Review. The last panel is the concept crop for that figure, letterboxed on the soil ground. Heroes and monsters put a close-up panel before it. `docs/gallery.html` links that crop. When the sheet file is missing, the slot stays empty and says so. Reviewers score fidelity from 1 to 5 in `playtests/BACKLOG.md` under Fidelity. A later score may be lower only when the row has a reason. `fidelity.test.js` enforces that. Do not delete an old row to hide a drop.
 5. Regenerate. The next pass edits the spec, runs `npm run models`, and re-scores. It does not paint over the gallery by hand.
 

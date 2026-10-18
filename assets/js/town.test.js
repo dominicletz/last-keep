@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { fitSlack, horizontalRadius, keepParts, modelParts } from "../models/registry.js"
+import { fitSlack, horizontalRadius, houseParts, houseVariant, keepParts, modelParts, models } from "../models/registry.js"
 import { cameraDistance, dirtRadius, viewScale, zoomFor } from "./town.js"
 
 test("the keep tower grows a course of stone at each rank", () => {
@@ -38,12 +38,67 @@ test("the yard kit is a palisade, wheat, a stone tower, and a thatched house", (
   assert.ok(posts.every((part) => part.h >= 40 && part.w >= 7))
   assert.equal(wall.filter((part) => part.name === "rail").length, 2)
   assert.ok(wall.some((part) => part.name === "flame"))
-  assert.ok(modelParts("field").filter((part) => part.name === "stalk").length >= 5)
+  const field = modelParts("field")
+  assert.ok(field.filter((part) => part.name === "stalk").length >= 5)
+  assert.ok(field.voxelCount >= 12)
+  assert.ok(field.some((part) => part.name === "soil" && part.color === 0x4d433b))
+  assert.ok(field.some((part) => part.name === "stalk" && part.color === 0x976122))
   assert.equal(modelParts("tower").filter((part) => part.name === "merlon").length, 2)
   const forge = modelParts("forge")
   assert.ok(forge.some((part) => part.name === "roof" && part.color === 0x43382e))
   assert.ok(forge.some((part) => part.color === 0x4b3c33))
 })
+
+test("a house is a timber cottage with a lit window", () => {
+  const listed = models().find((model) => model.id === "house")
+  assert.equal(listed.family, "town")
+  assert.equal(listed.collider.r, 18)
+  assert.ok(listed.voxels >= 12)
+  assert.equal(JSON.stringify(modelParts("house")), JSON.stringify(houseParts(0)))
+  assert.equal(houseVariant(0, 0), 0)
+  assert.equal(houseVariant(0, 36), 1)
+  assert.equal(houseVariant(0, 72), 2)
+  assert.equal(houseVariant(-36, 36), 2)
+  assert.equal(houseVariant(36, -72), 1)
+  const stamps = [0, 1, 2].map((variant) => stamp(houseParts(variant)))
+  assert.equal(new Set(stamps).size, 3)
+  const windows = [0, 1, 2].map((variant) => houseParts(variant).find((part) => part.name === "window").x)
+  assert.equal(new Set(windows).size, 3)
+  const top = (variant) => Math.max(...houseParts(variant).map((part) => part.y + part.h / 2))
+  assert.ok(top(2) > top(0))
+  assert.ok(top(2) > top(1))
+  for (const variant of [0, 1, 2]) {
+    const parts = houseParts(variant)
+    assert.ok(parts.voxelCount >= 12)
+    assert.ok(parts.some((part) => part.name === "frame" && part.color === 0x8e755b))
+    assert.ok(parts.some((part) => part.name === "panel" && part.color === 0xe6ccad))
+    assert.ok(parts.some((part) => part.name === "roof" && part.color === 0x43382e))
+    assert.ok(parts.some((part) => part.name === "window" && part.color === 0xeea821))
+    assert.ok(horizontalRadius(parts) <= 18 * fitSlack)
+    assert.ok(extent(parts, "x") > 22)
+    assert.ok(extent(parts, "y") > 14)
+    assert.ok(extent(parts, "z") > 18)
+  }
+})
+
+function stamp(parts) {
+  return parts
+    .map((part) => [part.name, part.color, part.x, part.y, part.z, part.w, part.h, part.d].join(":"))
+    .sort()
+    .join("|")
+}
+
+function extent(parts, axis) {
+  let min = Infinity
+  let max = -Infinity
+  for (const part of parts) {
+    const center = axis === "x" ? part.x : axis === "y" ? part.y : part.z
+    const half = axis === "x" ? part.w / 2 : axis === "y" ? part.h / 2 : part.d / 2
+    min = Math.min(min, center - half)
+    max = Math.max(max, center + half)
+  }
+  return max - min
+}
 
 test("each keep rank pulls the camera back and widens the yard", () => {
   assert.equal(cameraDistance(0), 150)

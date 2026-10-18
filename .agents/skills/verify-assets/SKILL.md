@@ -42,7 +42,7 @@ All of these fail the command:
 - A hero's day-raster height at 1280×800 is under 56 internal pixels at town rank 0 or at town rank 4. The floor also has to stay at least half the shortest measured height.
 - A hero's signature tokens are missing at fight zoom. `heroZoomProblems` counts them on the day, dusk, and night rasters at rank 0 and rank 4: warrior steel, blue shield, and gold; mage deep blue, gold, and the staff gem; scout forest and the bow's wood; farmer straw, denim, and the fork's wood; engineer leather and the hammer's steel. A recorded count under half the smallest measured count fails. A farmer straw hat wider than 0.4 of the fight-zoom body fails.
 - A hero or monster close-up is missing, its figure is outside 64–96 internal pixels, or its portrait is not that close-up.
-- A hero or monster is below the voxel detail floor of 12. The count is the voxel grid when the model has one, otherwise the part count. Three boxes fail. Buildings are exempt.
+- A hero or monster is below the voxel detail floor of 12. The count is the voxel grid when the model has one, otherwise the part count. Three boxes fail. The house and the field meet that floor. Other buildings stay exempt.
 - A hero's dominant close-up colors are outside the colors that occupy that hero's concept crop. A brown warrior plate fails this. The day light stays neutral so grey plate is not clipped to orange.
 - A Rules monster has no gallery model. The six are goblin, skeleton, wolf, troll (the ogre), bat, and boss (the dark rider).
 - The bat or the dark rider night frame has fewer pixels at or above the live night grass than the recorded read (bat 80, rider 1000), or that record is under half the measured count. Hide wings fail it. Plate and bone clear it.

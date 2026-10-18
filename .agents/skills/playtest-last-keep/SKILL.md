@@ -48,4 +48,4 @@ The waiting yard patch is the lit clearing graded toward the moss at theme.jpg 1
 
 A bat or a dark rider that is darker than the night grass is not on the yard, even when the snapshot says the body is in frame. The wings are bone, the rider's helm and cuirass are plate, and both wear a bone rim. `paradeShowsEveryKind` reads those pixels.
 
-The town ring of houses is staked by the keep raise, and wheat beyond a click is farmer labor.
+The town ring of houses is staked by the keep raise, and wheat beyond a click is farmer labor. The town cottages are timber and thatch and the outer ring is felled wood.
