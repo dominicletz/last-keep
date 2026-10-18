@@ -431,13 +431,19 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp maybe_skill(state, player, hero, slot) do
-    if edged?(player, slot) and hero.cooldowns[slot] <= 0 do
-      state = cast(state, player, hero, slot, Map.get(Rules.kit(hero.hero), slot))
+    ability = Map.get(Rules.kit(hero.hero), slot)
+
+    if edged?(player, slot) and hero.cooldowns[slot] <= 0 and spell_open?(state, ability) do
+      state = cast(state, player, hero, slot, ability)
       event(state, %{type: "shot", x: hero.x, y: hero.y})
     else
       state
     end
   end
+
+  defp spell_open?(%{upgrades: %{mage_tower: true}}, %{kind: :meteor}), do: true
+  defp spell_open?(_state, %{kind: :meteor}), do: false
+  defp spell_open?(_state, _ability), do: true
 
   defp maybe_feed(state, player, hero) do
     near = hypot(hero.x, hero.y) < 100

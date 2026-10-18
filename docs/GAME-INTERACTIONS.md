@@ -70,8 +70,8 @@ flowchart LR
   gold -->|upgrade the keep| keep
   keep -->|wider town and camera| wall
 
-  relics -.->|planned: elites drop one too| monsters
-  spire -.->|planned: unlock spells| mage
+  monsters -->|an elite drops one relic| relics
+  spire -->|unlocks the meteor| mage
   wall -.->|planned: the town grows itself| keep
 ```
 
@@ -158,6 +158,4 @@ Trees with wood are entities. A living hero standing on one chops it, and the tr
 
 Dotted arrows in the graph are these edges. They are `planned` in `interactions.json` and open in the backlog.
 
-- Elites do not drop relics. Only a boss does.
-- The spire does not unlock new spells. It only buffs the mage's damage and cooldowns.
 - There is no city-growth layer beyond the keep upgrade. The party still places each building by hand.

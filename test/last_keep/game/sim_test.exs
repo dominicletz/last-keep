@@ -497,6 +497,14 @@ defmodule LastKeep.Game.SimTest do
     assert buildings(swung) == []
   end
 
+  test "the spire unlocks the meteor" do
+    locked = cast_meteor(false)
+    refute Enum.any?(projectiles(locked), &(&1.kind == :meteor))
+
+    opened = cast_meteor(true)
+    assert Enum.any?(projectiles(opened), &(&1.kind == :meteor))
+  end
+
   test "an elite drops a relic and a plain goblin does not" do
     elite = slay(%{kind: :goblin, elite: :fast, hp: 10})
     assert length(elite.relics) == 1
@@ -587,6 +595,28 @@ defmodule LastKeep.Game.SimTest do
     forged = Sim.tick(forged)
     [hurt] = Sim.monsters(forged)
     assert hurt.hp <= 80 - 29
+  end
+
+  defp cast_meteor(spire) do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :mage))
+
+    state =
+      if spire do
+        %{state | upgrades: %{state.upgrades | mage_tower: true}}
+      else
+        state
+      end
+
+    ada = hero(state, "ada")
+
+    state
+    |> Sim.input("ada", %{"r" => true, "ax" => ada.x + 40, "ay" => ada.y})
+    |> Sim.tick()
+  end
+
+  defp projectiles(state) do
+    for {_id, %{type: :projectile} = shot} <- state.entities, do: shot
   end
 
   defp slay(attrs) do
