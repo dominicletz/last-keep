@@ -216,11 +216,11 @@
     {
       "id": "wall",
       "family": "building",
-      "area": 714,
-      "minArea": 571,
-      "day": 70.93,
-      "dusk": 39.66,
-      "night": 33.67,
+      "area": 1764,
+      "minArea": 1411,
+      "day": 71.6,
+      "dusk": 39,
+      "night": 33.74,
       "sheet": "theme.jpg",
       "figure": "palisade",
       "crop": [

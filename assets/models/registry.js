@@ -78,7 +78,7 @@ const REGISTRY = [
   monster("troll", 22, 1884, crop(524, 292, 226, 286), ogreVoxels(), "ogre"),
   monster("bat", 12, 280, crop(408, 68, 260, 96), batVoxels(), "bat"),
   monster("boss", 34, 2402, crop(1000, 70, 275, 520), riderVoxels(), "dark rider"),
-  building("wall", 16, 571, crop(160, 280, 250, 220), palisadeParts(), "palisade"),
+  building("wall", 16, 1411, crop(160, 280, 250, 220), palisadeParts(), "palisade"),
   building("tower", 16, 1028, crop(590, 36, 120, 130), [
     box("shaft", 18, 32, 18, 0, 16, 0, STONE),
     box("merlon", 6, 6, 6, -8, 34, 0, STONE),
@@ -113,9 +113,10 @@ function pineParts() {
 }
 
 function palisadeParts() {
-  const parts = [-12, -6, 0, 6, 12].map((x) => box("post", 4, 24, 4, x, 12, 0, PALISADE))
-  parts.push(box("rail", 28, 3, 3, 0, 18, 0, WOOD))
-  parts.push(box("flame", 3, 5, 3, 12, 26, 0, FLAME))
+  const parts = [-16, -8, 0, 8, 16].map((x) => box("post", 7, 40, 7, x, 20, 0, PALISADE))
+  parts.push(box("rail", 40, 5, 5, 0, 30, 0, WOOD))
+  parts.push(box("rail", 40, 5, 5, 0, 16, 0, WOOD))
+  parts.push(box("flame", 4, 6, 4, 16, 44, 0, FLAME))
   return parts
 }
 
