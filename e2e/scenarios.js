@@ -591,15 +591,22 @@ async function twoPlayerNight(browser) {
   // side of the ring is dead by the time both of them reach this camera,
   // and the fireball key then hits a corpse.
   await walkTowardHost(friend)
+  await page.bringToFront()
   await page.locator("[data-start]").click()
-  // Reading the framebuffer on every poll stalls the page and the 8s dusk window
-  // is gone before a snapshot lands. Wait for the light, then grade one frame.
-  await page.waitForFunction(() => window.__lastKeep.light === "dusk", null, { timeout: 45_000 })
-  await page.waitForFunction(() => {
-    const mood = window.__lastKeep.frameMood()
-    const ground = window.__lastKeep.frameGround()
-    return mood.problems.length === 0 && ground.problems.length === 0
+  // Dusk is the last eight seconds. A full-frame read on every animation
+  // frame spends that window inside readPixels. The light name is on the
+  // snapshot. The grade then samples a few times, not every paint.
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.light === "dusk", undefined, {
+    timeout: 20_000,
+    polling: 100
   })
+  await page.waitForFunction(() => {
+    const game = window.__lastKeep
+    if (!game || game.light !== "dusk") return false
+    const mood = game.frameMood()
+    const ground = game.frameGround()
+    return mood.problems.length === 0 && ground.problems.length === 0
+  }, undefined, { timeout: 8_000, polling: 400 })
   const duskMood = await page.evaluate(() => {
     const game = window.__lastKeep
     const hero = game.self
@@ -629,12 +636,17 @@ async function twoPlayerNight(browser) {
   }
   expect(hueDistance(duskMood.stone.hue, duskMood.pine.hue)).toBeGreaterThanOrEqual(25)
   await page.screenshot({ path: shot("dusk-host.png") })
-  await page.waitForFunction(() => window.__lastKeep.light === "night")
-  await page.waitForFunction(() => {
-    const mood = window.__lastKeep.frameMood()
-    const ground = window.__lastKeep.frameGround()
-    return mood.problems.length === 0 && ground.problems.length === 0
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.light === "night", undefined, {
+    timeout: 20_000,
+    polling: 100
   })
+  await page.waitForFunction(() => {
+    const game = window.__lastKeep
+    if (!game || game.light !== "night") return false
+    const mood = game.frameMood()
+    const ground = game.frameGround()
+    return mood.problems.length === 0 && ground.problems.length === 0
+  }, undefined, { timeout: 8_000, polling: 400 })
   const nightGround = await page.evaluate(() => window.__lastKeep.frameGround())
   expect(nightGround.spread).toBeGreaterThanOrEqual(8)
   await assertNightAudio(page)
