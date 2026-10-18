@@ -159,7 +159,7 @@ function duskMoodProblems(sheet, ground, horizonMedian) {
   }
   if (frame.max < 160) problems.push(`dusk torch luma ${frame.max.toFixed(1)} is dim`)
   const duskField = litGround(ground, cycleLight.dusk)
-  if (duskField.luma < 50 || duskField.hue > 55) {
+  if (duskField.luma < 70 || duskField.hue > 55) {
     problems.push(`dusk field luma ${duskField.luma.toFixed(1)} hue ${duskField.hue.toFixed(1)} is murky olive`)
   }
   return problems

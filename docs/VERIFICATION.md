@@ -157,3 +157,9 @@ The backlog is [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The interactio
 - Wave 1 cleared at keep 900. The food sack says Feast 10. Raise is dark at gold 0. The wave-1 call is one `2 goblins` and it sits off the button. The wave line stays in the window and covers the food sack.
 - Wave 2 put a wolf on the yard, wave 3 put an ogre on the yard and spawned two bats, and wave 4 spawned the rider. The bat body and the rider body were not readable in the frame. The keep fell on wave 4 at 34 kills.
 - A day-yard patch samples luminance 51. The same patch at dusk samples luminance 31. This does not change the simulation. The coverage floor stays 69.
+
+## 2026-10-18 yard light matches the Lambert yard
+
+- `litGround` follows the renderer's sRGB Lambert, including the divide by pi. A day field under luminance 90 still fails, and a dusk field under luminance 70 fails. Day stays brighter than dusk, and dusk stays brighter than night. A lit grey plate that shifts more than 40 points from red to blue fails.
+- The wave sign sits screen-up from the hero, and a pin at the bottom of the window stops 72 pixels short of the edge. An edge call below 0.78 is pulled up off the hotbar.
+- This does not change the simulation. The coverage floor stays 69.
