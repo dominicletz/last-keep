@@ -526,6 +526,7 @@ export function createView(stage) {
       }
       heroKey = me ? `hero:${me.id}` : null
       const heroMesh = heroKey ? meshes.get(heroKey) : null
+      const heroTrack = heroKey ? tracks.get(heroKey) : null
       window.__lastKeep = {
         counts,
         phase: snap.phase,
@@ -581,6 +582,9 @@ export function createView(stage) {
         },
         forestLook,
         rendered: heroMesh ? { x: heroMesh.position.x, z: heroMesh.position.z } : null,
+        motion: heroTrack
+          ? { fromX: heroTrack.fromX, fromZ: heroTrack.fromZ, toX: heroTrack.toX, toZ: heroTrack.toZ, at: heroTrack.at }
+          : null,
         frame: {
           aspect: camera.right / camera.top,
           bufferWidth: renderer.domElement.width,
@@ -633,6 +637,16 @@ export function createView(stage) {
       if (!mesh) continue
       remember(`hero:${row.id}`, row.x, row.y)
       if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
+    }
+    const heroTrack = heroKey ? tracks.get(heroKey) : null
+    if (window.__lastKeep && heroTrack) {
+      window.__lastKeep.motion = {
+        fromX: heroTrack.fromX,
+        fromZ: heroTrack.fromZ,
+        toX: heroTrack.toX,
+        toZ: heroTrack.toZ,
+        at: heroTrack.at
+      }
     }
     for (const row of snap.monsters || []) {
       if (!meshes.has(`monster:${row.id}`)) continue
