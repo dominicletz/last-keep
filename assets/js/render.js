@@ -25,6 +25,23 @@ import {
   yardLight
 } from "./scene.js"
 
+function figurePixels(mesh, camera, bufferHeight) {
+  const box = new THREE.Box3().setFromObject(mesh)
+  const corner = new THREE.Vector3()
+  let minY = Infinity
+  let maxY = -Infinity
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) {
+        corner.set(x, y, z).project(camera)
+        if (corner.y < minY) minY = corner.y
+        if (corner.y > maxY) maxY = corner.y
+      }
+    }
+  }
+  return Math.round((maxY - minY) * 0.5 * bufferHeight)
+}
+
 export function createView(stage) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
   renderer.setSize(480, 270, false)
@@ -440,7 +457,8 @@ export function createView(stage) {
           hero: mesh.userData.hero,
           parts: mesh.userData.parts,
           marks: mesh.userData.marks,
-          bounds: mesh.userData.bounds
+          bounds: mesh.userData.bounds,
+          px: figurePixels(mesh, camera, renderer.domElement.height)
         })
       }
       heroKey = me ? `hero:${me.id}` : null

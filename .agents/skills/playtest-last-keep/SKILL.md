@@ -36,7 +36,7 @@ They share one room. The hero is only the seat they play.
 2. Graphics, Lux, mage. Judges whether bodies, buildings, the yard, and the night read at a glance. The wave line sits in the yard and stays off the sacks and the other world pins.
 3. Music and sound, Bram, engineer. Judges what is heard. Name the day loop, the night loop, the horn, the clear, and the hit, kill, build, keep, and fall cues if they play. If the build is silent, the report says so. Mute and volume should survive a reload.
 4. Game logic, Pip, scout. Cross-checks the screenshot against the saved snapshot and against `docs/GAME-INTERACTIONS.md`. A planned edge is a finding. Screen and state that disagree are a finding. A hero's health on the fallen screen is the same snapshot the fight HUD reads. A downed hero is not refilled because the keep died on that tick.
-5. Character design, Nia, farmer. Judges whether each hero and monster reads as that character, and whether the roster says who is who.
+5. Character design, Nia, farmer. Judges whether each hero and monster reads as that character at fight zoom, and whether the roster says who is who. A hero that only reads in the close-up is a finding. The warrior is steel plate, a blue shield with a gold cross, and a silver sword. The mage is a deep blue robe with gold trim and a staff. The scout is a green hood and a bow. The farmer is a straw hat, denim, and a pitchfork. The engineer is leather and a hammer.
 
 ## Report
 

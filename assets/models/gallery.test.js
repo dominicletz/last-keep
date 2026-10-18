@@ -2,9 +2,9 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
-import { heroParts } from "../js/heroes.js"
+import { heroKinds, heroParts } from "../js/heroes.js"
 import { cycleLight, groundColor, litGround, pathColor, plazaColor, ringColor, skyColor, yardLight } from "../js/scene.js"
-import { checkModels, heroColorProblems, heroHeightProblems, heroPixelFloor, repoRoot } from "./run.js"
+import { checkModels, heroColorProblems, heroHeightProblems, heroPixelFloor, heroZoomProblems, repoRoot } from "./run.js"
 import { conceptProblems, coverageProblems, fitSlack, iouLimit, keepStoneProblems, paletteProblems, rulesFrom, styleTables, uncitedPaletteProblems } from "./registry.js"
 import { galleryRigs, maskBounds, maskIou } from "./raster.js"
 import { citationProblems, loadSheet, medianHex, sceneColorProblems } from "./sheets.js"
@@ -17,7 +17,7 @@ test("the gallery matches the goldens and a second run", () => {
   assert.equal(result.present["monsters.jpg"], true)
   assert.equal(fitSlack, 2)
   assert.equal(iouLimit, 0.85)
-  assert.equal(heroPixelFloor, 24)
+  assert.equal(heroPixelFloor, 56)
   for (const row of result.rendered) {
     if (row.family !== "hero" && row.family !== "monster") continue
     const height = maskBounds(row.closeup).height
@@ -61,12 +61,36 @@ test("daylight does not clip grey plate to orange", () => {
   assert.ok(plate.r - plate.b < 40, `plate ${plate.r} ${plate.g} ${plate.b}`)
 })
 
-test("a hero under 24 internal pixels fails at rank 0 and at rank 4", () => {
+test("a hero under 56 internal pixels fails at rank 0 and at rank 4", () => {
   const short = heroHeightProblems([
     { id: "scout", family: "hero", parts: [{ name: "body", shape: "box", w: 4, h: 8, d: 4, x: 0, y: 4, z: 0, color: 0xd99b64 }] }
   ])
   assert.ok(short.some((line) => line.includes("rank 0")))
   assert.ok(short.some((line) => line.includes("rank 4")))
+})
+
+test("a fight-zoom hero missing its prop fails the palette read", () => {
+  const drop = (kind, names) => ({
+    id: kind,
+    family: "hero",
+    parts: heroParts(kind).map((part) => (names.includes(part.name) ? { ...part, color: 0x111111 } : part))
+  })
+  const steel = heroZoomProblems([drop("warrior", ["sword", "breast"])])
+  assert.ok(steel.some((line) => line.includes("warrior") && line.includes("steel")))
+  const gold = heroZoomProblems([drop("warrior", ["cross", "bar", "guard"])])
+  assert.ok(gold.some((line) => line.includes("gold")))
+  const gem = heroZoomProblems([drop("mage", ["gem"])])
+  assert.ok(gem.some((line) => line.includes("gem")))
+  const bow = heroZoomProblems([drop("scout", ["bow", "quiver"])])
+  assert.ok(bow.some((line) => line.includes("wood")))
+  const brim = heroZoomProblems([drop("farmer", ["brim", "crown", "sack"])])
+  assert.ok(brim.some((line) => line.includes("straw")))
+  const hammer = heroZoomProblems([drop("engineer", ["hammer", "goggles"])])
+  assert.ok(hammer.some((line) => line.includes("steel")))
+  const whole = heroZoomProblems(heroKinds().map((id) => ({ id, family: "hero", parts: heroParts(id) })))
+  assert.deepEqual(whole, [])
+  const tall = heroHeightProblems(heroKinds().map((id) => ({ id, family: "hero", parts: heroParts(id) })))
+  assert.deepEqual(tall, [])
 })
 
 test("a palette token matches the jpeg median of its cited patch", () => {

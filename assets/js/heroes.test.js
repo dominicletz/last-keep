@@ -20,7 +20,7 @@ test("each hero builds a distinct mesh signature", () => {
   }
   for (const sig of sigs) {
     assert.deepEqual(sig.marks, expected[sig.kind])
-    assert.ok(sig.bounds.h >= 30, sig.kind)
+    assert.ok(sig.bounds.h >= 72, sig.kind)
     assert.ok(sig.bounds.w >= 14, sig.kind)
     const marked = sig.parts.filter((part) => part.mark)
     assert.ok(marked.every((part) => Math.max(part.w, part.h, part.d) >= 12), sig.kind)

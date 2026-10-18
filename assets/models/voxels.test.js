@@ -16,6 +16,16 @@ test("a straight run of voxels meshes into one box", () => {
   assert.equal(parts.voxelCount, 3)
 })
 
+test("a taller cell step raises the mesh without widening it", () => {
+  const paint = ({ fill }) => fill(0, 0, 0, 1, 3, 0, "post", 1)
+  const cube = carve(2, paint)
+  const tall = carve({ x: 2, y: 4, z: 2 }, paint)
+  const wide = (parts) => Math.max(...parts.map((part) => part.w))
+  const high = (parts) => Math.max(...parts.map((part) => part.y + part.h / 2))
+  assert.equal(wide(tall), wide(cube))
+  assert.ok(high(tall) > high(cube))
+})
+
 test("three boxes fail the detail floor and a voxel figure clears it", () => {
   const boxes = detailProblems([
     {

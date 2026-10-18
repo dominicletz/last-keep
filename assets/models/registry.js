@@ -3,7 +3,7 @@ import { batVoxels, goblinVoxels, ogreVoxels, riderVoxels, skeletonVoxels, wolfV
 import { sceneryForest } from "../js/scenery.js"
 
 // A mesh may extend this many times past the gameplay radius. The farmer brim
-// is wider than the body (22 against 14) and still fits. A mesh at 3x does not.
+// is the wide mark (26 against 14) and still fits. A mesh at 3x does not.
 export const fitSlack = 2
 
 // Same-family silhouettes at or above this IoU fail. They have to read apart.
@@ -67,11 +67,11 @@ function building(id, r, minArea, frame, parts, figure = id) {
 // measured dusk mask). A shrink below it fails. It also has to stay at least
 // half of whatever the current render measures.
 const REGISTRY = [
-  hero("warrior", 1160, crop(24, 158, 268, 412)),
-  hero("mage", 917, crop(312, 124, 196, 448)),
-  hero("scout", 632, crop(524, 100, 216, 480)),
-  hero("farmer", 1529, crop(752, 98, 250, 480)),
-  hero("engineer", 774, crop(1016, 158, 224, 432)),
+  hero("warrior", 2092, crop(24, 158, 268, 412)),
+  hero("mage", 1772, crop(312, 124, 196, 448)),
+  hero("scout", 2074, crop(524, 100, 216, 480)),
+  hero("farmer", 2071, crop(752, 98, 250, 480)),
+  hero("engineer", 1987, crop(1016, 158, 224, 432)),
   monster("goblin", 16, 682, crop(16, 328, 236, 246), goblinVoxels()),
   monster("skeleton", 13, 835, crop(260, 328, 260, 246), skeletonVoxels()),
   monster("wolf", 13, 445, crop(760, 340, 270, 245), wolfVoxels()),

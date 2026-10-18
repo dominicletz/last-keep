@@ -1,7 +1,7 @@
 import { viewScale } from "./town.js"
 
 // CSS pixels per internal texel. Two keeps the nearest-neighbor chunk and
-// lifts a hero at rank 4 over the 24px floor. Three left the engineer near 22.
+// lifts a hero at rank 4 over the 56px floor. Three left the engineer near 22.
 export const pixelSize = 2
 
 // The buffer uses the window's aspect so a CSS fill does not stretch pixels.
