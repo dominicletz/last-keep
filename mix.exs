@@ -12,7 +12,7 @@ defmodule LastKeep.MixProject do
       deps: deps(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader],
-      test_coverage: [summary: [threshold: 74]]
+      test_coverage: [summary: [threshold: 75]]
     ]
   end
 
