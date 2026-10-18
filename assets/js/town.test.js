@@ -33,7 +33,10 @@ test("the keep tower grows a course of stone at each rank", () => {
 
 test("the yard kit is a palisade, wheat, a stone tower, and a thatched house", () => {
   const wall = modelParts("wall")
-  assert.equal(wall.filter((part) => part.name === "post").length, 5)
+  const posts = wall.filter((part) => part.name === "post")
+  assert.equal(posts.length, 5)
+  assert.ok(posts.every((part) => part.h >= 40 && part.w >= 7))
+  assert.equal(wall.filter((part) => part.name === "rail").length, 2)
   assert.ok(wall.some((part) => part.name === "flame"))
   assert.ok(modelParts("field").filter((part) => part.name === "stalk").length >= 5)
   assert.equal(modelParts("tower").filter((part) => part.name === "merlon").length, 2)
