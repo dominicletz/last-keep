@@ -13,7 +13,10 @@ module.exports = defineConfig({
   use: {
     baseURL,
     viewport: { width: 1280, height: 800 },
-    launchOptions: process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}
+    launchOptions: {
+      ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
+      args: ["--enable-precise-memory-info"]
+    }
   },
   webServer: process.env.BASE_URL
     ? undefined

@@ -184,6 +184,20 @@ function start(code, seat, ui) {
       }
       send()
     },
+    fight(down) {
+      const game = window.__lastKeep
+      const self = game && game.self
+      let nearest = null
+      if (down && self) {
+        for (const monster of game.monsters || []) {
+          const dist = Math.hypot(monster.x - self.x, monster.y - self.y)
+          if (!nearest || dist < nearest.dist) nearest = monster
+        }
+      }
+      if (nearest) aim = { x: nearest.x, y: nearest.y, monster: true }
+      input.attack = !!nearest
+      send()
+    },
     mute(muted) {
       audio.setMuted(muted)
       if (muteButton) muteButton.textContent = audio.prefs().muted ? "Muted" : "Sound"

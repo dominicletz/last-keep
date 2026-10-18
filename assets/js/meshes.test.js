@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as THREE from "three"
-import { giveBurst, releaseGeometries, shotSphere, takeBurst } from "./meshes.js"
+import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes.js"
 
 test("a dropped mesh disposes a shared geometry once and leaves a pooled sphere", () => {
   const geometry = new THREE.BoxGeometry(1, 1, 1)
@@ -44,6 +44,24 @@ test("a dropped hero leaves the shared sprite plane", () => {
   assert.equal(disposed, 0)
   assert.equal(bars, 1)
   assert.equal(other.geometry, card.geometry)
+})
+
+test("a mesh that leaves the scene without dispose is an orphan", () => {
+  const geometry = trackGeometry(new THREE.BoxGeometry(1, 1, 1))
+  const mesh = new THREE.Mesh(geometry)
+  mesh.userData.role = "prop"
+  const scene = new THREE.Scene()
+  scene.add(mesh)
+  const held = geometryCensus(scene)
+  assert.equal(held.orphans, 0)
+  assert.equal(held.byRole.prop, 1)
+  scene.remove(mesh)
+  assert.equal(geometryCensus(scene).orphans, 1)
+  releaseGeometries(mesh)
+  assert.equal(geometryCensus(scene).orphans, 0)
+  const bolt = shotSphere(8)
+  assert.equal(geometryCensus(scene).pooled >= 1, true)
+  assert.equal(bolt.userData.pooled, true)
 })
 
 test("a burst sphere is reused and takes the next color", () => {
