@@ -465,6 +465,8 @@ export function createView(stage) {
   }
   return viewApi
 
+  // The heavy scene sync can skip ticks. The hero still has to take each
+  // step, or the rendered body lands more than one tick behind the server.
   function nudge(snap, selfId) {
     const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
     if (window.__lastKeep && me && window.__lastKeep.self) {
