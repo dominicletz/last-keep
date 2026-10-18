@@ -2,7 +2,7 @@ import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
 import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
-import { nextTrack, poseAt } from "./motion"
+import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
@@ -320,7 +320,7 @@ export function createView(stage) {
         scene.add(mesh)
       }
       remember(key, row.x, row.y)
-      if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
+      aimFacing(mesh, row.facing)
       placeMesh(key, mesh)
       if (mesh.userData.hp) {
         const ratio = row.max ? row.hp / row.max : 1
@@ -391,6 +391,7 @@ export function createView(stage) {
       viewApi.draw(pending.snap, pending.selfId)
       drawnTick = pending.snap.tick
     }
+    for (const [, mesh] of meshes) stepFacing(mesh)
     for (const [key, mesh] of meshes) placeMesh(key, mesh)
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
       const burst = bursts[i]
@@ -702,7 +703,7 @@ export function createView(stage) {
       const mesh = meshes.get(`hero:${row.id}`)
       if (!mesh) continue
       remember(`hero:${row.id}`, row.x, row.y)
-      if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
+      aimFacing(mesh, row.facing)
     }
     const heroTrack = heroKey ? tracks.get(heroKey) : null
     if (window.__lastKeep && heroTrack) {
@@ -869,8 +870,20 @@ export function createView(stage) {
     tracks.set(key, nextTrack(prev, x, z, performance.now()))
   }
 
+  function aimFacing(mesh, facing) {
+    if (!mesh.userData.face || !Number.isFinite(facing)) return
+    const target = -facing
+    if (!Number.isFinite(mesh.userData.yawTarget)) mesh.rotation.y = target
+    mesh.userData.yawTarget = target
+  }
+
+  function stepFacing(mesh) {
+    if (!mesh.userData.face || !Number.isFinite(mesh.userData.yawTarget)) return
+    mesh.rotation.y = stepYaw(mesh.rotation.y, mesh.userData.yawTarget).yaw
+  }
+
   function smoothed(key) {
-    return poseAt(tracks.get(key), performance.now(), 45)
+    return poseAt(tracks.get(key), performance.now())
   }
 
   function placeMesh(key, mesh) {
