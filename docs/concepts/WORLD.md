@@ -2,17 +2,17 @@
 
 The keep stays in the middle. Heroes still defend it together, and nights still come from every side. The land around that keep is no longer one circle.
 
-Today `Rules.map_radius/0` is 1800. Heroes clamp to that disc. Wave 1 still drops two goblins about 620 to 659 from the origin, and later nights use a farther ring. Seventy bare trunks sit in three rings and have no wood. The layout is the same on every side. A party that walks for a minute has seen the whole map.
+`Rules.map_radius/0` is 7200. Heroes clamp to that disc. Wave 1 still drops two goblins about 620 to 659 from the origin, and later nights use a farther ring. Seventy bare trunks sit in three rings and have no wood.
 
-This page is the contract for the land that replaces that disc. The simulation does not follow it yet. Edges in [`../GAME-INTERACTIONS.md`](../GAME-INTERACTIONS.md) that name this land are `planned` in [`../interactions.json`](../interactions.json).
+The chest and the portal already follow this page. The rest of it is the contract for the slices that have not landed. Edges in [`../GAME-INTERACTIONS.md`](../GAME-INTERACTIONS.md) that name that remaining land are `planned` in [`../interactions.json`](../interactions.json).
 
 ## The land
 
 `World.generate/1` takes the room seed and returns one world. The same seed returns the same biomes, the same blocked cells, and the same points of interest. Visit order does not matter. `World.chunk/3` is the same bytes as the matching slice of `World.generate/1`.
 
-The bound is a radius of 7200, four times the current clamp. The shape inside that bound is not a circle and not a mirror. Biomes are pine forest, meadow, ruins, river, ford, and cliff. Rivers and cliffs block walking. A ford is the walkable cell in a river. Clearings and paths are meadow cells that the generator connects, not rings drawn with a compass.
+The bound is a radius of 7200, the same disc as the walk clamp. The shape inside that bound is not a circle and not a mirror. Biomes are pine forest, meadow, ruins, river, ford, and cliff. Rivers and cliffs block walking. A ford is the walkable cell in a river. Clearings and paths are meadow cells that the generator connects, not rings drawn with a compass.
 
-The keep disc of radius 400 is always meadow. It holds no pine, river, cliff, or point of interest. Rank 4 dirt ends near 310, so the town, the houses, and the spawn ring at radius 120 stay inside that disc. Night 1 spawn distance stays on the old ring. Only the bearing changes, and only once portals exist.
+The keep disc of radius 400 is always meadow. It holds no pine, river, cliff, or point of interest. Rank 4 dirt ends near 310, so the town, the houses, and the spawn ring at radius 120 stay inside that disc. Night 1 spawn distance stays on the old ring. The bearing is a living portal.
 
 A symmetry check samples land cells on a 144-unit lattice outside the keep disc and inside 7200. For each cell it compares the biome to the x-mirror, the y-mirror, and the half turn. A pair counts only when both cells lie inside the bound. Each of those three disagreement fractions has to be at least 0.35. A disc of one biome fails. A forest mirrored across x = 0 fails the x-mirror.
 
@@ -74,7 +74,7 @@ The server keeps one discovered set. Each snapshot carries the chunks within Che
 
 ## What the server stores
 
-`State` gains a `world` map. The seed is the room seed. `chunks` is a map from `{cx, cy}` to the generated chunk. Chunk size is 512, so the bound uses coordinates from -14 to 14.
+`State` keeps a `world` map. The seed is the room seed. `chunks` is a map from `{cx, cy}` to the generated chunk. Chunk size is 512, so the bound uses coordinates from -14 to 14.
 
 `discovered` is a set of chunk ids. `portals`, `chests`, `camps`, `quarries`, `shrines`, `merchant`, and `hermit` record what is still there. A tick reads a chunk through `World.chunk/3` only when that id is missing from `chunks`. Later ticks reuse the stored chunk.
 
