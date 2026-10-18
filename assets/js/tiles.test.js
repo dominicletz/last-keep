@@ -61,10 +61,7 @@ test("the concept tiles match the bake and stay on the phase palette", () => {
   assert.equal(written, tileModule(baked))
   for (const phase of Object.keys(phaseScales)) {
     const palette = lockedColors(hexes, phaseScales[phase])
-    for (const [name, tile] of [
-      ["grass", baked[phase].grass],
-      ["masonry", baked[phase].masonry]
-    ]) {
+    for (const [name, tile] of Object.entries(baked[phase])) {
       const bytes = tile.rgb
       for (let i = 0; i < bytes.length; i += 3) {
         let best = Infinity

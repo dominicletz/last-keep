@@ -6,14 +6,14 @@ import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, tr
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
-import { masonryBytes } from "./tiles.js"
+import { masonryBytes, propBytes } from "./tiles.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
 import { pictureColumn, sheetRow } from "./pictures.js"
-import { houseParts, houseVariant, keepParts, modelParts } from "../models/registry.js"
+import { keepParts, modelParts } from "../models/registry.js"
 import { monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, swingSeen } from "./paint.js"
@@ -24,7 +24,6 @@ import {
   lightName,
   lumaOf,
   patchStats,
-  pathColor,
   plazaColor,
   plazaSides,
   ringColor,
@@ -184,10 +183,59 @@ export function createView(stage) {
   ring.position.y = 0.28
   ring.receiveShadow = true
   scene.add(plaza, ring)
-  const pathNS = new THREE.Mesh(new THREE.BoxGeometry(18, 0.45, 280), mat(pathColor))
-  pathNS.position.y = 0.4
-  const pathEW = new THREE.Mesh(new THREE.BoxGeometry(280, 0.45, 18), mat(pathColor))
-  pathEW.position.y = 0.35
+  const sheetKinds = {
+    house: { w: 56, h: 64, stand: true },
+    field: { w: 46, h: 26, stand: false },
+    wall: { w: 30, h: 40, stand: true }
+  }
+  const sheetMaps = {}
+  const sheetMats = {}
+  for (const [name, spec] of Object.entries(sheetKinds)) {
+    const tile = propBytes(name, "day")
+    const map = new THREE.DataTexture(tile.rgba, tile.w, tile.h)
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.flipY = true
+    map.needsUpdate = true
+    sheetMaps[name] = map
+    sheetMats[name] = spec.stand
+      ? new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false })
+      : new THREE.MeshBasicMaterial({ map, color: 0xffffff })
+  }
+  const windowMat = new THREE.SpriteMaterial({
+    color: 0xeea821,
+    depthTest: true,
+    depthWrite: true,
+    transparent: false
+  })
+  const pathUnit = 18
+  const pathTile = propBytes("path", "day")
+  const pathNSMap = new THREE.DataTexture(pathTile.rgba, pathTile.w, pathTile.h)
+  const pathEWMap = new THREE.DataTexture(pathTile.rgba, pathTile.w, pathTile.h)
+  for (const map of [pathNSMap, pathEWMap]) {
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.wrapS = THREE.RepeatWrapping
+    map.wrapT = THREE.RepeatWrapping
+    map.flipY = true
+    map.needsUpdate = true
+  }
+  pathNSMap.repeat.set(1, 280 / pathUnit)
+  pathEWMap.repeat.set(280 / pathUnit, 1)
+  const pathNS = new THREE.Mesh(
+    new THREE.PlaneGeometry(18, 280),
+    new THREE.MeshBasicMaterial({ map: pathNSMap, color: 0xffffff })
+  )
+  pathNS.rotation.x = -Math.PI / 2
+  pathNS.position.y = 0.5
+  const pathEW = new THREE.Mesh(
+    new THREE.PlaneGeometry(280, 18),
+    new THREE.MeshBasicMaterial({ map: pathEWMap, color: 0xffffff })
+  )
+  pathEW.rotation.x = -Math.PI / 2
+  pathEW.position.y = 0.48
   scene.add(pathNS, pathEW)
 
   forest()
@@ -235,6 +283,14 @@ export function createView(stage) {
     const stone = masonryBytes(phase)
     stoneMap.image.data.set(stone.rgba)
     stoneMap.needsUpdate = true
+    for (const [name, map] of Object.entries(sheetMaps)) {
+      map.image.data.set(propBytes(name, phase).rgba)
+      map.needsUpdate = true
+    }
+    const path = propBytes("path", phase)
+    pathNSMap.image.data.set(path.rgba)
+    pathNSMap.needsUpdate = true
+    pathEWMap.needsUpdate = true
     painted = phase
   }
 
@@ -521,8 +577,10 @@ export function createView(stage) {
       plaza.scale.setScalar(yardScale)
       ring.scale.setScalar(yardScale)
       const pathSpan = yardScale
-      pathNS.scale.set(1, 1, pathSpan)
+      pathNS.scale.set(1, pathSpan, 1)
       pathEW.scale.set(pathSpan, 1, 1)
+      pathNSMap.repeat.set(1, (280 * pathSpan) / pathUnit)
+      pathEWMap.repeat.set((280 * pathSpan) / pathUnit, 1)
       if (keep.userData.rank !== townRank) {
         releaseGeometries(keep)
         scene.remove(keep)
@@ -1041,11 +1099,39 @@ export function createView(stage) {
   }
 
   function buildingMesh(row) {
-    const group = row.kind === "house" ? groupFrom(houseParts(houseVariant(row.x, row.y))) : groupFrom(modelParts(row.kind))
-    // The clearing tile replaced the flat bright grass. The lit cottage was 492
-    // pixels above that tile, under the floor of 619. The mesh grows from its
-    // ground point so the same cottage clears the floor.
-    if (row.kind === "house") group.scale.setScalar(1.25)
+    const spec = sheetKinds[row.kind]
+    const group = new THREE.Group()
+    if (spec?.stand) {
+      const card = new THREE.Sprite(sheetMats[row.kind])
+      card.center.set(0.5, 0)
+      card.scale.set(spec.w, spec.h, 1)
+      card.renderOrder = 1
+      group.add(card)
+      if (row.kind === "house") {
+        for (const [x, y] of [
+          [-12, 20],
+          [12, 20],
+          [-12, 32],
+          [12, 32],
+          [-12, 44],
+          [12, 44]
+        ]) {
+          const glow = new THREE.Sprite(windowMat)
+          glow.center.set(0.5, 0.5)
+          glow.scale.set(12, 8, 1)
+          glow.position.set(x, y, 0)
+          glow.renderOrder = 2
+          group.add(glow)
+        }
+      }
+    } else if (spec) {
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(spec.w, spec.h), sheetMats[row.kind])
+      mesh.rotation.x = -Math.PI / 2
+      mesh.position.y = 0.42
+      group.add(mesh)
+    } else {
+      for (const piece of modelParts(row.kind)) group.add(pieceMesh(piece))
+    }
     const radius = row.kind === "house" || row.kind === "field" ? 22 : 12
     group.add(contactDisc(radius))
     return group
