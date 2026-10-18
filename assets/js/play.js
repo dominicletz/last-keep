@@ -710,8 +710,7 @@ function drawWorld(ui, snap, selfId) {
   const bonusNode = ui.hud.querySelector("[data-bonuses]")
   const party = rosterAnchor(snap.players)
   const rosterSpot = screenPoint(ui, party.x, party.y)
-  const topBar = ui.hud.querySelector(".hud-top")?.getBoundingClientRect()
-  const belowBar = topBar ? topBar.bottom - hudBox.top + 8 : 8
+  const belowBar = bandTop(ui, hudBox)
   const captions = seatCaptions(
     {
       spot: rosterSpot,
@@ -728,6 +727,13 @@ function drawWorld(ui, snap, selfId) {
   )
   pin(rosterNode, captions.roster)
   pin(bonusNode, captions.relic)
+  const parkedControls = shownRects(
+    ui,
+    ".hud-top, .builds, .skills, [data-touch-pad], [data-volume], [data-raise], [data-copy], [data-mute], [data-start], .stick, .sack, .heart, [data-you]",
+    4
+  )
+  settleNode(ui, rosterNode, [...parkedControls, ...shownRects(ui, "[data-bonuses]", 2)])
+  settleNode(ui, bonusNode, [...parkedControls, ...shownRects(ui, "[data-roster]", 2)])
 }
 
 function shownRects(ui, selector, pad) {

@@ -487,6 +487,9 @@ html.touch-play .chip {
   font-size: 0.68rem;
   gap: 0.04rem 0.35rem;
 }
+html.touch-play .bonuses.world-pin {
+  max-width: 11rem;
+}
 
 .thumb-pad, .stick { display: none; }
 html.touch-play .thumb-pad {
