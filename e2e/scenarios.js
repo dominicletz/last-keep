@@ -1774,6 +1774,7 @@ async function readMatch(page) {
       shownWave: game.shownWave,
       monsters: monsters.length,
       projectiles: (game.projectiles || []).length,
+      shots: game.counts?.shots || 0,
       keep: game.keep && game.keep.hp,
       party: (game.party || []).length,
       geometries: perf.geometries || 0,
@@ -1869,7 +1870,16 @@ async function sixSeatMatch(browser) {
         await fight(false)
         await page.evaluate(() => window.__lastKeepTest.home())
         for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
-        if (sawWave && row.phase === "build" && row.monsters === 0 && row.projectiles === 0 && row.geometries > 0) {
+        // The socket writes projectiles before the deferred draw removes the mesh.
+        // A sample in that gap counts the shot as a new geometry.
+        if (
+          sawWave &&
+          row.phase === "build" &&
+          row.monsters === 0 &&
+          row.projectiles === 0 &&
+          row.shots === 0 &&
+          row.geometries > 0
+        ) {
           if (!builds.has(row.shownWave)) {
             const sample = { ...row }
             delete sample.paints

@@ -390,3 +390,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - The sheet branch uses the detour already on main. The via on the west face shares x, `e2e/steer.test.js` walks that face and the spawn to a chest, and the hop ends when the cardinal step misses the keep body. The chest wait stays 45 seconds and the portal wait stays 70 seconds.
 - `phoneClear` still requires the goblin call on the side opposite the pack. The steer returns on a frame where the label is up, and the next paint can be empty, so the text is polled for 4 seconds. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 the empty build waits for the shot mesh
+
+- Deploy of a40069d failed `sixSeatMatch` because the later empty build had one shot geometry still in the scene while `projectiles` was already 0. The socket writes that list before the deferred draw removes the mesh. The sample now waits until `counts.shots` is 0 as well. In-scene geometries still must not rise. This does not change the simulation. The coverage floor stays 77.
