@@ -118,6 +118,7 @@ test("the keep face slides instead of holding due west", () => {
   assert.deepEqual(keysAround(73.5, 0, 400, 0), ["KeyD", "KeyS"])
   assert.deepEqual(keysAround(0, -100, 40, -400), ["KeyW", "KeyD"])
   assert.deepEqual(keysAround(200, 0, -400, 0), ["KeyA", "KeyW"])
+  assert.ok(keysAround(0, 200, 0, 230).length > 0)
 })
 
 test("held diagonals stay unit length", () => {

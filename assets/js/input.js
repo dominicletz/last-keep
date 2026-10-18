@@ -126,7 +126,9 @@ export function keysAround(x, y, goalX, goalY) {
       return keysToward(sign * tx, sign * ty, 0)
     }
   }
-  return keysToward(dx, dy)
+  // The chest counts inside 30. The eight-way stop used to be 42, which
+  // left the body short of the chest for the whole wait.
+  return keysToward(dx, dy, 12)
 }
 
 export function axes(keys) {
