@@ -577,6 +577,10 @@ function start(code, seat, ui) {
       window.__lastKeep.log = seen.log
       window.__lastKeep.labels = seen.labels
       window.__lastKeep.kinds = seen.kinds
+      if (window.__lastKeep.self && me) {
+        window.__lastKeep.self.alive = me.alive
+        window.__lastKeep.self.hp = me.hp
+      }
       publishAudio()
     }
     if (snap.phase === "over") showOver(ui, snap)

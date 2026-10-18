@@ -203,22 +203,28 @@ async function sample(tab, notes) {
 
 async function castFireball(friend, notes) {
   await liveSnap(friend)
-  const click = await friend.evaluate(() => {
+  const aim = await friend.evaluate(() => {
     const game = window.__lastKeep
-    const monster = (game.monsters || [])[0]
-    return monster ? game.toClient(monster.x, monster.y) : null
+    const me = game.self
+    if (!me) return null
+    return { point: game.toClient(0, 0), alive: me.alive === true, hp: me.hp }
   })
-  expect(click).toBeTruthy()
+  expect(aim && aim.alive, `mage was down before the cast (${JSON.stringify(aim)})`).toBe(true)
   const viewport = friend.viewportSize()
-  const inside =
-    click.x > 8 && click.y > 8 && click.x < viewport.width - 8 && click.y < viewport.height - 8
-  if (inside) {
-    await friend.mouse.click(click.x, click.y)
-    await friend.mouse.click(click.x, click.y)
+  const point = aim.point
+  if (
+    point &&
+    point.x > 8 &&
+    point.y > 8 &&
+    point.x < viewport.width - 8 &&
+    point.y < viewport.height - 8
+  ) {
+    await friend.mouse.move(point.x, point.y)
   }
   // Hold the key until the shot is visible. An 80ms tap can be encoded after
   // the key is already up, so the server never sees the edge.
   await holdKey(friend, "KeyQ", true)
+  const tickAtHold = await friend.evaluate(() => window.__lastKeep.tick)
   try {
     await friend.waitForFunction(
       () => {
@@ -231,24 +237,28 @@ async function castFireball(friend, notes) {
       { timeout: 5000 }
     )
   } catch (err) {
-    const debug = await friend.evaluate(() => ({
+    const debug = await friend.evaluate((held) => ({
       cds: window.__lastKeep.cds,
       kinds: window.__lastKeep.kinds,
       projectiles: window.__lastKeep.projectiles,
       hero: window.__lastKeep.self && window.__lastKeep.self.hero,
-      alive: window.__lastKeep.alive,
-      hp: window.__lastKeep.hp,
-      tick: window.__lastKeep.tick,
       monsters: (window.__lastKeep.monsters || []).length,
       phase: window.__lastKeep.phase,
       tick: window.__lastKeep.tick,
-      hidden: document.visibilityState
-    }))
+      tickAtHold: held,
+      hidden: document.visibilityState,
+      alive: window.__lastKeep.self && window.__lastKeep.self.alive,
+      hp: window.__lastKeep.self && window.__lastKeep.self.hp
+    }), tickAtHold)
     throw new Error(`fireball was not on screen ${JSON.stringify(debug)} (${err.message})`)
   } finally {
     await holdKey(friend, "KeyQ", false)
   }
+  await friend.waitForFunction(() => (window.__lastKeep.log || []).some((row) => row.type === "boom"), {
+    timeout: 5_000
+  })
   await sample(friend, notes)
+  expect(notes.boom).toBe(true)
   await friend.screenshot({ path: shot("fireball-guest.png") })
 }
 
@@ -562,6 +572,7 @@ async function twoPlayerNight(browser) {
     )
   }, dayField.luma)
   await page.waitForFunction(() => window.__lastKeep.light === "night")
+  await castFireball(friend, notes)
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
   await expectGoblinsOnYard(page)
@@ -577,11 +588,7 @@ async function twoPlayerNight(browser) {
   await friend.screenshot({ path: shot("wave-guest.png") })
 
   await stopWalk(friend)
-  await castFireball(friend, notes)
   await fight(page, friend, notes)
-  await friend.waitForFunction(() => (window.__lastKeep.log || []).some((row) => row.type === "boom"), {
-    timeout: 5_000
-  })
   await page.waitForFunction(() => window.__lastKeep.kills >= 1, { timeout: 30_000 })
   await page.waitForFunction(
     () =>
