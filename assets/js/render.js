@@ -437,7 +437,9 @@ export function createView(stage) {
               hero: me.hero,
               host: me.host,
               range: me.range,
-              attackCd: me.cds?.attack || 0
+              attackCd: me.cds?.attack || 0,
+              alive: me.alive,
+              hp: me.hp
             }
           : null,
         attackCd: me?.cds?.attack || 0,

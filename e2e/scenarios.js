@@ -131,6 +131,8 @@ async function expectGoblinsOnYard(page) {
   // redNear reads the framebuffer. Doing that on every poll stalls the page
   // while the server keeps biting, and the mage is dead before Q is held.
   // The shot assertion stays: one read, after the goblins are already in frame.
+  // A page left in the background does not draw, so onScreen stays stale.
+  await page.bringToFront()
   await page.waitForFunction(() => {
     const game = window.__lastKeep
     return (
@@ -202,23 +204,29 @@ async function sample(tab, notes) {
 }
 
 async function castFireball(friend, notes) {
-  await friend.bringToFront()
-  const click = await friend.evaluate(() => {
+  await liveSnap(friend)
+  const aim = await friend.evaluate(() => {
     const game = window.__lastKeep
-    const monster = (game.monsters || [])[0]
-    return monster ? game.toClient(monster.x, monster.y) : null
+    const me = game.self
+    if (!me) return null
+    return { point: game.toClient(0, 0), alive: me.alive === true, hp: me.hp }
   })
-  expect(click).toBeTruthy()
+  expect(aim && aim.alive, `mage was down before the cast (${JSON.stringify(aim)})`).toBe(true)
   const viewport = friend.viewportSize()
-  const inside =
-    click.x > 8 && click.y > 8 && click.x < viewport.width - 8 && click.y < viewport.height - 8
-  if (inside) {
-    await friend.mouse.click(click.x, click.y)
-    await friend.mouse.click(click.x, click.y)
+  const point = aim.point
+  if (
+    point &&
+    point.x > 8 &&
+    point.y > 8 &&
+    point.x < viewport.width - 8 &&
+    point.y < viewport.height - 8
+  ) {
+    await friend.mouse.move(point.x, point.y)
   }
   // Hold the key until the shot is visible. An 80ms tap can be encoded after
   // the key is already up, so the server never sees the edge.
   await holdKey(friend, "KeyQ", true)
+  const tickAtHold = await friend.evaluate(() => window.__lastKeep.tick)
   try {
     await friend.waitForFunction(
       () => {
@@ -231,22 +239,28 @@ async function castFireball(friend, notes) {
       { timeout: 5000 }
     )
   } catch (err) {
-    const debug = await friend.evaluate(() => ({
+    const debug = await friend.evaluate((held) => ({
       cds: window.__lastKeep.cds,
       kinds: window.__lastKeep.kinds,
       projectiles: window.__lastKeep.projectiles,
       hero: window.__lastKeep.self && window.__lastKeep.self.hero,
-      alive: window.__lastKeep.alive,
-      hp: window.__lastKeep.hp,
-      tick: window.__lastKeep.tick,
       monsters: (window.__lastKeep.monsters || []).length,
-      phase: window.__lastKeep.phase
-    }))
+      phase: window.__lastKeep.phase,
+      tick: window.__lastKeep.tick,
+      tickAtHold: held,
+      hidden: document.visibilityState,
+      alive: window.__lastKeep.self && window.__lastKeep.self.alive,
+      hp: window.__lastKeep.self && window.__lastKeep.self.hp
+    }), tickAtHold)
     throw new Error(`fireball was not on screen ${JSON.stringify(debug)} (${err.message})`)
   } finally {
     await holdKey(friend, "KeyQ", false)
   }
+  await friend.waitForFunction(() => (window.__lastKeep.log || []).some((row) => row.type === "boom"), {
+    timeout: 5_000
+  })
   await sample(friend, notes)
+  expect(notes.boom).toBe(true)
   await friend.screenshot({ path: shot("fireball-guest.png") })
 }
 
@@ -271,6 +285,34 @@ async function fight(page, friend, notes) {
   if (guestKey) await holdKey(friend, guestKey, false)
   await sample(page, notes)
   await sample(friend, notes)
+}
+
+async function liveSnap(page) {
+  await page.bringToFront()
+  await page.waitForFunction(() => document.visibilityState === "visible", null, { polling: 100 })
+  await page.evaluate(() => {
+    window.__lastKeepLive = null
+  })
+  await page.waitForFunction(
+    () => {
+      const tick = window.__lastKeep && window.__lastKeep.tick
+      if (!Number.isFinite(tick)) return false
+      const now = performance.now()
+      const mark = window.__lastKeepLive
+      if (!mark) {
+        window.__lastKeepLive = { tick, at: now }
+        return false
+      }
+      const dt = now - mark.at
+      if (dt < 250) return false
+      const steps = tick - mark.tick
+      window.__lastKeepLive = { tick, at: now }
+      const rate = (steps * 1000) / dt
+      return rate >= 8 && rate <= 40
+    },
+    null,
+    { polling: 100 }
+  )
 }
 
 async function holdKey(page, code, down) {
@@ -494,6 +536,8 @@ async function twoPlayerNight(browser) {
   await expect(page.locator("[data-wave]")).toHaveText("Wave 1")
   await expect(page.locator('[data-skill-name="attack"]')).toHaveText("Strike")
   await expect(friend.locator('[data-skill-name="q"]')).toHaveText("Fireball")
+  await expect(page.locator("[data-touch-pad]")).toBeHidden()
+  await expect(page.locator("#turn")).toBeHidden()
   await expect(page.locator('[data-build="wall"]')).toContainText("8 wood")
   await expect(page.locator("[data-score]")).toHaveText("Score 0")
   await assertBonuses(page)
@@ -530,6 +574,7 @@ async function twoPlayerNight(browser) {
     )
   }, dayField.luma)
   await page.waitForFunction(() => window.__lastKeep.light === "night")
+  await castFireball(friend, notes)
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
   await expectGoblinsOnYard(page)
@@ -545,11 +590,7 @@ async function twoPlayerNight(browser) {
   await friend.screenshot({ path: shot("wave-guest.png") })
 
   await stopWalk(friend)
-  await castFireball(friend, notes)
   await fight(page, friend, notes)
-  await friend.waitForFunction(() => (window.__lastKeep.log || []).some((row) => row.type === "boom"), {
-    timeout: 5_000
-  })
   await page.waitForFunction(() => window.__lastKeep.kills >= 1, { timeout: 30_000 })
   await page.waitForFunction(
     () =>
@@ -815,6 +856,82 @@ async function heroSilhouettes(browser) {
   for (const seat of seats) await seat.context.close()
 }
 
+async function pressStick(page) {
+  await page.evaluate(() => {
+    const node = document.querySelector("#stage canvas")
+    const fire = (type, x, y) => {
+      node.dispatchEvent(new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        clientX: x,
+        clientY: y,
+        pointerId: 7,
+        pointerType: "touch",
+        isPrimary: true,
+        button: 0,
+        buttons: type === "pointerup" ? 0 : 1
+      }))
+    }
+    fire("pointerdown", 110, 220)
+    fire("pointermove", 110, 80)
+    window.__lastKeepStick = fire
+  })
+}
+
+async function releaseStick(page) {
+  await page.evaluate(() => {
+    window.__lastKeepStick?.("pointerup", 110, 80)
+  })
+}
+
+async function mobileTouch(browser) {
+  const errors = []
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    hasTouch: true,
+    isMobile: true
+  })
+  const page = await context.newPage()
+  watch(page, "phone", errors)
+  await page.goto(gameUrl("/"))
+  await page.waitForFunction(() => {
+    const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
+    return imgs.length === 5 && imgs.every((img) => img.complete && img.naturalHeight >= 64 && img.naturalHeight <= 128)
+  })
+  await page.locator("#player-name").fill("Nia")
+  await page.locator('input[value="warrior"]').check()
+  await page.locator("#create-button").click()
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Nia"))
+  await expect(page.locator("[data-touch-pad]")).toBeVisible()
+  await expect(page.locator("#turn")).toBeHidden()
+  await expect(page.locator('[data-touch="attack"] img')).toBeVisible()
+  const start = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
+  await pressStick(page)
+  await page.waitForFunction((from) => {
+    const me = window.__lastKeep.self
+    return Math.hypot(me.x - from.x, me.y - from.y) > 20
+  }, start)
+  await releaseStick(page)
+  await page.locator('[data-touch="q"]').tap()
+  await page.waitForFunction(() => (window.__lastKeep.cds?.q || 0) > 0)
+  const wood = await page.evaluate(() => window.__lastKeep.wood)
+  await page.locator('[data-build="wall"]').tap()
+  await expect(page.locator("[data-touch-context]")).toBeVisible()
+  await expect(page.locator("[data-touch-context]")).toHaveText("Wall")
+  await page.locator("[data-touch-context]").tap()
+  await page.waitForFunction((before) => window.__lastKeep.buildings > 0 && window.__lastKeep.wood < before, wood)
+  await pressStick(page)
+  await page.screenshot({ path: shot("mobile-landscape.png") })
+  await releaseStick(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(page.locator("#turn")).toHaveText("Rotate your device")
+  await page.screenshot({ path: shot("mobile-portrait.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
 async function scoreList(request) {
   const response = await request.get("/api/highscores")
   expect(response.ok()).toBeTruthy()
@@ -836,5 +953,6 @@ module.exports = {
   squarePixels,
   scoreList,
   heroSilhouettes,
-  paradeShowsEveryKind
+  paradeShowsEveryKind,
+  mobileTouch
 }

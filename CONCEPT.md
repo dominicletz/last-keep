@@ -21,8 +21,15 @@ that is not an edge in that graph is still planned.
 
 ## Core gameplay
 
-- **Hero action, top-down brawler.** Each player controls one hero directly:
-  WASD to move, mouse to aim, two skills plus an ultimate.
+- **Hero action, top-down brawler.** Each player controls one hero directly.
+  A keyboard uses WASD to move, the mouse to aim, and Q, E, and R for the two
+  skills and the ultimate. A touch screen, including a phone that opened the
+  invite, uses a joystick under the left thumb and portrait buttons for the
+  strike and those three skills. The cooldown sits on the button. Building and
+  paying stay where the hero stands. One context button appears only when a
+  place, a raise, or a feed is in reach. Landscape is the play orientation.
+  Portrait shows a short rotate prompt, on a phone or a tablet. A keyboard on
+  the same device still moves and casts.
 - **Endless waves with a highscore.** Waves keep getting harder; the score is
   how long the group survives.
 - **Every 5th wave** brings a boss or an elite modifier.
