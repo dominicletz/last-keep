@@ -324,3 +324,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-18 the chest walk clears the keep
 
 - Deploy of 1ad8e38 failed `exploreLand` with the host at x 73.5, y 0. That is the keep's west face. The detour used to stop at radius 180, and the straight line from there still hit the keep, so the hero walked back into the wall. The detour now stays inside the same 20 seconds until the remaining segment misses the keep. The chest wait stays 45 seconds and the portal wait stays 70 seconds. Night 1 stays two goblins. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 hero sheets walk, strike, and fall
+
+- Each direction has four walk frames, three attack frames, and four death frames. Walk 0 of direction 0 is still the crop. The attack row shifts the upper body. The death row folds the figure down, and the last frame keeps under half the ink in the top of the cell. A rising attack cooldown starts the strike. A dead hero plays the fall and holds the last frame. The likeness floors stay 0.72 and 46. This does not change the simulation. The coverage floor stays 77.

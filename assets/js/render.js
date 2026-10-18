@@ -10,7 +10,7 @@ import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
-import { pictureColumn } from "./pictures.js"
+import { pictureColumn, sheetRow } from "./pictures.js"
 import { houseParts, houseVariant, keepParts, modelBounds, modelParts } from "../models/registry.js"
 import { monsterRim, monsterSpread } from "./bodies"
 import { rangeRingState } from "./hud"
@@ -338,6 +338,7 @@ export function createView(stage) {
       }
       remember(key, row.x, row.y)
       aimFacing(mesh, row.facing)
+      if (kind === "hero") noteHeroPose(mesh, row)
       placeMesh(key, mesh)
       if (mesh.userData.hp) {
         const ratio = row.max ? row.hp / row.max : 1
@@ -912,6 +913,19 @@ export function createView(stage) {
     return poseAt(tracks.get(key), performance.now())
   }
 
+  function noteHeroPose(mesh, row) {
+    const pose = mesh.userData.pose || {}
+    const cd = row.cds?.attack || 0
+    const now = performance.now()
+    if (Number.isFinite(pose.lastCd) && cd > pose.lastCd + 40) pose.attackAt = now
+    pose.lastCd = cd
+    const dead = row.alive === false
+    if (dead && !pose.dead) pose.deadAt = now
+    if (!dead) pose.deadAt = 0
+    pose.dead = dead
+    mesh.userData.pose = pose
+  }
+
   function placeMesh(key, mesh) {
     const pose = smoothed(key)
     const spread = mesh.userData.spread || { x: 0, z: 0 }
@@ -924,7 +938,10 @@ export function createView(stage) {
     const column = pictureColumn(viewYaw, facing)
     const track = tracks.get(key)
     const step = track ? Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ) : 0
-    const frame = step > 0.4 ? Math.floor(performance.now() / 160) % picture.frames : 0
+    const anim = mesh.userData.pose || {}
+    anim.moving = step > 0.4
+    mesh.userData.pose = anim
+    const frame = sheetRow(picture, anim, performance.now())
     card.material.map.offset.set(column / picture.directions, 1 - (frame + 1) / picture.frames)
   }
 

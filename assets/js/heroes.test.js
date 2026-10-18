@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { fitSlack, horizontalRadius, models } from "../models/registry.js"
 import { heroCrops, conceptFigure } from "../models/sprites.js"
-import { cardSourceHeight, pictureColumn, scaleFront, spriteHeight } from "./pictures.js"
+import { cardSourceHeight, pictureColumn, scaleFront, sheetRow, spriteHeight } from "./pictures.js"
 import { heroKinds, heroParts, heroSignature } from "./heroes.js"
 
 test("each hero builds a distinct mesh signature", () => {
@@ -26,7 +26,10 @@ test("each hero builds a distinct mesh signature", () => {
     assert.ok(sig.bounds.w >= 8 && sig.bounds.w <= 28, sig.kind)
     assert.equal(sig.parts[0].shape, "billboard")
     assert.equal(sig.parts[0].directions, 8)
-    assert.equal(sig.parts[0].frames, 4)
+    assert.equal(sig.parts[0].frames, 11)
+    assert.equal(sig.parts[0].walk, 4)
+    assert.equal(sig.parts[0].attack, 3)
+    assert.equal(sig.parts[0].death, 4)
   }
   const crops = heroCrops()
   for (const model of models()) {
@@ -49,6 +52,29 @@ test("each hero builds a distinct mesh signature", () => {
       assert.equal(embedded.rgb[i * 3 + 2], crop.rgb[i * 3 + 2], kind)
     }
   }
+})
+
+test("a hero sheet walks, strikes, and falls", () => {
+  const picture = heroParts("warrior")[0]
+  assert.equal(sheetRow(picture, {}, 0), 0)
+  assert.equal(sheetRow(picture, { moving: true }, 160), 1)
+  assert.equal(sheetRow(picture, { attackAt: 1000 }, 1000), 4)
+  assert.equal(sheetRow(picture, { attackAt: 1000 }, 1140), 5)
+  assert.equal(sheetRow(picture, { dead: true, deadAt: 0 }, 0), 7)
+  assert.equal(sheetRow(picture, { dead: true, deadAt: 0 }, 480), 10)
+  const top = (row) => {
+    let n = 0
+    const split = Math.floor(picture.cellH * 0.4)
+    for (let y = 0; y < split; y++) {
+      for (let x = 0; x < picture.cellW; x++) {
+        const d = ((row * picture.cellH + y) * picture.atlasW + x) * 4 + 3
+        if (picture.atlas[d]) n += 1
+      }
+    }
+    return n
+  }
+  assert.ok(top(10) < top(0) * 0.5)
+  assert.notEqual(top(5), top(0))
 })
 
 test("each hero picture stays inside the gameplay radius", () => {
