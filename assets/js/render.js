@@ -251,6 +251,7 @@ export function createView(stage) {
     queue(snap, selfId) {
       pending = { snap, selfId }
       placeCamera(snap, selfId)
+      nudge(snap, selfId)
     },
     aim(clientX, clientY) {
       const rect = renderer.domElement.getBoundingClientRect()
@@ -463,6 +464,23 @@ export function createView(stage) {
     }
   }
   return viewApi
+
+  function nudge(snap, selfId) {
+    const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
+    if (window.__lastKeep && me && window.__lastKeep.self) {
+      window.__lastKeep.self = { ...window.__lastKeep.self, x: me.x, y: me.y }
+    }
+    for (const row of snap.players || []) {
+      const mesh = meshes.get(`hero:${row.id}`)
+      if (!mesh) continue
+      remember(`hero:${row.id}`, row.x, row.y)
+      if (mesh.userData.face && Number.isFinite(row.facing)) mesh.rotation.y = -row.facing
+    }
+    for (const row of snap.monsters || []) {
+      if (!meshes.has(`monster:${row.id}`)) continue
+      remember(`monster:${row.id}`, row.x, row.y)
+    }
+  }
 
   function placeCamera(snap, selfId) {
     const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
