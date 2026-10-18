@@ -221,7 +221,7 @@ export function waveAnchor(hero) {
   return { x: hero.x - 64, y: hero.y - 64 }
 }
 
-export function visiblePin(spot, view, box, anchor = "chip") {
+export function visiblePin(spot, view, box, anchor = "chip", floor = 0) {
   if (!spot || !(view?.width > 0) || !(view?.height > 0)) return spot
   const width = box?.width || 0
   const height = box?.height || 0
@@ -232,7 +232,7 @@ export function visiblePin(spot, view, box, anchor = "chip") {
   const tailY = corner ? height : 0
   const minX = 8 + shiftX
   const maxX = Math.max(minX, view.width - 8 - tailX)
-  const minY = 8 + shiftY
+  const minY = Math.max(8 + shiftY, Number(floor) || 0)
   const maxY = Math.max(minY, view.height - (corner ? 8 + tailY : 72))
   return {
     left: clamp(spot.left, minX, maxX),

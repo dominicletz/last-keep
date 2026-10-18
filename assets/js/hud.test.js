@@ -185,6 +185,8 @@ test("the wave sign follows the hero and stays inside the window", () => {
   assert.ok(board.top >= 8)
   assert.ok(board.top + 120 <= 800 - 8)
   assert.equal(board.left, 30)
+  const below = visiblePin({ left: 30, top: 12 }, { width: 1280, height: 800 }, { width: 160, height: 120 }, "corner", 72)
+  assert.ok(below.top >= 72)
   const low = callAnchor(0.2, 0.96, null)
   assert.ok(low.top <= 0.78)
 })
