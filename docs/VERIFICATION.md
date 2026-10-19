@@ -380,6 +380,12 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - CI on the settled count reached wave 4 with the keep at 0, then passed on retry. `fight` walked with `keysToward`, and due west on the keep face has no slide. A hero at x 73.5 cannot reach a boss on the far side, and the boss's bite then drops the keep before the later empty build is on record. `fight` now walks with `keysAround`. The settled count and the orphan check stay. This does not change the simulation. The coverage floor stays 77.
 
+## 2026-10-18 heartwood and a stalled north walk
+
+- CI on e387347 failed `sixSeatMatch` because the later keep max was 100280. Heartwood grows the keep by 280 once. The first sample is 100000 or 100280, and the later sample is that value or 280 higher. It still cannot climb further.
+- The same run failed `phoneClear` in `assertFarCaptions`. KeyW moved y by 40, then the west component slid on the keep face and y never reached -220. A stall after that first step uses the heading spin. The west mark stays x=-700. The phone timeout stays 150s.
+- `walkToRaise` was using `keysAround`, which will not step inward, so the hero sat at hypot 93 with the button already enabled and never reached 90. The raise walk uses `toward`, the eight-way step at the keep. The button still has to be enabled, and the hero still has to be inside 90.
+
 ## 2026-10-18 a shot between samples is not a leak
 
 - Deploy of a40069d failed `sixSeatMatch` when the later empty build held 774 geometries against 773, then passed on retry. The census named the extra owner as `shot` while projectiles were already 0, and pooled spheres went from 2 to 3. `geometryCensus` reports `settled`, the in-scene geometries whose owner is not `shot`, `burst`, or `spawn`. A burst mesh carries that owner when it is taken. `sixSeatMatch` requires the later settled count to stay at or under the earlier one, and orphans to stay at 0. A wall that appears still raises the settled count. A mesh that leaves without dispose is still an orphan. The call ceiling stays 868, the triangle ceiling stays 11552, paint p95 stays 424 ms, and a facing step stays at or under 0.7 radians. This does not change the simulation. The coverage floor stays 77.
