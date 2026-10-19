@@ -155,6 +155,13 @@ export function createView(stage) {
   clothMap.magFilter = THREE.NearestFilter
   clothMap.minFilter = THREE.NearestFilter
   clothMap.colorSpace = THREE.SRGBColorSpace
+  // Upload now. A later first paint, when a hero reaches the table, used to
+  // add this texture between the two match-budget samples.
+  const clothCtx = clothCanvas.getContext("2d")
+  clothCtx.fillStyle = "#6e4b32"
+  clothCtx.fillRect(0, 0, clothCanvas.width, clothCanvas.height)
+  clothMap.needsUpdate = true
+  renderer.initTexture(clothMap)
   const mapCloth = new THREE.Mesh(
     trackGeometry(new THREE.PlaneGeometry(40, 24)),
     new THREE.MeshLambertMaterial({ map: clothMap })

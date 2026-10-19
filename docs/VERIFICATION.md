@@ -449,6 +449,8 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 ## 2026-10-19 visual checks have one owner
 
+- The map cloth uploads at startup. Its first paint used to land between the two empty builds in `sixSeatMatch`, so the later build counted one more texture. The later build still has to stay at or under the earlier texture count. Calls stay at or under 868, triangles at or under 11552, paint p95 at or under 424 ms, and a facing step stays at or under 0.7 radians.
+- The next pack stays one beacon that reads `2 goblins`. A revealed chest or portal off screen uses that same edge beacon. Any other beacon text fails. The glass count stays 10.
 - `yardGrade`, `duskGrade`, and `nightGrade` are the only day, dusk, and night reads `twoPlayerNight` calls. Each takes one framebuffer read. `duskGrade` owns the stone at (0, 36, 6), the pine at (−22, 30, −62), and the plate at height 18. The hue gap stays at least 25, the plate saturation stays under 0.2, and each mask still needs 24 pixels. Cool stays at most 0.25, warm at least 0.03, and the ground spread at least 8. Day contrast stays at least 9 and lime at most 0.08. `blend` owns the open step window. The interpolated walk still needs more than five samples, one open blend, and travel past 20 inside 4 seconds. `e2e/probe.test.js` fails when the scenario calls `sampleObject`, `frameGrade`, `frameMood`, or `frameGround`, or when it inlines the blend window. This does not change the simulation. The coverage floor stays 77.
 
 ## 2026-10-19 the map table shows the shared fog
