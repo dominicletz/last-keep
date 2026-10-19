@@ -142,8 +142,8 @@ export function createView(stage) {
   ground.layers.enable(1)
   scene.add(ground)
   const mapTable = new THREE.Mesh(
-    trackGeometry(new THREE.BoxGeometry(48, 10, 32)),
-    mat(0xc4a574, 0x6b4a2e)
+    trackGeometry(new THREE.BoxGeometry(36, 8, 22)),
+    mat(0x43382e)
   )
   mapTable.position.set(0, 8, 160)
   mapTable.userData.role = "table"
