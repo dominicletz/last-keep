@@ -481,10 +481,14 @@ defmodule LastKeep.Game.SimTest do
     heroes = [:warrior, :mage, :scout, :farmer, :engineer]
 
     state =
-      Enum.reduce(Enum.zip(ids, heroes), Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false), fn {id, hero}, state ->
-        {:ok, state} = Sim.join(state, player(id, hero))
-        state
-      end)
+      Enum.reduce(
+        Enum.zip(ids, heroes),
+        Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false),
+        fn {id, hero}, state ->
+          {:ok, state} = Sim.join(state, player(id, hero))
+          state
+        end
+      )
 
     state = %{state | wave: 1, phase: {:build, 1}, hints: []}
 
@@ -1604,18 +1608,11 @@ defmodule LastKeep.Game.SimTest do
         already or
           Enum.any?(Sim.monsters(state), fn monster ->
             dist = :math.sqrt((monster.x - me.x) ** 2 + (monster.y - me.y) ** 2)
-            dist <= strike_reach(me.hero) + monster.r
+            dist <= Rules.meet_reach() + monster.r
           end)
 
       {id, reached}
     end)
-  end
-
-  defp strike_reach(hero) do
-    case Rules.kit(hero).attack do
-      %{kind: :melee, range: range} -> range
-      _ -> 200
-    end
   end
 
   defp heroes(state), do: for({_id, %{type: :hero} = hero} <- state.entities, do: hero)

@@ -139,6 +139,19 @@ defmodule LastKeep.Game.Rules do
   def bite(:goblin, 1), do: 0.5
   def bite(_kind, _wave), do: 1.0
 
+  # A bolt meets the pack once it is on the yard. Melee uses its own range.
+  # 200 is inside the gap from the join ring at 120 to a spawn past 760.
+  def strike_reach(%{kind: :melee, range: range}), do: range
+  def strike_reach(%{kind: :bolt}), do: 200
+
+  # Wave 2 spawns past 760. A hero on the join ring is about 640 to 900
+  # from that pack. 960 starts the walk on the tick the night opens.
+  def approach_reach, do: 960
+
+  # A standing engineer's nearest monster stayed at 213.9. The same hero
+  # walking at the pack got to 137.4. 160 sits between those two.
+  def meet_reach, do: 160
+
   def bounty(:goblin), do: 1
   def bounty(:skeleton), do: 1
   def bounty(:wolf), do: 2
