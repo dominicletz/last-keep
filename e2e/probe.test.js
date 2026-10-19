@@ -2,6 +2,7 @@ const assert = require("node:assert/strict")
 const fs = require("fs")
 const path = require("path")
 const { test } = require("node:test")
+const { settledHolds } = require("./settled")
 
 function stripComments(source) {
   return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:"'`])\/\/.*$/gm, "$1")
@@ -62,6 +63,30 @@ test("a goblin call is the walk sample that paints it", () => {
   assert.match(body, /walkUntil\(/)
   const config = fs.readFileSync(path.join(__dirname, "../playwright.config.js"), "utf8")
   assert.match(config, /failOnFlakyTests:\s*!!process\.env\.CI/)
+})
+
+function seat(settled, chest, portal, chests = chest, portals = portal) {
+  return { chests, portals, census: { settled, byRole: { chest, portal } } }
+}
+
+test("a discovered chest may raise the settled count", () => {
+  const first = seat(764, 1, 1)
+  const found = seat(767, 2, 3)
+  assert.equal(settledHolds(first, found), true)
+  assert.equal(settledHolds(first, seat(768, 2, 3)), false)
+  assert.equal(settledHolds(first, { chests: 2, portals: 3, census: { settled: 767, byRole: { chest: 3, portal: 3 } } }), false)
+  assert.equal(
+    settledHolds(first, { chests: 0, portals: 1, census: { settled: 764, byRole: { chest: 1, portal: 1 } } }),
+    false
+  )
+  assert.equal(settledHolds(first, seat(763, 0, 1)), true)
+  assert.equal(settledHolds(first, first), true)
+  const source = stripComments(fs.readFileSync(path.join(__dirname, "scenarios.js"), "utf8"))
+  const body = functionBody(source, "sixSeatMatch")
+  assert.match(body, /settledHolds\(first, later\)/)
+  assert.equal(body.includes("first.census.settled)"), false)
+  assert.match(source, /chests: \(game\.chests \|\| \[\]\)\.length/)
+  assert.match(source, /portals: \(game\.portals \|\| \[\]\)\.length/)
 })
 
 test("scripted walks wait on the server position", () => {
