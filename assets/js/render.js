@@ -526,11 +526,7 @@ export function createView(stage) {
     if (heroMesh && window.__lastKeep) {
       window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
     }
-    for (const [key, mesh] of meshes) {
-      if (!key.startsWith("monster:") && !key.startsWith("hero:")) continue
-      probe.set(mesh.position.x, 16, mesh.position.z).project(camera)
-      mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
-    }
+    cullActors()
     if (drawDue(now, lastRender, lastInput)) {
       const started = performance.now()
       paintFrame()
@@ -550,10 +546,17 @@ export function createView(stage) {
       showRims(show)
     },
     repaint() {
+      const frame = renderer.info.render.frame
+      cullActors()
       paintFrame()
       publishPerf(null)
       const perf = window.__lastKeepPerf
-      return { calls: perf.calls, triangles: perf.triangles, rims: perf.rims }
+      return {
+        calls: perf.calls,
+        triangles: perf.triangles,
+        rims: perf.rims,
+        painted: renderer.info.render.frame !== frame
+      }
     },
     queue(snap, selfId) {
       pending = { snap, selfId }
@@ -1661,11 +1664,26 @@ export function createView(stage) {
     camera.updateProjectionMatrix()
   }
 
+  const rimFrustum = new THREE.Frustum()
+  const rimProj = new THREE.Matrix4()
+
+  function cullActors() {
+    for (const [key, mesh] of meshes) {
+      if (!key.startsWith("monster:") && !key.startsWith("hero:")) continue
+      probe.set(mesh.position.x, 16, mesh.position.z).project(camera)
+      mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
+    }
+  }
+
   function visibleRims() {
+    rimProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+    rimFrustum.setFromProjectionMatrix(rimProj)
     let count = 0
     scene.traverse((node) => {
       const rim = node.userData && node.userData.rim
-      if (rim && node.visible && rim.visible) count += 1
+      if (!rim || !node.visible || !rim.visible) return
+      rim.updateWorldMatrix(true, false)
+      if (rimFrustum.intersectsSprite(rim)) count += 1
     })
     return count
   }

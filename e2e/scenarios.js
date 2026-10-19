@@ -1960,13 +1960,15 @@ async function sixSeatMatch(browser) {
         if (row.rims > 0 && rimPairs.length < 5) {
           const pair = await page.evaluate(() => {
             const on = window.__lastKeepTest.repaint()
+            if (!on.painted || !on.rims) return null
             window.__lastKeepTest.rims(false)
             const off = window.__lastKeepTest.repaint()
             window.__lastKeepTest.rims(true)
             window.__lastKeepTest.repaint()
+            if (!off.painted) return null
             return { on, off }
           })
-          rimPairs.push(pair)
+          if (pair) rimPairs.push(pair)
         }
         if (!gcHeaps.has(row.shownWave)) {
           const heap = await page.evaluate(() => {
@@ -2037,8 +2039,9 @@ async function sixSeatMatch(browser) {
   // One six-seat run peaked at 447 calls and 6218 triangles on a frame with
   // a visible rim, and at 569 calls and 7778 triangles on any wave frame.
   // Hiding the rims on a frozen frame dropped exactly 1 call and 2 triangles
-  // per rim, which is under 2% of that frame. 700 and 9800 sit above the run
-  // and under the empty-yard ceilings of 868 and 11552. Paint p95 stays 424.
+  // per rim the camera drew. A rim outside the frustum is not in that count.
+  // 700 and 9800 sit above the run and under the empty-yard ceilings of 868
+  // and 11552. Paint p95 stays 424.
   expect(rimPairs.length).toBeGreaterThan(0)
   for (const pair of rimPairs) {
     expect(pair.off.rims).toBe(0)
