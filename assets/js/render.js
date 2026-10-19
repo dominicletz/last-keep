@@ -15,7 +15,7 @@ import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
 import { pictureColumn, sheetRow } from "./pictures.js"
 import { keepParts, modelParts } from "../models/registry.js"
-import { monsterSpread } from "./bodies"
+import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, swingSeen } from "./paint.js"
 import {
@@ -1141,7 +1141,18 @@ export function createView(stage) {
     const offsetX = column / picture.directions
     const offsetY = 1 - (frame + 1) / picture.frames
     card.material.map.offset.set(offsetX, offsetY)
-    if (mesh.userData.rim) mesh.userData.rim.material.map.offset.set(offsetX, offsetY)
+    card.renderOrder = 0
+    const rim = mesh.userData.rim
+    if (!rim) return
+    const away = {
+      x: mesh.position.x - camera.position.x,
+      y: mesh.position.y - camera.position.y,
+      z: mesh.position.z - camera.position.z
+    }
+    const seat = rimSeat(picture.h, picture.rim.scale, away)
+    rim.position.set(seat.x, seat.y, seat.z)
+    rim.renderOrder = seat.renderOrder
+    rim.material.map.offset.set(offsetX, offsetY)
   }
 
   function heroCard(picture) {
@@ -1186,7 +1197,7 @@ export function createView(stage) {
     const card = new THREE.Sprite(material)
     card.center.set(0.5, 0)
     card.scale.set(picture.w * rim.scale, picture.h * rim.scale, 1)
-    card.renderOrder = -1
+    card.renderOrder = 0
     return card
   }
 

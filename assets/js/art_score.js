@@ -241,9 +241,27 @@ function bucketOf(r, g, b) {
   return ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
 }
 
+function nearestLocked(catalog, r, g, b, tone, stats) {
+  let best = Infinity
+  let pick = catalog[0].color
+  for (const entry of catalog) {
+    if (stats) stats.probes += 1
+    const dL = entry.luma - tone
+    const dr = r - entry.color[0]
+    const dg = g - entry.color[1]
+    const db = b - entry.color[2]
+    const dist = dr * dr + dg * dg + db * db + 16 * dL * dL
+    if (dist < best) {
+      best = dist
+      pick = entry.color
+    }
+  }
+  return pick
+}
+
 // Snap ink to the locked palette, then put back any 8×8 value buckets the snap collapsed.
-// The luma weight keeps the registered score on the same side of its floor.
-export function lockInk(rgb, width, height, mask, palette) {
+// Each distinct color is searched once. The luma weight keeps the registered score on the same side of its floor.
+export function lockInk(rgb, width, height, mask, palette, stats) {
   const out = new Uint8Array(rgb)
   const catalog = palette.map((color) => ({
     color,
@@ -267,22 +285,15 @@ export function lockInk(rgb, width, height, mask, palette) {
       blocks.push({ cells, need: cells.length >= 32 ? seen.size : 0 })
     }
   }
+  const snaps = new Map()
   for (let i = 0; i < width * height; i++) {
     if (mask && !mask[i]) continue
     const o = i * 3
-    const tone = luma(out[o], out[o + 1], out[o + 2])
-    let best = Infinity
-    let pick = palette[0]
-    for (const entry of catalog) {
-      const dL = entry.luma - tone
-      const dr = out[o] - entry.color[0]
-      const dg = out[o + 1] - entry.color[1]
-      const db = out[o + 2] - entry.color[2]
-      const dist = dr * dr + dg * dg + db * db + 16 * dL * dL
-      if (dist < best) {
-        best = dist
-        pick = entry.color
-      }
+    const key = ((out[o] << 16) | (out[o + 1] << 8) | out[o + 2]) >>> 0
+    let pick = snaps.get(key)
+    if (!pick) {
+      pick = nearestLocked(catalog, out[o], out[o + 1], out[o + 2], luma(out[o], out[o + 1], out[o + 2]), stats)
+      snaps.set(key, pick)
     }
     out[o] = pick[0]
     out[o + 1] = pick[1]

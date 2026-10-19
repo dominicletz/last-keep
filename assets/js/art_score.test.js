@@ -8,6 +8,7 @@ import { heroCrops, MONSTER_CROPS } from "../models/sprites.js"
 import {
   blockPercentiles,
   hardEdge,
+  lockInk,
   lockedPalette,
   noiseCap,
   noiseEnergy,
@@ -50,6 +51,18 @@ test("the town crop clears the block and edge floors and matches itself", () => 
 
 test("the style hex list is the cited token order", () => {
   assert.deepEqual(styleHexes, [...tokens.keys()])
+})
+
+test("lockInk searches each distinct color once", () => {
+  const swatch = lockedPalette(["908b8a"])
+  const width = 32
+  const height = 32
+  const rgb = new Uint8Array(width * height * 3)
+  rgb.fill(40)
+  const stats = { probes: 0 }
+  const locked = lockInk(rgb, width, height, null, swatch, stats)
+  assert.equal(stats.probes, swatch.length)
+  assert.deepEqual([locked[0], locked[1], locked[2]], swatch[2])
 })
 
 test("readability is the ink height and the silhouette gap against the ground", () => {

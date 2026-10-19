@@ -7,7 +7,7 @@ import { gameFrame, renderParts } from "../models/raster.js"
 import { GROUND_SPAN, GROUND_TEX, groundPixels } from "./ground.js"
 import { cycleLight, groundColor, litGround } from "./scene.js"
 import { readability, readabilityFloor } from "./art_score.js"
-import { monsterRim } from "./bodies.js"
+import { monsterRim, rimSeat } from "./bodies.js"
 import { monsterHeights, monsterKinds, monsterParts } from "./monsters.js"
 import { sheetRow } from "./pictures.js"
 
@@ -54,6 +54,18 @@ test("monster cards keep their scale and their night read", () => {
   assert.deepEqual(monsterRim("goblin"), { color: BONE, scale: 1.15 })
   assert.deepEqual(monsterRim("wolf"), { color: BONE, scale: 1.15 })
   assert.deepEqual(monsterRim("skeleton"), { color: BONE, scale: 1.15 })
+
+  const boss = monsterParts("boss")
+  assert.equal(boss[0].atlasLocked, true)
+  assert.equal(monsterParts("boss"), boss)
+  const level = rimSeat(18, 1.15, { x: 0, y: 0, z: -10 })
+  const drop = (18 * (1.15 - 1)) / 2
+  assert.equal(level.y, -drop)
+  assert.ok(level.z < 0)
+  assert.equal(level.renderOrder, 0)
+  const above = rimSeat(18, 1.15, { x: 0, y: -32, z: -150 })
+  assert.ok(above.y < -drop)
+  assert.equal(above.renderOrder, 0)
 })
 
 test("each monster reads against the path and the grass at the gameplay camera", () => {
