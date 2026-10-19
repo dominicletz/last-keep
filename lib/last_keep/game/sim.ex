@@ -435,6 +435,7 @@ defmodule LastKeep.Game.Sim do
       seed: seed,
       chunks: %{},
       discovered: keep_chunks(),
+      claimed: MapSet.new(),
       portals:
         Enum.map(grouped[:portal] || [], fn poi ->
           Map.merge(poi, %{hp: hp, max_hp: hp, r: 28.0})
@@ -533,7 +534,14 @@ defmodule LastKeep.Game.Sim do
             end)
           end
 
-        state = %{state | world: %{state.world | portals: portals}}
+        claimed =
+          if left <= 0 do
+            MapSet.put(state.world.claimed, World.chunk_coord(portal.x, portal.y))
+          else
+            state.world.claimed
+          end
+
+        state = %{state | world: %{state.world | portals: portals, claimed: claimed}}
 
         if left <= 0 do
           event(state, %{type: "death", kind: :portal, x: portal.x, y: portal.y, amount: amount})
@@ -907,14 +915,15 @@ defmodule LastKeep.Game.Sim do
       dist > Rules.build_range(hero.hero, state.town) ->
         refuse(state, x, y, "Too far")
 
+      not held?(state, x, y) ->
+        refuse(state, x, y, "The land is not held.")
+
       hypot(x, y) < state.keep.r + 28 ->
         refuse(state, x, y, "Too close to the keep")
 
       overlap?(state, x, y, Rules.building(kind).r) ->
         refuse(state, x, y, "Blocked")
 
-      # The keep disc is meadow, and the build range never leaves it. A hero
-      # who walked out can still sow at their feet, and pine has to refuse that.
       kind == :field and World.biome(state.world.seed, x, y) != :meadow ->
         refuse(state, x, y, "Not meadow")
 
@@ -933,6 +942,11 @@ defmodule LastKeep.Game.Sim do
         |> spawn_building(%{kind: kind, x: x, y: y})
         |> event(%{type: "place", kind: kind, x: x, y: y})
     end
+  end
+
+  defp held?(state, x, y) do
+    hypot(x, y) <= World.keep_disc() or
+      MapSet.member?(state.world.claimed, World.chunk_coord(x, y))
   end
 
   defp build_limit(:wall), do: 80

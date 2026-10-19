@@ -26,6 +26,7 @@ defmodule LastKeep.Game.State do
       seed: 0,
       chunks: %{},
       discovered: MapSet.new(),
+      claimed: MapSet.new(),
       portals: [],
       chests: [],
       camps: [],

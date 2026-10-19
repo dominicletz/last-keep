@@ -1753,6 +1753,91 @@ async function scoreList(request) {
   }
 }
 
+async function holdTheLand(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior", async (page) => {
+    await page.route("**/api/rooms", async (route) => {
+      const request = route.request()
+      if (request.method() !== "POST" || !request.url().endsWith("/api/rooms")) {
+        await route.continue()
+        return
+      }
+      const body = request.postDataJSON()
+      await route.continue({ postData: JSON.stringify({ ...body, seed: 5 }) })
+    })
+  })
+  const page = host.page
+  watch(page, "host", errors)
+  await steerPast(page, { x: 420, y: 0 }, (state) => state.x > 360, 20_000, "past the disc")
+  const outside = await page.evaluate(() => {
+    const me = window.__lastKeep.self
+    return { x: me.x + 80, y: me.y }
+  })
+  const wood = await page.evaluate(() => window.__lastKeep.wood)
+  await refuseHeld(page, outside.x, outside.y)
+  expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
+  expect(await page.evaluate(() => window.__lastKeep.buildings)).toBe(0)
+
+  const portalGoal = { x: -1116, y: -1044 }
+  await steerPast(
+    page,
+    portalGoal,
+    (state) => Math.hypot(state.x - portalGoal.x, state.y - portalGoal.y) < 40,
+    70_000,
+    "portal"
+  )
+  const spot = await page.evaluate((goal) => {
+    const me = window.__lastKeep.self
+    const gcx = Math.floor(goal.x / 512)
+    const gcy = Math.floor(goal.y / 512)
+    const steps = [[36, 0], [-36, 0], [0, 36], [0, -36], [36, 36], [72, 0], [-72, 0], [0, 0]]
+    for (const [dx, dy] of steps) {
+      const x = me.x + dx
+      const y = me.y + dy
+      if (Math.floor(x / 512) === gcx && Math.floor(y / 512) === gcy) return { x, y }
+    }
+    return null
+  }, portalGoal)
+  if (!spot) throw new Error("no footing in the portal chunk")
+  await refuseHeld(page, spot.x, spot.y)
+  await pressKey(page, "Escape")
+  const portal = await page.evaluate((goal) => {
+    return (window.__lastKeep.portals || []).find((row) => Math.hypot(row.x - goal.x, row.y - goal.y) < 80)
+  }, portalGoal)
+  if (!portal) throw new Error("portal stayed hidden")
+  const box = await page.locator("canvas").boundingBox()
+  for (let swing = 0; swing < 6; swing += 1) {
+    const gone = await page.evaluate((id) => !(window.__lastKeep.portals || []).some((row) => row.id === id), portal.id)
+    if (gone) break
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+    await page.mouse.down()
+    await page.waitForTimeout(700)
+    await page.mouse.up()
+  }
+  const broke = await page.evaluate((id) => !(window.__lastKeep.portals || []).some((row) => row.id === id), portal.id)
+  if (!broke) throw new Error("portal still stands")
+  await pressKey(page, "Digit1")
+  const placed = await page.evaluate(({ x, y }) => window.__lastKeep.toClient(x, y), spot)
+  const before = await page.evaluate(() => window.__lastKeep.wood)
+  await page.mouse.click(placed.x, placed.y)
+  await page.waitForFunction((mark) => window.__lastKeep.wood < mark && window.__lastKeep.buildings >= 1, before)
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
+async function refuseHeld(page, x, y) {
+  const armed = await page.locator('[data-build="wall"]').evaluate((node) => node.classList.contains("on"))
+  if (!armed) await pressKey(page, "Digit1")
+  const mark = await page.evaluate(() => (window.__lastKeep.log || []).length)
+  const spot = await page.evaluate(({ x, y }) => window.__lastKeep.toClient(x, y), { x, y })
+  await page.mouse.click(spot.x, spot.y)
+  await page.waitForFunction(
+    (before) =>
+      (window.__lastKeep.log || []).slice(before).some((row) => row.type === "deny" && row.text === "The land is not held."),
+    mark
+  )
+}
+
 async function steerPast(page, goal, done, timeout, label) {
   // steer() holds keysAround. A cardinal via on top of that step aims due
   // west again and sits on the face at x 73.5. The tangent is the detour.
@@ -2285,6 +2370,7 @@ module.exports = {
   captionsClearTheBuilds,
   phoneClear,
   exploreLand,
+  holdTheLand,
   readTheMap,
   raiseNeedsTheKeep
 }

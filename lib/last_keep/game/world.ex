@@ -36,6 +36,8 @@ defmodule LastKeep.Game.World do
     :persistent_term.get(built_key(seed), 0)
   end
 
+  def keep_disc, do: @keep
+
   def chunk_coord(x, y) when is_number(x) and is_number(y) do
     {Integer.floor_div(trunc(x), @chunk), Integer.floor_div(trunc(y), @chunk)}
   end
