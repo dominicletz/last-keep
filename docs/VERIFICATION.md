@@ -372,6 +372,10 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - Deploy of fbd8803 failed `exploreLand` with the host at x 73.5, y 0. KeyA+KeyW is due west, and that step has no y, so the body cannot slide off the keep. `keysAround` walks the tangent while the hero is inside 100 of the keep and the goal is still inward. The eight-way stop is 12, inside the chest radius of 30. A goal on the far side of the face still walks straight. The southern lane past the join ring stays KeyW+KeyD. The chest wait stays 45 seconds and the portal wait stays 70 seconds. The phone timeout stays 150s. This does not change the simulation. The coverage floor stays 77.
 
+## 2026-10-18 the perf keep is harness durability
+
+- Deploy of 0549a87 failed `sixSeatMatch` on both tries. The empty builds for waves 2, 3, and 4 were on record, then the keep fell on wave 4 before the wave three later. A wave does not end while its monsters are alive, so the seats still have to fight, and the keep's 900 health is not what decides the sample. A create that sends `perf_keep` uses `Rules.perf_keep_hp` (100000) when the server config `:perf_keep` is true. `PLAYWRIGHT=1` and `PERF_KEEP=1` open that door. A create without the field stays at 900. The settled count, orphans, calls, triangles, paint, and facing ceilings stay. The later empty build still has to be at or under the earlier one. This does not change a normal room. The coverage floor stays 77.
+
 ## 2026-10-18 the six-seat fight walks around the keep
 
 - CI on the settled count reached wave 4 with the keep at 0, then passed on retry. `fight` walked with `keysToward`, and due west on the keep face has no slide. A hero at x 73.5 cannot reach a boss on the far side, and the boss's bite then drops the keep before the later empty build is on record. `fight` now walks with `keysAround`. The settled count and the orphan check stay. This does not change the simulation. The coverage floor stays 77.

@@ -8,6 +8,7 @@ config :last_keep, LastKeepWeb.Endpoint,
   server: false
 
 config :last_keep, :highscore_path, "tmp/test-highscores.json"
+config :last_keep, :perf_keep, true
 
 # Print only warnings and errors during test
 config :logger, level: :warning

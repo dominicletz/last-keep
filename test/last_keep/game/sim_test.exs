@@ -187,6 +187,56 @@ defmodule LastKeep.Game.SimTest do
     assert Enum.any?(groups, &(&1.kind == :boss))
   end
 
+  test "a perf keep reaches the empty build three waves later" do
+    assert Application.get_env(:last_keep, :perf_keep) == true
+    hp = Rules.perf_keep_hp()
+
+    state =
+      Sim.new("PERF01", seed: 1, keep_hp: hp, build_ticks: 1, hold: false)
+
+    state =
+      Enum.reduce(
+        [
+          {"nia", :farmer},
+          {"ada", :warrior},
+          {"lux", :mage},
+          {"bram", :engineer},
+          {"pip", :scout},
+          {"ned", :warrior}
+        ],
+        state,
+        fn {id, hero}, state ->
+          {:ok, state} = Sim.join(state, player(id, hero))
+          state
+        end
+      )
+
+    assert state.keep.max_hp == hp
+
+    {state, builds} =
+      Enum.reduce_while(1..40_000, {state, MapSet.new()}, fn _, {state, builds} ->
+        state = hold_the_keep(state)
+        state = Sim.tick(state)
+
+        builds =
+          if match?({:build, _}, state.phase) and Sim.monsters(state) == [] do
+            MapSet.put(builds, shown_wave(state))
+          else
+            builds
+          end
+
+        if state.phase == :over or later_wave?(builds, state) do
+          {:halt, {state, builds}}
+        else
+          {:cont, {state, builds}}
+        end
+      end)
+
+    assert state.phase != :over
+    assert state.keep.hp > 0
+    assert later_wave?(builds, state)
+  end
+
   test "a monster at the gate bites the keep, and the keep can fall" do
     state = Sim.new("KEEP01", seed: 1, keep_hp: 30)
 
@@ -1327,6 +1377,64 @@ defmodule LastKeep.Game.SimTest do
       })
 
     Sim.tick(state)
+  end
+
+  defp shown_wave(%{phase: {:wave, _}, wave: wave}), do: max(wave, 1)
+  defp shown_wave(%{phase: :over, wave: wave}), do: max(wave, 1)
+  defp shown_wave(%{wave: wave}), do: wave + 1
+
+  defp later_wave?(builds, state) do
+    Enum.any?(builds, fn wave ->
+      MapSet.member?(builds, wave + 3) and shown_wave(state) >= wave + 3 and
+        match?({:wave, _}, state.phase)
+    end)
+  end
+
+  defp hold_the_keep(state) do
+    monsters = Sim.monsters(state)
+
+    target =
+      if monsters == [] do
+        nil
+      else
+        Enum.min_by(monsters, fn monster ->
+          threat =
+            cond do
+              monster.kind == :boss -> -2
+              monster.kind == :troll -> -1
+              true -> 0
+            end
+
+          threat * 100_000 + :math.sqrt(monster.x * monster.x + monster.y * monster.y)
+        end)
+      end
+
+    Enum.reduce(state.players, state, fn {id, _player}, state ->
+      me = hero(state, id)
+
+      payload =
+        cond do
+          not me.alive or target == nil ->
+            %{"mx" => 0, "my" => 0, "attack" => false}
+
+          true ->
+            dx = target.x - me.x
+            dy = target.y - me.y
+            dist = max(:math.sqrt(dx * dx + dy * dy), 0.001)
+            reach = if me.hero in [:mage, :scout], do: 160, else: 48
+            {mx, my} = if dist > reach, do: {dx / dist, dy / dist}, else: {0.0, 0.0}
+
+            %{
+              "mx" => mx,
+              "my" => my,
+              "ax" => target.x,
+              "ay" => target.y,
+              "attack" => true
+            }
+        end
+
+      Sim.input(state, id, payload)
+    end)
   end
 
   defp defend_in_place(state) do

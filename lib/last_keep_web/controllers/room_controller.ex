@@ -8,7 +8,7 @@ defmodule LastKeepWeb.RoomController do
   def create(conn, params) do
     with {:ok, name} <- parse_name(params["name"]),
          {:ok, hero} <- parse_hero(params["hero"]),
-         {:ok, code} <- Rooms.create([]),
+         {:ok, code} <- Rooms.create(room_opts(params)),
          {:ok, token, public_id, _snap} <-
            Rooms.enlist(code, %{name: name, hero: hero, token: params["token"]}) do
       json(conn, %{code: code, token: token, player: public_id, path: "/r/#{code}"})
@@ -49,6 +49,16 @@ defmodule LastKeepWeb.RoomController do
   def highscores(conn, _params) do
     json(conn, %{scores: Highscores.list()})
   end
+
+  defp room_opts(%{"perf_keep" => flag}) when flag in [true, "true"] do
+    if Application.get_env(:last_keep, :perf_keep) == true do
+      [keep_hp: Rules.perf_keep_hp()]
+    else
+      []
+    end
+  end
+
+  defp room_opts(_params), do: []
 
   defp parse_name(name) when is_binary(name) do
     cleaned =

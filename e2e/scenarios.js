@@ -1783,6 +1783,7 @@ async function readMatch(page) {
       monsters: monsters.length,
       projectiles: (game.projectiles || []).length,
       keep: game.keep && game.keep.hp,
+      keepMax: game.keep && game.keep.max,
       party: (game.party || []).length,
       geometries: perf.geometries || 0,
       textures: perf.textures || 0,
@@ -1800,7 +1801,17 @@ async function readMatch(page) {
 
 async function sixSeatMatch(browser) {
   const errors = []
-  const host = await createHost(browser, "Nia", "farmer")
+  const host = await createHost(browser, "Nia", "farmer", async (page) => {
+    await page.route("**/api/rooms", async (route) => {
+      const request = route.request()
+      if (request.method() !== "POST" || !request.url().endsWith("/api/rooms")) {
+        await route.continue()
+        return
+      }
+      const body = request.postDataJSON()
+      await route.continue({ postData: JSON.stringify({ ...body, perf_keep: true }) })
+    })
+  })
   const page = host.page
   watch(page, "host", errors)
   const code = new URL(page.url()).pathname.split("/").pop()
@@ -1902,6 +1913,8 @@ async function sixSeatMatch(browser) {
         const note = JSON.stringify({ first, later, heaps })
         expect(later.census.orphans, note).toBe(0)
         expect(later.census.settled, note).toBeLessThanOrEqual(first.census.settled)
+        expect(first.keepMax, note).toBe(100000)
+        expect(later.keepMax, note).toBe(100000)
         expect(later.geometries, note).toBeLessThanOrEqual(later.census.inScene + later.census.pooled)
         expect(later.textures, note).toBeLessThanOrEqual(first.textures)
         expect(first.calls, note).toBeLessThanOrEqual(868)

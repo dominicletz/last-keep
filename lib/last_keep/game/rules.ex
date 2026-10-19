@@ -10,6 +10,7 @@ defmodule LastKeep.Game.Rules do
   def heroes, do: @heroes
   def first_build_ticks, do: 200
   def wave_ticks, do: 1_200
+  def perf_keep_hp, do: 100_000
 
   def build_ticks(cleared_wave) when cleared_wave <= 1, do: 700
   def build_ticks(cleared_wave), do: max(500, 700 - cleared_wave * 15)
