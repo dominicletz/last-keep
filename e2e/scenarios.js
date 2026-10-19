@@ -1,4 +1,5 @@
 const { expect } = require("@playwright/test")
+const { joinTogether, rosterReady } = require("./roster")
 const { settledHolds } = require("./settled")
 const { noteNorth, noteProgress } = require("./steer")
 const fs = require("fs")
@@ -37,15 +38,23 @@ async function createHost(browser, name, hero, prepare) {
   return { context, page }
 }
 
-async function joinQuery(browser, code, name, hero) {
+async function joinQuery(browser, code, name, hero, onPage) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
+  if (onPage) onPage(page)
   await page.goto(gameUrl(`/r/${code}?name=${encodeURIComponent(name)}&hero=${hero}`))
-  await page.waitForFunction((who) => {
-    const roster = document.querySelector("[data-roster]")?.innerText || ""
-    return roster.includes(who) && document.querySelector("#join-game")?.hidden
-  }, name)
+  await waitForSeats(page, [name])
   return { context, page }
+}
+
+// The roster pin hides the node when the phone has no canvas box, and
+// innerText is then empty. The snapshot already lists who the room accepted.
+async function waitForSeats(page, names) {
+  for (;;) {
+    const seats = await page.evaluate(() => (window.__lastKeep && window.__lastKeep.seats) || null)
+    if (rosterReady(seats, names)) return
+    await page.waitForTimeout(100)
+  }
 }
 
 function watch(page, label, errors) {
@@ -1536,28 +1545,20 @@ async function phoneClear(browser) {
   await page.locator('input[value="farmer"]').check()
   await page.locator("#create-button").click()
   await page.waitForURL(/\/r\/[A-Z0-9]+$/)
-  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Nia"))
+  await waitForSeats(page, ["Nia"])
   const code = await page.evaluate(() => document.body.dataset.code)
-  const seats = []
-  for (const [name, hero] of [
+  const party = [
     ["Ada", "warrior"],
     ["Lux", "mage"],
     ["Bram", "engineer"],
     ["Pip", "scout"]
-  ]) {
-    const seat = await joinQuery(browser, code, name, hero)
-    seats.push(seat)
-    watch(seat.page, name, errors)
-  }
-  await page.bringToFront()
-  await page.waitForFunction(
-    () => {
-      const roster = document.querySelector("[data-roster]")?.innerText || ""
-      return ["Nia", "Ada", "Lux", "Bram", "Pip"].every((name) => roster.includes(name))
-    },
-    undefined,
-    { polling: 100 }
+  ]
+  const seats = await joinTogether(
+    ([name, hero]) => joinQuery(browser, code, name, hero, (guest) => watch(guest, name, errors)),
+    party
   )
+  await page.bringToFront()
+  await waitForSeats(page, ["Nia", "Ada", "Lux", "Bram", "Pip"])
   await assertPhoneClear(page)
   await sowFour(page)
   await waitForRaiseGold(page)

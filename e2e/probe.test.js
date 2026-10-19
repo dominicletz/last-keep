@@ -65,6 +65,25 @@ test("a goblin call is the walk sample that paints it", () => {
   assert.match(config, /failOnFlakyTests:\s*!!process\.env\.CI/)
 })
 
+test("phone seats join together on the server roster", () => {
+  const source = stripComments(fs.readFileSync(path.join(__dirname, "scenarios.js"), "utf8"))
+  const body = functionBody(source, "phoneClear")
+  assert.match(body, /joinTogether\(/)
+  assert.match(body, /waitForSeats\(page, \["Nia", "Ada", "Lux", "Bram", "Pip"\]\)/)
+  assert.doesNotMatch(body, /for \(const \[name, hero\] of/)
+  assert.doesNotMatch(body, /\[data-roster\]"\)\?\.innerText/)
+  assert.doesNotMatch(body, /roster\.includes\(name\)/)
+  assert.doesNotMatch(body, /timeout:\s*150_000/)
+  const wait = functionBody(source, "waitForSeats")
+  assert.match(wait, /rosterReady\(/)
+  assert.match(wait, /__lastKeep\.seats/)
+  assert.doesNotMatch(wait, /\[data-roster\]/)
+  assert.doesNotMatch(wait, /\btimeout\b/)
+  const config = fs.readFileSync(path.join(__dirname, "../playwright.config.js"), "utf8")
+  assert.match(config, /timeout:\s*150_000/)
+  assert.match(config, /failOnFlakyTests:\s*!!process\.env\.CI/)
+})
+
 function seat(settled, chest, portal, chests = chest, portals = portal) {
   return { chests, portals, census: { settled, byRole: { chest, portal } } }
 }

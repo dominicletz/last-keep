@@ -104,7 +104,7 @@ jobs:
         run: |
           set -eu
           npm ci
-          node --test e2e/steer.test.js e2e/probe.test.js
+          node --test e2e/steer.test.js e2e/probe.test.js e2e/roster.test.js
           npx playwright install chromium --with-deps
           # The install takes about two minutes. Ask again so the smoke does
           # not start into the gap where the old proxy has already stopped.

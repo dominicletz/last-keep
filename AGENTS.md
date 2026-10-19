@@ -26,7 +26,7 @@ A color or hue probe samples the object's own pixels. `sampleObject` renders tha
 
 Other lanes change visual checks only through that helper. The day yard is `yardGrade`, dusk plate, pine, and stone are `duskGrade`, the night ground is `nightGrade`, and the movement blend window is `blend`. Do not edit those probes inside `twoPlayerNight` or `movementIsInterpolated`. `e2e/probe.test.js` fails when the scenario owns the sample points, the frame read, or the blend thresholds.
 
-A scripted walk routes around the solid keep. `keysAround` keeps a step only when that landing is closer at every hero speed, and a goal behind the disc takes one tangent until the line is clear. A goblin call is the `walkUntil` sample that paints it. Do not poll that text on a timer. `e2e/probe.test.js` fails when `phoneClear` does.
+A scripted walk routes around the solid keep. `keysAround` keeps a step only when that landing is closer at every hero speed, and a goal behind the disc takes one tangent until the line is clear. A goblin call is the `walkUntil` sample that paints it. Do not poll that text on a timer. `e2e/probe.test.js` fails when `phoneClear` does. The phone roster wait reads `__lastKeep.seats` from the server snapshot. Ada, Lux, Bram, and Pip join together. `e2e/probe.test.js` fails when `phoneClear` waits on roster text or joins those seats one at a time.
 
 ## Layout
 
@@ -60,7 +60,7 @@ mix test --cover
 npm test --prefix assets
 npm run check --prefix assets
 npm ci
-node --test e2e/steer.test.js e2e/probe.test.js
+node --test e2e/steer.test.js e2e/probe.test.js e2e/roster.test.js
 npx playwright test
 ```
 

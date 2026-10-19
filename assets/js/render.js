@@ -19,7 +19,7 @@ import { pictureColumn, sheetRow } from "./pictures.js"
 import { keepParts, modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
-import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, swingSeen } from "./paint.js"
+import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint.js"
 import {
   cycleLight,
   flameColor,
@@ -834,6 +834,7 @@ export function createView(stage) {
         alive: me ? !!me.alive : !!kept.alive,
         hp: me ? me.hp : kept.hp,
         party: partyPositions(snap.players),
+        seats: seatList(snap.players),
         kinds: absorbShots(kept.kinds, snap.projectiles),
         log: kept.log || [],
         labels: kept.labels || [],

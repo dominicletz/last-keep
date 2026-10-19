@@ -4,7 +4,7 @@ import { monsterKinds, monsterParts } from "./monsters.js"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
-import { absorbShots, nextAttackPeak, partyPositions, swingSeen } from "./paint"
+import { absorbShots, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 
@@ -588,6 +588,7 @@ function start(code, seat, ui) {
       window.__lastKeep.kinds = seen.kinds
       window.__lastKeep.tick = snap.tick
       window.__lastKeep.party = partyPositions(snap.players)
+      window.__lastKeep.seats = seatList(snap.players)
       const cd = me?.cds?.attack || 0
       if (me) {
         window.__lastKeep.alive = me.alive

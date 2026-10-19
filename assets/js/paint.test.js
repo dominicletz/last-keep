@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { absorbShots, bodyPixel, nextAttackPeak, swingSeen } from "./paint.js"
+import { absorbShots, bodyPixel, nextAttackPeak, seatList, swingSeen } from "./paint.js"
 
 test("a fireball is noted before the scene is drawn", () => {
   const kinds = absorbShots(["bolt"], [{ kind: "bolt" }, { kind: "fireball" }, null, {}])
@@ -18,6 +18,22 @@ test("a cooled swing still raises the attack latch", () => {
   assert.equal(nextAttackPeak(0, 400, false), 400)
   assert.equal(nextAttackPeak(400, 0, false), 400)
   assert.equal(nextAttackPeak(undefined, 0, false), 0)
+})
+
+test("a seat list is the server join", () => {
+  assert.deepEqual(
+    seatList([
+      { id: "p1", name: "Nia", hero: "farmer", connected: true },
+      { id: "p2", name: "Ada", hero: "warrior", connected: true },
+      { id: "p3", name: "Pip", hero: "scout", connected: false }
+    ]),
+    [
+      { id: "p1", name: "Nia", hero: "farmer", connected: true },
+      { id: "p2", name: "Ada", hero: "warrior", connected: true },
+      { id: "p3", name: "Pip", hero: "scout", connected: false }
+    ]
+  )
+  assert.deepEqual(seatList(null), [])
 })
 
 test("a drawn body counts red hide and the dark rim, not lit grass", () => {

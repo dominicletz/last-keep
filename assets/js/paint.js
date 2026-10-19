@@ -23,6 +23,17 @@ export function partyPositions(players) {
   }))
 }
 
+// The join reply and every later snapshot list who the room accepted.
+// A hidden roster has no innerText, so the seat list is the confirmation.
+export function seatList(players) {
+  return (players || []).map((player) => ({
+    id: player.id,
+    name: player.name,
+    hero: player.hero,
+    connected: player.connected === true
+  }))
+}
+
 // A backed-up channel can deliver the swing only as saw_swing, after the
 // 8-tick cooldown has already reached 0. The latch has to outlive that pulse.
 export function swingSeen(snap) {
