@@ -2,14 +2,69 @@ import * as THREE from "three"
 
 // One fullscreen quantize of the internal buffer. Three writes linear light
 // into a normal render target, so the shader encodes sRGB (the same curve as
-// srgbFromLinearByte) before it picks the nearest locked color. The palette is
-// a uniform array: a texture strip sampled inside a 320-step loop stalled the
-// software GL and the raise walk never reached the keep. No shadow map.
-export function paletteFragmentShader(count) {
+// srgbFromLinearByte) before it picks the nearest locked color. A loop over
+// the palette, whether a texture strip or a uniform array, stalled software
+// GL: the motion track recorded five rows in four seconds. The atlas is one
+// lookup. No shadow map.
+const LUT_SIZE = 128
+const LUT_COLS = 16
+const LUT_ROWS = 8
+
+export function buildPaletteAtlas(palette, size = LUT_SIZE) {
+  const cols = LUT_COLS
+  const rows = LUT_ROWS
+  const width = size * cols
+  const height = size * rows
+  const bytes = new Uint8Array(width * height * 4)
+  for (let z = 0; z < size; z++) {
+    const tileX = z % cols
+    const tileY = (z / cols) | 0
+    const b = Math.round(((z + 0.5) / size) * 255)
+    for (let y = 0; y < size; y++) {
+      const g = Math.round(((y + 0.5) / size) * 255)
+      const row = (tileY * size + y) * width
+      for (let x = 0; x < size; x++) {
+        const r = Math.round(((x + 0.5) / size) * 255)
+        let best = palette[0]
+        let bestD = Infinity
+        for (let i = 0; i < palette.length; i++) {
+          const color = palette[i]
+          const dr = r - color[0]
+          const dg = g - color[1]
+          const db = b - color[2]
+          const dist = dr * dr + dg * dg + db * db
+          if (dist < bestD) {
+            bestD = dist
+            best = color
+          }
+        }
+        const offset = (row + tileX * size + x) * 4
+        bytes[offset] = best[0]
+        bytes[offset + 1] = best[1]
+        bytes[offset + 2] = best[2]
+        bytes[offset + 3] = 255
+      }
+    }
+  }
+  return { bytes, width, height, size, cols, rows }
+}
+
+export function samplePaletteAtlas(atlas, r, g, b) {
+  const { bytes, width, size, cols } = atlas
+  const x = Math.min(size - 1, Math.floor((r / 255) * size))
+  const y = Math.min(size - 1, Math.floor((g / 255) * size))
+  const z = Math.min(size - 1, Math.floor((b / 255) * size))
+  const tileX = z % cols
+  const tileY = (z / cols) | 0
+  const offset = ((tileY * size + y) * width + tileX * size + x) * 4
+  return [bytes[offset], bytes[offset + 1], bytes[offset + 2]]
+}
+
+export function paletteFragmentShader(size = LUT_SIZE, cols = LUT_COLS, rows = LUT_ROWS) {
   return `
       precision highp float;
       uniform sampler2D tScene;
-      uniform vec3 palette[${count}];
+      uniform sampler2D tLut;
       uniform vec2 resolution;
       varying vec2 vUv;
       vec3 toSrgb(vec3 linear) {
@@ -21,23 +76,29 @@ export function paletteFragmentShader(count) {
       void main() {
         vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
         vec3 srgb = toSrgb(texture2D(tScene, uv).rgb);
-        float best = 1e9;
-        vec3 pick = srgb;
-        for (int i = 0; i < ${count}; i++) {
-          vec3 d = srgb - palette[i];
-          float dist = dot(d, d);
-          if (dist < best) {
-            best = dist;
-            pick = palette[i];
-          }
-        }
-        gl_FragColor = vec4(pick, 1.0);
+        float size = ${size}.0;
+        float cols = ${cols}.0;
+        vec3 cell = floor(min(srgb * size, vec3(size - 1.0)));
+        float tileX = mod(cell.z, cols);
+        float tileY = floor(cell.z / cols);
+        vec2 lutUv = (vec2(tileX, tileY) * size + cell.xy + 0.5) / vec2(size * cols, size * ${rows}.0);
+        gl_FragColor = vec4(texture2D(tLut, lutUv).rgb, 1.0);
       }
     `
 }
 
 export function createPalettePass(renderer, palette) {
-  const colors = palette.map((color) => new THREE.Vector3(color[0] / 255, color[1] / 255, color[2] / 255))
+  const atlas = buildPaletteAtlas(palette)
+  const lut = new THREE.DataTexture(atlas.bytes, atlas.width, atlas.height, THREE.RGBAFormat)
+  lut.magFilter = THREE.NearestFilter
+  lut.minFilter = THREE.NearestFilter
+  lut.wrapS = THREE.ClampToEdgeWrapping
+  lut.wrapT = THREE.ClampToEdgeWrapping
+  lut.colorSpace = THREE.NoColorSpace
+  lut.flipY = false
+  lut.unpackAlignment = 1
+  lut.needsUpdate = true
+
   const target = new THREE.WebGLRenderTarget(16, 16, {
     magFilter: THREE.NearestFilter,
     minFilter: THREE.NearestFilter,
@@ -51,7 +112,7 @@ export function createPalettePass(renderer, palette) {
   const material = new THREE.ShaderMaterial({
     uniforms: {
       tScene: { value: target.texture },
-      palette: { value: colors },
+      tLut: { value: lut },
       resolution: { value: new THREE.Vector2(16, 16) }
     },
     vertexShader: `
@@ -61,7 +122,7 @@ export function createPalettePass(renderer, palette) {
         gl_Position = vec4(position.xy, 0.0, 1.0);
       }
     `,
-    fragmentShader: paletteFragmentShader(palette.length),
+    fragmentShader: paletteFragmentShader(atlas.size, atlas.cols, atlas.rows),
     depthTest: false,
     depthWrite: false
   })

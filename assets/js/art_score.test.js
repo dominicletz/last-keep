@@ -6,7 +6,7 @@ import { decodePng, renderCloseup } from "../models/raster.js"
 import { loadSheet } from "../models/sheets.js"
 import { heroCrops, MONSTER_CROPS } from "../models/sprites.js"
 import { groundPixels } from "./ground.js"
-import { paletteFragmentShader } from "./palette_pass.js"
+import { buildPaletteAtlas, paletteFragmentShader, samplePaletteAtlas } from "./palette_pass.js"
 import { groundFloor, groundSpread } from "./mood.js"
 import { cycleLight, hueOf, litYard, lumaOf } from "./scene.js"
 import {
@@ -286,14 +286,30 @@ function scalesInSpec() {
   return named.slice(1).map(Number)
 }
 
-test("the palette pass locks from a uniform array, not a texture walk", () => {
+test("the palette pass locks with one atlas lookup", () => {
   const source = fs.readFileSync(new URL("./palette_pass.js", import.meta.url), "utf8")
   assert.equal(source.includes("RGBFormat"), false)
   assert.equal(source.includes("for (int i = 0; i < 320; i++)"), false)
-  const shader = paletteFragmentShader(palette.length)
-  assert.match(shader, new RegExp(`uniform vec3 palette\\[${palette.length}\\]`))
-  assert.match(shader, new RegExp(`for \\(int i = 0; i < ${palette.length}; i\\+\\+\\)`))
-  assert.equal(shader.includes("sampler2D tPalette"), false)
+  const shader = paletteFragmentShader()
+  assert.match(shader, /texture2D\(tLut/)
+  assert.equal(shader.includes("for (int i"), false)
+  const atlas = buildPaletteAtlas(palette)
+  let worst = 0
+  for (let b = 0; b < 256; b += 8) {
+    for (let g = 0; g < 256; g += 8) {
+      for (let r = 0; r < 256; r += 8) {
+        const exact = nearestLocked(r, g, b, palette)
+        const got = samplePaletteAtlas(atlas, r, g, b)
+        const extra =
+          (r - got[0]) ** 2 + (g - got[1]) ** 2 + (b - got[2]) ** 2 - exact.dist * exact.dist
+        if (extra > worst) worst = extra
+      }
+    }
+  }
+  // A 128³ cell is two code points wide. The center's nearest color is the
+  // sample's nearest on most of the cube, and the extra distance stays under
+  // the measured 235. That bound only falls.
+  assert.ok(worst <= 235, worst)
 })
 
 test("the locked palette is the style tokens at the spec's four shades", () => {
