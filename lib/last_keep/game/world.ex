@@ -24,12 +24,19 @@ defmodule LastKeep.Game.World do
       :miss ->
         world = build(seed)
         :persistent_term.put(key, world)
+        :persistent_term.put(built_key(seed), built(seed) + 1)
         world
 
       world ->
         world
     end
   end
+
+  def built(seed) when is_integer(seed) do
+    :persistent_term.get(built_key(seed), 0)
+  end
+
+  defp built_key(seed), do: {__MODULE__, :built, seed}
 
   defp build(seed) do
     {attempt, pois, grid} = layout(seed)

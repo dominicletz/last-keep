@@ -2,6 +2,7 @@ defmodule LastKeep.Game.WorldTest do
   use ExUnit.Case, async: true
 
   alias LastKeep.Game.Rules
+  alias LastKeep.Game.Sim
   alias LastKeep.Game.World
 
   test "the same seed returns the same world" do
@@ -78,6 +79,39 @@ defmodule LastKeep.Game.WorldTest do
         assert disagree / length(pairs) >= 0.35
       end
     end
+  end
+
+  test "twenty ticks with fifteen heroes leave the generator count put" do
+    seed = 89
+
+    for cx <- -14..14, cy <- -14..14 do
+      assert %{cells: cells} = World.chunk(seed, cx, cy)
+      assert is_map(cells)
+    end
+
+    count = World.built(seed)
+    assert count >= 1
+    heroes = Rules.heroes()
+
+    state =
+      Enum.reduce(1..Rules.max_players(), Sim.new("GEN89", seed: seed), fn i, state ->
+        {:ok, state} =
+          Sim.join(state, %{
+            id: "p#{i}",
+            name: "P#{i}",
+            hero: Enum.at(heroes, rem(i - 1, length(heroes))),
+            connected: true
+          })
+
+        state
+      end)
+
+    assert map_size(state.players) == 15
+    assert Enum.all?(state.players, fn {_id, player} -> player.connected end)
+
+    state = Enum.reduce(1..20, state, fn _, state -> Sim.tick(state) end)
+    assert state.tick == 20
+    assert World.built(seed) == count
   end
 
   defp counts(world) do

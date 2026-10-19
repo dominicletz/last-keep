@@ -96,7 +96,7 @@ Night 1 is two goblins. The keep is the loss. Food still heals the keep from bes
 
 ## How a slice proves itself
 
-The concept page is this document. Generation, exploration, and the resource slice have landed. The walk clamp is 7200, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. A quarry pays stone, pine refuses a sow, and a stone wall costs 8 stone and 4 wood. Pine wood stays planned. The performance slice is still planned. The coverage floor is 77.
+The concept page is this document. Generation, exploration, and the resource slice have landed. The walk clamp is 7200, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. A quarry pays stone, pine refuses a sow, and a stone wall costs 8 stone and 4 wood. Pine wood stays planned. The performance slice has landed. The coverage floor is 77.
 
 The generation slice adds `World.generate/1`. One test builds two worlds from seed 3 and requires equal biomes, blockers, and points of interest. One test requires the keep disc clear. One test flood-fills from the origin and requires every point of interest on the fill. One test requires each symmetry disagreement fraction to be at least 0.35.
 
@@ -104,7 +104,7 @@ The exploration slice wires `world` into `State` and raises the walk clamp to 72
 
 The resource slice added stone, `Rules.cap(:stone)` of 200, and the meadow check on sow. A farmer sow on pine fails and spends nothing. An engineer at a quarry gains stone faster than a warrior at the same node. A stone wall pays 8 stone and 4 wood and has 280 health. Pine wood stays planned. The interaction test's resource list includes `stone`.
 
-The performance slice keeps generation off the hot tick. A test builds every chunk, records the generator count, ticks 20 times with 15 connected heroes, and requires that count to stay put. A time ceiling belongs to the perf harness when that harness has a trunk baseline. This slice does not invent a looser timeout to go green. If the harness is absent, the generator count is the gate.
+The performance slice keeps generation off the hot tick. `twenty ticks with fifteen heroes leave the generator count put` builds every chunk, records the generator count, ticks 20 times with 15 connected heroes, and requires that count to stay put. A time ceiling belongs to the perf harness when that harness has a trunk baseline. This slice does not invent a looser timeout to go green. If the harness is absent, the generator count is the gate.
 
 ## Locked numbers
 
