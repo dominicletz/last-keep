@@ -188,7 +188,6 @@ defmodule LastKeep.Game.SimTest do
   end
 
   test "a perf keep reaches the empty build three waves later" do
-    assert Application.get_env(:last_keep, :perf_keep) == true
     hp = Rules.perf_keep_hp()
 
     state =

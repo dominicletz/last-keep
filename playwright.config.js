@@ -2,6 +2,10 @@ const { defineConfig } = require("@playwright/test")
 
 const baseURL = process.env.BASE_URL || "http://127.0.0.1:4000"
 
+if (!process.env.BASE_URL) {
+  process.env.PERF_KEEP_TOKEN ||= "playwright"
+}
+
 module.exports = defineConfig({
   testDir: "e2e",
   timeout: 150_000,
@@ -26,7 +30,8 @@ module.exports = defineConfig({
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
         env: {
-          PLAYWRIGHT: "1"
+          PLAYWRIGHT: "1",
+          PERF_KEEP_TOKEN: process.env.PERF_KEEP_TOKEN
         }
       }
 })

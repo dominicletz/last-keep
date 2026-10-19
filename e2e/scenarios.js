@@ -1864,7 +1864,9 @@ async function sixSeatMatch(browser) {
         return
       }
       const body = request.postDataJSON()
-      await route.continue({ postData: JSON.stringify({ ...body, perf_keep: true }) })
+      const perfKeepToken = process.env.PERF_KEEP_TOKEN || (process.env.BASE_URL ? "" : "playwright")
+      const next = perfKeepToken ? { ...body, perf_keep_token: perfKeepToken } : body
+      await route.continue({ postData: JSON.stringify(next) })
     })
   })
   const page = host.page

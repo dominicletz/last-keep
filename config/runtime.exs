@@ -100,6 +100,10 @@ if config_env() == :prod do
   # Check `Plug.SSL` for all available options in `force_ssl`.
 end
 
-if System.get_env("PLAYWRIGHT") == "1" or System.get_env("PERF_KEEP") == "1" do
-  config :last_keep, :perf_keep, true
+case System.get_env("PERF_KEEP_TOKEN") do
+  token when is_binary(token) and token != "" ->
+    config :last_keep, :perf_keep_token, token
+
+  _ ->
+    :ok
 end

@@ -25,6 +25,13 @@ ENV
   chmod 600 .env
 fi
 
+if ! grep -q '^PERF_KEEP_TOKEN=' .env; then
+  token=$(openssl rand -hex 32)
+  umask 077
+  printf 'PERF_KEEP_TOKEN=%s\n' "$token" >> .env
+  chmod 600 .env
+fi
+
 printf '%s' "$GITHUB_TOKEN" | docker login ghcr.io --username "$GHCR_USERNAME" --password-stdin
 export LAST_KEEP_IMAGE_TAG="$IMAGE_TAG"
 docker compose -f docker-compose.prod.yml pull
