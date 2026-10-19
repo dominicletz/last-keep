@@ -11,7 +11,6 @@ services:
       PHX_SERVER: "true"
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE must be set in .env}
       HIGHSCORE_PATH: /data/highscores.json
-      PERF_KEEP: "1"
     volumes:
       - last-keep-data:/data
     expose:

@@ -87,6 +87,17 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - name: Load the perf keep token
+        run: |
+          set -eu
+          token=$(ssh -i "$HOME/.ssh/deploy_key" \
+            -o IdentitiesOnly=yes \
+            -p "$DEPLOY_PORT" \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "grep '^PERF_KEEP_TOKEN=' '$DEPLOY_PATH/.env' | head -n1 | cut -d= -f2-" | tr -d '\r\n')
+          test -n "$token"
+          printf 'PERF_KEEP_TOKEN=%s\n' "$token" >> "$GITHUB_ENV"
+
       - name: Prove the live game in a browser
         env:
           BASE_URL: https://agentyard.letz.tw

@@ -50,15 +50,21 @@ defmodule LastKeepWeb.RoomController do
     json(conn, %{scores: Highscores.list()})
   end
 
-  defp room_opts(%{"perf_keep" => flag}) when flag in [true, "true"] do
-    if Application.get_env(:last_keep, :perf_keep) == true do
-      [keep_hp: Rules.perf_keep_hp()]
-    else
-      []
+  defp room_opts(%{"perf_keep_token" => token}) when is_binary(token) do
+    case Application.get_env(:last_keep, :perf_keep_token) do
+      expected when is_binary(expected) and expected != "" ->
+        if same_token?(token, expected), do: [keep_hp: Rules.perf_keep_hp()], else: []
+
+      _ ->
+        []
     end
   end
 
   defp room_opts(_params), do: []
+
+  defp same_token?(token, expected) do
+    byte_size(token) == byte_size(expected) and Plug.Crypto.secure_compare(token, expected)
+  end
 
   defp parse_name(name) when is_binary(name) do
     cleaned =

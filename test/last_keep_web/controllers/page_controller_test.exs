@@ -85,12 +85,16 @@ defmodule LastKeepWeb.PageControllerTest do
     assert json_response(conn, 404)["error"] == "not_found"
   end
 
-  test "a perf keep uses the harness durability and a normal create stays at 900", %{conn: conn} do
+  test "a perf keep token uses the harness durability and a public flag stays at 900", %{
+    conn: conn
+  } do
+    token = Application.fetch_env!(:last_keep, :perf_keep_token)
+
     conn =
       post(conn, ~p"/api/rooms", %{
         "name" => "Nia",
         "hero" => "farmer",
-        "perf_keep" => true
+        "perf_keep_token" => token
       })
 
     code = json_response(conn, 200)["code"]
@@ -100,18 +104,38 @@ defmodule LastKeepWeb.PageControllerTest do
     plain = json_response(conn, 200)["code"]
     assert LastKeep.Game.Room.snapshot(plain).keep.max == 900
 
-    previous = Application.get_env(:last_keep, :perf_keep)
-    Application.delete_env(:last_keep, :perf_keep)
-
-    on_exit(fn ->
-      if previous != nil, do: Application.put_env(:last_keep, :perf_keep, previous)
-    end)
-
     conn =
       post(build_conn(), ~p"/api/rooms", %{
         "name" => "Lux",
         "hero" => "mage",
         "perf_keep" => true
+      })
+
+    flagged = json_response(conn, 200)["code"]
+    assert LastKeep.Game.Room.snapshot(flagged).keep.max == 900
+
+    conn =
+      post(build_conn(), ~p"/api/rooms", %{
+        "name" => "Bram",
+        "hero" => "engineer",
+        "perf_keep_token" => "nope"
+      })
+
+    wrong = json_response(conn, 200)["code"]
+    assert LastKeep.Game.Room.snapshot(wrong).keep.max == 900
+
+    previous = Application.get_env(:last_keep, :perf_keep_token)
+    Application.delete_env(:last_keep, :perf_keep_token)
+
+    on_exit(fn ->
+      if previous != nil, do: Application.put_env(:last_keep, :perf_keep_token, previous)
+    end)
+
+    conn =
+      post(build_conn(), ~p"/api/rooms", %{
+        "name" => "Pip",
+        "hero" => "scout",
+        "perf_keep_token" => token
       })
 
     closed = json_response(conn, 200)["code"]
