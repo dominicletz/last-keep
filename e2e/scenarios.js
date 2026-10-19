@@ -1836,6 +1836,37 @@ async function wakeTheCamp(browser) {
   await host.context.close()
 }
 
+async function takeTheShrine(browser) {
+  const errors = []
+  const shrine = { x: 4140, y: 0 }
+  const host = await createHost(browser, "Ada", "warrior", async (page) => {
+    await page.route("**/api/rooms", async (route) => {
+      const request = route.request()
+      if (request.method() !== "POST" || !request.url().endsWith("/api/rooms")) {
+        await route.continue()
+        return
+      }
+      const body = request.postDataJSON()
+      await route.continue({ postData: JSON.stringify({ ...body, seed: 5 }) })
+    })
+  })
+  const page = host.page
+  watch(page, "host", errors)
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.self)
+  await steerPast(
+    page,
+    shrine,
+    (state) => Math.hypot(state.x - shrine.x, state.y - shrine.y) < 30,
+    120_000,
+    "shrine"
+  )
+  await page.waitForFunction(() => window.__lastKeep.relics.length === 1, null, { timeout: 5_000 })
+  expect(await page.evaluate(() => window.__lastKeep.seats.length)).toBe(1)
+  await page.screenshot({ path: shot("shrine-host.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
 async function holdTheLand(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "warrior", async (page) => {
@@ -2455,6 +2486,7 @@ module.exports = {
   exploreLand,
   chopThePine,
   wakeTheCamp,
+  takeTheShrine,
   holdTheLand,
   readTheMap,
   raiseNeedsTheKeep

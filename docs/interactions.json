@@ -101,7 +101,7 @@
     {"from": "stone", "to": "wall", "via": "A wall placed while the room can pay 8 stone and 4 wood is a stone wall with 280 health. A wood wall stays at 170.", "status": "implemented", "rule": "def cost(:stone_wall"},
     {"from": "pine", "to": "wood", "via": "Any living hero chops a pine that still has wood. The pine forest refills a wall line after the yard trees are cut. A yard tree in reach takes the chop.", "status": "implemented", "rule": "def pine_wood"},
     {"from": "camp", "to": "vagrant", "via": "Waking a camp spends 8 gold and adds one ally who does not take a seat.", "status": "implemented", "rule": "def vagrant_cost"},
-    {"from": "shrine", "to": "relic", "via": "A shrine grants one relic the party does not hold.", "status": "planned"},
+    {"from": "shrine", "to": "relic", "via": "A shrine grants one relic the party does not hold.", "status": "implemented", "rule": "defp take_shrines"},
     {"from": "hermit", "to": "scout", "via": "A hermit reveals the next chunk ring. A living scout already reveals one extra ring.", "status": "planned"},
     {"from": "merchant", "to": "food", "via": "The merchant sells food for gold.", "status": "planned"},
     {"from": "merchant", "to": "stone", "via": "The merchant sells stone for gold.", "status": "planned"}

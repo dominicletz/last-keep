@@ -123,6 +123,7 @@ defmodule LastKeep.Game.Sim do
     |> survey()
     |> open_chests()
     |> wake_camps()
+    |> take_shrines()
     |> step_vagrants()
     |> gather()
     |> mine()
@@ -538,6 +539,20 @@ defmodule LastKeep.Game.Sim do
       case nearest(state.world.camps, hero.x, hero.y, Rules.chest_reach()) do
         nil -> state
         camp -> wake_camp(state, camp)
+      end
+    end)
+  end
+
+  defp take_shrines(state) do
+    Enum.reduce(living_heroes(state), state, fn hero, state ->
+      case nearest(state.world.shrines, hero.x, hero.y, Rules.chest_reach()) do
+        nil ->
+          state
+
+        shrine ->
+          shrines = Enum.reject(state.world.shrines, &(&1.id == shrine.id))
+          state = %{state | world: %{state.world | shrines: shrines}}
+          grant_relic(state)
       end
     end)
   end

@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, chopThePine, exploreLand, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, paradeShowsEveryKind, pictureGrade, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
+const { captionsClearTheBuilds, chopThePine, exploreLand, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, paradeShowsEveryKind, pictureGrade, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -71,6 +71,11 @@ test("a pine past the yard pays the wood sack", async ({ browser }) => {
 test("a camp wakes an ally who does not take a seat", async ({ browser }) => {
   test.setTimeout(180_000)
   await wakeTheCamp(browser)
+})
+
+test("a shrine grants one relic", async ({ browser }) => {
+  test.setTimeout(180_000)
+  await takeTheShrine(browser)
 })
 
 test("a wall outside the keep disc waits until that portal falls", async ({ browser }) => {
