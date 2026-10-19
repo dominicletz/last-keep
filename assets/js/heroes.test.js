@@ -59,6 +59,62 @@ test("each hero builds a distinct mesh signature", () => {
   }
 })
 
+test("a hero side view keeps the gear a center slice drops", () => {
+  const column = (picture, dir) => {
+    const rgb = new Uint8Array(picture.cellW * picture.cellH * 3)
+    const mask = new Uint8Array(picture.cellW * picture.cellH)
+    for (let y = 0; y < picture.cellH; y++) {
+      for (let x = 0; x < picture.cellW; x++) {
+        const s = (y * picture.atlasW + dir * picture.cellW + x) * 4
+        if (!picture.atlas[s + 3]) continue
+        const d = y * picture.cellW + x
+        mask[d] = 1
+        rgb[d * 3] = picture.atlas[s]
+        rgb[d * 3 + 1] = picture.atlas[s + 1]
+        rgb[d * 3 + 2] = picture.atlas[s + 2]
+      }
+    }
+    return { rgb, mask, w: picture.cellW, h: picture.cellH }
+  }
+  const inkWidth = (image) => {
+    let min = image.w
+    let max = -1
+    for (let i = 0; i < image.mask.length; i++) {
+      if (!image.mask[i]) continue
+      const x = i % image.w
+      if (x < min) min = x
+      if (x > max) max = x
+    }
+    return max < 0 ? 0 : max - min + 1
+  }
+  const nearSide = (image, r, g, b) => {
+    let left = 0
+    let right = 0
+    const limit = 36 * 36
+    for (let i = 0; i < image.mask.length; i++) {
+      if (!image.mask[i]) continue
+      const dr = image.rgb[i * 3] - r
+      const dg = image.rgb[i * 3 + 1] - g
+      const db = image.rgb[i * 3 + 2] - b
+      if (dr * dr + dg * dg + db * db > limit) continue
+      if (i % image.w < image.w / 2) left += 1
+      else right += 1
+    }
+    return { left, right, n: left + right }
+  }
+  for (const kind of heroKinds()) {
+    const picture = heroParts(kind)[0]
+    const ratio = inkWidth(column(picture, 2)) / inkWidth(column(picture, 0))
+    assert.ok(ratio >= 0.32 && ratio <= 0.62, `${kind} side ratio ${ratio}`)
+  }
+  const warrior = heroParts("warrior")[0]
+  const side = nearSide(column(warrior, 2), 0x38, 0x51, 0x6f)
+  const turned = nearSide(column(warrior, 6), 0x38, 0x51, 0x6f)
+  assert.ok(side.n >= 80, side.n)
+  assert.ok(side.right > side.left * 4, side)
+  assert.ok(turned.left > turned.right * 4, turned)
+})
+
 test("a hero sheet walks, strikes, and falls", () => {
   const picture = heroParts("warrior")[0]
   assert.equal(sheetRow(picture, {}, 0), 0)
