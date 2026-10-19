@@ -1158,13 +1158,33 @@ async function walkToRaise(page) {
 }
 
 async function stepEastOfTheKeep(page) {
-  await steer(
-    page,
-    { x: 180, y: 0 },
-    (state) => state.x > 130 && Math.hypot(state.x, state.y) > 140,
-    15_000,
-    "east of the keep"
-  )
+  // A single goal on the field row stops on the crop, and due west on the face
+  // does not slide. Turn through the east headings until the body is clear.
+  const headings = [
+    ["KeyD", "KeyS"],
+    ["KeyD"],
+    ["KeyS"],
+    ["KeyW", "KeyD"],
+    ["KeyS", "KeyA"]
+  ]
+  const deadline = Date.now() + 20_000
+  let spin = 0
+  try {
+    while (Date.now() < deadline) {
+      const me = await page.evaluate(() => {
+        const self = window.__lastKeep.self
+        return self ? { x: self.x, y: self.y } : null
+      })
+      if (me && me.x > 130 && Math.hypot(me.x, me.y) > 140) return
+      await holdCodes(page, headings[spin % headings.length])
+      spin += 1
+      await page.waitForTimeout(600)
+    }
+  } finally {
+    await releaseCodes(page)
+  }
+  const last = await page.evaluate(() => window.__lastKeep.self)
+  throw new Error(`east of the keep timed out at ${JSON.stringify(last)}`)
 }
 
 async function townGrows(browser) {
