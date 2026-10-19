@@ -92,6 +92,7 @@
     {"from": "scenery", "to": "wood", "via": "The outer ring is dead wood: bare trunks, no crown, and no wood. Living trees are the green ones.", "status": "implemented", "rule": "def scenery_ring"},
     {"from": "chest", "to": "gold", "via": "A living hero who stands on a chest opens it once and the room gains 24 gold.", "status": "implemented", "rule": "def chest_gold"},
     {"from": "portal", "to": "monsters", "via": "Night 1 is two goblins on the bearings of the two nearest living portals. A broken portal's bearing is left out.", "status": "implemented", "rule": "defp wave_one_bearings"},
+    {"from": "portal", "to": "wall", "via": "A dead portal claims its chunk. A build outside the keep disc and outside that chunk fails with The land is not held. Raising the keep does not claim the map.", "status": "implemented", "rule": "defp held?"},
     {"from": "warrior", "to": "portal", "via": "A strike on a portal breaks it. The next night does not spawn on that bearing.", "status": "implemented", "rule": "defp hurt_portal"},
     {"from": "quarry", "to": "stone", "via": "A quarry holds 40 stone. An engineer takes 2 per tick and any other living hero takes 1.", "status": "implemented", "rule": "defp mine"},
     {"from": "engineer", "to": "quarry", "via": "The quarry is the engineer's walk. Stone walls are why the engineer leaves the yard.", "status": "implemented", "rule": "def quarry_take(:engineer)"},

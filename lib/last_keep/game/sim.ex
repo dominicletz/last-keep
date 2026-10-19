@@ -435,6 +435,7 @@ defmodule LastKeep.Game.Sim do
       seed: seed,
       chunks: %{},
       discovered: keep_chunks(),
+      claimed: MapSet.new(),
       portals:
         Enum.map(grouped[:portal] || [], fn poi ->
           Map.merge(poi, %{hp: hp, max_hp: hp, r: 28.0})
@@ -533,7 +534,14 @@ defmodule LastKeep.Game.Sim do
             end)
           end
 
-        state = %{state | world: %{state.world | portals: portals}}
+        claimed =
+          if left <= 0 do
+            MapSet.put(state.world.claimed, World.chunk_coord(portal.x, portal.y))
+          else
+            state.world.claimed
+          end
+
+        state = %{state | world: %{state.world | portals: portals, claimed: claimed}}
 
         if left <= 0 do
           event(state, %{type: "death", kind: :portal, x: portal.x, y: portal.y, amount: amount})
@@ -866,26 +874,39 @@ defmodule LastKeep.Game.Sim do
 
   defp cast(state, player, hero, slot, %{kind: :barricade}) do
     cost = Rules.barricade_cost(hero.hero)
+    spots = barricade_spots(hero, player.input)
 
-    if afford?(state, cost) do
-      hero = start_cd(state, hero, slot, Rules.kit(hero.hero).r.cd)
-      state = put_entity(state, hero)
-      state = pay(state, cost)
-      {dx, dy} = aim_dir(hero, player.input)
-      px = -dy
-      py = dx
-      cx = hero.x + dx * 70
-      cy = hero.y + dy * 70
+    cond do
+      not afford?(state, cost) ->
+        refuse(state, player.input.ax, player.input.ay, "Not enough wood")
 
-      Enum.reduce(-1..1, state, fn i, state ->
-        try_place(state, hero, :wall, cx + px * i * 36, cy + py * i * 36, %{wood: 0, gold: 0})
-      end)
-    else
-      refuse(state, player.input.ax, player.input.ay, "Not enough wood")
+      Enum.all?(spots, fn {x, y} -> not held?(state, x, y) end) ->
+        refuse(state, player.input.ax, player.input.ay, "The land is not held.")
+
+      true ->
+        hero = start_cd(state, hero, slot, Rules.kit(hero.hero).r.cd)
+        state = put_entity(state, hero)
+        state = pay(state, cost)
+
+        Enum.reduce(spots, state, fn {x, y}, state ->
+          try_place(state, hero, :wall, x, y, %{wood: 0, gold: 0})
+        end)
     end
   end
 
   defp cast(state, _player, _hero, _slot, _ability), do: state
+
+  defp barricade_spots(hero, input) do
+    {dx, dy} = aim_dir(hero, input)
+    px = -dy
+    py = dx
+    cx = hero.x + dx * 70
+    cy = hero.y + dy * 70
+
+    Enum.map(-1..1, fn i ->
+      {snap(cx + px * i * 36), snap(cy + py * i * 36)}
+    end)
+  end
 
   defp wall_offer(state, hero) do
     cost = Rules.cost(:stone_wall, hero.hero)
@@ -907,14 +928,15 @@ defmodule LastKeep.Game.Sim do
       dist > Rules.build_range(hero.hero, state.town) ->
         refuse(state, x, y, "Too far")
 
+      not held?(state, x, y) ->
+        refuse(state, x, y, "The land is not held.")
+
       hypot(x, y) < state.keep.r + 28 ->
         refuse(state, x, y, "Too close to the keep")
 
       overlap?(state, x, y, Rules.building(kind).r) ->
         refuse(state, x, y, "Blocked")
 
-      # The keep disc is meadow, and the build range never leaves it. A hero
-      # who walked out can still sow at their feet, and pine has to refuse that.
       kind == :field and World.biome(state.world.seed, x, y) != :meadow ->
         refuse(state, x, y, "Not meadow")
 
@@ -933,6 +955,11 @@ defmodule LastKeep.Game.Sim do
         |> spawn_building(%{kind: kind, x: x, y: y})
         |> event(%{type: "place", kind: kind, x: x, y: y})
     end
+  end
+
+  defp held?(state, x, y) do
+    hypot(x, y) <= World.keep_disc() or
+      MapSet.member?(state.world.claimed, World.chunk_coord(x, y))
   end
 
   defp build_limit(:wall), do: 80

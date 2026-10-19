@@ -50,7 +50,7 @@ defmodule LastKeep.Game.ResourceTest do
 
     assert state.resources.wood == wood
     assert fields(state) == 0
-    assert Enum.any?(state.events, &(&1.type == "deny" and &1.reason == "Not meadow"))
+    assert Enum.any?(state.events, &(&1.type == "deny" and &1.reason == "The land is not held."))
 
     meadow = stand(:farmer, 200, 0)
 

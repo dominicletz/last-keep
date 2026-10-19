@@ -19,4 +19,5 @@ The executable checks are `e2e/scenarios.js`. `npx playwright test` runs them th
 - Square pixels are `squarePixels`, the spec "the picture stays square when the window changes shape".
 - Role interactions are `docs/GAME-INTERACTIONS.md`, checked by `test/last_keep/game/interactions_test.exs`.
 - The map table is `readTheMap`. The cloth is in the world at (0, 160). The walk stops inside radius 70 and the timeout stays 20 seconds. The glass count stays 10.
+- Claimed land is `holdTheLand`. A wall past the keep disc says the land is not held until that portal falls. The portal walk stays 70 seconds. A barricade on that land spends no wood until the chunk is claimed.
 - Phone touch is `mobileTouch` in `e2e/mobile.spec.js`. A landscape touch viewport joins, walks, casts, and builds. Portrait is the rotate prompt. `phoneClear` asserts no HUD overlap at 844×390, 667×375, and 932×430 beside the keep, west of x=-700, after the raise, and during a goblin call more than 400 from the keep on the side opposite the pack. If the sweep walks a goblin into frame, the seat steps away, and the call is the `walkUntil` sample whose text says goblin.
