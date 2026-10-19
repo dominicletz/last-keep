@@ -952,12 +952,22 @@ export function createView(stage) {
   function pictureGrade() {
     const canvas = renderer.domElement
     const focal = new Uint8Array(canvas.width * canvas.height)
+    const cover = new Uint8Array(canvas.width * canvas.height)
+    const fill = (mask, rect) => {
+      for (let y = rect.y0; y < rect.y1; y++) {
+        mask.fill(1, y * canvas.width + rect.x0, y * canvas.width + rect.x1)
+      }
+    }
+    // The keep's screen box includes the cottage and the pines at its corners.
+    // The subject is the inner ninety percent. The whole box stays out of the ground.
     const stamp = (object) => {
       const rect = screenRect(object, canvas.width, canvas.height)
       if (!rect) return
-      for (let y = rect.y0; y < rect.y1; y++) {
-        focal.fill(1, y * canvas.width + rect.x0, y * canvas.width + rect.x1)
-      }
+      fill(cover, rect)
+      const dx = Math.floor((rect.x1 - rect.x0) * 0.05)
+      const dy = Math.floor((rect.y1 - rect.y0) * 0.05)
+      const core = { x0: rect.x0 + dx, y0: rect.y0 + dy, x1: rect.x1 - dx, y1: rect.y1 - dy }
+      if (core.x1 > core.x0 && core.y1 > core.y0) fill(focal, core)
     }
     stamp(keep)
     for (const [key, mesh] of meshes) {
@@ -983,7 +993,7 @@ export function createView(stage) {
       const row = y * shot.width
       for (let x = 0; x < shot.width; x++) {
         const i = row + x
-        if (focal[i]) continue
+        if (cover[i]) continue
         ground[i] = 1
         groundCount += 1
       }

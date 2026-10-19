@@ -308,9 +308,10 @@ export function valueStructure(rgb, width, height, focal, ground) {
   }
 }
 
-// Live 640×400 camera, day dusk and night, measured before this floor.
-// Day spread 2, dusk 3, night 2. Median luma gap 5, 10, and 5.
-// Ground noise 8.93, 11.97, and 8.57. The concept clearing tile is 12.43.
+// Live 640×400 camera, day dusk and night. The subject is the inner ninety
+// percent of the keep and hero box, and that whole box stays out of the ground.
+// Day spread 2, dusk 3, night 2. Median luma gap 5, 7, and 7.
+// Ground noise 8.99, 11.64, and 8.62. The concept clearing tile is 12.43.
 // Spread and contrast only rise. The noise cap only falls.
 export const valueFloor = { spread: 2, focalContrast: 5 }
 export const noiseCap = 12
