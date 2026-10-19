@@ -1044,7 +1044,7 @@ function drawHints(ui, snap) {
       ? hintBeacons(snap.hints).map((row) => marker(ui, row.x, row.y, row.label, false, " beacon"))
       : []
   const land = (snap.land || []).map((row) =>
-    marker(ui, row.x, row.y, row.kind === "portal" ? "portal" : "chest", true, " beacon")
+    marker(ui, row.x, row.y, row.kind === "portal" ? "portal" : "chest", true, " beacon land")
   )
   const pending = []
   for (const call of edgeCalls(snap.monsters || [])) {
