@@ -50,6 +50,7 @@
     {"from": "food", "to": "keep", "via": "Feeding beside the keep spends food and restores keep health.", "status": "implemented", "rule": "defp maybe_feed"},
     {"from": "food", "to": "farmer", "via": "Feast spends food and heals every living hero.", "status": "implemented", "rule": "kind: :feast"},
     {"from": "bounty", "to": "gold", "via": "A kill pays the monster's bounty. A warrior kill pays one extra gold.", "status": "implemented", "rule": "def kill_bonus"},
+    {"from": "bounty", "to": "gold", "via": "Clearing a wave pays the gold the next keep raise costs.", "status": "implemented", "rule": "def clear_purse"},
     {"from": "engineer", "to": "wall", "via": "An engineer pays less wood for walls, towers, and traps, and can raise a line of walls.", "status": "implemented", "rule": "def cost(:wall, :engineer)"},
     {"from": "engineer", "to": "wall", "via": "The engineer's swing repairs the nearest building.", "status": "implemented", "rule": "defp repair_near"},
     {"from": "wall", "to": "keep", "via": "A monster that cannot walk through a wall bites the wall instead of the keep.", "status": "implemented", "rule": "defp chew_wall"},

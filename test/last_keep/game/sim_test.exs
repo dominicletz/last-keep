@@ -453,6 +453,29 @@ defmodule LastKeep.Game.SimTest do
     assert state.kills >= 2
   end
 
+  test "a cleared wave 1 pays the eight gold a raise costs" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    state = Sim.tick(state)
+
+    state =
+      Enum.reduce_while(1..4_000, state, fn _, state ->
+        cond do
+          state.phase == :over -> {:halt, state}
+          match?({:build, _}, state.phase) and state.wave >= 1 -> {:halt, state}
+          true -> {:cont, chase_nearest(state, "ada")}
+        end
+      end)
+
+    assert {:build, _} = state.phase
+    assert state.kills == 2
+    purse = Rules.keep_upgrade_cost(0).gold
+    assert purse == 8
+    paid = state.resources.gold - Rules.bounty(:goblin) * state.kills
+    assert paid >= purse
+    assert paid <= purse + state.kills * Rules.kill_bonus(:warrior)
+  end
+
   test "the night waits until the host starts" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :warrior))

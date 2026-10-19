@@ -41,6 +41,12 @@ defmodule LastKeep.Game.Rules do
     %{wood: 24 + rank * 12, gold: 8 + rank * 6}
   end
 
+  def clear_purse(rank) when is_integer(rank) and rank >= 0 and rank < 4 do
+    keep_upgrade_cost(rank).gold
+  end
+
+  def clear_purse(rank) when is_integer(rank) and rank >= 4, do: 0
+
   def scenery_ring do
     "The outer ring is dead wood. It has a bare trunk, no crown, and no wood."
   end
