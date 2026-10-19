@@ -1154,7 +1154,16 @@ async function waitForRaiseGold(page) {
 }
 
 async function walkToRaise(page) {
-  await steer(page, { x: 0, y: 0 }, (state) => Math.hypot(state.x, state.y) < 100, 15_000, "raise ring")
+  // Radius 100 is the raise. Stopping on the first sample inside it lets the
+  // face slide back out, and the phone button stays disabled. Hold the walk
+  // until the control is enabled and the hero is 10 inside that radius.
+  await steer(
+    page,
+    { x: 0, y: 0 },
+    (state) => state.raiseReady && Math.hypot(state.x, state.y) < 90,
+    25_000,
+    "raise ring"
+  )
 }
 
 async function stepEastOfTheKeep(page) {
@@ -1481,7 +1490,12 @@ async function steer(page, goal, done, timeout, label) {
         const call = [...document.querySelectorAll(".hint-arrow")].some((node) => /goblin/i.test(node.textContent || ""))
         const keys = window.__lastKeepTest.around(goal.x, goal.y)
         for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
-        return me ? { x: me.x, y: me.y, alive: me.alive !== false, call } : null
+        const bar = document.querySelector("[data-raise]")
+        const touch = document.querySelector("[data-touch-context]")
+        const raiseReady = Boolean(
+          (bar && !bar.disabled) || (touch && !touch.hidden && touch.getAttribute("aria-disabled") === "false")
+        )
+        return me ? { x: me.x, y: me.y, alive: me.alive !== false, call, raiseReady } : null
       }, goal)
       last = state
       if (state && done(state)) return state
