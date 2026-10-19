@@ -1999,6 +1999,48 @@ async function raiseOnThePhone(browser, errors) {
   await context.close()
 }
 
+async function pictureGrade(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior")
+  const page = host.page
+  watch(page, "host", errors)
+  const read = (light) =>
+    page
+      .waitForFunction(
+        (name) => {
+          const game = window.__lastKeep
+          if (!game || game.light !== name || typeof game.pictureGrade !== "function") return false
+          if (name === "day" && (!game.hold || !(game.figures || []).length)) return false
+          return game.pictureGrade()
+        },
+        light,
+        { timeout: 20_000 }
+      )
+      .then((handle) => handle.jsonValue())
+  const day = await read("day")
+  await page.screenshot({ path: shot("picture-day.png") })
+  await page.locator("[data-start]").click()
+  const dusk = await read("dusk")
+  const night = await read("night")
+  const grades = { day, dusk, night }
+  fs.writeFileSync(shot("picture-grade.json"), JSON.stringify(grades, null, 2))
+  await page.screenshot({ path: shot("picture-night.png") })
+  for (const grade of [day, dusk, night]) {
+    expect(grade.width, JSON.stringify(grade)).toBe(640)
+    expect(grade.height).toBe(400)
+    expect(grade.levels).toBe(4)
+    expect(grade.focal).toBeGreaterThan(0)
+    expect(grade.ground).toBeGreaterThan(0)
+    expect(grade.spread).toBeGreaterThanOrEqual(2)
+    expect(grade.focalContrast).toBeGreaterThanOrEqual(5)
+    expect(grade.noise).toBeLessThanOrEqual(12)
+  }
+  expect(day.light).toBe("day")
+  expect(dusk.light).toBe("dusk")
+  expect(night.light).toBe("night")
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
 
 module.exports = {
   prepareProof,
@@ -2015,6 +2057,7 @@ module.exports = {
   matchPaintsWithoutARead,
   shotsDoNotGrowGeometries,
   sixSeatMatch,
+  pictureGrade,
   mobileTouch,
   townGrows,
   captionsClearTheBuilds,

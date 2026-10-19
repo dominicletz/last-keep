@@ -5,7 +5,16 @@ import { models, styleTables } from "../models/registry.js"
 import { decodePng, renderCloseup } from "../models/raster.js"
 import { loadSheet } from "../models/sheets.js"
 import { heroCrops, MONSTER_CROPS } from "../models/sprites.js"
-import { blockPercentiles, hardEdge, lockedPalette, scoreFrame } from "./art_score.js"
+import {
+  blockPercentiles,
+  hardEdge,
+  lockedPalette,
+  noiseCap,
+  noiseEnergy,
+  scoreFrame,
+  valueFloor,
+  valueStructure
+} from "./art_score.js"
 
 const markdown = fs.readFileSync(new URL("../../STYLE.md", import.meta.url), "utf8")
 const { tokens } = styleTables(markdown)
@@ -111,4 +120,73 @@ test("each monster close-up holds its pipeline score in day, dusk, and night", (
       assert.ok(score.membership < 0.05, `${id} ${light} membership ${score.membership}`)
     }
   }
+})
+
+function fill(width, height, paint) {
+  const rgb = new Uint8Array(width * height * 3)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const value = paint(x, y)
+      const o = (y * width + x) * 3
+      rgb[o] = value
+      rgb[o + 1] = value
+      rgb[o + 2] = value
+    }
+  }
+  return rgb
+}
+
+test("value structure counts four bands and separates a dark subject from a light ground", () => {
+  const width = 8
+  const height = 4
+  const rgb = fill(width, height, (_x, y) => (y < 2 ? 20 : 200))
+  const focal = new Uint8Array(width * height)
+  for (let i = 0; i < width * 2; i++) focal[i] = 1
+  const score = valueStructure(rgb, width, height, focal)
+  assert.equal(score.levels, 4)
+  assert.equal(score.spread, 2)
+  assert.equal(score.focalContrast, 180)
+  assert.equal(score.focalLuma, 20)
+  assert.equal(score.groundLuma, 200)
+  assert.deepEqual(score.focalBands, [16, 0, 0, 0])
+  assert.deepEqual(score.groundBands, [0, 0, 0, 16])
+})
+
+test("four equal luma bands spread across the frame, and no focal means no contrast", () => {
+  const rgb = fill(4, 4, (_x, y) => [0, 80, 160, 240][y])
+  const score = valueStructure(rgb, 4, 4, null)
+  assert.equal(score.spread, 4)
+  assert.equal(score.focalContrast, 0)
+})
+
+test("a band under two percent does not count toward the spread", () => {
+  const width = 100
+  const height = 1
+  const rgb = fill(width, height, (x) => (x === 0 ? 200 : 20))
+  const score = valueStructure(rgb, width, height, null)
+  assert.equal(score.spread, 1)
+})
+
+test("noise is the mean neighbor step, and a mask drops the checker", () => {
+  const width = 4
+  const height = 2
+  const rgb = fill(width, height, (x, y) => (y === 0 ? (x % 2 ? 255 : 0) : 40))
+  const flat = new Uint8Array(width * height)
+  for (let x = 0; x < width; x++) flat[width + x] = 1
+  assert.equal(noiseEnergy(rgb, width, height, flat), 0)
+  assert.ok(Math.abs(noiseEnergy(rgb, width, height, null) - 127.5) < 1e-6)
+})
+
+test("the concept clearing tile keeps its recorded noise", () => {
+  const theme = loadSheet(new URL("../../docs/concept/theme.jpg", import.meta.url).pathname)
+  const tile = cropOf(theme, { x: 366, y: 314, w: 48, h: 48 })
+  const energy = noiseEnergy(tile.rgb, tile.width, tile.height, null)
+  assert.equal(Number(energy.toFixed(2)), 12.43)
+  assert.ok(energy > noiseCap)
+})
+
+test("the value and noise floors stay at the measured yard", () => {
+  assert.equal(valueFloor.spread, 2)
+  assert.equal(valueFloor.focalContrast, 5)
+  assert.equal(noiseCap, 12)
 })

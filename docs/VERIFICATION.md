@@ -397,3 +397,10 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - The sheet branch uses the detour already on main. The via on the west face shares x, `e2e/steer.test.js` walks that face and the spawn to a chest, and the hop ends when the cardinal step misses the keep body. The chest wait stays 45 seconds and the portal wait stays 70 seconds.
 - `phoneClear` still requires the goblin call on the side opposite the pack. The steer returns on a frame where the label is up, and the next paint can be empty, so the text is polled for 4 seconds. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-10-18 value steps and ground noise
+
+- `valueStructure` posterizes a frame into four luma bands. Spread counts a band at 2% of the frame. Focal contrast is the median luma gap between the keep, heroes, and on-canvas monsters and the near ground (rows 42% to 90%). The subject is the inner ninety percent of each screen box, because the keep box includes the cottage and the pines. The whole box stays out of the ground. `noiseEnergy` is the mean horizontal luma step on that ground.
+- The live 640×400 camera measured spread 2, 3, 2 and focal contrast 5, 7, 7 at day, dusk, and night. Focal luma was 58, 55, and 45 against ground 53, 48, and 38. Ground noise measured 8.99, 11.64, and 8.62. The concept clearing at `theme.jpg` 366,314, 48×48 is 12.43. The floors are spread 2 and focal contrast 5. The noise cap is 12. The full keep box scored a day gap of 3 and dusk noise of 12.03 after the sheet props. Dusk sunset flecks now start at hash 0.88. Ground spread stays above 8 and the dusk warm tail stays above 0.03.
+- `pictureGrade` is the fourteenth desktop scenario. It grades day while the party waits, dusk after the start, and night when the wave light is on. The match loop still does not call `readPixels`. Hero and keep silhouette readability stays the shared `readability` function, floors 20 and 60, and is wired when that function is on main.
+- This does not change the simulation. The coverage floor stays 77.

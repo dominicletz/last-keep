@@ -8,6 +8,7 @@ import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scen
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { masonryBytes, propBytes } from "./tiles.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
+import { noiseEnergy, valueStructure } from "./art_score.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
@@ -758,6 +759,7 @@ export function createView(stage) {
         frameMood,
         frameGround,
         frameGrade,
+        pictureGrade,
         tick: snap.tick,
         alive: me ? !!me.alive : !!kept.alive,
         hp: me ? me.hp : kept.hp,
@@ -910,6 +912,108 @@ export function createView(stage) {
     return {
       mood: { ...mood, light: liveLight, problems: moodProblems(mood, liveLight) },
       ground: { ...ground, light: liveLight, problems: groundProblems(ground) }
+    }
+  }
+
+  function screenRect(object, width, height) {
+    const box = new THREE.Box3().setFromObject(object)
+    if (box.isEmpty()) return null
+    const corner = new THREE.Vector3()
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+    let seen = 0
+    for (const x of [box.min.x, box.max.x]) {
+      for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) {
+          corner.set(x, y, z).project(camera)
+          if (corner.z > 1) continue
+          const px = (corner.x * 0.5 + 0.5) * width
+          const py = (-corner.y * 0.5 + 0.5) * height
+          if (px < minX) minX = px
+          if (px > maxX) maxX = px
+          if (py < minY) minY = py
+          if (py > maxY) maxY = py
+          seen += 1
+        }
+      }
+    }
+    if (!seen) return null
+    const x0 = Math.max(0, Math.floor(minX))
+    const y0 = Math.max(0, Math.floor(minY))
+    const x1 = Math.min(width, Math.ceil(maxX))
+    const y1 = Math.min(height, Math.ceil(maxY))
+    if (x1 <= x0 || y1 <= y0) return null
+    return { x0, y0, x1, y1 }
+  }
+
+  // Explicit read. The match loop does not call this, so ordinary paints stay off readPixels.
+  function pictureGrade() {
+    const canvas = renderer.domElement
+    const focal = new Uint8Array(canvas.width * canvas.height)
+    const cover = new Uint8Array(canvas.width * canvas.height)
+    const fill = (mask, rect) => {
+      for (let y = rect.y0; y < rect.y1; y++) {
+        mask.fill(1, y * canvas.width + rect.x0, y * canvas.width + rect.x1)
+      }
+    }
+    // The keep's screen box includes the cottage and the pines at its corners.
+    // The subject is the inner ninety percent. The whole box stays out of the ground.
+    const stamp = (object) => {
+      const rect = screenRect(object, canvas.width, canvas.height)
+      if (!rect) return
+      fill(cover, rect)
+      const dx = Math.floor((rect.x1 - rect.x0) * 0.05)
+      const dy = Math.floor((rect.y1 - rect.y0) * 0.05)
+      const core = { x0: rect.x0 + dx, y0: rect.y0 + dy, x1: rect.x1 - dx, y1: rect.y1 - dy }
+      if (core.x1 > core.x0 && core.y1 > core.y0) fill(focal, core)
+    }
+    stamp(keep)
+    for (const [key, mesh] of meshes) {
+      if (key.startsWith("hero:") || key.startsWith("monster:")) stamp(mesh)
+    }
+    const shot = readFrame()
+    const n = shot.width * shot.height
+    const rgb = new Uint8Array(n * 3)
+    for (let i = 0; i < n; i++) {
+      const o = i * 4
+      const d = i * 3
+      rgb[d] = shot.buf[o]
+      rgb[d + 1] = shot.buf[o + 1]
+      rgb[d + 2] = shot.buf[o + 2]
+    }
+    const y0 = Math.round(shot.height * 0.42)
+    const y1 = Math.round(shot.height * 0.9)
+    const ground = new Uint8Array(n)
+    let focalCount = 0
+    let groundCount = 0
+    for (let i = 0; i < n; i++) if (focal[i]) focalCount += 1
+    for (let y = y0; y < y1; y++) {
+      const row = y * shot.width
+      for (let x = 0; x < shot.width; x++) {
+        const i = row + x
+        if (cover[i]) continue
+        ground[i] = 1
+        groundCount += 1
+      }
+    }
+    const value = valueStructure(rgb, shot.width, shot.height, focal, ground)
+    return {
+      light: liveLight,
+      width: shot.width,
+      height: shot.height,
+      levels: value.levels,
+      spread: value.spread,
+      focalContrast: value.focalContrast,
+      focalLuma: value.focalLuma,
+      groundLuma: value.groundLuma,
+      noise: noiseEnergy(rgb, shot.width, shot.height, ground),
+      focal: focalCount,
+      ground: groundCount,
+      bands: value.bands,
+      focalBands: value.focalBands,
+      groundBands: value.groundBands
     }
   }
 
