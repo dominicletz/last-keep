@@ -523,3 +523,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-19 the disabled raise at the round-10 pose says to walk there
 
 - Round 10 left Ada at (-122, -252) with the raise disabled, and the click wrote nothing. `a disabled raise away from the keep says to walk there` already returns `Walk to the keep` for that pose. `raiseNeedsTheKeep` now walks to within 18 of that point, clicks the disabled control, and reads those words before she walks in and raises. The phone tap still reads the same words. The walk stays 20 seconds. The raise radius stays 100. Night 1 stays two goblins. The coverage floor stays 77.
+
+## 2026-10-19 the yard wears the painted pine and the street wears the path crop
+
+- The ground between radius 168 and 330 mixes 55% toward the pine token `#353e27`. Day, dusk, and night each keep at least 0.70 of that band within distance 30 of the token. Measured shares are 0.769, 0.814, and 0.769. The street center copies the path crop. At least 0.75 of the pixels with a cross-distance under 6 and a run from 40 to 240 stay within distance 14 of that crop. Measured shares are 0.889, 0.840, and 0.886. The path ribbons are 28 wide. Sunset flecks stay off the pine band, and the plaza keeps more than 100. `pictureGrade` stays at gap 5 and noise cap 12. The measured dusk sample is gap 6 and noise 11.64. The camera stays at distance 150. The live keep stays `keepParts`. This does not change the simulation. The coverage floor stays 77.
