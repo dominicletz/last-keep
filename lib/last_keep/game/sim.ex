@@ -370,7 +370,7 @@ defmodule LastKeep.Game.Sim do
     Enum.reduce(living_heroes(state), state, fn hero, state ->
       case nearest(trees(state), hero.x, hero.y, 48) do
         nil ->
-          state
+          chop_pine(state, hero)
 
         tree ->
           rate = Rules.kit(hero.hero).chop
@@ -394,6 +394,27 @@ defmodule LastKeep.Game.Sim do
           end
       end
     end)
+  end
+
+  defp chop_pine(state, hero) do
+    {i, j} = World.cell_index(hero.x, hero.y)
+    cut = Map.get(state.world, :cut, %{})
+    left = Map.get(cut, {i, j}, Rules.pine_wood())
+
+    if World.biome(state.world.seed, hero.x, hero.y) == :pine and left > 0 do
+      rate = Rules.kit(hero.hero).chop
+      acc = hero.chop + 1
+
+      if acc >= rate do
+        state = %{state | world: %{state.world | cut: Map.put(cut, {i, j}, left - 1)}}
+        state = add_resource(state, :wood, 1)
+        put_entity(state, %{state.entities[hero.id] | chop: 0})
+      else
+        put_entity(state, %{hero | chop: acc})
+      end
+    else
+      state
+    end
   end
 
   defp mine(state) do
@@ -436,6 +457,7 @@ defmodule LastKeep.Game.Sim do
       chunks: %{},
       discovered: keep_chunks(),
       claimed: MapSet.new(),
+      cut: %{},
       portals:
         Enum.map(grouped[:portal] || [], fn poi ->
           Map.merge(poi, %{hp: hp, max_hp: hp, r: 28.0})

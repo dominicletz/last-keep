@@ -65,9 +65,12 @@ defmodule LastKeep.Game.World do
     generate(seed).chunks[{cx, cy}]
   end
 
+  def cell_index(x, y) when is_number(x) and is_number(y) do
+    {round(x / @cell), round(y / @cell)}
+  end
+
   def biome(seed, x, y) when is_integer(seed) and is_number(x) and is_number(y) do
-    i = round(x / @cell)
-    j = round(y / @cell)
+    {i, j} = cell_index(x, y)
     cx = Integer.floor_div(i * @cell, @chunk)
     cy = Integer.floor_div(j * @cell, @chunk)
 

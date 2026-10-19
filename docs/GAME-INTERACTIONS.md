@@ -78,7 +78,7 @@ flowchart LR
   house -->|town tax| gold
   farmer -->|labor stakes a croft| field
 
-  pine[Pine forest] -.->|chop after the yard is cut| wood
+  pine[Pine forest] -->|chop after the yard is cut| wood
   meadow[Meadow] -->|sow only here| field
   chest[Chest] -->|24 gold once| gold
   portal[Portal] -->|wave bearing| monsters
@@ -178,9 +178,9 @@ A chest on the seeded land pays 24 gold the first time a living hero stands on i
 
 ## World edges
 
-Solid arrows in the graph are in the simulation. Dotted arrows are still `planned` in `interactions.json`. The chest, the portal, the quarry, the meadow sow, and the stone wall are implemented. Pine wood, the camp, the shrine, the hermit, and the merchant stay planned. Generation stays off the hot tick. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is in the resource list.
+Solid arrows in the graph are in the simulation. Dotted arrows are still `planned` in `interactions.json`. The chest, the portal, the quarry, the meadow sow, the stone wall, and the pine chop are implemented. The camp, the shrine, the hermit, and the merchant stay planned. Generation stays off the hot tick. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is in the resource list.
 
-Pine forest is the wood that refills a wall line after the yard trees are cut. Any living hero chops a pine that still has wood. The seventy bare trunks stay bare.
+Pine forest is the wood that refills a wall line after the yard trees are cut. Any living hero chops a pine that still has wood. Each pine holds 12. A yard tree within 48 takes the chop instead. The seventy bare trunks stay bare.
 
 A quarry is the engineer's walk. It holds 40 stone. An engineer takes 2 per work tick and any other living hero takes 1. The stock caps at 200. A stone wall costs 8 stone and 4 wood and has 280 health, because a troll bite eats a wood wall. A wood wall stays 8 wood, or 4 for an engineer, at 170 health.
 

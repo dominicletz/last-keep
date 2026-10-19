@@ -27,6 +27,7 @@ defmodule LastKeep.Game.State do
       chunks: %{},
       discovered: MapSet.new(),
       claimed: MapSet.new(),
+      cut: %{},
       portals: [],
       chests: [],
       camps: [],

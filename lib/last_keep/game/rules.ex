@@ -200,6 +200,8 @@ defmodule LastKeep.Game.Rules do
   def cap(:stone), do: 200
 
   def quarry_stone, do: 40
+  def pine_wood, do: 12
+
   def quarry_take(:engineer), do: 2
   def quarry_take(_), do: 1
 
