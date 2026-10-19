@@ -107,7 +107,7 @@ The concept clearing is `theme.jpg` at 366,314, 48×48. Its noise is 12.43. The 
 
 The floors are spread 2 and focal contrast 5. The noise cap is 12. Spread and contrast only rise. The cap only falls. Sheet props put the full keep box at a day gap of 3 and dusk noise of 12.03. The inner subject restores the gap, and dusk sunset flecks now start at hash 0.88 so the yard stays under the cap. The clearing tile stays noisier than the cap.
 
-Hero and keep readability is the shared `readability` in `art_score.js`: the ink box in internal pixels and the mean luma gap of the silhouette edge against the ground, floors 20 and 60, at day, dusk, and night. That function lands with the monster-yard change. This pipeline calls it for the keep and each hero once that change is on main. It does not define a second contrast.
+Hero and keep readability is the shared `readability` in `art_score.js`. The same function scores monsters at 20 pixels and contrast 60. Heroes stand on the path and on the grass. At the rank-0 gameplay camera the shortest ink box is 32 pixels, and the quiet sample is the scout at night on the path, contrast 29.21. The keep's ink box is 197 pixels, and its quiet sample is the day edge, contrast 25.45. The floors are hero 32 and 29, keep 197 and 25, at day, dusk, and night. They only rise. This is not a second contrast.
 
 ## Gallery and the playtest rounds
 

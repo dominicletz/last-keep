@@ -1,4 +1,5 @@
 const { expect } = require("@playwright/test")
+const { settledHolds } = require("./settled")
 const { noteNorth, noteProgress } = require("./steer")
 const fs = require("fs")
 const path = require("path")
@@ -1886,6 +1887,8 @@ async function readMatch(page) {
       triangles: perf.triangles || 0,
       rims: perf.rims || 0,
       census: perf.census || { inScene: 0, orphans: 0, pooled: 0, byRole: {}, settled: 0 },
+      chests: (game.chests || []).length,
+      portals: (game.portals || []).length,
       p95: null,
       paints: perf.paints || [],
       maxStep: perf.maxStep || 0,
@@ -2046,7 +2049,7 @@ async function sixSeatMatch(browser) {
         const heaps = [gcHeaps.get(early), gcHeaps.get(early + 3)]
         const note = JSON.stringify({ first, later, heaps })
         expect(later.census.orphans, note).toBe(0)
-        expect(later.census.settled, note).toBeLessThanOrEqual(first.census.settled)
+        expect(settledHolds(first, later), note).toBe(true)
         // Heartwood, once, adds 280 to the perf keep. Any other max is a leak.
         const keepTops = [100000, 100280]
         expect(keepTops, note).toContain(first.keepMax)

@@ -425,6 +425,13 @@ export function inkHeight(mask, width, height) {
 // The floor is about 80% of the smallest measured monster, and it only rises.
 export const readabilityFloor = { height: 20, contrast: 60 }
 
+// Rank 0, gameplay camera, path and grass, day dusk and night.
+// The quiet hero is the scout at night on the path, contrast 29.21, height 32.
+// The quiet keep is the day edge, contrast 25.45, height 197.
+// These floors only rise. The monster floor above stays 20 and 60.
+export const heroReadabilityFloor = { height: 32, contrast: 29 }
+export const keepReadabilityFloor = { height: 197, contrast: 25 }
+
 export function readability(frame, ground) {
   const mask = frame.mask
   const width = frame.width

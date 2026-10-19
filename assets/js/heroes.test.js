@@ -1,9 +1,13 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { fitSlack, horizontalRadius, models } from "../models/registry.js"
+import { gameFrame, renderParts } from "../models/raster.js"
 import { heroCrops, conceptFigure } from "../models/sprites.js"
+import { heroReadabilityFloor, readability } from "./art_score.js"
+import { groundPixels } from "./ground.js"
 import { cardSourceHeight, pictureColumn, scaleFront, sheetRow, spriteHeight } from "./pictures.js"
 import { heroKinds, heroParts, heroSignature } from "./heroes.js"
+import { groundUnderMask } from "./yard_sample.js"
 
 test("each hero builds a distinct mesh signature", () => {
   const kinds = heroKinds()
@@ -76,6 +80,36 @@ test("a hero sheet walks, strikes, and falls", () => {
   }
   assert.ok(top(10) < top(0) * 0.5)
   assert.notEqual(top(5), top(0))
+})
+
+test("each hero reads against the path and the grass at the gameplay camera", () => {
+  assert.equal(heroReadabilityFloor.height, 32)
+  assert.equal(heroReadabilityFloor.contrast, 29)
+  const grounds = {}
+  for (const phase of ["day", "dusk", "night"]) grounds[phase] = groundPixels(phase)
+  const { frame, camera } = gameFrame(0)
+  let shortest = Infinity
+  let quietest = Infinity
+  for (const kind of heroKinds()) {
+    const base = heroParts(kind)
+    for (const [x, z] of [
+      [160, 0],
+      [160, 80]
+    ]) {
+      const parts = base.map((part) => ({ ...part, x, z }))
+      for (const light of ["day", "dusk", "night"]) {
+        const image = renderParts(parts, light, 0)
+        const rgb = groundUnderMask(image, camera, frame, grounds[light])
+        const read = readability(image, { rgb, width: image.width, height: image.height })
+        assert.ok(read.height >= heroReadabilityFloor.height, `${kind} ${light} is ${read.height}px`)
+        assert.ok(read.contrast >= heroReadabilityFloor.contrast, `${kind} ${x},${z} ${light} contrast ${read.contrast}`)
+        if (read.height < shortest) shortest = read.height
+        if (read.contrast < quietest) quietest = read.contrast
+      }
+    }
+  }
+  assert.ok(heroReadabilityFloor.height >= shortest * 0.5, `height floor is under half of ${shortest}`)
+  assert.ok(heroReadabilityFloor.contrast >= quietest * 0.5, `contrast floor is under half of ${quietest}`)
 })
 
 test("each hero picture stays inside the gameplay radius", () => {
