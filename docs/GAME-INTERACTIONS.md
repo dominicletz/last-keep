@@ -68,6 +68,7 @@ flowchart LR
   monsters -->|bodies block| monsters
   warrior -->|dash passes through| monsters
   keep -->|solid obstacle| warrior
+  keep -->|returns a downed hero| warrior
   wood -->|upgrade the keep| keep
   gold -->|upgrade the keep| keep
   keep -->|wider town and camera| wall
@@ -142,6 +143,8 @@ Who depends on it: the warrior who would otherwise meet the whole pack in melee.
 The keep is the loss condition. Monsters bite it when they are closer to it than to a hero. Walls take that bite instead while they stand. Food spent beside the keep restores its health. Heartwood raises its maximum. When its health hits zero the run is over.
 
 The keep is solid. A hero stops at the wall. A monster stops at the edge and bites from there. A monster that is already inside still bites.
+
+A downed hero returns at full kit health on the spawn ring. During a wave that wait is 160 ticks. During the day it is 40. The fallen phase does not respawn.
 
 Clearing a wave pays the gold the next raise costs. At rank 0 that is 8 gold, on top of the kill bounties. A later clear pays the next rank's gold, and a keep at rank 4 pays nothing. Raising the keep spends wood and gold, and only while the hero stands inside radius 100 of the keep. Outside that radius the button stays on the bar, disabled, and a hover, a click, or a tap says "Walk to the keep". The phone context button does the same. The server refuses an out-of-range raise with those words. There is no card pick. Rank 0 costs 24 wood and 8 gold. Each rank adds 12 wood and 6 gold, and the keep stops at rank 4. The build radius becomes the wider of the hero's kit range and 180 plus 48 per rank. The camera pulls back by 36 per rank, the dirt disc grows by 40, and the view scale grows by 0.12.
 

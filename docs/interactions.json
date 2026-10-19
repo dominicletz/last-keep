@@ -87,6 +87,7 @@
     {"from": "warrior", "to": "monsters", "via": "A hero stops on a monster. The warrior dash is the one pass through a monster.", "status": "implemented", "rule": "pass_monsters"},
     {"from": "warrior", "to": "warrior", "via": "A living hero stops on another living hero.", "status": "implemented", "rule": "defp body_blocked?"},
     {"from": "keep", "to": "warrior", "via": "The keep is solid. A hero stops at the wall.", "status": "implemented", "rule": "pass_keep"},
+    {"from": "keep", "to": "warrior", "via": "A downed hero returns at full health on the spawn ring. A wave waits 160 ticks. The day waits 40. The fallen phase does not respawn.", "status": "implemented", "rule": "defp respawns"},
     {"from": "keep", "to": "monsters", "via": "The keep is solid. A monster bites it from the edge.", "status": "implemented", "rule": "pass_keep"},
     {"from": "wood", "to": "keep", "via": "Raising the keep spends wood and gold inside radius 100. There is no card pick.", "status": "implemented", "rule": "defp try_raise"},
     {"from": "keep", "to": "wall", "via": "Each keep rank widens the build radius and pulls the camera back.", "status": "implemented", "rule": "def build_range"},
