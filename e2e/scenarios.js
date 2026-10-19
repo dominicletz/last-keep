@@ -2323,6 +2323,24 @@ async function raiseOnTheBar(browser, errors) {
   })
   expect(Math.hypot(spot.x, spot.y)).toBeGreaterThanOrEqual(100)
   expect(spot.town).toBe(0)
+  // Round 10 left Ada at (-122, -252). The click on the disabled raise
+  // has to write the hint from that pose, not only from the spawn.
+  const pose = await walkUntil(page, {
+    timeout: 20_000,
+    label: "raise pose",
+    poll: 80,
+    done: (state) => Math.hypot(state.x + 122, state.y + 252) <= 18,
+    step: (current) =>
+      current.evaluate(() => {
+        const me = window.__lastKeep.self
+        if (!me) return null
+        const keys = window.__lastKeepTest.around(-122, -252)
+        for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
+        return { x: me.x, y: me.y }
+      })
+  })
+  expect(Math.hypot(pose.x + 122, pose.y + 252)).toBeLessThanOrEqual(18)
+  await expect(raise).toBeDisabled()
   await hit.hover()
   await expect(reason).toHaveText("Walk to the keep")
   await page.mouse.move(1100, 700)
