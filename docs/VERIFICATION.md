@@ -494,6 +494,10 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 - Deploy of #90 failed `phoneClear` at 150s waiting for Ada, Lux, Bram, and Pip on Nia's roster, then passed on retry. `failOnFlakyTests` failed the job. The roster pin hides that node when the phone has no canvas box, so `innerText` stays empty after the room has already accepted the seats. The four guests now join together. The wait reads `__lastKeep.seats` from the snapshot, and a seat counts only when `connected` is true. `e2e/roster.test.js` keeps a blank roster failing the text check while the confirmed seats pass, and it keeps the four joins in flight together. One load of 40s times four is past 150s. The phone timeout stays 150s. The sizes stay 844×390, 667×375, and 932×430. `failOnFlakyTests` stays on in CI. This does not change the simulation. The coverage floor stays 77.
 
+## 2026-10-19 a cleared wave pays the next raise
+
+- Wave 1 paid the two goblin bounties and a warrior's extra gold, 3 gold in the round-10 purse and 2 gold above the bounties in `a cleared wave 1 pays the eight gold a raise costs` before the fix. The rank-0 raise costs 8. `Rules.clear_purse/1` is that gold, taken from `keep_upgrade_cost/1`, and `clear_wave` adds it when the night ends. Rank 4 pays nothing. Kill bounties stay on top. The coverage floor stays 77.
+
 ## 2026-10-19 heroes and the keep use the monster readability
 
 - `readability` is still one function. The ink box is internal pixels. Contrast is the mean luma gap of the silhouette edge against the ground under that edge. Heroes stand at (160, 0) and (160, 80), the path and the grass, in day, dusk, and night. The shortest box is 32. The quiet sample is the scout at night on the path, contrast 29.21. The keep at rank 0 is 197 pixels, and the quiet sample is the day edge, contrast 25.45. The floors are hero 32 and 29, keep 197 and 25. The monster floor stays 20 and 60. A floor under half the measured figure fails. These floors only rise. The camera stays at distance 150. This does not change the simulation. The coverage floor stays 77.

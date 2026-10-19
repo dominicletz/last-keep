@@ -1521,6 +1521,7 @@ defmodule LastKeep.Game.Sim do
 
   defp clear_wave(state) do
     {hints, rng} = Waves.plan(state.wave + 1, state.rng)
+    state = add_resource(state, :gold, Rules.clear_purse(state.town))
 
     %{
       state
