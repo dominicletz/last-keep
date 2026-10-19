@@ -148,28 +148,21 @@ export function createView(stage) {
   )
   mapTable.position.set(0, 8, 160)
   mapTable.userData.role = "table"
-  const clothCanvas = document.createElement("canvas")
-  clothCanvas.width = 29
-  clothCanvas.height = 29
-  const clothMap = new THREE.CanvasTexture(clothCanvas)
-  clothMap.magFilter = THREE.NearestFilter
-  clothMap.minFilter = THREE.NearestFilter
-  clothMap.colorSpace = THREE.SRGBColorSpace
-  // Upload now. A later first paint, when a hero reaches the table, used to
-  // add this texture between the two match-budget samples.
-  const clothCtx = clothCanvas.getContext("2d")
-  clothCtx.fillStyle = "#6e4b32"
-  clothCtx.fillRect(0, 0, clothCanvas.width, clothCanvas.height)
-  clothMap.needsUpdate = true
-  renderer.initTexture(clothMap)
-  const mapCloth = new THREE.Mesh(
-    trackGeometry(new THREE.PlaneGeometry(40, 24)),
-    new THREE.MeshLambertMaterial({ map: clothMap })
-  )
+  const mapCloth = new THREE.Group()
   mapCloth.rotation.x = -Math.PI / 2
   mapCloth.position.set(0, 13.2, 160)
   mapCloth.visible = false
   mapCloth.userData.role = "map"
+  const clothBoard = new THREE.Mesh(trackGeometry(new THREE.PlaneGeometry(40, 24)), mat(0x6e4b32))
+  const clothMarks = new THREE.InstancedMesh(
+    trackGeometry(new THREE.PlaneGeometry(40 / 29, 24 / 29)),
+    mat(0xe6d3a1),
+    29 * 29
+  )
+  clothMarks.count = 0
+  clothMarks.frustumCulled = false
+  clothMarks.userData.dummy = new THREE.Object3D()
+  mapCloth.add(clothBoard, clothMarks)
   scene.add(mapTable, mapCloth)
   const groundBytes = groundPixels("day")
   const groundMap = new THREE.DataTexture(groundBytes, GROUND_TEX, GROUND_TEX)
@@ -650,7 +643,7 @@ export function createView(stage) {
 
       sync("tree", snap.trees || [], () => groupFrom(modelParts("tree")))
 
-      paintMapCloth(clothCanvas, clothMap, mapCloth, snap.map)
+      paintMapCloth(mapCloth, clothMarks, snap.map)
       sync("chest", snap.chests || [], () => {
         const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(16, 12, 16)), mat(0xf0c14a, 0xc9a227))
         mesh.userData.lift = 8
@@ -1417,28 +1410,32 @@ export function createView(stage) {
     return true
   }
 
-  function paintMapCloth(canvas, texture, mesh, map) {
+  function paintMapCloth(group, marks, map) {
     const chunks = map && map.chunks
     if (!chunks) {
-      mesh.visible = false
+      group.visible = false
       return
     }
     const sig = chunks.map((chunk) => `${chunk.cx},${chunk.cy}`).join("|")
-    if (sig !== mesh.userData.sig) {
-      const ctx = canvas.getContext("2d")
-      ctx.fillStyle = "#6e4b32"
-      ctx.fillRect(0, 0, 29, 29)
-      ctx.fillStyle = "#e6d3a1"
+    if (sig !== marks.userData.sig) {
+      const dummy = marks.userData.dummy
+      let n = 0
       for (const chunk of chunks) {
-        const x = chunk.cx + 14
-        const y = 14 - chunk.cy
-        if (x < 0 || y < 0 || x > 28 || y > 28) continue
-        ctx.fillRect(x, y, 1, 1)
+        const px = chunk.cx + 14
+        const py = 14 - chunk.cy
+        if (px < 0 || py < 0 || px > 28 || py > 28) continue
+        dummy.position.set(((px + 0.5) / 29 - 0.5) * 40, (0.5 - (py + 0.5) / 29) * 24, 0.05)
+        dummy.rotation.set(0, 0, 0)
+        dummy.scale.set(1, 1, 1)
+        dummy.updateMatrix()
+        marks.setMatrixAt(n, dummy.matrix)
+        n += 1
       }
-      texture.needsUpdate = true
-      mesh.userData.sig = sig
+      marks.count = n
+      marks.instanceMatrix.needsUpdate = true
+      marks.userData.sig = sig
     }
-    mesh.visible = true
+    group.visible = true
   }
 
   function placeMesh(key, mesh) {
