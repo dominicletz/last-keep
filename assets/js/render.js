@@ -252,7 +252,7 @@ export function createView(stage) {
     depthWrite: true,
     transparent: false
   })
-  const pathUnit = 18
+  const pathUnit = 28
   const pathTile = propBytes("path", "day")
   const pathNSMap = new THREE.DataTexture(pathTile.rgba, pathTile.w, pathTile.h)
   const pathEWMap = new THREE.DataTexture(pathTile.rgba, pathTile.w, pathTile.h)
@@ -268,13 +268,13 @@ export function createView(stage) {
   pathNSMap.repeat.set(1, 280 / pathUnit)
   pathEWMap.repeat.set(280 / pathUnit, 1)
   const pathNS = new THREE.Mesh(
-    new THREE.PlaneGeometry(18, 280),
+    new THREE.PlaneGeometry(28, 280),
     new THREE.MeshBasicMaterial({ map: pathNSMap, color: 0xffffff })
   )
   pathNS.rotation.x = -Math.PI / 2
   pathNS.position.y = 0.5
   const pathEW = new THREE.Mesh(
-    new THREE.PlaneGeometry(280, 18),
+    new THREE.PlaneGeometry(280, 28),
     new THREE.MeshBasicMaterial({ map: pathEWMap, color: 0xffffff })
   )
   pathEW.rotation.x = -Math.PI / 2

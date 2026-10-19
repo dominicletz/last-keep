@@ -1,4 +1,4 @@
-import { grassAt } from "./tiles.js"
+import { grassAt, propBytes } from "./tiles.js"
 
 // Grass, path, pine shade, stone, and the sunset band. Hexes are the STYLE.md tokens.
 // The base is the concept clearing tile.
@@ -10,6 +10,7 @@ export const PLAZA_TEX = 256
 export const PLAZA_SPAN = 300
 
 const PATH = [0x5e, 0x45, 0x29]
+const PINE = [0x35, 0x3e, 0x27]
 const SHADE = [0x2c, 0x34, 0x16]
 const STONE = [0x4b, 0x3c, 0x33]
 const PEBBLE = [0x65, 0x4e, 0x41]
@@ -33,6 +34,7 @@ function hash(x, y) {
 
 function paint(phase, size, span) {
   const rgba = new Uint8Array(size * size * 4)
+  const street = propBytes("path", phase)
   for (let iy = 0; iy < size; iy++) {
     for (let ix = 0; ix < size; ix++) {
       const u = (ix + 0.5) / size
@@ -51,9 +53,18 @@ function paint(phase, size, span) {
       // rate is what keeps the dusk yard under the noise cap.
       const pineBand = radius > 168 && radius < 330
       if (phase === "dusk" && n2 > 0.88 && !pineBand) color = SUNSET
+      // The painted forest floor is the pine token. The clearing grass stays inside the wall.
+      if (pineBand) color = mix(color, PINE, 0.55)
       const pathBand = Math.min(Math.abs(worldX), Math.abs(worldZ))
       const along = Math.max(Math.abs(worldX), Math.abs(worldZ))
-      if (pathBand < 12 + n * 14 && along < span * 0.46) color = mix(PATH, color, pathBand / 30)
+      // The painted street is the path crop, wider than a single hero.
+      if (pathBand < 22 + n * 8 && along < span * 0.46) {
+        const tx = ((ix % street.w) + street.w) % street.w
+        const ty = ((iy % street.h) + street.h) % street.h
+        const po = (ty * street.w + tx) * 4
+        const painted = [street.rgba[po], street.rgba[po + 1], street.rgba[po + 2]]
+        color = mix(painted, color, pathBand / 36)
+      }
       if (radius > 34 && radius < 82 && n > 0.35) color = mix(PATH, color, (radius - 34) / 70)
       if (radius < 48) color = mix(SHADE, color, 0.25 + (radius / 48) * 0.75)
       if (radius > 300) {

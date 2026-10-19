@@ -5,6 +5,7 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 import jpeg from "jpeg-js"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { propBytes } from "./tiles.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -124,6 +125,52 @@ function blockP25(bytes, width, height) {
   counts.sort((a, b) => a - b)
   return counts[Math.floor(0.25 * (counts.length - 1))]
 }
+
+test("the yard floor wears the painted pine and the street wears the path crop", () => {
+  const pine = [0x35, 0x3e, 0x27]
+  const dist = (r, g, b, target) => {
+    const dr = r - target[0]
+    const dg = g - target[1]
+    const db = b - target[2]
+    return Math.sqrt(dr * dr + dg * dg + db * db)
+  }
+  for (const phase of ["day", "dusk", "night"]) {
+    const pixels = groundPixels(phase)
+    const street = propBytes("path", phase)
+    let pineN = 0
+    let pineNear = 0
+    let streetN = 0
+    let streetNear = 0
+    for (let iy = 0; iy < GROUND_TEX; iy++) {
+      for (let ix = 0; ix < GROUND_TEX; ix++) {
+        const worldX = ((ix + 0.5) / GROUND_TEX - 0.5) * GROUND_SPAN
+        const worldZ = -((iy + 0.5) / GROUND_TEX - 0.5) * GROUND_SPAN
+        const radius = Math.hypot(worldX, worldZ)
+        const offset = (iy * GROUND_TEX + ix) * 4
+        const r = pixels[offset]
+        const g = pixels[offset + 1]
+        const b = pixels[offset + 2]
+        if (radius > 180 && radius < 300) {
+          pineN += 1
+          if (dist(r, g, b, pine) <= 30) pineNear += 1
+        }
+        const band = Math.min(Math.abs(worldX), Math.abs(worldZ))
+        const along = Math.max(Math.abs(worldX), Math.abs(worldZ))
+        if (band < 6 && along > 40 && along < 240) {
+          streetN += 1
+          const tx = ((ix % street.w) + street.w) % street.w
+          const ty = ((iy % street.h) + street.h) % street.h
+          const po = (ty * street.w + tx) * 4
+          if (dist(r, g, b, [street.rgba[po], street.rgba[po + 1], street.rgba[po + 2]]) <= 14) streetNear += 1
+        }
+      }
+    }
+    const pineShare = pineNear / pineN
+    const streetShare = streetNear / streetN
+    assert.ok(pineShare >= 0.7, `${phase} pine share ${pineShare}`)
+    assert.ok(streetShare >= 0.75, `${phase} street share ${streetShare}`)
+  }
+})
 
 test("the painted yard keeps texture, a moss day, and a warm dusk edge", () => {
   for (const phase of ["day", "dusk", "night"]) {
