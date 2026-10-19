@@ -557,18 +557,22 @@ async function twoPlayerNight(browser) {
   await expect(page.locator("[data-clock]")).toHaveText("Waiting to start")
   expect(await page.evaluate(() => window.__lastKeep.light)).toBe("day")
   await page.waitForFunction(() => window.__lastKeep.light === "day")
-  await page.waitForFunction(() => {
-    const mood = window.__lastKeep.frameMood()
-    const ground = window.__lastKeep.frameGround()
-    return mood.problems.length === 0 && ground.problems.length === 0
-  })
-  const dayMood = await page.evaluate(() => window.__lastKeep.frameMood())
-  const dayGround = await page.evaluate(() => window.__lastKeep.frameGround())
-  expect(dayMood.problems).toEqual([])
-  expect(dayMood.lime).toBeLessThanOrEqual(0.08)
-  expect(dayMood.contrast).toBeGreaterThanOrEqual(9)
-  expect(dayGround.problems).toEqual([])
-  expect(dayGround.spread).toBeGreaterThanOrEqual(8)
+  const dayHandle = await page.waitForFunction(
+    () => {
+      const game = window.__lastKeep
+      if (!game || !game.yardGrade) return false
+      const grade = game.yardGrade()
+      return grade && grade.ok ? grade : false
+    },
+    undefined,
+    { polling: 100 }
+  )
+  const day = await dayHandle.jsonValue()
+  expect(day.mood.problems).toEqual([])
+  expect(day.mood.lime).toBeLessThanOrEqual(0.08)
+  expect(day.mood.contrast).toBeGreaterThanOrEqual(9)
+  expect(day.ground.problems).toEqual([])
+  expect(day.ground.spread).toBeGreaterThanOrEqual(8)
   const town = await page.evaluate(() => window.__lastKeep.townLook)
   expect(town.rank).toBe(0)
   expect(town.path).toBe(true)
@@ -625,35 +629,18 @@ async function twoPlayerNight(browser) {
     timeout: 20_000,
     polling: 100
   })
-  // One framebuffer read per poll. Mood and ground used to read it twice,
-  // and the second read finished after dusk on a slow runner.
-  const duskHandle = await page.waitForFunction(() => {
-    const game = window.__lastKeep
-    if (!game || game.light !== "dusk" || !game.frameGrade) return false
-    const grade = game.frameGrade()
-    if (grade.mood.problems.length || grade.ground.problems.length) return false
-    const stone = game.sampleObject(0, 36, 6)
-    const pine = game.sampleObject(-22, 30, -62)
-    if (stone.count < 24 || pine.count < 24) return false
-    const span = Math.abs(stone.hue - pine.hue) % 360
-    if (Math.min(span, 360 - span) < 25) return false
-    const hero = game.self
-    // The card is 32 world units. Height 40 is above it. The steel is height 18.
-    // A dark miss has almost no red, and dividing by that red jumps past 1.
-    // sampleObject throws when the mask is shorter than 24. That is a miss.
-    const plate = hero ? game.sampleObject(hero.x, 18, hero.y) : null
-    if (!plate || plate.count < 24) return false
-    const plateSat =
-      (Math.max(plate.r, plate.g, plate.b) - Math.min(plate.r, plate.g, plate.b)) / Math.max(plate.r, 1)
-    if (plateSat >= 0.2) return false
-    return {
-      mood: grade.mood,
-      ground: grade.ground,
-      stone,
-      pine,
-      plate
-    }
-  }, undefined, { timeout: 8_000, polling: 400 })
+  // One framebuffer read per poll, owned by duskGrade. Mood and ground used
+  // to read it twice, and the second read finished after dusk on a slow runner.
+  const duskHandle = await page.waitForFunction(
+    () => {
+      const game = window.__lastKeep
+      if (!game || !game.duskGrade) return false
+      const grade = game.duskGrade()
+      return grade && grade.ok ? grade : false
+    },
+    undefined,
+    { timeout: 8_000, polling: 400 }
+  )
   const duskMood = await duskHandle.jsonValue()
   expect(duskMood.mood.problems).toEqual([])
   expect(duskMood.mood.cool).toBeLessThanOrEqual(0.25)
@@ -661,31 +648,25 @@ async function twoPlayerNight(browser) {
   expect(duskMood.ground.problems).toEqual([])
   expect(duskMood.ground.spread).toBeGreaterThanOrEqual(8)
   expect(duskMood.stone && duskMood.plate && duskMood.pine).toBeTruthy()
-  const plateSat =
-    (Math.max(duskMood.plate.r, duskMood.plate.g, duskMood.plate.b) -
-      Math.min(duskMood.plate.r, duskMood.plate.g, duskMood.plate.b)) /
-    Math.max(duskMood.plate.r, 1)
-  expect(plateSat).toBeLessThan(0.2)
-  const hueDistance = (left, right) => {
-    const span = Math.abs(left - right) % 360
-    return Math.min(span, 360 - span)
-  }
+  expect(duskMood.plateSat).toBeLessThan(0.2)
   expect(duskMood.stone.count).toBeGreaterThanOrEqual(24)
   expect(duskMood.pine.count).toBeGreaterThanOrEqual(24)
   expect(duskMood.plate.count).toBeGreaterThanOrEqual(24)
-  expect(hueDistance(duskMood.stone.hue, duskMood.pine.hue)).toBeGreaterThanOrEqual(25)
+  expect(duskMood.hueGap).toBeGreaterThanOrEqual(25)
   await page.screenshot({ path: shot("dusk-host.png") })
   await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.light === "night", undefined, {
     timeout: 20_000,
     polling: 100
   })
-  const nightHandle = await page.waitForFunction(() => {
-    const game = window.__lastKeep
-    if (!game || game.light !== "night" || !game.frameGrade) return false
-    const grade = game.frameGrade()
-    if (grade.mood.problems.length || grade.ground.problems.length) return false
-    return grade.ground
-  }, undefined, { timeout: 8_000, polling: 400 })
+  const nightHandle = await page.waitForFunction(
+    () => {
+      const game = window.__lastKeep
+      if (!game || !game.nightGrade) return false
+      return game.nightGrade() || false
+    },
+    undefined,
+    { timeout: 8_000, polling: 400 }
+  )
   const nightGround = await nightHandle.jsonValue()
   expect(nightGround.spread).toBeGreaterThanOrEqual(8)
   await assertNightAudio(page)
@@ -745,31 +726,25 @@ async function movementIsInterpolated(page) {
   // until both are true. The poll is 20ms so the open window is not missed.
   // Arrival is the server position, inside the same 4 seconds.
   const rows = []
-  const travelOf = (row) => Math.hypot(row.sx - origin.x, row.sz - origin.y)
   await walkUntil(page, {
     timeout: 4_000,
     label: "interpolated walk",
     poll: 20,
     soft: true,
-    done: (row) => rows.length > 5 && rows.some((sample) => sample.open) && travelOf(row) > 20,
+    done: (row) => rows.length > 5 && rows.some((sample) => sample.open) && row.travel > 20,
     step: async (current) => {
       await holdCodes(current, ["KeyW"])
-      const row = await current.evaluate(() => {
+      const row = await current.evaluate((start) => {
         const game = window.__lastKeep
-        const track = game && game.motion
-        if (!track || !game.self) return null
-        const step = Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ)
-        const age = performance.now() - track.at
-        return { step, age, sx: game.self.x, sz: game.self.y, open: step > 0.4 && step < 14 && age >= 0 && age < 45 }
-      })
+        return game && game.blend ? game.blend(start) : null
+      }, origin)
       if (row) rows.push(row)
       return row
     }
   })
   expect(rows.length).toBeGreaterThan(5)
   const last = rows[rows.length - 1]
-  const travel = Math.hypot(last.sx - origin.x, last.sz - origin.y)
-  expect(travel).toBeGreaterThan(20)
+  expect(last.travel).toBeGreaterThan(20)
   expect(rows.some((row) => row.open)).toBe(true)
   const wave = await page.locator(".chip").boundingBox()
   const view = page.viewportSize()

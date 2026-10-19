@@ -24,6 +24,8 @@ Each round adds a test for every backlog item it closes and links that test from
 
 A color or hue probe samples the object's own pixels. `sampleObject` renders that mesh or sprite alone, keeps the fragments that are not the clear color, and `maskedStats` takes the median. Fewer than 24 object pixels throws `sample short` with the count. Do not add a single-point `readPixels` probe under `e2e`. `e2e/probe.test.js` fails the run when one appears. A scripted walk uses `walkUntil`. It returns when the server position matches and throws that position on timeout. A key hold is not the arrival. The poll inside `walkUntil` is only how often the position is read.
 
+Other lanes change visual checks only through that helper. The day yard is `yardGrade`, dusk plate, pine, and stone are `duskGrade`, the night ground is `nightGrade`, and the movement blend window is `blend`. Do not edit those probes inside `twoPlayerNight` or `movementIsInterpolated`. `e2e/probe.test.js` fails when the scenario owns the sample points, the frame read, or the blend thresholds.
+
 ## Layout
 
 - `lib/last_keep/game/sim.ex` is the pure tick. A `State` struct is the whole world. `phase` is `{:build, ticks}`, `{:wave, ticks}`, or `:over`.
