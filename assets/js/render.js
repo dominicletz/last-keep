@@ -23,6 +23,7 @@ import {
   flameColor,
   groundColor,
   lightName,
+  hueGap,
   lumaOf,
   maskedStats,
   ownedNear,
@@ -154,6 +155,13 @@ export function createView(stage) {
   clothMap.magFilter = THREE.NearestFilter
   clothMap.minFilter = THREE.NearestFilter
   clothMap.colorSpace = THREE.SRGBColorSpace
+  // Upload now. A later first paint, when a hero reaches the table, used to
+  // add this texture between the two match-budget samples.
+  const clothCtx = clothCanvas.getContext("2d")
+  clothCtx.fillStyle = "#6e4b32"
+  clothCtx.fillRect(0, 0, clothCanvas.width, clothCanvas.height)
+  clothMap.needsUpdate = true
+  renderer.initTexture(clothMap)
   const mapCloth = new THREE.Mesh(
     trackGeometry(new THREE.PlaneGeometry(40, 24)),
     new THREE.MeshLambertMaterial({ map: clothMap })
@@ -797,6 +805,10 @@ export function createView(stage) {
         frameMood,
         frameGround,
         frameGrade,
+        yardGrade,
+        duskGrade,
+        nightGrade,
+        blend,
         pictureGrade,
         tick: snap.tick,
         alive: me ? !!me.alive : !!kept.alive,
@@ -1146,6 +1158,74 @@ export function createView(stage) {
       mood: { ...mood, light: liveLight, problems: moodProblems(mood, liveLight) },
       ground: { ...ground, light: liveLight, problems: groundProblems(ground) }
     }
+  }
+
+  // Day, dusk, and night each take one framebuffer read. The plate, the keep
+  // pine, and the stone sit here so a lane does not edit them in the scenario.
+  function yardGrade() {
+    if (liveLight !== "day") return null
+    const grade = frameGrade()
+    return {
+      ok: grade.mood.problems.length === 0 && grade.ground.problems.length === 0,
+      mood: grade.mood,
+      ground: grade.ground
+    }
+  }
+
+  function plateSatOf(sample) {
+    const peak = Math.max(sample.r, sample.g, sample.b)
+    return (peak - Math.min(sample.r, sample.g, sample.b)) / Math.max(peak, 1)
+  }
+
+  function duskGrade() {
+    if (liveLight !== "dusk") return null
+    const grade = frameGrade()
+    if (grade.mood.problems.length || grade.ground.problems.length) {
+      return { ok: false, mood: grade.mood, ground: grade.ground }
+    }
+    const stone = sampleObject(0, 36, 6)
+    const pine = sampleObject(-22, 30, -62)
+    const hero = window.__lastKeep && window.__lastKeep.self
+    if (!hero) return { ok: false, mood: grade.mood, ground: grade.ground }
+    // The card is 32 world units. Height 40 is above it. The steel is height 18.
+    const plate = sampleObject(hero.x, 18, hero.y)
+    const gap = hueGap(stone.hue, pine.hue)
+    const sat = plateSatOf(plate)
+    const counted =
+      stone.count >= sampleMinPixels && pine.count >= sampleMinPixels && plate.count >= sampleMinPixels
+    const ok = gap >= 25 && sat < 0.2 && counted
+    return {
+      ok,
+      mood: grade.mood,
+      ground: grade.ground,
+      stone,
+      pine,
+      plate,
+      hueGap: gap,
+      plateSat: sat
+    }
+  }
+
+  function nightGrade() {
+    if (liveLight !== "night") return null
+    const grade = frameGrade()
+    if (grade.mood.problems.length || grade.ground.problems.length) return null
+    return grade.ground
+  }
+
+  // The blend window is 45ms. An open step is past a twitch and short of a teleport.
+  function blend(origin) {
+    const game = window.__lastKeep
+    const track = game && game.motion
+    const self = game && game.self
+    if (!track || !self) return null
+    const step = Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ)
+    const age = performance.now() - track.at
+    const sx = self.x
+    const sz = self.y
+    const open = step > 0.4 && step < 14 && age >= 0 && age < 45
+    const travel = origin ? Math.hypot(sx - origin.x, sz - origin.y) : 0
+    return { step, age, sx, sz, open, travel }
   }
 
   function screenRect(object, width, height) {
