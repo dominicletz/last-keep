@@ -173,6 +173,9 @@ function start(code, seat, ui) {
     aim(x, y) {
       aim = { x, y, monster: false }
     },
+    toward(dx, dy) {
+      return keysToward(dx, dy)
+    },
     around(goalX, goalY) {
       const me = window.__lastKeep && window.__lastKeep.self
       if (!me) return []
