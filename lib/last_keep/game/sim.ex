@@ -106,7 +106,9 @@ defmodule LastKeep.Game.Sim do
           raise: player.pressed.raise or rise(player.input.raise, next.raise)
         }
 
-        put_player(state, %{player | input: next, pressed: pressed})
+        {mx, my} = norm(next.mx, next.my)
+        steered = player.steered or mx != 0.0 or my != 0.0
+        put_player(state, %{player | input: next, pressed: pressed, steered: steered})
 
       _ ->
         state
@@ -291,7 +293,8 @@ defmodule LastKeep.Game.Sim do
       generation: 0,
       input: @empty_input,
       prev: @empty_input,
-      pressed: @empty_pressed
+      pressed: @empty_pressed,
+      steered: false
     }
 
     state
@@ -359,11 +362,20 @@ defmodule LastKeep.Game.Sim do
       hero = state.entities[player.hero_id]
 
       if player.connected and hero.alive do
-        {mx, my} = norm(player.input.mx, player.input.my)
+        {mx, my, auto} = steer(state, hero, player)
         speed = Rules.kit(hero.hero).speed * speed_mult(state)
-        dx = mx * speed * 0.05
-        dy = my * speed * 0.05
+        step = speed * 0.05
+        dx = mx * step
+        dy = my * step
         {x, y} = slide(state, hero.x, hero.y, dx, dy, hero.r, %{ignore: hero.id})
+
+        {x, y} =
+          if auto and x == hero.x and y == hero.y do
+            around(state, hero, mx, my, step)
+          else
+            {x, y}
+          end
+
         {x, y} = clamp_map(x, y, Rules.map_radius())
         facing = facing_of(hero, player.input, x, y)
         put_entity(state, %{hero | x: x, y: y, facing: facing})
@@ -371,6 +383,69 @@ defmodule LastKeep.Game.Sim do
         state
       end
     end)
+  end
+
+  defp steer(state, hero, player) do
+    {mx, my} = norm(player.input.mx, player.input.my)
+
+    cond do
+      mx != 0.0 or my != 0.0 ->
+        {mx, my, false}
+
+      not (match?({:wave, _}, state.phase) and Rules.meets?(state.wave)) ->
+        {0.0, 0.0, false}
+
+      player.steered ->
+        {0.0, 0.0, false}
+
+      true ->
+        case approach_target(state, hero) do
+          nil ->
+            {0.0, 0.0, false}
+
+          monster ->
+            {nx, ny} = norm(monster.x - hero.x, monster.y - hero.y)
+            {nx, ny, true}
+        end
+    end
+  end
+
+  defp approach_target(state, hero) do
+    reach = Rules.approach_reach()
+
+    state
+    |> monsters()
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - hero.x, monster.y - hero.y) <= reach + monster.r
+    end)
+    |> closest(fn monster -> hypot(monster.x - hero.x, monster.y - hero.y) end)
+  end
+
+  defp around(state, hero, mx, my, step) do
+    goal_x = hero.x + mx * 400
+    goal_y = hero.y + my * 400
+    px = -my
+    py = mx
+    current = hypot(goal_x - hero.x, goal_y - hero.y)
+
+    closer =
+      for sign <- [1.0, -1.0],
+          scale <- [1.0, 0.5],
+          nx = hero.x + (mx * scale + px * sign) * step,
+          ny = hero.y + (my * scale + py * sign) * step,
+          not body_blocked?(state, nx, ny, hero.r, %{ignore: hero.id}),
+          dist = hypot(goal_x - nx, goal_y - ny),
+          dist < current,
+          do: {nx, ny, dist}
+
+    case closer do
+      [] ->
+        {hero.x, hero.y}
+
+      options ->
+        {nx, ny, _} = Enum.min_by(options, fn {_x, _y, dist} -> dist end)
+        {nx, ny}
+    end
   end
 
   defp gather(state) do
@@ -783,6 +858,11 @@ defmodule LastKeep.Game.Sim do
   defp maybe_attack(state, player, hero) do
     clicked = edged?(player, :attack)
 
+    threat =
+      if match?({:wave, _}, state.phase) and Rules.meets?(state.wave) do
+        strike_target(state, hero)
+      end
+
     cond do
       edged?(player, :place) ->
         case player.input.build do
@@ -799,9 +879,32 @@ defmodule LastKeep.Game.Sim do
       (player.input.attack or clicked) && hero.cooldowns.attack <= 0 ->
         cast(state, player, hero, :attack, Rules.kit(hero.hero).attack)
 
+      threat && hero.cooldowns.attack <= 0 ->
+        {state, player, hero} = face_threat(state, player, hero, threat)
+        cast(state, player, hero, :attack, Rules.kit(hero.hero).attack)
+
       true ->
         state
     end
+  end
+
+  defp strike_target(state, hero) do
+    reach = Rules.strike_reach(Rules.kit(hero.hero).attack)
+
+    state
+    |> monsters()
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - hero.x, monster.y - hero.y) <= reach + monster.r
+    end)
+    |> closest(fn monster -> hypot(monster.x - hero.x, monster.y - hero.y) end)
+  end
+
+  defp face_threat(state, player, hero, monster) do
+    facing = :math.atan2(monster.y - hero.y, monster.x - hero.x)
+    hero = %{hero | facing: facing}
+    player = %{player | input: %{player.input | ax: monster.x, ay: monster.y}}
+    state = state |> put_entity(hero) |> put_player(player)
+    {state, player, hero}
   end
 
   defp maybe_skill(state, player, hero, slot) do
