@@ -170,6 +170,9 @@ function start(code, seat, ui) {
       else keys.delete(code)
       send()
     },
+    aim(x, y) {
+      aim = { x, y, monster: false }
+    },
     around(goalX, goalY) {
       const me = window.__lastKeep && window.__lastKeep.self
       if (!me) return []
