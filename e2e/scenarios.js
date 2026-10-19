@@ -1748,7 +1748,17 @@ async function steerPast(page, goal, done, timeout, label) {
 
 async function exploreLand(browser) {
   const errors = []
-  const host = await createHost(browser, "Ada", "warrior")
+  const host = await createHost(browser, "Ada", "warrior", async (page) => {
+    await page.route("**/api/rooms", async (route) => {
+      const request = route.request()
+      if (request.method() !== "POST" || !request.url().endsWith("/api/rooms")) {
+        await route.continue()
+        return
+      }
+      const body = request.postDataJSON()
+      await route.continue({ postData: JSON.stringify({ ...body, seed: 5 }) })
+    })
+  })
   const page = host.page
   watch(page, "host", errors)
   await page.waitForFunction(() => (window.__lastKeep.chests || []).length > 0)
@@ -1770,14 +1780,22 @@ async function exploreLand(browser) {
   expect(sack).toContain(String(before + 24))
   await page.screenshot({ path: shot("chest-host.png") })
 
-  const portal = await page.evaluate(() => {
-    return window.__lastKeep.portals.reduce((best, row) => {
-      const dist = Math.hypot(row.x, row.y)
-      return !best || dist < best.dist ? { ...row, dist } : best
+  const portalGoal = { x: -1116, y: -1044 }
+  await steerPast(
+    page,
+    portalGoal,
+    (state) => Math.hypot(state.x - portalGoal.x, state.y - portalGoal.y) < 40,
+    70_000,
+    "portal"
+  )
+  const portal = await page.evaluate((goal) => {
+    return (window.__lastKeep.portals || []).reduce((best, row) => {
+      const dist = Math.hypot(row.x - goal.x, row.y - goal.y)
+      return dist < 80 && (!best || dist < best.dist) ? { ...row, dist } : best
     }, null)
-  })
+  }, portalGoal)
+  if (!portal) throw new Error("portal stayed hidden")
   const bearing = Math.atan2(portal.y, portal.x)
-  await steerPast(page, portal, (state) => Math.hypot(state.x - portal.x, state.y - portal.y) < 30, 70_000, "portal")
   const box = await page.locator("canvas").boundingBox()
   for (let swing = 0; swing < 6; swing += 1) {
     const gone = await page.evaluate((id) => !(window.__lastKeep.portals || []).some((row) => row.id === id), portal.id)
@@ -1801,11 +1819,10 @@ async function exploreLand(browser) {
   if (!broke.gone) {
     throw new Error(`portal still stands ${JSON.stringify(broke)}`)
   }
-  const living = await page.evaluate(() => {
-    return [...window.__lastKeep.portals]
-      .sort((a, b) => Math.hypot(a.x, a.y) - Math.hypot(b.x, b.y))
-      .slice(0, 2)
-  })
+  const living = [
+    { x: 360, y: -1692 },
+    { x: 144, y: 1944 }
+  ]
   await page.locator("[data-start]").click()
   await page.waitForFunction(() => window.__lastKeep.phase === "wave")
   const goblins = await page.evaluate(() => (window.__lastKeep.monsters || []).filter((row) => row.kind === "goblin"))
@@ -2135,6 +2152,42 @@ async function pictureGrade(browser) {
   await host.context.close()
 }
 
+async function readTheMap(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior")
+  const page = host.page
+  watch(page, "host", errors)
+  await steerPast(page, { x: 0, y: 160 }, (state) => Math.hypot(state.x, state.y - 160) < 70, 20_000, "table")
+  const report = await page.evaluate(() => {
+    const game = window.__lastKeep
+    const chunkOf = (x, y) => `${Math.floor(x / 512)},${Math.floor(y / 512)}`
+    const known = new Set((game.map && game.map.chunks ? game.map.chunks : []).map((chunk) => `${chunk.cx},${chunk.cy}`))
+    const hidden = (game.chests || []).filter((row) => !known.has(chunkOf(row.x, row.y)))
+    const builds = document.querySelectorAll(".build").length
+    const mapButton = [...document.querySelectorAll("button")].some((node) => /map/i.test(node.textContent || ""))
+    return {
+      cloth: !!(game.table && game.table.cloth),
+      table: game.table,
+      explored: known.size,
+      terrain: (game.chunks || []).length,
+      hidden: hidden.length,
+      builds,
+      mapButton
+    }
+  })
+  expect(report.cloth).toBe(true)
+  expect(report.table).toEqual({ x: 0, y: 160, cloth: true })
+  expect(report.explored).toBeGreaterThan(0)
+  expect(report.terrain).toBeLessThanOrEqual(25)
+  expect(report.hidden).toBe(0)
+  expect(report.builds).toBe(6)
+  expect(report.mapButton).toBe(false)
+  await assertDiegeticHud(page)
+  await page.screenshot({ path: shot("map-table.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
 module.exports = {
   prepareProof,
   proofDir,
@@ -2156,5 +2209,6 @@ module.exports = {
   captionsClearTheBuilds,
   phoneClear,
   exploreLand,
+  readTheMap,
   raiseNeedsTheKeep
 }

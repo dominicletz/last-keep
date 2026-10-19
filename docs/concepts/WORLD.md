@@ -106,6 +106,8 @@ The resource slice added stone, `Rules.cap(:stone)` of 200, and the meadow check
 
 The performance slice keeps generation off the hot tick. `twenty ticks with fifteen heroes leave the generator count put` builds every chunk, records the generator count, ticks 20 times with 15 connected heroes, and requires that count to stay put. A time ceiling belongs to the perf harness when that harness has a trunk baseline. This slice does not invent a looser timeout to go green. If the harness is absent, the generator count is the gate.
 
+The fog slice is the shared discovered set, the scout's extra ring, and the map table. A farmer reveals Chebyshev distance 1. A living scout reveals distance 2. The farmer's terrain payload does not include the scout's distant chunks, and the cloth at the table does. A chest outside the discovered set is absent from the snapshot. A hero within 80 of (0, 160) receives the cloth. A hero at the spawn does not. `a scout's ring is on the shared map and stays out of the farmer's terrain` and `readTheMap` are the proof. Claimed land is still next. Pine wood stays planned. The coverage floor stays 77.
+
 ## Locked numbers
 
 | Name | Value |

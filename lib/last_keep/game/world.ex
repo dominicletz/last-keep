@@ -36,6 +36,14 @@ defmodule LastKeep.Game.World do
     :persistent_term.get(built_key(seed), 0)
   end
 
+  def chunk_coord(x, y) when is_number(x) and is_number(y) do
+    {Integer.floor_div(trunc(x), @chunk), Integer.floor_div(trunc(y), @chunk)}
+  end
+
+  def chunk_in_bounds?({cx, cy}) when is_integer(cx) and is_integer(cy) do
+    cx >= @min_chunk and cx <= @max_chunk and cy >= @min_chunk and cy <= @max_chunk
+  end
+
   defp built_key(seed), do: {__MODULE__, :built, seed}
 
   defp build(seed) do

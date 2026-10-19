@@ -33,6 +33,10 @@ defmodule LastKeep.Game.Rules do
 
   def raise_reach, do: 100
 
+  def map_table, do: %{x: 0, y: 160}
+
+  def map_reach, do: 80
+
   def keep_upgrade_cost(rank) when is_integer(rank) and rank >= 0 and rank < 4 do
     %{wood: 24 + rank * 12, gold: 8 + rank * 6}
   end

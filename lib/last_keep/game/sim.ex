@@ -457,13 +457,18 @@ defmodule LastKeep.Game.Sim do
       Enum.reduce(living_heroes(state), {state.world.discovered, state.world.chunks}, fn hero,
                                                                                          {found,
                                                                                           chunks} ->
-        {cx, cy} = chunk_of(hero.x, hero.y)
-        ring = if hero.hero == :scout, do: 2, else: 1
+        {cx, cy} = World.chunk_coord(hero.x, hero.y)
+        ring = reveal_ring(hero)
 
         Enum.reduce(-ring..ring, {found, chunks}, fn dx, {found, chunks} ->
           Enum.reduce(-ring..ring, {found, chunks}, fn dy, {found, chunks} ->
             key = {cx + dx, cy + dy}
-            {MapSet.put(found, key), ensure_chunk(state.world.seed, chunks, key)}
+
+            if World.chunk_in_bounds?(key) do
+              {MapSet.put(found, key), ensure_chunk(state.world.seed, chunks, key)}
+            else
+              {found, chunks}
+            end
           end)
         end)
       end)
@@ -479,8 +484,8 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
-  defp chunk_of(x, y) do
-    {Integer.floor_div(trunc(x), 512), Integer.floor_div(trunc(y), 512)}
+  defp reveal_ring(hero) do
+    if hero.hero == :scout, do: 2, else: 1
   end
 
   defp open_chests(state) do
