@@ -2179,9 +2179,9 @@ async function readTheMap(browser) {
   const host = await createHost(browser, "Ada", "warrior")
   const page = host.page
   watch(page, "host", errors)
-  // The cloth exists only inside radius 80. Clearing the keys in the same
-  // sample that sees the hero there keeps the next send from walking through.
-  await walkUntil(page, {
+  // The cloth exists only inside radius 80. The sample that sees the hero
+  // there clears the keys, and that same sample is the one the check reads.
+  const report = await walkUntil(page, {
     timeout: 20_000,
     label: "table",
     poll: 80,
@@ -2194,25 +2194,22 @@ async function readTheMap(browser) {
         const held = Math.hypot(me.x, me.y - 160) < 70
         const keys = held ? [] : window.__lastKeepTest.around(0, 160)
         for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
-        return { x: me.x, y: me.y, held, cloth: !!(game.table && game.table.cloth) }
+        const chunkOf = (x, y) => `${Math.floor(x / 512)},${Math.floor(y / 512)}`
+        const known = new Set((game.map && game.map.chunks ? game.map.chunks : []).map((chunk) => `${chunk.cx},${chunk.cy}`))
+        const hidden = (game.chests || []).filter((row) => !known.has(chunkOf(row.x, row.y)))
+        return {
+          x: me.x,
+          y: me.y,
+          held,
+          cloth: !!(game.table && game.table.cloth),
+          table: game.table || null,
+          explored: known.size,
+          terrain: (game.chunks || []).length,
+          hidden: hidden.length,
+          builds: document.querySelectorAll(".build").length,
+          mapButton: [...document.querySelectorAll("button")].some((node) => /map/i.test(node.textContent || ""))
+        }
       })
-  })
-  const report = await page.evaluate(() => {
-    const game = window.__lastKeep
-    const chunkOf = (x, y) => `${Math.floor(x / 512)},${Math.floor(y / 512)}`
-    const known = new Set((game.map && game.map.chunks ? game.map.chunks : []).map((chunk) => `${chunk.cx},${chunk.cy}`))
-    const hidden = (game.chests || []).filter((row) => !known.has(chunkOf(row.x, row.y)))
-    const builds = document.querySelectorAll(".build").length
-    const mapButton = [...document.querySelectorAll("button")].some((node) => /map/i.test(node.textContent || ""))
-    return {
-      cloth: !!(game.table && game.table.cloth),
-      table: game.table,
-      explored: known.size,
-      terrain: (game.chunks || []).length,
-      hidden: hidden.length,
-      builds,
-      mapButton
-    }
   })
   expect(report.cloth).toBe(true)
   expect(report.table).toEqual({ x: 0, y: 160, cloth: true })
