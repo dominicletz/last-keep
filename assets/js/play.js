@@ -214,6 +214,8 @@ function start(code, seat, ui) {
         const reach = self.hero === "mage" || self.hero === "scout" ? 160 : 48
         const gap = Math.hypot(nearest.x - self.x, nearest.y - self.y)
         if (gap > reach) {
+          // Due west has no slide, so a chase onto the keep face sits at x 73.5
+          // and the night walks into the keep. The tangent is the same step as steer.
           for (const code of keysAround(self.x, self.y, nearest.x, nearest.y)) want.add(code)
         }
       }
