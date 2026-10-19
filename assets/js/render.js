@@ -217,7 +217,9 @@ export function createView(stage) {
   const sheetKinds = {
     house: { w: 56, h: 64, stand: true },
     field: { w: 46, h: 26, stand: false },
-    wall: { w: 30, h: 40, stand: true }
+    wall: { w: 30, h: 40, stand: true },
+    forge: { w: 48, h: 36, stand: true },
+    trap: { w: 22, h: 20, stand: true }
   }
   const sheetMaps = {}
   const sheetMats = {}
@@ -1624,7 +1626,7 @@ export function createView(stage) {
     } else {
       for (const piece of modelParts(row.kind)) group.add(pieceMesh(piece))
     }
-    const radius = row.kind === "house" || row.kind === "field" ? 22 : 12
+    const radius = { house: 22, field: 22, forge: 18, trap: 15 }[row.kind] || 12
     group.add(contactDisc(radius))
     return group
   }

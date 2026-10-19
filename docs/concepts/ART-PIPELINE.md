@@ -70,7 +70,7 @@ The locked palette is each of the forty `STYLE.md` tokens at 1, 0.60, 0.50, and 
 
 Hero and monster sheets are eight directions at world yaw 0°, 45°, 90°, 135°, 180°, 225°, 270°, and 315°, with yaw 0 facing +x. Each direction has at least four walk frames, three attack frames, and four death frames. A frame is at least 56 internal pixels tall at town rank 0, the same floor `STYLE.md` uses for the day raster. The heroes agent `bc-c0cd18ed` draws those sheets to this spec.
 
-Building and prop tiles follow the kind rows: wall, tower, trap, field, forge, mage tower, keep, tree, scenery, and house, plus the ground, the path, and the pine. The world agent `bc-89d79a69` draws terrain and point-of-interest tiles to the same scorer.
+Building and prop tiles follow the kind rows: wall, tower, trap, field, forge, mage tower, keep, tree, scenery, and house, plus the ground, the path, and the pine. Grass, masonry, the house, the field, the wall, and the path are phase tiles. The forge crop at 500,190, 200×150 and the ground torch at 520,490, 100×90 hold block p25 8 and hard edge 0.05 in day, dusk, and night, so a placed forge is that standing card and a placed trap is a standing card of the ground torch. A flat trap sat under the path and under its contact disc. Tower, the mage tower, the keep, the tree, and the felled wood still miss one of those floors, so they stay meshes. The pine figure stays the mesh.
 
 The pixel pass quantizes the 640×400 buffer once per frame. It does not add a shadow map. The perf harness belongs to agent `bc-af503d4f`.
 
