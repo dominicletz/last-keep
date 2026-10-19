@@ -71,6 +71,36 @@ defmodule LastKeep.Game.ClaimTest do
     assert reason(farmer) == "Not meadow"
   end
 
+  test "a barricade on unheld land spends nothing" do
+    portal = west_portal(5)
+    state = stand(:engineer, portal.x, portal.y)
+    wood = state.resources.wood
+    refused = barricade(state, portal.x + 80, portal.y)
+
+    assert walls(refused) == 0
+    assert refused.resources.wood == wood
+    assert reason(refused) == "The land is not held."
+    assert hero_cd(refused, :r) == 0
+
+    held = stand(:engineer, 0, 160)
+    wood = held.resources.wood
+    placed = barricade(held, 0, 260)
+    assert walls(placed) == 3
+    assert placed.resources.wood == wood - 10
+    assert hero_cd(placed, :r) == 240
+
+    claimed = %{
+      state
+      | world: %{state.world | claimed: MapSet.new([World.chunk_coord(portal.x, portal.y)])}
+    }
+
+    wood = claimed.resources.wood
+    outward = barricade(claimed, portal.x + 80, portal.y)
+    assert walls(outward) >= 1
+    assert outward.resources.wood == wood - 10
+    assert hero_cd(outward, :r) == 240
+  end
+
   defp place(state, x, y) do
     state
     |> Sim.input("ada", %{"build" => "wall", "place" => true, "ax" => x, "ay" => y})
@@ -124,6 +154,18 @@ defmodule LastKeep.Game.ClaimTest do
     |> Enum.find_value(fn {{i, j}, cell} ->
       if cell.biome == :pine, do: {i * 36.0, j * 36.0}
     end)
+  end
+
+  defp barricade(state, ax, ay) do
+    state
+    |> Sim.input("ada", %{"r" => true, "ax" => ax, "ay" => ay})
+    |> Sim.input("ada", %{"r" => false, "ax" => ax, "ay" => ay})
+    |> Sim.tick()
+  end
+
+  defp hero_cd(state, slot) do
+    hero = state.entities[state.players["ada"].hero_id]
+    hero.cooldowns[slot]
   end
 
   defp walls(state) do
