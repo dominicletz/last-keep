@@ -110,7 +110,7 @@ Held from round 9, and visible here:
 4. The clock moves from `Frenzy in 57s` through the clear to `Fallen`. Tick 1041 became tick 3409. LK-084 held. `playtests/round-10/shots/17-Ada.json`
 5. A downed engineer stays at 0 on the fallen snapshot, and the wounded warrior stays at 142. `playtests/round-10/shots/18-Bram.json`
 
-No new open row. The paid raise was not on the bar: gold stayed at 3, under the 8 the button asks for, so LK-082's woods stake was not replayed. The click did not write `Stand by the keep`.
+LK-094, LK-097, and LK-096. The purse stayed at 3 gold after 2 kills, under the 8 a raise costs, so LK-082's woods stake was not replayed. Wave 2 fell the keep with no counterattack. The click did not write `Stand by the keep`. The town rework of the disabled button owns that hint.
 
 What got tighter on this image, and what the yard still refuses:
 
