@@ -96,7 +96,7 @@ Night 1 is two goblins. The keep is the loss. Food still heals the keep from bes
 
 ## How a slice proves itself
 
-The concept page is this document. Generation, exploration, and the resource slice have landed. The walk clamp is 7200, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. A quarry pays stone, pine refuses a sow, and a stone wall costs 8 stone and 4 wood. A pine cell pays 12 wood, and a yard tree in reach takes the chop. The camp, the shrine, the hermit, and the merchant stay planned. The performance slice has landed. The coverage floor is 77.
+The concept page is this document. Generation, exploration, and the resource slice have landed. The walk clamp is 7200, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. A quarry pays stone, pine refuses a sow, and a stone wall costs 8 stone and 4 wood. A pine cell pays 12 wood, and a yard tree in reach takes the chop. A camp wakes one vagrant for 8 gold. The shrine, the hermit, and the merchant stay planned. The performance slice has landed. The coverage floor is 77.
 
 The generation slice adds `World.generate/1`. One test builds two worlds from seed 3 and requires equal biomes, blockers, and points of interest. One test requires the keep disc clear. One test flood-fills from the origin and requires every point of interest on the fill. One test requires each symmetry disagreement fraction to be at least 0.35.
 
@@ -111,6 +111,8 @@ The fog slice is the shared discovered set, the scout's extra ring, and the map 
 The claimed-land slice holds the keep disc of radius 400 and the chunk of a portal that has died. `the keep disc is held and a far chunk is not` places inside the disc, refuses a point past the hero's reach with "Too far", and refuses a point in a living portal's chunk with "The land is not held." Raising the town rank does not add a claimed chunk. `a dead portal claims its chunk and a field there still needs meadow` breaks that portal and then places the wall, and a sow on pine in the same chunk still spends nothing. `a barricade on unheld land spends nothing` refuses the engineer's three walls before the wood and the cooldown, then spends that wood once the same chunk is claimed. `holdTheLand` walks past the disc, reads the refusal, breaks the seed-5 west portal, and places the wall. The coverage floor stays 77.
 
 The pine slice is the forest cell. `a pine pays wood and a yard tree wins when it is in reach` stands on the seed-5 pine at (432, 0), reads one wood after the warrior's chop, and reads nothing once that cell is at 0. A meadow under the spawn pays nothing. A yard tree within 48 pays from the tree and leaves the cut map empty. `chopThePine` walks to that same cell and reads the wood sack. The walk stays 20 seconds. The seventy bare trunks stay bare. The camp, the shrine, the hermit, and the merchant stay planned. The coverage floor stays 77.
+
+The camp slice wakes one vagrant for 8 gold. `a camp spends 8 gold once and the ally is not a seat` spends that gold once and leaves the ally off the seat list. `wakeTheCamp` opens the seed-5 yard chest at (216, 720), walks to the camp at (-3852, -3384), and reads gold 16 and one vagrant. The ally is not a seat. The chest wait stays 45 seconds. The camp walk stays 120 seconds. The shrine, the hermit, and the merchant stay planned. The coverage floor stays 77.
 
 ## Locked numbers
 

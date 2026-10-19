@@ -771,6 +771,7 @@ export function createView(stage) {
         attackPeak: nextAttackPeak(kept.attackPeak, me?.cds?.attack || 0, swingSeen(snap)),
         cds: me?.cds || null,
         monsters,
+        vagrants: snap.vagrants || [],
         figures,
         rangeRing: rangeRingState(rangeRing.visible, bearer.range),
         buildings: (snap.buildings || []).length,

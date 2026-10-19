@@ -122,6 +122,8 @@ defmodule LastKeep.Game.Sim do
     |> move_heroes()
     |> survey()
     |> open_chests()
+    |> wake_camps()
+    |> step_vagrants()
     |> gather()
     |> mine()
     |> abilities()
@@ -302,6 +304,10 @@ defmodule LastKeep.Game.Sim do
         {id, %{type: :hero, cooldowns: cds} = hero} ->
           cds = Map.new(cds, fn {key, value} -> {key, max(value - 1, 0)} end)
           {id, %{hero | cooldowns: cds, guard: max(hero.guard - 1, 0)}}
+
+        {id, %{type: :vagrant, cooldowns: cds} = vagrant} ->
+          cds = Map.new(cds, fn {key, value} -> {key, max(value - 1, 0)} end)
+          {id, %{vagrant | cooldowns: cds}}
 
         {id, %{type: :monster} = monster} ->
           {id,
@@ -525,6 +531,174 @@ defmodule LastKeep.Game.Sim do
           |> event(%{type: "chest", x: chest.x, y: chest.y, amount: chest.gold})
       end
     end)
+  end
+
+  defp wake_camps(state) do
+    Enum.reduce(living_heroes(state), state, fn hero, state ->
+      case nearest(state.world.camps, hero.x, hero.y, Rules.chest_reach()) do
+        nil -> state
+        camp -> wake_camp(state, camp)
+      end
+    end)
+  end
+
+  defp wake_camp(state, camp) do
+    open = Rules.heroes() -- Enum.map(state.players, fn {_id, player} -> player.hero end)
+    cost = %{gold: Rules.vagrant_cost()}
+
+    if open == [] or not afford?(state, cost) do
+      state
+    else
+      role = Enum.at(open, rem(state.world.seed + camp.id, length(open)))
+      kit = Rules.kit(role)
+      camps = Enum.reject(state.world.camps, &(&1.id == camp.id))
+      state = %{state | world: %{state.world | camps: camps}}
+      state = pay(state, cost)
+
+      insert(state, %{
+        type: :vagrant,
+        id: state.next_id,
+        hero: role,
+        x: camp.x * 1.0,
+        y: camp.y * 1.0,
+        facing: 0.0,
+        hp: kit.hp,
+        max_hp: kit.hp,
+        r: 14.0,
+        alive: true,
+        cooldowns: %{attack: 0, q: 0, e: 0, r: 0}
+      })
+    end
+  end
+
+  defp step_vagrants(state) do
+    ids = for {id, %{type: :vagrant, alive: true}} <- state.entities, do: id
+
+    Enum.reduce(ids, state, fn id, state ->
+      case state.entities[id] do
+        %{type: :vagrant, alive: true} = vagrant -> step_vagrant(state, vagrant)
+        _ -> state
+      end
+    end)
+  end
+
+  defp step_vagrant(state, vagrant) do
+    ability = Rules.kit(vagrant.hero).attack
+
+    case prey(monsters(state), vagrant, ability) do
+      nil -> follow_hero(state, vagrant)
+      monster -> engage(state, vagrant, monster, ability)
+    end
+  end
+
+  defp prey(monsters, vagrant, %{kind: :melee} = ability) do
+    nearest(monsters, vagrant.x, vagrant.y, ability.range)
+  end
+
+  defp prey(monsters, vagrant, %{kind: :bolt}) do
+    monsters
+    |> Enum.filter(fn monster -> hypot(monster.x - vagrant.x, monster.y - vagrant.y) <= 320 end)
+    |> closest(fn monster -> hypot(monster.x - vagrant.x, monster.y - vagrant.y) end)
+  end
+
+  defp engage(state, vagrant, monster, ability) do
+    vagrant = face(vagrant, monster)
+    state = put_entity(state, vagrant)
+
+    if vagrant.cooldowns.attack > 0 do
+      state
+    else
+      swing(state, vagrant, monster, ability)
+    end
+  end
+
+  defp swing(state, vagrant, _aim, %{kind: :melee} = ability) do
+    vagrant = start_cd(state, vagrant, :attack, ability.cd)
+    state = put_entity(state, vagrant)
+    state = event(state, %{type: "swing", x: vagrant.x, y: vagrant.y})
+    range = ability.range
+
+    monsters(state)
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - vagrant.x, monster.y - vagrant.y) <= range + monster.r and
+        angle_between(vagrant, monster) <= ability.arc / 2
+    end)
+    |> Enum.reduce(state, fn monster, state ->
+      damage = scaled_damage(ability.damage, state, vagrant.hero, monster)
+      hurt_monster(state, monster.id, damage, Rules.kill_bonus(vagrant.hero))
+    end)
+    |> strike_portals(vagrant, ability)
+    |> repair_near(vagrant, Map.get(ability, :repair, 0))
+  end
+
+  defp swing(state, vagrant, monster, %{kind: :bolt} = ability) do
+    vagrant = start_cd(state, vagrant, :attack, ability.cd)
+    state = put_entity(state, vagrant)
+    {dx, dy} = aim_dir(vagrant, %{ax: monster.x, ay: monster.y})
+    damage = scaled_damage(ability.damage, state, vagrant.hero, nil)
+
+    insert(state, %{
+      type: :projectile,
+      id: state.next_id,
+      kind: :bolt,
+      x: vagrant.x + dx * 18,
+      y: vagrant.y + dy * 18,
+      vx: dx * ability.speed,
+      vy: dy * ability.speed,
+      damage: damage,
+      r: ability.radius * 1.0,
+      life: ability.life,
+      aoe: 0.0,
+      hero: vagrant.hero,
+      fresh: true
+    })
+  end
+
+  defp follow_hero(state, vagrant) do
+    case closest(living_heroes(state), fn hero ->
+           hypot(hero.x - vagrant.x, hero.y - vagrant.y)
+         end) do
+      nil ->
+        state
+
+      hero ->
+        dx = hero.x - vagrant.x
+        dy = hero.y - vagrant.y
+
+        if hypot(dx, dy) <= 48 do
+          put_entity(state, face(vagrant, hero))
+        else
+          step_toward(state, vagrant, dx, dy)
+        end
+    end
+  end
+
+  defp step_toward(state, vagrant, dx, dy) do
+    speed = Rules.kit(vagrant.hero).speed * speed_mult(state) * 0.05
+    {ux, uy} = norm(dx, dy)
+
+    {nx, ny} =
+      slide(state, vagrant.x, vagrant.y, ux * speed, uy * speed, vagrant.r, %{
+        ignore: vagrant.id,
+        pass_monsters: true
+      })
+
+    {nx, ny} = clamp_map(nx, ny, Rules.map_radius())
+    sx = nx - vagrant.x
+    sy = ny - vagrant.y
+
+    facing =
+      if hypot(sx, sy) > 1.0e-6 do
+        :math.atan2(sy, sx)
+      else
+        :math.atan2(dy, dx)
+      end
+
+    put_entity(state, %{vagrant | x: nx, y: ny, facing: facing})
+  end
+
+  defp face(actor, target) do
+    %{actor | facing: :math.atan2(target.y - actor.y, target.x - actor.x)}
   end
 
   defp strike_portals(state, hero, ability) do
