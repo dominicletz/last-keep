@@ -6,6 +6,7 @@ import { decodePng, renderCloseup } from "../models/raster.js"
 import { loadSheet } from "../models/sheets.js"
 import { heroCrops, MONSTER_CROPS } from "../models/sprites.js"
 import { groundPixels } from "./ground.js"
+import { paletteFragmentShader } from "./palette_pass.js"
 import { groundFloor, groundSpread } from "./mood.js"
 import { cycleLight, hueOf, litYard, lumaOf } from "./scene.js"
 import {
@@ -284,6 +285,16 @@ function scalesInSpec() {
   assert.match(spec, /The 0\.60 step keeps that sunset, and the 0\.50 step keeps the tuft/)
   return named.slice(1).map(Number)
 }
+
+test("the palette pass locks from a uniform array, not a texture walk", () => {
+  const source = fs.readFileSync(new URL("./palette_pass.js", import.meta.url), "utf8")
+  assert.equal(source.includes("RGBFormat"), false)
+  assert.equal(source.includes("for (int i = 0; i < 320; i++)"), false)
+  const shader = paletteFragmentShader(palette.length)
+  assert.match(shader, new RegExp(`uniform vec3 palette\\[${palette.length}\\]`))
+  assert.match(shader, new RegExp(`for \\(int i = 0; i < ${palette.length}; i\\+\\+\\)`))
+  assert.equal(shader.includes("sampler2D tPalette"), false)
+})
 
 test("the locked palette is the style tokens at the spec's four shades", () => {
   assert.equal(tokens.size, 40)
