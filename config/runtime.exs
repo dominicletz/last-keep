@@ -99,3 +99,7 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 end
+
+if System.get_env("PLAYWRIGHT") == "1" or System.get_env("PERF_KEEP") == "1" do
+  config :last_keep, :perf_keep, true
+end

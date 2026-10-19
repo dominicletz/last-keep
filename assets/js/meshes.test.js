@@ -70,6 +70,41 @@ test("a mesh that leaves the scene without dispose is an orphan", () => {
   assert.equal(bolt.userData.pooled, true)
 })
 
+test("an in-flight effect stays out of the settled count and a leaked mesh breaks it", () => {
+  const scene = new THREE.Scene()
+  const wall = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(1, 1, 1)))
+  wall.userData.role = "wall"
+  scene.add(wall)
+  const shot = new THREE.Mesh(shotSphere(16))
+  shot.userData.role = "shot"
+  scene.add(shot)
+
+  const earlier = geometryCensus(scene)
+  assert.equal(earlier.settled, 1)
+  assert.equal(earlier.orphans, 0)
+
+  scene.add(takeBurst(0xffcc66))
+  const spawn = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(1, 1, 1)))
+  spawn.userData.role = "spawn"
+  scene.add(spawn)
+  const flying = geometryCensus(scene)
+  assert.equal(flying.settled, earlier.settled)
+  assert.equal(flying.orphans, 0)
+
+  const leaked = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(1, 1, 1)))
+  leaked.userData.role = "wall"
+  scene.add(leaked)
+  const grown = geometryCensus(scene)
+  assert.equal(grown.settled > earlier.settled, true)
+
+  scene.remove(wall)
+  const orphaned = geometryCensus(scene)
+  assert.equal(orphaned.orphans === 0, false)
+  releaseGeometries(wall)
+  releaseGeometries(leaked)
+  releaseGeometries(spawn)
+})
+
 test("a burst sphere is reused and takes the next color", () => {
   const first = takeBurst(0xff0000)
   giveBurst(first)
