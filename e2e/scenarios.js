@@ -1,4 +1,5 @@
 const { expect } = require("@playwright/test")
+const { noteNorth } = require("./steer")
 const fs = require("fs")
 const path = require("path")
 const proofDir = path.join("tmp", "verify-artifacts")
@@ -1320,32 +1321,28 @@ async function assertFarCaptions(page) {
   const published = { timeout: 20_000, polling: 100 }
   const startY = await page.evaluate(() => (window.__lastKeep.self ? window.__lastKeep.self.y : 0))
   await holdCodes(page, ["KeyW"])
-  let north = false
+  let arrived = false
   try {
-    north = await page
-      .waitForFunction(
-        (from) => window.__lastKeep.self && window.__lastKeep.self.y < from - 40,
-        startY,
-        { timeout: 3_000, polling: 100 }
-      )
-      .then(() => true)
-      .catch(() => false)
-    if (north) {
-      // KeyW also walks west. On the keep face that slide stops y short of -220.
-      // A stall here is the same case as a north step that never starts.
-      const reached = await page
-        .waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.y < -220, undefined, {
-          timeout: 8_000,
-          polling: 100
-        })
-        .then(() => true)
-        .catch(() => false)
-      if (!reached) north = false
+    // Farmer pace covers a clear north line in a few seconds. Eight seconds
+    // is the cap. noteNorth steps out sooner when the walk stops gaining y,
+    // which is what burned the old 20s wait after the first 40 units.
+    let mark = null
+    const deadline = Date.now() + 8_000
+    while (Date.now() < deadline) {
+      const y = await page.evaluate(() => (window.__lastKeep.self ? window.__lastKeep.self.y : startY))
+      const step = noteNorth(mark, y, Date.now())
+      mark = step.mark
+      if (step.action === "arrived") {
+        arrived = true
+        break
+      }
+      if (step.action === "step-out") break
+      await page.waitForTimeout(100)
     }
   } finally {
     await releaseCodes(page)
   }
-  if (!north) {
+  if (!arrived) {
     const headings = [
       ["KeyA", "KeyW"],
       ["KeyW"],
@@ -1971,9 +1968,11 @@ async function sixSeatMatch(browser) {
         const note = JSON.stringify({ first, later, heaps })
         expect(later.census.orphans, note).toBe(0)
         expect(later.census.settled, note).toBeLessThanOrEqual(first.census.settled)
-        expect(first.keepMax === 100000 || first.keepMax === 100280, note).toBe(true)
-        // Heartwood grows the keep by 280 once. A later sample can include that relic.
-        expect(later.keepMax === first.keepMax || later.keepMax === first.keepMax + 280, note).toBe(true)
+        // Heartwood, once, adds 280 to the perf keep. Any other max is a leak.
+        const keepTops = [100000, 100280]
+        expect(keepTops, note).toContain(first.keepMax)
+        expect(keepTops, note).toContain(later.keepMax)
+        expect(later.keepMax, note).toBeGreaterThanOrEqual(first.keepMax)
         expect(later.geometries, note).toBeLessThanOrEqual(later.census.inScene + later.census.pooled)
         expect(later.textures, note).toBeLessThanOrEqual(first.textures)
         expect(first.calls, note).toBeLessThanOrEqual(868)
