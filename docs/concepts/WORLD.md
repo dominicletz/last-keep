@@ -96,7 +96,7 @@ Night 1 is two goblins. The keep is the loss. Food still heals the keep from bes
 
 ## How a slice proves itself
 
-The concept page is this document. Generation, exploration, and the resource slice have landed. The walk clamp is 7200, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. A quarry pays stone, pine refuses a sow, and a stone wall costs 8 stone and 4 wood. A pine cell pays 12 wood, and a yard tree in reach takes the chop. A camp wakes one vagrant for 8 gold. A shrine grants one relic the party does not hold. The hermit and the merchant stay planned. The performance slice has landed. The coverage floor is 77.
+The concept page is this document. Generation, exploration, and the resource slice have landed. The walk clamp is 7200, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. A quarry pays stone, pine refuses a sow, and a stone wall costs 8 stone and 4 wood. A pine cell pays 12 wood, and a yard tree in reach takes the chop. A camp wakes one vagrant for 8 gold. A shrine grants one relic the party does not hold. A hermit reveals the next chunk ring. The merchant stays planned. The performance slice has landed. The coverage floor is 77.
 
 The generation slice adds `World.generate/1`. One test builds two worlds from seed 3 and requires equal biomes, blockers, and points of interest. One test requires the keep disc clear. One test flood-fills from the origin and requires every point of interest on the fill. One test requires each symmetry disagreement fraction to be at least 0.35.
 
@@ -115,6 +115,8 @@ The pine slice is the forest cell. `a pine pays wood and a yard tree wins when i
 The camp slice wakes one vagrant for 8 gold. `a camp spends 8 gold once and the ally is not a seat` spends that gold once and leaves the ally off the seat list. `wakeTheCamp` opens the seed-5 yard chest at (216, 720), walks to the camp at (-3852, -3384), and reads gold 16 and one vagrant. The ally is not a seat. The chest wait stays 45 seconds. The camp walk stays 120 seconds. The shrine, the hermit, and the merchant stay planned. The coverage floor stays 77.
 
 The shrine slice grants one relic the party does not hold. `a shrine grants one relic once` stands on a shrine, reads one relic, and leaves one shrine. A second tick leaves both lengths unchanged. `a shrine with every relic already held is still once` removes the shrine and leaves the five relics. `takeTheShrine` walks to the seed-5 shrine at (4140, 0) and reads one relic. The walk stays 120 seconds. The hermit and the merchant stay planned. The coverage floor stays 77.
+
+The hermit slice reveals the next chunk ring. `a hermit reveals the next chunk ring and a scout does not add another` stands a warrior on the seed-5 hermit and reads the chunk two steps west. A chunk three steps north stays hidden. A scout on that hermit does not open the third ring. `meetTheHermit` walks to (-5724, -648) and reads that western chunk. The walk stays 120 seconds. The merchant stays planned. The coverage floor stays 77.
 
 ## Locked numbers
 

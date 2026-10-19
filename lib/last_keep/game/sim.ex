@@ -121,6 +121,7 @@ defmodule LastKeep.Game.Sim do
     |> cooldowns()
     |> move_heroes()
     |> survey()
+    |> meet_hermit()
     |> open_chests()
     |> wake_camps()
     |> take_shrines()
@@ -483,23 +484,38 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp survey(state) do
+    Enum.reduce(living_heroes(state), state, fn hero, state ->
+      reveal_around(state, hero.x, hero.y, reveal_ring(hero))
+    end)
+  end
+
+  defp meet_hermit(%{world: %{hermit: nil}} = state), do: state
+
+  defp meet_hermit(state) do
+    hermit = state.world.hermit
+
+    near =
+      Enum.any?(living_heroes(state), fn hero ->
+        hypot(hermit.x - hero.x, hermit.y - hero.y) <= Rules.chest_reach()
+      end)
+
+    if near, do: reveal_around(state, hermit.x, hermit.y, 2), else: state
+  end
+
+  defp reveal_around(state, x, y, ring) do
+    {cx, cy} = World.chunk_coord(x, y)
+
     {discovered, chunks} =
-      Enum.reduce(living_heroes(state), {state.world.discovered, state.world.chunks}, fn hero,
-                                                                                         {found,
-                                                                                          chunks} ->
-        {cx, cy} = World.chunk_coord(hero.x, hero.y)
-        ring = reveal_ring(hero)
+      Enum.reduce(-ring..ring, {state.world.discovered, state.world.chunks}, fn dx,
+                                                                                {found, chunks} ->
+        Enum.reduce(-ring..ring, {found, chunks}, fn dy, {found, chunks} ->
+          key = {cx + dx, cy + dy}
 
-        Enum.reduce(-ring..ring, {found, chunks}, fn dx, {found, chunks} ->
-          Enum.reduce(-ring..ring, {found, chunks}, fn dy, {found, chunks} ->
-            key = {cx + dx, cy + dy}
-
-            if World.chunk_in_bounds?(key) do
-              {MapSet.put(found, key), ensure_chunk(state.world.seed, chunks, key)}
-            else
-              {found, chunks}
-            end
-          end)
+          if World.chunk_in_bounds?(key) do
+            {MapSet.put(found, key), ensure_chunk(state.world.seed, chunks, key)}
+          else
+            {found, chunks}
+          end
         end)
       end)
 
