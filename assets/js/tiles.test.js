@@ -86,5 +86,5 @@ test("the concept tiles match the bake and stay on the phase palette", () => {
   assert.equal(phaseTiles.day.trap.h, 90)
   const page = fs.readFileSync(path.join(root, "assets/js/render.js"), "utf8")
   assert.match(page, /forge: \{ w: 48, h: 36, stand: true \}/)
-  assert.match(page, /trap: \{ w: 22, h: 20, stand: false \}/)
+  assert.match(page, /trap: \{ w: 22, h: 20, stand: true \}/)
 })

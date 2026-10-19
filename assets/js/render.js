@@ -219,7 +219,7 @@ export function createView(stage) {
     field: { w: 46, h: 26, stand: false },
     wall: { w: 30, h: 40, stand: true },
     forge: { w: 48, h: 36, stand: true },
-    trap: { w: 22, h: 20, stand: false }
+    trap: { w: 22, h: 20, stand: true }
   }
   const sheetMaps = {}
   const sheetMats = {}
