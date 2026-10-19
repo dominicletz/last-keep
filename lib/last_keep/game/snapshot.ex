@@ -4,6 +4,22 @@ defmodule LastKeep.Game.Snapshot do
   alias LastKeep.Game.Rules
   alias LastKeep.Game.Sim
   alias LastKeep.Game.State
+  alias LastKeep.Game.World
+
+  def deliver(%State{} = state) do
+    state
+    |> render()
+    |> Map.put(:chests, Enum.map(visible(state.world.chests, state), &chest_view/1))
+    |> Map.put(:portals, Enum.map(visible(state.world.portals, state), &portal_view/1))
+    |> Map.put(:views, views(state))
+  end
+
+  def for_viewer(%{views: views} = snap, public_id) when is_map(views) and is_binary(public_id) do
+    view = Map.get(views, public_id, %{chunks: [], map: nil, land: []})
+    snap |> Map.delete(:views) |> Map.merge(view)
+  end
+
+  def for_viewer(snap, _public_id), do: snap
 
   def render(%State{} = state) do
     %{
@@ -38,6 +54,82 @@ defmodule LastKeep.Game.Snapshot do
       events: Enum.map(Enum.reverse(state.events), &event/1)
     }
   end
+
+  defp views(state) do
+    Map.new(state.players, fn {_id, player} ->
+      {player.public_id, hero_view(state, state.entities[player.hero_id])}
+    end)
+  end
+
+  defp hero_view(_state, nil), do: %{chunks: [], map: nil, land: []}
+
+  defp hero_view(state, hero) do
+    %{
+      chunks: local_chunks(state, hero),
+      map: cloth(state, hero),
+      land: land_marks(state, hero)
+    }
+  end
+
+  defp local_chunks(state, hero) do
+    {cx, cy} = World.chunk_coord(hero.x, hero.y)
+
+    for dx <- -2..2,
+        dy <- -2..2,
+        key = {cx + dx, cy + dy},
+        World.chunk_in_bounds?(key),
+        MapSet.member?(state.world.discovered, key) do
+      %{cx: cx + dx, cy: cy + dy}
+    end
+    |> Enum.sort_by(&{&1.cy, &1.cx})
+  end
+
+  defp cloth(state, hero) do
+    table = Rules.map_table()
+
+    if hypot(hero.x - table.x, hero.y - table.y) < Rules.map_reach() do
+      %{x: table.x, y: table.y, chunks: discovered_chunks(state)}
+    else
+      nil
+    end
+  end
+
+  defp discovered_chunks(state) do
+    state.world.discovered
+    |> Enum.filter(&World.chunk_in_bounds?/1)
+    |> Enum.map(fn {cx, cy} -> %{cx: cx, cy: cy} end)
+    |> Enum.sort_by(&{&1.cy, &1.cx})
+  end
+
+  defp land_marks(state, hero) do
+    chests = state.world.chests |> visible(state) |> Enum.filter(&(&1.gold > 0))
+    portals = state.world.portals |> visible(state) |> Enum.filter(&(&1.hp > 0))
+
+    [
+      mark(nearest_poi(portals, hero.x, hero.y), "portal"),
+      mark(nearest_poi(chests, hero.x, hero.y), "chest")
+    ]
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp nearest_poi([], _x, _y), do: nil
+
+  defp nearest_poi(pois, x, y) do
+    Enum.min_by(pois, fn poi -> hypot(poi.x - x, poi.y - y) end)
+  end
+
+  defp mark(nil, _kind), do: nil
+
+  defp mark(poi, kind), do: %{kind: kind, x: round1(poi.x), y: round1(poi.y)}
+
+  defp visible(pois, state) do
+    Enum.filter(pois, fn poi ->
+      key = World.chunk_coord(poi.x, poi.y)
+      World.chunk_in_bounds?(key) and MapSet.member?(state.world.discovered, key)
+    end)
+  end
+
+  defp hypot(x, y), do: :math.sqrt(x * x + y * y)
 
   defp reveal?(state) do
     phase_ms(state.phase) < 5_000 or scout_alive?(state)

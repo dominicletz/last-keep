@@ -2,6 +2,7 @@ defmodule LastKeepWeb.GameChannel do
   use LastKeepWeb, :channel
 
   alias LastKeep.Game.Room
+  alias LastKeep.Game.Snapshot
 
   @impl true
   def join("game:" <> code, params, socket) do
@@ -19,7 +20,7 @@ defmodule LastKeepWeb.GameChannel do
             |> assign(:public_id, public_id)
             |> assign(:generation, generation)
 
-          {:ok, Map.put(snap, :self, public_id), socket}
+          {:ok, snap |> Snapshot.for_viewer(public_id) |> Map.put(:self, public_id), socket}
 
         {:error, reason} ->
           {:error, %{reason: Atom.to_string(reason)}}
@@ -58,7 +59,11 @@ defmodule LastKeepWeb.GameChannel do
     # fireball key is then stuck behind every old snapshot, so the page still
     # shows a wave with empty cooldowns when the wait gives up. Keep the newest
     # snapshot only; the key is the next message and the shot is on the next tick.
-    snap = coalesce_snaps(snap)
+    snap =
+      snap
+      |> coalesce_snaps()
+      |> Snapshot.for_viewer(socket.assigns.public_id)
+
     push(socket, "snap", Map.put(snap, :self, socket.assigns.public_id))
     {:noreply, socket}
   end

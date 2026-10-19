@@ -141,6 +141,28 @@ export function createView(stage) {
   ground.receiveShadow = true
   ground.layers.enable(1)
   scene.add(ground)
+  const mapTable = new THREE.Mesh(
+    trackGeometry(new THREE.BoxGeometry(48, 10, 32)),
+    mat(0xc4a574, 0x6b4a2e)
+  )
+  mapTable.position.set(0, 8, 160)
+  mapTable.userData.role = "table"
+  const clothCanvas = document.createElement("canvas")
+  clothCanvas.width = 29
+  clothCanvas.height = 29
+  const clothMap = new THREE.CanvasTexture(clothCanvas)
+  clothMap.magFilter = THREE.NearestFilter
+  clothMap.minFilter = THREE.NearestFilter
+  clothMap.colorSpace = THREE.SRGBColorSpace
+  const mapCloth = new THREE.Mesh(
+    trackGeometry(new THREE.PlaneGeometry(40, 24)),
+    new THREE.MeshLambertMaterial({ map: clothMap })
+  )
+  mapCloth.rotation.x = -Math.PI / 2
+  mapCloth.position.set(0, 13.2, 160)
+  mapCloth.visible = false
+  mapCloth.userData.role = "map"
+  scene.add(mapTable, mapCloth)
   const groundBytes = groundPixels("day")
   const groundMap = new THREE.DataTexture(groundBytes, GROUND_TEX, GROUND_TEX)
   groundMap.colorSpace = THREE.SRGBColorSpace
@@ -620,6 +642,7 @@ export function createView(stage) {
 
       sync("tree", snap.trees || [], () => groupFrom(modelParts("tree")))
 
+      paintMapCloth(clothCanvas, clothMap, mapCloth, snap.map)
       sync("chest", snap.chests || [], () => {
         const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(16, 12, 16)), mat(0xf0c14a, 0xc9a227))
         mesh.userData.lift = 8
@@ -734,6 +757,10 @@ export function createView(stage) {
         projectiles: snap.projectiles || [],
         chests: snap.chests || [],
         portals: snap.portals || [],
+        chunks: snap.chunks || [],
+        map: snap.map || null,
+        land: snap.land || [],
+        table: { x: 0, y: 160, cloth: mapCloth.visible },
         relics: snap.relics || [],
         forge: !!snap.forge,
         mageTower: !!snap.mage_tower,
@@ -1308,6 +1335,30 @@ export function createView(stage) {
     if (now - pose.deadAt >= span) return false
     placeMesh(key, mesh)
     return true
+  }
+
+  function paintMapCloth(canvas, texture, mesh, map) {
+    const chunks = map && map.chunks
+    if (!chunks) {
+      mesh.visible = false
+      return
+    }
+    const sig = chunks.map((chunk) => `${chunk.cx},${chunk.cy}`).join("|")
+    if (sig !== mesh.userData.sig) {
+      const ctx = canvas.getContext("2d")
+      ctx.fillStyle = "#6e4b32"
+      ctx.fillRect(0, 0, 29, 29)
+      ctx.fillStyle = "#e6d3a1"
+      for (const chunk of chunks) {
+        const x = chunk.cx + 14
+        const y = 14 - chunk.cy
+        if (x < 0 || y < 0 || x > 28 || y > 28) continue
+        ctx.fillRect(x, y, 1, 1)
+      }
+      texture.needsUpdate = true
+      mesh.userData.sig = sig
+    }
+    mesh.visible = true
   }
 
   function placeMesh(key, mesh) {

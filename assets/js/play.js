@@ -1043,6 +1043,9 @@ function drawHints(ui, snap) {
     snap.phase === "build"
       ? hintBeacons(snap.hints).map((row) => marker(ui, row.x, row.y, row.label, false, " beacon"))
       : []
+  const land = (snap.land || []).map((row) =>
+    marker(ui, row.x, row.y, row.kind === "portal" ? "portal" : "chest", true, " beacon")
+  )
   const pending = []
   for (const call of edgeCalls(snap.monsters || [])) {
     const projected = projectNorm(ui, call.x, call.y)
@@ -1052,7 +1055,7 @@ function drawHints(ui, snap) {
     pending.push({ ...callAnchor(projected.x, projected.y, roster, bar), label: call.label })
   }
   const offscreen = spreadCalls(pending).map((anchor) => paintCall(ui, anchor, ""))
-  layer.innerHTML = [...beacons, ...offscreen].filter(Boolean).join("")
+  layer.innerHTML = [...beacons, ...offscreen, ...land].filter(Boolean).join("")
   const next = ui.hud.querySelector("[data-next]")
   const hints = snap.hints || []
   next.textContent = nextLine(snap.phase, hints)

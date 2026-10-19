@@ -19,6 +19,8 @@ defmodule LastKeepWeb.GameChannelTest do
 
         assert reply.self == public_id
         assert length(reply.players) >= 1
+        refute Map.has_key?(reply, :views)
+        assert is_list(reply.chunks)
         {name, token, public_id, socket}
       end
 

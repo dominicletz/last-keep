@@ -76,7 +76,7 @@ defmodule LastKeep.Game.Room do
       {:ok, sim} ->
         player = sim.players[attrs.id]
         state = note_presence(%{state | sim: sim})
-        {:reply, {:ok, player.public_id, Snapshot.render(sim)}, follow_presence(state)}
+        {:reply, {:ok, player.public_id, Snapshot.deliver(sim)}, follow_presence(state)}
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
@@ -103,7 +103,7 @@ defmodule LastKeep.Game.Room do
         sim = %{sim | players: Map.put(sim.players, id, player)}
         state = note_presence(%{state | sim: sim})
 
-        {:reply, {:ok, player.public_id, generation, Snapshot.render(sim)},
+        {:reply, {:ok, player.public_id, generation, Snapshot.deliver(sim)},
          follow_presence(state)}
     end
   end
@@ -236,7 +236,7 @@ defmodule LastKeep.Game.Room do
   end
 
   defp broadcast(sim) do
-    Phoenix.PubSub.broadcast(LastKeep.PubSub, topic(sim.code), {:snap, Snapshot.render(sim)})
+    Phoenix.PubSub.broadcast(LastKeep.PubSub, topic(sim.code), {:snap, Snapshot.deliver(sim)})
   end
 
   def topic(code), do: "room:" <> code

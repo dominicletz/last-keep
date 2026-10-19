@@ -60,6 +60,8 @@
     {"from": "mage", "to": "monsters", "via": "Bolt, fireball, and meteor damage monsters. Frost slows them.", "status": "implemented", "rule": "kind: :fireball"},
     {"from": "scout", "to": "monsters", "via": "Mark makes a monster take more damage. Volley and the shot damage it.", "status": "implemented", "rule": "kind: :mark"},
     {"from": "scout", "to": "hints", "via": "A living scout reveals the next wave's directions before the last five seconds.", "status": "implemented", "rule": "defp scout_alive?"},
+    {"from": "scout", "to": "chunks", "via": "A living scout reveals one extra chunk ring on the shared map.", "status": "implemented", "rule": "defp reveal_ring"},
+    {"from": "keep", "to": "map", "via": "The map table at (0, 160) shows explored chunks to a hero within 80.", "status": "implemented", "rule": "def map_table"},
     {"from": "forge", "to": "warrior", "via": "A standing forge multiplies attack damage for every hero.", "status": "implemented", "rule": "defp scaled_damage"},
     {"from": "mage_tower", "to": "mage", "via": "A standing spire raises mage damage and shortens mage cooldowns.", "status": "implemented", "rule": "defp cd_mult"},
     {"from": "monsters", "to": "keep", "via": "A monster in reach of the keep bites it. A boss slam hits harder.", "status": "implemented", "rule": "defp strike"},

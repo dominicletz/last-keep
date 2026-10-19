@@ -142,6 +142,12 @@ defmodule LastKeepWeb.PageControllerTest do
     assert LastKeep.Game.Room.snapshot(closed).keep.max == 900
   end
 
+  test "a create seed becomes the room seed", %{conn: conn} do
+    conn = post(conn, ~p"/api/rooms", %{"name" => "Ada", "hero" => "warrior", "seed" => 5})
+    code = json_response(conn, 200)["code"]
+    assert :sys.get_state(LastKeep.Game.Room.via(code)).sim.world.seed == 5
+  end
+
   test "a bad hero is rejected", %{conn: conn} do
     conn = post(conn, ~p"/api/rooms", %{"name" => "Ada", "hero" => "dragon"})
     assert json_response(conn, 422)["error"] == "hero"
