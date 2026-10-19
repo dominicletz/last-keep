@@ -161,13 +161,15 @@ function holdFloors(rgb, width, height, palette) {
         }
       }
       if (seen.size >= 8) continue
+      const meanL = channelLuma(r / n, g / n, b / n)
       const ranked = palette
         .map((color) => ({
           color,
           key: bucketKey(color[0], color[1], color[2]),
+          luma: Math.abs(channelLuma(color[0], color[1], color[2]) - meanL),
           dist: (color[0] - r / n) ** 2 + (color[1] - g / n) ** 2 + (color[2] - b / n) ** 2
         }))
-        .sort((left, right) => left.dist - right.dist)
+        .sort((left, right) => left.luma - right.luma || left.dist - right.dist)
       let placed = 0
       for (const row of ranked) {
         if (seen.has(row.key)) continue

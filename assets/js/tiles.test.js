@@ -4,6 +4,7 @@ import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import { bakeTiles, citedHexes, lockedColors, phaseScales, tileModule } from "../models/tiles.js"
+import { figureAlpha, propBytes } from "./tiles.js"
 import { loadSheet } from "../models/sheets.js"
 import { phaseTiles } from "./tile-data.js"
 
@@ -97,6 +98,28 @@ test("the concept tiles match the bake and stay on the phase palette", () => {
   assert.match(page, /trap: \{ w: 22, h: 20, stand: true \}/)
   assert.match(page, /tower: \{ w: 28, h: 48, stand: true \}/)
   assert.match(page, /mage_tower: \{ w: 26, h: 36, stand: true \}/)
-  assert.match(page, /tree: \{ w: 22, h: 40, stand: true \}/)
-  assert.match(page, /scenery: \{ w: 18, h: 30, stand: true \}/)
+  assert.match(page, /tree: \{ w: 48, h: 40, stand: true, cut: true \}/)
+  assert.match(page, /scenery: \{ w: 18, h: 30, stand: true, cut: true \}/)
+  for (const name of ["tree", "scenery"]) {
+    const tile = propBytes(name, "day")
+    let ink = 0
+    for (let i = 3; i < tile.rgba.length; i += 4) if (tile.rgba[i] === 255) ink += 1
+    const share = ink / (tile.w * tile.h)
+    assert.ok(share > 0.2 && share < 0.55, `${name} cut share ${share}`)
+    assert.equal(figureAlpha(name, 0, 0, tile.w, tile.h), 0)
+    assert.equal(tile.rgba[(Math.floor(tile.h * 0.45) * tile.w + Math.floor(tile.w * 0.5)) * 4 + 3], 255)
+  }
+  const duskTree = propBytes("tree", "dusk")
+  assert.ok(inkMedian(duskTree) >= 36, inkMedian(duskTree))
 })
+
+function inkMedian(tile) {
+  const lumas = []
+  for (let i = 0; i < tile.w * tile.h; i++) {
+    if (tile.rgba[i * 4 + 3] === 0) continue
+    const o = i * 4
+    lumas.push(0.2126 * tile.rgba[o] + 0.7152 * tile.rgba[o + 1] + 0.0722 * tile.rgba[o + 2])
+  }
+  lumas.sort((a, b) => a - b)
+  return lumas[lumas.length >> 1]
+}
