@@ -1754,6 +1754,41 @@ async function scoreList(request) {
   }
 }
 
+async function chopThePine(browser) {
+  const errors = []
+  const pine = { x: 432, y: 0 }
+  const host = await createHost(browser, "Ada", "warrior", async (page) => {
+    await page.route("**/api/rooms", async (route) => {
+      const request = route.request()
+      if (request.method() !== "POST" || !request.url().endsWith("/api/rooms")) {
+        await route.continue()
+        return
+      }
+      const body = request.postDataJSON()
+      await route.continue({ postData: JSON.stringify({ ...body, seed: 5 }) })
+    })
+  })
+  const page = host.page
+  watch(page, "host", errors)
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.self)
+  await steerPast(
+    page,
+    pine,
+    (state) => Math.hypot(state.x - pine.x, state.y - pine.y) < 14,
+    20_000,
+    "pine"
+  )
+  const before = await page.evaluate(() => window.__lastKeep.wood)
+  await page.waitForFunction((mark) => window.__lastKeep.wood > mark, before, { timeout: 5_000 })
+  const sack = await page.locator("[data-sack='wood']").innerText()
+  const wood = await page.evaluate(() => window.__lastKeep.wood)
+  expect(sack).toContain(String(wood))
+  expect(wood).toBeGreaterThan(before)
+  await page.screenshot({ path: shot("pine-host.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
 async function holdTheLand(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "warrior", async (page) => {
@@ -2371,6 +2406,7 @@ module.exports = {
   captionsClearTheBuilds,
   phoneClear,
   exploreLand,
+  chopThePine,
   holdTheLand,
   readTheMap,
   raiseNeedsTheKeep
