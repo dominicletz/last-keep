@@ -1,13 +1,38 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { fitSlack, horizontalRadius, houseParts, houseVariant, keepParts, modelParts, models } from "../models/registry.js"
+import { gameFrame, renderParts } from "../models/raster.js"
+import { keepReadabilityFloor, readability } from "./art_score.js"
+import { groundPixels } from "./ground.js"
 import { cameraDistance, dirtRadius, viewScale, zoomFor } from "./town.js"
+import { groundUnderMask } from "./yard_sample.js"
 
 test("thirty trees share one mesh", () => {
   const started = performance.now()
   const first = modelParts("tree")
   for (let i = 0; i < 29; i++) assert.equal(modelParts("tree"), first)
   assert.ok(performance.now() - started < 1000, "a tree rebuilt the character sheets")
+})
+
+test("the keep reads against the yard at the gameplay camera", () => {
+  assert.equal(keepReadabilityFloor.height, 197)
+  assert.equal(keepReadabilityFloor.contrast, 25)
+  const grounds = {}
+  for (const phase of ["day", "dusk", "night"]) grounds[phase] = groundPixels(phase)
+  const { frame, camera } = gameFrame(0)
+  let shortest = Infinity
+  let quietest = Infinity
+  for (const light of ["day", "dusk", "night"]) {
+    const image = renderParts(keepParts(0), light, 0)
+    const rgb = groundUnderMask(image, camera, frame, grounds[light])
+    const read = readability(image, { rgb, width: image.width, height: image.height })
+    assert.ok(read.height >= keepReadabilityFloor.height, `${light} is ${read.height}px`)
+    assert.ok(read.contrast >= keepReadabilityFloor.contrast, `${light} contrast ${read.contrast}`)
+    if (read.height < shortest) shortest = read.height
+    if (read.contrast < quietest) quietest = read.contrast
+  }
+  assert.ok(keepReadabilityFloor.height >= shortest * 0.5, `height floor is under half of ${shortest}`)
+  assert.ok(keepReadabilityFloor.contrast >= quietest * 0.5, `contrast floor is under half of ${quietest}`)
 })
 
 test("the keep tower grows a course of stone at each rank", () => {
