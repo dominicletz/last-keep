@@ -3,6 +3,8 @@ import { present } from "./present"
 import { eliteLook } from "./elite"
 import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
 import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
+import { createPalettePass } from "./palette_pass.js"
+import { lockedPalette, pixelStep, snapWorld, styleHexes } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
@@ -464,8 +466,16 @@ export function createView(stage) {
     lastInput = performance.now()
   }
 
+  const palette = lockedPalette(styleHexes)
+  let palettePass = null
+
+  function worldStep() {
+    return pixelStep(viewFrame.halfH, viewFrame.bufferHeight)
+  }
+
   function paintFrame() {
-    renderer.render(scene, camera)
+    if (!palettePass) palettePass = createPalettePass(renderer, palette)
+    palettePass.draw(scene, camera)
     renders += 1
     if (window.__lastKeep) window.__lastKeep.renders = renders
   }
@@ -619,7 +629,8 @@ export function createView(stage) {
       const zoom = zoomFor(snap)
       const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
       const anchor = cameraFocus(me?.x, me?.y)
-      focus.set(anchor.x, 0, anchor.z)
+      const step = worldStep()
+      focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
       const dist = zoom.camera
       const yardScale = zoom.dirt / 150
       plaza.scale.setScalar(yardScale)
@@ -875,7 +886,8 @@ export function createView(stage) {
   function placeCamera(snap, selfId) {
     const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
     const anchor = cameraFocus(me?.x, me?.y)
-    focus.set(anchor.x, 0, anchor.z)
+    const step = worldStep()
+    focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
     const dist = zoomFor(snap).camera
     camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
     camera.lookAt(focus.x, cameraLift, focus.z)
@@ -1455,7 +1467,8 @@ export function createView(stage) {
   function placeMesh(key, mesh) {
     const pose = smoothed(key)
     const spread = mesh.userData.spread || { x: 0, z: 0 }
-    mesh.position.set(pose.x + spread.x, mesh.userData.lift || 0, pose.z + spread.z)
+    const step = worldStep()
+    mesh.position.set(snapWorld(pose.x + spread.x, step), mesh.userData.lift || 0, snapWorld(pose.z + spread.z, step))
     const card = mesh.userData.card
     if (!card) return
     const picture = mesh.userData.picture
@@ -1463,12 +1476,12 @@ export function createView(stage) {
     const facing = Number.isFinite(mesh.rotation.y) ? -mesh.rotation.y : 0
     const column = pictureColumn(viewYaw, facing)
     const track = tracks.get(key)
-    const step = track ? Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ) : 0
-    if (mesh.userData.role === "monster" && track && step > 0.4) {
+    const travel = track ? Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ) : 0
+    if (mesh.userData.role === "monster" && track && travel > 0.4) {
       aimFacing(mesh, Math.atan2(track.toZ - track.fromZ, track.toX - track.fromX))
     }
     const anim = mesh.userData.pose || {}
-    anim.moving = step > 0.4
+    anim.moving = travel > 0.4
     mesh.userData.pose = anim
     const frame = sheetRow(picture, anim, performance.now())
     const offsetX = column / picture.directions

@@ -186,21 +186,98 @@ export function registeredScores(frame, crop) {
   return { ssim: ssimLuma(pair.frame, pair.crop), iou: silhouetteIou(pair.frame, pair.crop) }
 }
 
+// 0.65 of the sunset token lands under the warm luma cut, and 0.40 of a dark
+// tuft is closer to a brown than to that tuft. 0.60 keeps the highlight.
+// 0.50 keeps the tuft green, so stone and pine stay apart.
+export const paletteScales = [1, 0.6, 0.5, 0.4]
+
+export const styleHexes = [
+  "d8cfc3", "b5afaa", "142a48", "374a26", "d99b64", "38516f", "3e6dab", "d99e66", "23d9f3", "88a05b",
+  "e5b268", "3a4a60", "e6ccad", "4c3d27", "472a17", "8e755b", "261e0e", "676f3c", "908b8a", "b2ada6",
+  "70724d", "6e6767", "4d433b", "4a464c", "3a264d", "f5751e", "5d505b", "e58e54", "080c0e", "353e27",
+  "4b3c33", "654e41", "2c2a2a", "43382e", "976122", "5c642f", "374115", "5e4529", "795237", "eea821"
+]
+
+export function srgbFromLinearByte(r, g, b) {
+  return [r, g, b].map((channel) => {
+    const c = channel / 255
+    const encoded = c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055
+    return Math.max(0, Math.min(255, Math.round(encoded * 255)))
+  })
+}
+
 export function lockedPalette(hexes) {
   const colors = []
+  const seen = new Set()
   for (const hex of hexes) {
-    const r = parseInt(hex.slice(0, 2), 16)
-    const g = parseInt(hex.slice(2, 4), 16)
-    const b = parseInt(hex.slice(4, 6), 16)
-    for (const gain of [1, 0.65, 0.4]) {
-      colors.push([
-        Math.max(0, Math.min(255, Math.round(r * gain))),
-        Math.max(0, Math.min(255, Math.round(g * gain))),
-        Math.max(0, Math.min(255, Math.round(b * gain)))
-      ])
+    const base = [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)]
+    for (const scale of paletteScales) {
+      const rgb = base.map((channel) => Math.max(0, Math.min(255, Math.round(channel * scale))))
+      const key = rgb.join(",")
+      if (seen.has(key)) continue
+      seen.add(key)
+      colors.push(rgb)
     }
   }
   return colors
+}
+
+export function nearestLocked(r, g, b, palette) {
+  let best = palette[0]
+  let bestDist = Infinity
+  for (const color of palette) {
+    const dr = r - color[0]
+    const dg = g - color[1]
+    const db = b - color[2]
+    const dist = dr * dr + dg * dg + db * db
+    if (dist < bestDist) {
+      bestDist = dist
+      best = color
+    }
+  }
+  return { rgb: best, dist: Math.sqrt(bestDist) }
+}
+
+function strideOf(data, width, height) {
+  if (data.length === width * height * 4) return 4
+  if (data.length === width * height * 3) return 3
+  throw new Error(`frame is ${data.length} bytes for ${width}x${height}`)
+}
+
+export function lockFrame(data, width, height, palette) {
+  const stride = strideOf(data, width, height)
+  const out = new Uint8Array(data)
+  for (let i = 0; i < width * height; i++) {
+    const offset = i * stride
+    const next = nearestLocked(out[offset], out[offset + 1], out[offset + 2], palette).rgb
+    out[offset] = next[0]
+    out[offset + 1] = next[1]
+    out[offset + 2] = next[2]
+  }
+  return out
+}
+
+export function membership(data, width, height, palette) {
+  const stride = strideOf(data, width, height)
+  let hit = 0
+  let n = 0
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x < width; x += 2) {
+      const offset = (y * width + x) * stride
+      n += 1
+      if (nearestLocked(data[offset], data[offset + 1], data[offset + 2], palette).dist <= 1) hit += 1
+    }
+  }
+  return n ? hit / n : 0
+}
+
+export function pixelStep(halfH, bufferHeight) {
+  return (halfH * 2) / bufferHeight
+}
+
+export function snapWorld(value, step) {
+  if (!(step > 0) || !Number.isFinite(value)) return value
+  return Math.round(value / step) * step
 }
 
 export function paletteMembership(rgb, width, height, mask, palette) {
@@ -229,19 +306,11 @@ export function paletteMembership(rgb, width, height, mask, palette) {
   return ink ? hit / ink : 0
 }
 
-// The forty STYLE.md tokens, in sheet order. A test checks this list against the markdown.
-export const styleHexes = [
-  "d8cfc3", "b5afaa", "142a48", "374a26", "d99b64", "38516f", "3e6dab", "d99e66", "23d9f3", "88a05b",
-  "e5b268", "3a4a60", "e6ccad", "4c3d27", "472a17", "8e755b", "261e0e", "676f3c", "908b8a", "b2ada6",
-  "70724d", "6e6767", "4d433b", "4a464c", "3a264d", "f5751e", "5d505b", "e58e54", "080c0e", "353e27",
-  "4b3c33", "654e41", "2c2a2a", "43382e", "976122", "5c642f", "374115", "5e4529", "795237", "eea821"
-]
-
 function bucketOf(r, g, b) {
   return ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
 }
 
-function nearestLocked(catalog, r, g, b, tone, stats) {
+function nearestInk(catalog, r, g, b, tone, stats) {
   let best = Infinity
   let pick = catalog[0].color
   for (const entry of catalog) {
@@ -292,7 +361,7 @@ export function lockInk(rgb, width, height, mask, palette, stats) {
     const key = ((out[o] << 16) | (out[o + 1] << 8) | out[o + 2]) >>> 0
     let pick = snaps.get(key)
     if (!pick) {
-      pick = nearestLocked(catalog, out[o], out[o + 1], out[o + 2], luma(out[o], out[o + 1], out[o + 2]), stats)
+      pick = nearestInk(catalog, out[o], out[o + 1], out[o + 2], luma(out[o], out[o + 1], out[o + 2]), stats)
       snaps.set(key, pick)
     }
     out[o] = pick[0]
@@ -301,31 +370,38 @@ export function lockInk(rgb, width, height, mask, palette, stats) {
   }
   for (const block of blocks) {
     if (!block.need) continue
-    const seen = new Set()
+    const count = new Map()
     for (const i of block.cells) {
       const o = i * 3
-      seen.add(bucketOf(out[o], out[o + 1], out[o + 2]))
+      const bucket = bucketOf(out[o], out[o + 1], out[o + 2])
+      count.set(bucket, (count.get(bucket) || 0) + 1)
     }
     let guard = 0
-    while (seen.size < block.need && guard < block.cells.length) {
+    while (count.size < block.need && guard < block.cells.length) {
       const i = block.cells[guard++]
       const o = i * 3
+      const old = bucketOf(out[o], out[o + 1], out[o + 2])
+      // Repainting the last pixel of a step only swaps one bucket for another.
+      if ((count.get(old) || 0) < 2) continue
       const tone = luma(out[o], out[o + 1], out[o + 2])
       let pick = null
       let best = Infinity
       for (const entry of catalog) {
-        if (seen.has(entry.bucket)) continue
+        if (count.has(entry.bucket)) continue
         const gap = Math.abs(entry.luma - tone)
         if (gap < best && gap <= 18) {
           best = gap
           pick = entry
         }
       }
-      if (!pick) break
+      if (!pick) continue
       out[o] = pick.color[0]
       out[o + 1] = pick.color[1]
       out[o + 2] = pick.color[2]
-      seen.add(pick.bucket)
+      const left = count.get(old) - 1
+      if (left === 0) count.delete(old)
+      else count.set(old, left)
+      count.set(pick.bucket, (count.get(pick.bucket) || 0) + 1)
     }
   }
   return out

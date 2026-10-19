@@ -21,6 +21,7 @@ import {
   styleTables,
   uncitedPaletteProblems
 } from "./registry.js"
+import { blockPercentiles, hardEdge } from "../js/art_score.js"
 import {
   blitCrop,
   decodePng,
@@ -145,7 +146,7 @@ export function checkModels({ writeGolden = false } = {}) {
     }
   }
 
-  const html = rendered.length > 0 ? galleryHtml(rendered, present, "../test/gallery/", yardMood()) : ""
+  const html = rendered.length > 0 ? galleryHtml(rendered, present, "../test/gallery/", yardMood(), yardScore(sheets["theme.jpg"])) : ""
   const htmlPath = path.join(root, "docs/gallery.html")
   const goldenDir = path.join(root, "test/gallery")
 
@@ -1107,7 +1108,67 @@ function yardMood() {
   return { day, dusk, pool, moss: mossColor }
 }
 
-export function galleryHtml(rendered, present, prefix, mood = yardMood()) {
+function rgbCrop(data, width, box, stride) {
+  const rgb = new Uint8Array(box.w * box.h * 3)
+  for (let y = 0; y < box.h; y++) {
+    for (let x = 0; x < box.w; x++) {
+      const s = ((box.y + y) * width + box.x + x) * stride
+      const d = (y * box.w + x) * 3
+      rgb[d] = data[s]
+      rgb[d + 1] = data[s + 1]
+      rgb[d + 2] = data[s + 2]
+    }
+  }
+  return rgb
+}
+
+function inkBox(rgb, width, height) {
+  const corner = (x, y) => {
+    const offset = (y * width + x) * 3
+    return [rgb[offset], rgb[offset + 1], rgb[offset + 2]]
+  }
+  const corners = [corner(2, 2), corner(width - 3, 2), corner(2, height - 3), corner(width - 3, height - 3)]
+  const bg = [0, 1, 2].map((channel) => corners.map((pixel) => pixel[channel]).sort((a, b) => a - b)[1])
+  let minX = width
+  let minY = height
+  let maxX = 0
+  let maxY = 0
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const offset = (y * width + x) * 3
+      const dr = rgb[offset] - bg[0]
+      const dg = rgb[offset + 1] - bg[1]
+      const db = rgb[offset + 2] - bg[2]
+      if (Math.sqrt(dr * dr + dg * dg + db * db) <= 18) continue
+      if (x < minX) minX = x
+      if (y < minY) minY = y
+      if (x + 1 > maxX) maxX = x + 1
+      if (y + 1 > maxY) maxY = y + 1
+    }
+  }
+  if (maxX <= minX || maxY <= minY) return { x: 0, y: 0, w: width, h: height }
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+}
+
+function yardScore(theme) {
+  if (!theme) return "The concept sheet is not in the repo, so the art scorer has no town crop."
+  const townBox = { x: 480, y: 250, w: 340, h: 270 }
+  const townRgb = rgbCrop(theme.data, theme.width, townBox, 4)
+  const townBlock = blockPercentiles(townRgb, townBox.w, townBox.h, null)
+  const townHard = hardEdge(townRgb, townBox.w, townBox.h, null)
+  const file = path.join(root, "test/gallery/keep/day.png")
+  if (!fs.existsSync(file)) {
+    return `Town crop block p25 ${townBlock.p25}, hard edge ${townHard.toFixed(3)}. Floors are 8 and 0.05.`
+  }
+  const gallery = decodePng(fs.readFileSync(file))
+  const box = inkBox(gallery.rgb, gallery.width, gallery.height)
+  const keepRgb = rgbCrop(gallery.rgb, gallery.width, box, 3)
+  const keepBlock = blockPercentiles(keepRgb, box.w, box.h, null)
+  const keepHard = hardEdge(keepRgb, box.w, box.h, null)
+  return `The art scorer reads theme.jpg at 480,250, 340×270: block p25 ${townBlock.p25}, hard edge ${townHard.toFixed(3)}. The gallery keep ink scores block p25 ${keepBlock.p25} and hard edge ${keepHard.toFixed(3)}. Floors are block 8 and hard edge 0.05. The keep is under both. A Python read of the same crop was block p25 12 and hard edge 0.070.`
+}
+
+export function galleryHtml(rendered, present, prefix, mood = yardMood(), score = "") {
   const articles = rendered
     .map((row) => {
       const here = Boolean(present[row.concept.sheet])
@@ -1148,7 +1209,7 @@ img.near { height: 384px; width: auto; max-width: none; }
 <p><code>npm run models</code> wrote these frames at game zoom through the pixel path. Heroes and monsters also have a close-up, about ${closeupFigure}px tall, and the portrait card is that close-up. The pictures on this page are the goldens in <code>test/gallery/</code>. CI uploads the same bytes as <code>artifacts/gallery/</code>. A second run has to match. The concept sheets are ${conceptSheets.map((sheet) => `${sheet} (${present[sheet] ? "present" : "not in the repo"})`).join(", ")}. Do not invent a substitute sheet.</p>
 <section id="yard">
 <h2>Yard beside the concept</h2>
-<p>The sheet is the dusk town: dark pines, a violet sky, and warm windows. The day swatch is the grass token under neutral light (hue ${mood.day.hue.toFixed(1)}, luminance ${mood.day.luma.toFixed(1)}). The dusk swatch is that grass under the neutral dusk (hue ${mood.dusk.hue.toFixed(1)}). The pool swatch is the same grass in the brazier light (hue ${mood.pool.hue.toFixed(1)}). A single patch is not the grade. The frame comparison is moodProblems.</p>
+<p>The sheet is the dusk town: dark pines, a violet sky, and warm windows. The day swatch is the grass token under neutral light (hue ${mood.day.hue.toFixed(1)}, luminance ${mood.day.luma.toFixed(1)}). The dusk swatch is that grass under the neutral dusk (hue ${mood.dusk.hue.toFixed(1)}). The pool swatch is the same grass in the brazier light (hue ${mood.pool.hue.toFixed(1)}). A single patch is not the grade. The frame comparison is moodProblems. ${score}</p>
 <img src="concept/theme.jpg" alt="theme.jpg, the concept the yard is graded toward">
 <div class="swatches">
 <div style="background:${swatch(mood.day)}">day ${swatch(mood.day)}</div>
