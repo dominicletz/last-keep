@@ -4,6 +4,7 @@ import { lockInk, lockedPalette, styleHexes } from "../js/art_score.js"
 import { cameraDistance } from "../js/town.js"
 import { frameFor } from "../js/frame.js"
 import { skyColor } from "../js/scene.js"
+import { propBytes } from "../js/tiles.js"
 
 // Gallery rigs. Material colors are shaded after the palette check.
 // Day is the concept sky. Dusk and night are darker shades of that sky.
@@ -799,6 +800,36 @@ function fitDistance(pixel, hex, rig, hold) {
 
 function clamp01(value) {
   return Math.min(1, Math.max(0, value))
+}
+
+export function paintSheetCard(name, light, width, height) {
+  const tile = propBytes(name, light)
+  const bg = galleryRigs[light].bg
+  const rgb = new Uint8Array(width * height * 3)
+  const mask = new Uint8Array(width * height)
+  for (let i = 0; i < width * height; i++) {
+    rgb[i * 3] = bg[0]
+    rgb[i * 3 + 1] = bg[1]
+    rgb[i * 3 + 2] = bg[2]
+  }
+  const scale = Math.min(width / tile.w, (height * 0.86) / tile.h)
+  const dw = Math.max(1, Math.round(tile.w * scale))
+  const dh = Math.max(1, Math.round(tile.h * scale))
+  const ox = Math.floor((width - dw) / 2)
+  const oy = Math.floor((height - dh) / 2)
+  for (let y = 0; y < dh; y++) {
+    const sy = Math.min(tile.h - 1, Math.floor(((y + 0.5) * tile.h) / dh))
+    for (let x = 0; x < dw; x++) {
+      const sx = Math.min(tile.w - 1, Math.floor(((x + 0.5) * tile.w) / dw))
+      const source = (sy * tile.w + sx) * 4
+      const dest = (oy + y) * width + ox + x
+      rgb[dest * 3] = tile.rgba[source]
+      rgb[dest * 3 + 1] = tile.rgba[source + 1]
+      rgb[dest * 3 + 2] = tile.rgba[source + 2]
+      mask[dest] = 1
+    }
+  }
+  return { rgb, mask, width, height }
 }
 
 export function nightContrast(image) {

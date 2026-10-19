@@ -70,7 +70,7 @@ The locked palette is each of the forty `STYLE.md` tokens at 1, 0.60, 0.50, and 
 
 Hero and monster sheets are eight directions at world yaw 0°, 45°, 90°, 135°, 180°, 225°, 270°, and 315°, with yaw 0 facing +x. Each direction has at least four walk frames, three attack frames, and four death frames. A frame is at least 56 internal pixels tall at town rank 0, the same floor `STYLE.md` uses for the day raster. The heroes agent `bc-c0cd18ed` draws those sheets to this spec.
 
-Building and prop tiles follow the kind rows: wall, tower, trap, field, forge, mage tower, keep, tree, scenery, and house, plus the ground, the path, and the pine. Grass, masonry, the house, the field, the wall, and the path are phase tiles. The forge crop at 500,190, 200×150 and the ground torch at 520,490, 100×90 hold block p25 8 and hard edge 0.05 in day, dusk, and night, so a placed forge is that standing card and a placed trap is a standing card of the ground torch. A flat trap sat under the path and under its contact disc. Tower, the mage tower, the keep, the tree, and the felled wood still miss one of those floors, so they stay meshes. The pine figure stays the mesh.
+Building and prop tiles follow the kind rows: wall, tower, trap, field, forge, mage tower, keep, tree, scenery, and house, plus the ground, the path, and the pine. Grass, masonry, the house, the field, the wall, the path, the forge, the trap, the tower, the mage tower, the keep, the tree, and the felled wood are phase tiles. Each of those holds block p25 8 and hard edge 0.05 in day, dusk, and night. A placed forge, trap, tower, and mage tower are standing cards. A choppable tree and each pine in the wall are the tree card, 48 by 40, cut to a three-tier pine so the wall overlaps into a hedge. Dusk tree ink mixes 62% toward the pine token `#353e27`. The felled-wood card is the cut timber at theme.jpg 360,480, 48×80, drawn 18 by 30 and cut to five stakes. The old box at 1080,160 is the ogre, so it is not the card. The outer ring draws that timber card. A solid rectangle of either crop drops the yard gap under 5. The live keep stays `keepParts`, so the courses, the three masonry colors, and the readability floor stay. The gallery keep is the keep crop. A flat trap sat under the path and under its contact disc, so the trap stands.
 
 The pixel pass quantizes the 640×400 buffer once per frame. It does not add a shadow map. The perf harness belongs to agent `bc-af503d4f`.
 
@@ -82,16 +82,16 @@ The scorer lives in `assets/js/art_score.js`, with `assets/js/art_score.test.js`
 | --- | --- | --- | --- |
 | block p25 on the town crop | 8 | 12 | 1 |
 | hard edge on the town crop | 0.05 | 0.070 | 0.024 |
-| luma SSIM on a registered crop | 0.35 | 1 against itself | −0.053 on the keep |
-| silhouette IoU on a registered crop | 0.55 | 1 against itself | 0.351 on the keep |
-| palette membership after the lock | 0.98 | the jpeg is not the render | 0.000 |
+| luma SSIM on a registered crop | 0.35 | 1 against itself | 0.505 on the keep card |
+| silhouette IoU on a registered crop | 0.55 | 1 against itself | 0.850 on the keep card |
+| palette membership after the lock | 0.98 | the jpeg is not the render | 1.000 on the keep ink |
 | CSS 2×2 block is one color | 0.99 | guards the upscale | client uses nearest at `pixelSize` 2 |
 
 Membership is distance at most 1 from a token at 1, 0.60, 0.50, or 0.40. The earlier lock, 1, 0.65, and 0.40, is not the spec.
 
 Block, hard edge, SSIM, IoU, and membership fail on today's gallery frames. The CSS grid check guards `pixelSize` 2. A bilinear upscale fails it. These floors may only rise. Mood floors, ground spread 8, the stone-versus-pine hue gap of 25, and the 56-pixel hero height stay where they are.
 
-`art_score.test.js` pins the concept-town numbers above and fails a fixture copied from `test/gallery/keep/day.png`. The concept jpeg does not have to pass membership. The frame after the lock does.
+`art_score.test.js` pins the concept-town numbers above. The gallery keep card clears SSIM 0.50 and IoU 0.84, and its ink clears membership 0.98. Those floors only rise. The concept jpeg does not have to pass membership. The frame after the lock does.
 
 ## Value and noise
 

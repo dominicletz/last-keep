@@ -21,7 +21,7 @@ import {
   styleTables,
   uncitedPaletteProblems
 } from "./registry.js"
-import { blockPercentiles, hardEdge } from "../js/art_score.js"
+import { blockPercentiles, hardEdge, lockedPalette, scoreFrame } from "../js/art_score.js"
 import {
   blitCrop,
   decodePng,
@@ -38,6 +38,7 @@ import {
   shadedTokenBox,
   tokenPoints,
   nightContrast,
+  paintSheetCard,
   pixelDiff,
   renderCloseup,
   renderParts,
@@ -146,21 +147,22 @@ export function checkModels({ writeGolden = false } = {}) {
     }
   }
 
-  const html = rendered.length > 0 ? galleryHtml(rendered, present, "../test/gallery/", yardMood(), yardScore(sheets["theme.jpg"])) : ""
   const htmlPath = path.join(root, "docs/gallery.html")
   const goldenDir = path.join(root, "test/gallery")
+  const page = () =>
+    rendered.length > 0 ? galleryHtml(rendered, present, "../test/gallery/", yardMood(), yardScore(sheets["theme.jpg"])) : ""
 
   if (writeGolden && rendered.length > 0 && problems.length === 0) {
     writeGallery(goldenDir, rendered, present, false)
     fs.mkdirSync(path.dirname(htmlPath), { recursive: true })
-    fs.writeFileSync(htmlPath, html)
+    fs.writeFileSync(htmlPath, page())
     fs.mkdirSync(goldenDir, { recursive: true })
     fs.writeFileSync(path.join(goldenDir, "threshold.json"), `${JSON.stringify({ pixels: 0 }, null, 2)}\n`)
   } else if (rendered.length > 0) {
     const threshold = readThreshold()
     if (threshold !== 0) problems.push(`pixel threshold ${threshold} is not 0`)
     problems.push(...goldenProblems(goldenDir, rendered, threshold ?? 0))
-    if (!fs.existsSync(htmlPath) || fs.readFileSync(htmlPath, "utf8") !== html) {
+    if (!fs.existsSync(htmlPath) || fs.readFileSync(htmlPath, "utf8") !== page()) {
       problems.push("docs/gallery.html does not match this render")
     }
   }
@@ -180,7 +182,10 @@ const figureFamilies = new Set(["hero", "monster"])
 export function renderGallery(listed, sheets) {
   return listed.map((model) => {
     const frames = {}
-    for (const light of lightNames) frames[light] = renderParts(model.parts, light)
+    for (const light of lightNames) {
+      frames[light] =
+        model.id === "keep" ? paintSheetCard("keep", light, 640, 400) : renderParts(model.parts, light)
+    }
     const image = sheets[model.concept.sheet]
     const concept = image
       ? blitCrop(image, model.concept.crop, frames.day.width, frames.day.height)
@@ -1165,7 +1170,16 @@ function yardScore(theme) {
   const keepRgb = rgbCrop(gallery.rgb, gallery.width, box, 3)
   const keepBlock = blockPercentiles(keepRgb, box.w, box.h, null)
   const keepHard = hardEdge(keepRgb, box.w, box.h, null)
-  return `The art scorer reads theme.jpg at 480,250, 340×270: block p25 ${townBlock.p25}, hard edge ${townHard.toFixed(3)}. The gallery keep ink scores block p25 ${keepBlock.p25} and hard edge ${keepHard.toFixed(3)}. Floors are block 8 and hard edge 0.05. The keep is under both. A Python read of the same crop was block p25 12 and hard edge 0.070.`
+  const markdown = fs.readFileSync(path.join(root, "STYLE.md"), "utf8")
+  const { tokens } = styleTables(markdown)
+  const crop = { x: 548, y: 28, w: 188, h: 230 }
+  const painted = rgbCrop(theme.data, theme.width, crop, 4)
+  const likeness = scoreFrame(
+    { rgb: gallery.rgb, width: gallery.width, height: gallery.height },
+    { rgb: painted, width: crop.w, height: crop.h },
+    lockedPalette([...tokens.keys()])
+  )
+  return `The art scorer reads theme.jpg at 480,250, 340×270: block p25 ${townBlock.p25}, hard edge ${townHard.toFixed(3)}. The gallery keep ink scores block p25 ${keepBlock.p25} and hard edge ${keepHard.toFixed(3)}. Block and edge floors are 8 and 0.05. The ink is under both. Registered likeness is SSIM ${likeness.ssim.toFixed(3)} and IoU ${likeness.iou.toFixed(3)}, above 0.35 and 0.55. A Python read of the same town crop was block p25 12 and hard edge 0.070.`
 }
 
 export function galleryHtml(rendered, present, prefix, mood = yardMood(), score = "") {

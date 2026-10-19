@@ -6,7 +6,7 @@ import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, tr
 import { createPalettePass } from "./palette_pass.js"
 import { lockedPalette, pixelStep, snapWorld, styleHexes } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
-import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
+import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { masonryBytes, propBytes } from "./tiles.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
@@ -219,7 +219,11 @@ export function createView(stage) {
     field: { w: 46, h: 26, stand: false },
     wall: { w: 30, h: 40, stand: true },
     forge: { w: 48, h: 36, stand: true },
-    trap: { w: 22, h: 20, stand: true }
+    trap: { w: 22, h: 20, stand: true },
+    tower: { w: 28, h: 48, stand: true },
+    mage_tower: { w: 26, h: 36, stand: true },
+    tree: { w: 48, h: 40, stand: true, cut: true },
+    scenery: { w: 18, h: 30, stand: true, cut: true }
   }
   const sheetMaps = {}
   const sheetMats = {}
@@ -233,7 +237,13 @@ export function createView(stage) {
     map.needsUpdate = true
     sheetMaps[name] = map
     sheetMats[name] = spec.stand
-      ? new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false })
+      ? new THREE.SpriteMaterial({
+          map,
+          depthTest: true,
+          depthWrite: true,
+          transparent: false,
+          alphaTest: spec.cut ? 0.5 : 0
+        })
       : new THREE.MeshBasicMaterial({ map, color: 0xffffff })
   }
   const windowMat = new THREE.SpriteMaterial({
@@ -351,18 +361,22 @@ export function createView(stage) {
     return mesh
   }
 
+  function sheetCard(kind, scale = 1, disc = true) {
+    const spec = sheetKinds[kind]
+    const group = new THREE.Group()
+    const card = new THREE.Sprite(sheetMats[kind])
+    card.center.set(0.5, 0)
+    card.scale.set(spec.w * scale, spec.h * scale, 1)
+    card.renderOrder = 1
+    group.add(card)
+    if (disc) group.add(contactDisc(8 * scale))
+    return group
+  }
+
   function addForestWall() {
-    const look = forestWall()
-    const parts = modelParts("tree").map((part) => {
-      if (part.name === "trunk") return { ...part, color: look.trunk }
-      return { ...part, color: part.y < 20 ? look.shade : look.pine }
-    })
     for (const slot of forestWallSlots()) {
-      const group = groupFrom(parts)
+      const group = sheetCard("tree", slot.scale, false)
       group.position.set(slot.x, 0, slot.z)
-      group.scale.setScalar(slot.scale)
-      group.rotation.y = slot.angle
-      group.add(contactDisc(8))
       group.traverse((child) => {
         child.castShadow = false
         child.receiveShadow = false
@@ -375,20 +389,15 @@ export function createView(stage) {
     const look = sceneryForest()
     const slots = scenerySlots()
     if (!look.parts.includes("stump") || !look.parts.includes("log") || slots.length === 0) return
-    const parts = modelParts("scenery")
-    slots.forEach((slot, index) => {
-      const group = new THREE.Group()
+    for (const slot of slots) {
+      const group = sheetCard("scenery", slot.scale, false)
       group.position.set(slot.x, 0, slot.z)
-      group.scale.set(slot.scale, slot.scale, slot.scale)
-      for (const piece of parts) {
-        const mesh = pieceMesh(piece)
-        if (piece.name === "log") mesh.rotation.y = (index * Math.PI) / 5
-        mesh.castShadow = false
-        mesh.receiveShadow = false
-        group.add(mesh)
-      }
+      group.traverse((child) => {
+        child.castShadow = false
+        child.receiveShadow = false
+      })
       scene.add(group)
-    })
+    }
   }
 
   function forestState() {
@@ -668,7 +677,7 @@ export function createView(stage) {
 
       sync("building", drawn.buildings, (row) => buildingMesh(row))
 
-      sync("tree", snap.trees || [], () => groupFrom(modelParts("tree")))
+      sync("tree", snap.trees || [], () => sheetCard("tree", 1, false))
 
       paintMapCloth(mapCloth, clothMarks, snap.map)
       sync("chest", snap.chests || [], () => {
@@ -1628,7 +1637,7 @@ export function createView(stage) {
     } else {
       for (const piece of modelParts(row.kind)) group.add(pieceMesh(piece))
     }
-    const radius = { house: 22, field: 22, forge: 18, trap: 15 }[row.kind] || 12
+    const radius = { house: 22, field: 22, forge: 18, trap: 15, tower: 16, mage_tower: 18 }[row.kind] || 12
     group.add(contactDisc(radius))
     return group
   }
