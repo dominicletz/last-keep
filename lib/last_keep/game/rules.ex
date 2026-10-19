@@ -148,6 +148,10 @@ defmodule LastKeep.Game.Rules do
   # from that pack. 960 starts the walk on the tick the night opens.
   def approach_reach, do: 960
 
+  # Night 1 is the two goblins the yard proof reads. The walk and the drawn
+  # swing start on the next night, when the pack spawns past 760.
+  def meets?(wave) when is_integer(wave), do: wave >= 2
+
   # A standing engineer's nearest monster stayed at 213.9. The same hero
   # walking at the pack got to 137.4. 160 sits between those two.
   def meet_reach, do: 160

@@ -522,6 +522,27 @@ defmodule LastKeep.Game.SimTest do
     end
   end
 
+  test "night 1 leaves the two goblins for the players" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    {:ok, state} = Sim.join(state, player("bo", :mage))
+    state = Sim.tick(state)
+    assert {:wave, _} = state.phase
+    assert state.wave == 1
+
+    state =
+      Enum.reduce(1..400, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => 0, "my" => 0, "attack" => false})
+        |> Sim.input("bo", %{"mx" => 0, "my" => 0, "attack" => false})
+        |> Sim.tick()
+      end)
+
+    assert state.wave == 1
+    assert state.kills == 0
+    assert length(Sim.monsters(state)) == 2
+  end
+
   test "the night waits until the host starts" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :warrior))

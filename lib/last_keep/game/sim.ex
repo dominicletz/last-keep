@@ -392,7 +392,7 @@ defmodule LastKeep.Game.Sim do
       mx != 0.0 or my != 0.0 ->
         {mx, my, false}
 
-      not match?({:wave, _}, state.phase) ->
+      not (match?({:wave, _}, state.phase) and Rules.meets?(state.wave)) ->
         {0.0, 0.0, false}
 
       player.steered ->
@@ -859,7 +859,7 @@ defmodule LastKeep.Game.Sim do
     clicked = edged?(player, :attack)
 
     threat =
-      if match?({:wave, _}, state.phase) do
+      if match?({:wave, _}, state.phase) and Rules.meets?(state.wave) do
         strike_target(state, hero)
       end
 
