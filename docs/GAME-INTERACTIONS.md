@@ -86,7 +86,7 @@ flowchart LR
   quarry[Quarry] -->|gather| stone[Stone]
   engineer -->|2 stone a tick| quarry
   stone -->|280 health| wall
-  camp[Camp] -.->|wake an ally| vagrant[Vagrant]
+  camp[Camp] -->|wake an ally| vagrant[Vagrant]
   shrine[Shrine] -.->|one relic| relics
   hermit[Hermit] -.->|reveal the next ring| scout
   merchant[Merchant] -.->|sell food| food
@@ -178,7 +178,7 @@ A chest on the seeded land pays 24 gold the first time a living hero stands on i
 
 ## World edges
 
-Solid arrows in the graph are in the simulation. Dotted arrows are still `planned` in `interactions.json`. The chest, the portal, the quarry, the meadow sow, the stone wall, and the pine chop are implemented. The camp, the shrine, the hermit, and the merchant stay planned. Generation stays off the hot tick. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is in the resource list.
+Solid arrows in the graph are in the simulation. Dotted arrows are still `planned` in `interactions.json`. The chest, the portal, the quarry, the meadow sow, the stone wall, the pine chop, and the camp are implemented. The shrine, the hermit, and the merchant stay planned. Generation stays off the hot tick. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is in the resource list.
 
 Pine forest is the wood that refills a wall line after the yard trees are cut. Any living hero chops a pine that still has wood. Each pine holds 12. A yard tree within 48 takes the chop instead. The seventy bare trunks stay bare.
 
@@ -188,4 +188,4 @@ A field can be sown only on meadow. Pine, ruins, river, ford, and cliff refuse t
 
 A chest holds 24 gold, once. Field gold stays the small daytime mint. The cleared wave pays the next raise. The chest is the extra hoard. A living scout reveals one extra chunk ring, which is how the party finds the next chest before the day ends. The discovered set is one set for the room. A chest in a hidden chunk is absent from the snapshot. The map table at (0, 160) shows the explored chunks to a hero within 80. Off screen, the nearest revealed portal and the nearest unopened chest use the same edge beacon as the next wave.
 
-A portal is a wave origin. Destroying it removes its bearing from the next plan and claims that portal's chunk. The keep disc of radius 400 stays held. A build inside the hero's reach and outside both of those fails with "The land is not held." A barricade whose three sites are all outside that land spends no wood and does not start its cooldown. A field on held pine still needs meadow. Raising the keep widens the town and the build reach. It does not claim the map. Wave 1 stays two goblins. A camp spends 8 gold to wake one ally who does not take a seat. A shrine grants one relic the party does not hold. A merchant sells food or stone for gold. A hermit reveals the next chunk ring.
+A portal is a wave origin. Destroying it removes its bearing from the next plan and claims that portal's chunk. The keep disc of radius 400 stays held. A build inside the hero's reach and outside both of those fails with "The land is not held." A barricade whose three sites are all outside that land spends no wood and does not start its cooldown. A field on held pine still needs meadow. Raising the keep widens the town and the build reach. It does not claim the map. Wave 1 stays two goblins. A camp spends 8 gold to wake one ally who does not take a seat. The ally follows the nearest living hero and uses that role's strike. A shrine grants one relic the party does not hold. A merchant sells food or stone for gold. A hermit reveals the next chunk ring.

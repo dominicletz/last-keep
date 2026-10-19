@@ -1789,6 +1789,53 @@ async function chopThePine(browser) {
   await host.context.close()
 }
 
+async function wakeTheCamp(browser) {
+  const errors = []
+  const chest = { x: 216, y: 720 }
+  const camp = { x: -3852, y: -3384 }
+  const host = await createHost(browser, "Ada", "warrior", async (page) => {
+    await page.route("**/api/rooms", async (route) => {
+      const request = route.request()
+      if (request.method() !== "POST" || !request.url().endsWith("/api/rooms")) {
+        await route.continue()
+        return
+      }
+      const body = request.postDataJSON()
+      await route.continue({ postData: JSON.stringify({ ...body, seed: 5 }) })
+    })
+  })
+  const page = host.page
+  watch(page, "host", errors)
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.self)
+  await steerPast(
+    page,
+    chest,
+    (state) => Math.hypot(state.x - chest.x, state.y - chest.y) < 30,
+    45_000,
+    "chest"
+  )
+  await page.waitForFunction(() => window.__lastKeep.gold === 24, null, { timeout: 5_000 })
+  await steerPast(
+    page,
+    camp,
+    (state) => Math.hypot(state.x - camp.x, state.y - camp.y) < 30,
+    120_000,
+    "camp"
+  )
+  await page.waitForFunction(
+    () => window.__lastKeep.gold === 16 && window.__lastKeep.vagrants.length === 1,
+    null,
+    { timeout: 5_000 }
+  )
+  const sack = await page.locator("[data-sack='gold']").innerText()
+  const gold = await page.evaluate(() => window.__lastKeep.gold)
+  expect(sack).toContain(String(gold))
+  expect(await page.evaluate(() => window.__lastKeep.seats.length)).toBe(1)
+  await page.screenshot({ path: shot("camp-host.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
 async function holdTheLand(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "warrior", async (page) => {
@@ -2407,6 +2454,7 @@ module.exports = {
   phoneClear,
   exploreLand,
   chopThePine,
+  wakeTheCamp,
   holdTheLand,
   readTheMap,
   raiseNeedsTheKeep

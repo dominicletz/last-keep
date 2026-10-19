@@ -17,6 +17,7 @@ defmodule LastKeep.Game.Rules do
 
   def map_radius, do: 7200
   def chest_gold, do: 24
+  def vagrant_cost, do: 8
   def chest_reach, do: 36
   def portal_hp, do: 78
 

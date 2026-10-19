@@ -45,6 +45,7 @@ defmodule LastKeep.Game.Snapshot do
       forge: state.upgrades.forge,
       mage_tower: state.upgrades.mage_tower,
       players: Enum.map(state.players, &player(&1, state)),
+      vagrants: Enum.map(of_type(state, :vagrant), &vagrant/1),
       monsters: Enum.map(Sim.monsters(state), &monster/1),
       projectiles: projectiles(state),
       buildings: Enum.map(of_type(state, :building), &building/1),
@@ -190,6 +191,18 @@ defmodule LastKeep.Game.Snapshot do
 
       {Atom.to_string(kind), %{wood: Map.get(cost, :wood, 0), gold: Map.get(cost, :gold, 0)}}
     end)
+  end
+
+  defp vagrant(row) do
+    %{
+      id: row.id,
+      hero: Atom.to_string(row.hero),
+      x: row.x,
+      y: row.y,
+      hp: row.hp,
+      max: row.max_hp,
+      alive: row.alive
+    }
   end
 
   defp monster(monster) do
