@@ -90,6 +90,55 @@ defmodule LastKeep.Game.CampTest do
     assert map_size(state.players) == 5
   end
 
+  test "a warrior ally cleaves the arc and the portal in it" do
+    state =
+      party([
+        {"ada", :mage},
+        {"bo", :scout},
+        {"cal", :farmer},
+        {"dee", :engineer},
+        {"ned", :mage}
+      ])
+
+    camp = hd(state.world.camps)
+    state = move_player(state, "ada", camp.x, camp.y)
+    state = purse(state, 8)
+    state = Sim.tick(state)
+    [ally] = vagrants(state)
+    assert ally.hero == :warrior
+
+    portal = hd(state.world.portals)
+
+    state =
+      %{
+        state
+        | world: %{
+            state.world
+            | portals:
+                Enum.map(state.world.portals, fn row ->
+                  if row.id == portal.id, do: %{row | x: 360.0, y: 0.0}, else: row
+                end)
+          }
+      }
+
+    state = move(state, ally.id, 300.0, 0.0)
+    state = move_player(state, "ada", 300.0, 400.0)
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 340.0, y: 0.0})
+    front = newest_monster(state)
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 330.0, y: 40.0})
+    side = newest_monster(state)
+    state = Sim.spawn_monster(state, %{kind: :goblin, x: 240.0, y: 0.0})
+    behind = newest_monster(state)
+    before = portal_hp(state, portal.id)
+    state = Sim.tick(state)
+    left = MapSet.new(Sim.monsters(state), & &1.id)
+
+    refute MapSet.member?(left, front.id)
+    refute MapSet.member?(left, side.id)
+    assert MapSet.member?(left, behind.id)
+    assert portal_hp(state, portal.id) < before
+  end
+
   defp stand(id, hero) do
     party([{id, hero}])
   end
@@ -121,5 +170,13 @@ defmodule LastKeep.Game.CampTest do
 
   defp goblin(state) do
     Enum.find(Sim.monsters(state), &(&1.kind == :goblin))
+  end
+
+  defp portal_hp(state, id) do
+    Enum.find(state.world.portals, &(&1.id == id)).hp
+  end
+
+  defp newest_monster(state) do
+    Enum.max_by(Sim.monsters(state), & &1.id)
   end
 end

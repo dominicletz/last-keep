@@ -612,14 +612,22 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
-  defp swing(state, vagrant, monster, %{kind: :melee} = ability) do
+  defp swing(state, vagrant, _aim, %{kind: :melee} = ability) do
     vagrant = start_cd(state, vagrant, :attack, ability.cd)
     state = put_entity(state, vagrant)
     state = event(state, %{type: "swing", x: vagrant.x, y: vagrant.y})
-    damage = scaled_damage(ability.damage, state, vagrant.hero, monster)
+    range = ability.range
 
-    state
-    |> hurt_monster(monster.id, damage, Rules.kill_bonus(vagrant.hero))
+    monsters(state)
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - vagrant.x, monster.y - vagrant.y) <= range + monster.r and
+        angle_between(vagrant, monster) <= ability.arc / 2
+    end)
+    |> Enum.reduce(state, fn monster, state ->
+      damage = scaled_damage(ability.damage, state, vagrant.hero, monster)
+      hurt_monster(state, monster.id, damage, Rules.kill_bonus(vagrant.hero))
+    end)
+    |> strike_portals(vagrant, ability)
     |> repair_near(vagrant, Map.get(ability, :repair, 0))
   end
 
