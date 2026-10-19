@@ -2132,7 +2132,24 @@ async function readTheMap(browser) {
   const host = await createHost(browser, "Ada", "warrior")
   const page = host.page
   watch(page, "host", errors)
-  await steerPast(page, { x: 0, y: 160 }, (state) => Math.hypot(state.x, state.y - 160) < 70, 20_000, "table")
+  // The cloth exists only inside radius 80. Clearing the keys in the same
+  // sample that sees the hero there keeps the next send from walking through.
+  await walkUntil(page, {
+    timeout: 20_000,
+    label: "table",
+    poll: 80,
+    done: (state) => state.held && state.cloth,
+    step: (current) =>
+      current.evaluate(() => {
+        const game = window.__lastKeep
+        const me = game.self
+        if (!me) return null
+        const held = Math.hypot(me.x, me.y - 160) < 70
+        const keys = held ? [] : window.__lastKeepTest.around(0, 160)
+        for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
+        return { x: me.x, y: me.y, held, cloth: !!(game.table && game.table.cloth) }
+      })
+  })
   const report = await page.evaluate(() => {
     const game = window.__lastKeep
     const chunkOf = (x, y) => `${Math.floor(x / 512)},${Math.floor(y / 512)}`
