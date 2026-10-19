@@ -54,6 +54,16 @@ test("visual checks go through the render helper", () => {
   assert.doesNotMatch(walk, /step\s*<\s*14/)
 })
 
+test("a goblin call is the walk sample that paints it", () => {
+  const source = stripComments(fs.readFileSync(path.join(__dirname, "scenarios.js"), "utf8"))
+  const body = functionBody(source, "phoneClear")
+  assert.equal(body.includes("expect.poll(callText"), false)
+  assert.match(body, /\/goblin\/i\.test\(state\.callText\)/)
+  assert.match(body, /walkUntil\(/)
+  const config = fs.readFileSync(path.join(__dirname, "../playwright.config.js"), "utf8")
+  assert.match(config, /failOnFlakyTests:\s*!!process\.env\.CI/)
+})
+
 test("scripted walks wait on the server position", () => {
   const source = stripComments(fs.readFileSync(path.join(__dirname, "scenarios.js"), "utf8"))
   assert.match(source, /async function walkUntil/)

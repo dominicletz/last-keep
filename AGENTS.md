@@ -26,6 +26,8 @@ A color or hue probe samples the object's own pixels. `sampleObject` renders tha
 
 Other lanes change visual checks only through that helper. The day yard is `yardGrade`, dusk plate, pine, and stone are `duskGrade`, the night ground is `nightGrade`, and the movement blend window is `blend`. Do not edit those probes inside `twoPlayerNight` or `movementIsInterpolated`. `e2e/probe.test.js` fails when the scenario owns the sample points, the frame read, or the blend thresholds.
 
+A scripted walk routes around the solid keep. `keysAround` keeps a step only when that landing is closer at every hero speed, and a goal behind the disc takes one tangent until the line is clear. A goblin call is the `walkUntil` sample that paints it. Do not poll that text on a timer. `e2e/probe.test.js` fails when `phoneClear` does.
+
 ## Layout
 
 - `lib/last_keep/game/sim.ex` is the pure tick. A `State` struct is the whole world. `phase` is `{:build, ticks}`, `{:wave, ticks}`, or `:over`.

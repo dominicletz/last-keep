@@ -1503,7 +1503,8 @@ async function steer(page, goal, done, timeout, label) {
     step: (current) =>
       current.evaluate((goal) => {
         const me = window.__lastKeep.self
-        const call = [...document.querySelectorAll(".hint-arrow")].some((node) => /goblin/i.test(node.textContent || ""))
+        const callText = [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" ")
+        const call = /goblin/i.test(callText)
         const keys = window.__lastKeepTest.around(goal.x, goal.y)
         for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
         const bar = document.querySelector("[data-raise]")
@@ -1511,7 +1512,7 @@ async function steer(page, goal, done, timeout, label) {
         const raiseReady = Boolean(
           (bar && !bar.disabled) || (touch && !touch.hidden && touch.getAttribute("aria-disabled") === "false")
         )
-        return me ? { x: me.x, y: me.y, alive: me.alive !== false, call, raiseReady } : null
+        return me ? { x: me.x, y: me.y, alive: me.alive !== false, call, callText, raiseReady } : null
       }, goal)
   })
 }
@@ -1589,37 +1590,73 @@ async function phoneClear(browser) {
   // The pack picks a fresh bearing each night. Running west meets the ones
   // that spawned there, so the call never sits on screen at the far mark.
   const away = packX >= here.x ? here.x - 320 : here.x + 320
-  await steer(
+  const called = await steer(
     page,
     { x: away, y: -210 },
-    (state) => state.alive && state.call && state.y < -160 && Math.hypot(state.x, state.y) > 400,
+    (state) =>
+      state.alive && /goblin/i.test(state.callText) && state.y < -160 && Math.hypot(state.x, state.y) > 400,
     25_000,
     "goblin call away from the pack"
   )
+  expect(called.callText).toMatch(/goblin/i)
   await assertPhoneClear(page)
-  const callText = () =>
-    page.evaluate(() => [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" "))
-  let call = await callText()
-  if (!/goblin/i.test(call)) {
-    // The viewport sweep keeps the night moving, and a goblin that walks into
-    // frame takes the arrow with it. Step away again. The text still has to say goblin.
-    const again = await page.evaluate(() => window.__lastKeep.self)
-    const pack = await page.evaluate(() => {
-      const goblins = (window.__lastKeep.monsters || []).filter((row) => row.kind === "goblin")
-      return goblins.length ? goblins.reduce((sum, row) => sum + row.x, 0) / goblins.length : again.x
+  // A resize lets a goblin walk into the frame and the arrow goes with it.
+  // The next sample is the one where the call is painted again, not a timer.
+  for (const [width, height] of PHONE_SIZES) {
+    await page.setViewportSize({ width, height })
+    const seen = await walkUntil(page, {
+      timeout: 15_000,
+      label: "goblin call on the phone",
+      poll: 100,
+      done: (state) =>
+        state.alive &&
+        /goblin/i.test(state.callText) &&
+        state.overlaps.length === 0 &&
+        state.y < -160 &&
+        Math.hypot(state.x, state.y) > 400,
+      step: (current) =>
+        current.evaluate(() => {
+          const game = window.__lastKeep
+          const me = game && game.self
+          if (!me) return null
+          const goblins = (game.monsters || []).filter((row) => row.kind === "goblin")
+          const pack = goblins.length ? goblins.reduce((sum, row) => sum + row.x, 0) / goblins.length : me.x
+          const callText = [...document.querySelectorAll(".hint-arrow")].map((node) => node.textContent || "").join(" ")
+          const showing = /goblin/i.test(callText)
+          const goalX = showing ? me.x : pack >= me.x ? me.x - 80 : me.x + 80
+          const keys = showing ? [] : window.__lastKeepTest.around(goalX, -210)
+          for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
+          const shown = (node) => {
+            if (!node || node.hidden) return null
+            const style = getComputedStyle(node)
+            if (style.display === "none" || style.visibility === "hidden") return null
+            const box = node.getBoundingClientRect()
+            if (box.width < 1 || box.height < 1) return null
+            return box
+          }
+          const nodes = [
+            ...document.querySelectorAll(
+              ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .chip, [data-touch], [data-touch-context], [data-build], .stick, [data-raise], [data-copy], [data-mute], [data-volume], [data-start]"
+            )
+          ]
+          const boxes = nodes.map((node) => ({ node, box: shown(node) })).filter((row) => row.box)
+          const overlaps = []
+          for (let i = 0; i < boxes.length; i += 1) {
+            for (let j = i + 1; j < boxes.length; j += 1) {
+              const a = boxes[i]
+              const b = boxes[j]
+              if (a.node.contains(b.node) || b.node.contains(a.node)) continue
+              const overlapW = Math.min(a.box.right, b.box.right) - Math.max(a.box.left, b.box.left)
+              const overlapH = Math.min(a.box.bottom, b.box.bottom) - Math.max(a.box.top, b.box.top)
+              if (overlapW >= 1 && overlapH >= 1) overlaps.push(i)
+            }
+          }
+          return { x: me.x, y: me.y, alive: me.alive !== false, callText, overlaps }
+        })
     })
-    const further = pack >= again.x ? again.x - 360 : again.x + 360
-    await steer(
-      page,
-      { x: further, y: -210 },
-      (state) => state.alive && state.call && Math.hypot(state.x, state.y) > 480,
-      15_000,
-      "goblin call after the resize"
-    )
-    call = await callText()
+    expect(seen.callText).toMatch(/goblin/i)
+    expect(seen.overlaps).toEqual([])
   }
-  if (!/goblin/i.test(call)) await expect.poll(callText, { timeout: 4_000 }).toMatch(/goblin/i)
-  else expect(call).toMatch(/goblin/i)
   expect(errors, errors.join("\n")).toEqual([])
   for (const seat of seats) await seat.context.close()
   await context.close()

@@ -9,16 +9,16 @@ const DT = 0.05
 
 function step(x, y, goal) {
   const a = axes(keysFor({ x, y }, goal))
-  let nx = x + a.x * SPEED * DT
-  let ny = y + a.y * SPEED * DT
-  if (Math.hypot(nx, ny) < BODY) {
-    if (Math.hypot(nx, y) >= BODY && Math.abs(nx - x) > 0.2) ny = y
-    else if (Math.hypot(x, ny) >= BODY && Math.abs(ny - y) > 0.2) nx = x
-    else {
-      nx = x
-      ny = y
-    }
-  }
+  const dx = a.x * SPEED * DT
+  const dy = a.y * SPEED * DT
+  const blocked = (px, py) => Math.hypot(px, py) < BODY
+  let nx = x
+  let ny = y
+  if (!blocked(x + dx, y + dy)) {
+    nx = x + dx
+    ny = y + dy
+  } else if (!blocked(x + dx, y) && Math.abs(dx) > 0.2) nx = x + dx
+  else if (!blocked(x, y + dy) && Math.abs(dy) > 0.2) ny = y + dy
   return { x: nx, y: ny, moved: Math.hypot(nx - x, ny - y) }
 }
 
@@ -50,7 +50,9 @@ test("a goal beyond the face still walks straight", () => {
 test("a hero on the face or the spawn reaches a chest", () => {
   const starts = [
     { x: 73.5, y: 0 },
-    { x: 120, y: 0 }
+    { x: 120, y: 0 },
+    { x: -20, y: 70 },
+    { x: 0, y: 80 }
   ]
   for (const start of starts) {
     for (let deg = 0; deg < 360; deg += 45) {
