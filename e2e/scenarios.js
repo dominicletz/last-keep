@@ -1,5 +1,5 @@
 const { expect } = require("@playwright/test")
-const { noteNorth } = require("./steer")
+const { noteNorth, noteProgress } = require("./steer")
 const fs = require("fs")
 const path = require("path")
 const proofDir = path.join("tmp", "verify-artifacts")
@@ -632,16 +632,17 @@ async function twoPlayerNight(browser) {
     if (!game || game.light !== "dusk" || !game.frameGrade) return false
     const grade = game.frameGrade()
     if (grade.mood.problems.length || grade.ground.problems.length) return false
-    const stone = game.sampleWorld(0, 36, 6)
-    const pine = game.sampleWorld(-22, 30, -62)
-    if (!stone || !pine) return false
+    const stone = game.sampleObject(0, 36, 6)
+    const pine = game.sampleObject(-22, 30, -62)
+    if (stone.count < 24 || pine.count < 24) return false
     const span = Math.abs(stone.hue - pine.hue) % 360
     if (Math.min(span, 360 - span) < 25) return false
     const hero = game.self
     // The card is 32 world units. Height 40 is above it. The steel is height 18.
     // A dark miss has almost no red, and dividing by that red jumps past 1.
-    const plate = hero ? game.sampleWorld(hero.x, 18, hero.y) : null
-    if (!plate) return false
+    // sampleObject throws when the mask is shorter than 24. That is a miss.
+    const plate = hero ? game.sampleObject(hero.x, 18, hero.y) : null
+    if (!plate || plate.count < 24) return false
     const plateSat =
       (Math.max(plate.r, plate.g, plate.b) - Math.min(plate.r, plate.g, plate.b)) / Math.max(plate.r, 1)
     if (plateSat >= 0.2) return false
@@ -669,6 +670,9 @@ async function twoPlayerNight(browser) {
     const span = Math.abs(left - right) % 360
     return Math.min(span, 360 - span)
   }
+  expect(duskMood.stone.count).toBeGreaterThanOrEqual(24)
+  expect(duskMood.pine.count).toBeGreaterThanOrEqual(24)
+  expect(duskMood.plate.count).toBeGreaterThanOrEqual(24)
   expect(hueDistance(duskMood.stone.hue, duskMood.pine.hue)).toBeGreaterThanOrEqual(25)
   await page.screenshot({ path: shot("dusk-host.png") })
   await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.light === "night", undefined, {
@@ -734,18 +738,23 @@ async function movementIsInterpolated(page) {
     if (active && active.blur) active.blur()
   })
   const origin = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
-  await holdKey(page, "KeyW", true)
   // The blend is 45ms on the motion track the socket publishes. Counting
   // animation frames inside 900ms fails when a loaded runner paints four
   // times in that window, before the track has been read. The first open
   // sample can arrive before the hero has walked 20, so the loop stays
-  // until both are true.
+  // until both are true. The poll is 20ms so the open window is not missed.
+  // Arrival is the server position, inside the same 4 seconds.
   const rows = []
-  const started = Date.now()
   const travelOf = (row) => Math.hypot(row.sx - origin.x, row.sz - origin.y)
-  try {
-    while (Date.now() - started < 4_000) {
-      const row = await page.evaluate(() => {
+  await walkUntil(page, {
+    timeout: 4_000,
+    label: "interpolated walk",
+    poll: 20,
+    soft: true,
+    done: (row) => rows.length > 5 && rows.some((sample) => sample.open) && travelOf(row) > 20,
+    step: async (current) => {
+      await holdCodes(current, ["KeyW"])
+      const row = await current.evaluate(() => {
         const game = window.__lastKeep
         const track = game && game.motion
         if (!track || !game.self) return null
@@ -754,13 +763,9 @@ async function movementIsInterpolated(page) {
         return { step, age, sx: game.self.x, sz: game.self.y, open: step > 0.4 && step < 14 && age >= 0 && age < 45 }
       })
       if (row) rows.push(row)
-      const open = rows.some((sample) => sample.open)
-      if (rows.length > 5 && open && row && travelOf(row) > 20) break
-      await page.waitForTimeout(20)
+      return row
     }
-  } finally {
-    await holdKey(page, "KeyW", false)
-  }
+  })
   expect(rows.length).toBeGreaterThan(5)
   const last = rows[rows.length - 1]
   const travel = Math.hypot(last.sx - origin.x, last.sz - origin.y)
@@ -1157,12 +1162,15 @@ async function waitForRaiseGold(page) {
 async function walkToRaise(page) {
   // keysAround will not step inward, so the tangent leaves the hero outside
   // the last 10 of the raise radius. The eight-way step walks in until the
-  // keep face stops it, which is inside that radius.
-  const deadline = Date.now() + 25_000
-  let last = null
-  try {
-    while (Date.now() < deadline) {
-      const state = await page.evaluate(() => {
+  // keep face stops it, which is inside that radius. The server position is
+  // the arrival. The wait stays 25 seconds.
+  return walkUntil(page, {
+    timeout: 25_000,
+    label: "raise ring",
+    poll: 80,
+    done: (state) => state.raiseReady && Math.hypot(state.x, state.y) < 90,
+    step: (current) =>
+      current.evaluate(() => {
         const me = window.__lastKeep.self
         const button = document.querySelector("[data-raise]")
         if (!me) return null
@@ -1170,21 +1178,14 @@ async function walkToRaise(page) {
         for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
         return { x: me.x, y: me.y, alive: me.alive !== false, raiseReady: !!(button && !button.disabled) }
       })
-      last = state
-      if (state && state.raiseReady && Math.hypot(state.x, state.y) < 90) return
-      await page.waitForTimeout(80)
-    }
-  } finally {
-    await page.evaluate(() => {
-      for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, false)
-    })
-  }
-  throw new Error(`raise ring timed out at ${JSON.stringify(last)}`)
+  })
 }
 
 async function stepEastOfTheKeep(page) {
   // A single goal on the field row stops on the crop, and due west on the face
-  // does not slide. Turn through the east headings until the body is clear.
+  // does not slide. Keep a heading while the server x keeps gaining. Turn when
+  // that gain stops. The body still has to clear x 130 and radius 140, and the
+  // wait stays 20 seconds.
   const headings = [
     ["KeyD", "KeyS"],
     ["KeyD"],
@@ -1192,24 +1193,23 @@ async function stepEastOfTheKeep(page) {
     ["KeyW", "KeyD"],
     ["KeyS", "KeyA"]
   ]
-  const deadline = Date.now() + 20_000
-  let spin = 0
-  try {
-    while (Date.now() < deadline) {
-      const me = await page.evaluate(() => {
+  let mark = null
+  return walkUntil(page, {
+    timeout: 20_000,
+    label: "east of the keep",
+    done: (me) => me.x > 130 && Math.hypot(me.x, me.y) > 140,
+    step: async (current) => {
+      const me = await current.evaluate(() => {
         const self = window.__lastKeep.self
         return self ? { x: self.x, y: self.y } : null
       })
-      if (me && me.x > 130 && Math.hypot(me.x, me.y) > 140) return
-      await holdCodes(page, headings[spin % headings.length])
-      spin += 1
-      await page.waitForTimeout(600)
+      if (!me) return null
+      const progress = noteProgress(mark, me.x, Date.now())
+      mark = progress.mark
+      await holdCodes(current, headings[mark.heading % headings.length])
+      return me
     }
-  } finally {
-    await releaseCodes(page)
-  }
-  const last = await page.evaluate(() => window.__lastKeep.self)
-  throw new Error(`east of the keep timed out at ${JSON.stringify(last)}`)
+  })
 }
 
 async function townGrows(browser) {
@@ -1285,19 +1285,18 @@ async function returnNearTheKeep(page) {
   })
   if (far < 140) return
   await page.bringToFront()
-  await page.evaluate(() => window.__lastKeepTest.hold("KeyS", true))
-  try {
-    await page.waitForFunction(
-      () => {
+  await walkUntil(page, {
+    timeout: 15_000,
+    label: "back to the keep",
+    done: (state) => Math.hypot(state.x, state.y) < 140,
+    step: async (current) => {
+      await holdCodes(current, ["KeyS"])
+      return current.evaluate(() => {
         const me = window.__lastKeep.self
-        return me && Math.hypot(me.x, me.y) < 140
-      },
-      undefined,
-      { timeout: 15_000, polling: 100 }
-    )
-  } finally {
-    await page.evaluate(() => window.__lastKeepTest.hold("KeyS", false))
-  }
+        return me ? { x: me.x, y: me.y } : null
+      })
+    }
+  })
 }
 
 async function holdCodes(page, codes) {
@@ -1317,31 +1316,30 @@ async function assertFarCaptions(page) {
   // The position is published on the socket. A covered page does not have to
   // paint a frame. North of the keep, then west. On the west face KeyW slides
   // along x and y never passes -220, so a stalled north walk steps outward
-  // until the west line is clear of the keep.
-  const published = { timeout: 20_000, polling: 100 }
+  // until the west line is clear of the keep. Each leg returns on the server
+  // position. The caps stay 8 seconds, 12 seconds, and 20 seconds.
   const startY = await page.evaluate(() => (window.__lastKeep.self ? window.__lastKeep.self.y : 0))
-  await holdCodes(page, ["KeyW"])
   let arrived = false
-  try {
-    // Farmer pace covers a clear north line in a few seconds. Eight seconds
-    // is the cap. noteNorth steps out sooner when the walk stops gaining y,
-    // which is what burned the old 20s wait after the first 40 units.
-    let mark = null
-    const deadline = Date.now() + 8_000
-    while (Date.now() < deadline) {
-      const y = await page.evaluate(() => (window.__lastKeep.self ? window.__lastKeep.self.y : startY))
-      const step = noteNorth(mark, y, Date.now())
+  let mark = null
+  await walkUntil(page, {
+    timeout: 8_000,
+    label: "north of the keep",
+    soft: true,
+    done: (state) => {
+      const step = noteNorth(mark, state.y, Date.now())
       mark = step.mark
       if (step.action === "arrived") {
         arrived = true
-        break
+        return true
       }
-      if (step.action === "step-out") break
-      await page.waitForTimeout(100)
+      return step.action === "step-out"
+    },
+    step: async (current) => {
+      await holdCodes(current, ["KeyW"])
+      const y = await current.evaluate(() => (window.__lastKeep.self ? window.__lastKeep.self.y : null))
+      return { y: y == null ? startY : y }
     }
-  } finally {
-    await releaseCodes(page)
-  }
+  })
   if (!arrived) {
     const headings = [
       ["KeyA", "KeyW"],
@@ -1353,45 +1351,46 @@ async function assertFarCaptions(page) {
       ["KeyS", "KeyA"],
       ["KeyA"]
     ]
-    const deadline = Date.now() + 12_000
     let spin = 0
     let best = 0
     let since = Date.now()
-    try {
-      while (Date.now() < deadline) {
-        const me = await page.evaluate(() => {
+    await walkUntil(page, {
+      timeout: 12_000,
+      label: "off the keep face",
+      soft: true,
+      done: (me) => Math.hypot(me.x, me.y) > 80 && (me.x < -80 || Math.abs(me.y) > 90),
+      step: async (current) => {
+        const me = await current.evaluate(() => {
           const self = window.__lastKeep.self
           return self ? { x: self.x, y: self.y } : null
         })
-        if (!me) break
-        const dist = Math.hypot(me.x, me.y)
-        if (dist > 80 && (me.x < -80 || Math.abs(me.y) > 90)) break
-        if (dist > best + 4) {
-          best = dist
-          since = Date.now()
-        } else if (Date.now() - since > 700) {
-          spin = (spin + 1) % headings.length
-          since = Date.now()
+        if (me) {
+          const dist = Math.hypot(me.x, me.y)
+          if (dist > best + 4) {
+            best = dist
+            since = Date.now()
+          } else if (Date.now() - since > 700) {
+            spin = (spin + 1) % headings.length
+            since = Date.now()
+          }
         }
-        await holdCodes(page, headings[spin])
-        await page.waitForTimeout(100)
+        await holdCodes(current, headings[spin])
+        return me
       }
-    } finally {
-      await releaseCodes(page)
-    }
-  }
-  await page.evaluate(() => {
-    window.__lastKeepTest.hold("KeyA", true)
-    window.__lastKeepTest.hold("KeyW", true)
-  })
-  try {
-    await page.waitForFunction(() => window.__lastKeep.self && window.__lastKeep.self.x < -700, undefined, published)
-  } finally {
-    await page.evaluate(() => {
-      window.__lastKeepTest.hold("KeyA", false)
-      window.__lastKeepTest.hold("KeyW", false)
     })
   }
+  await walkUntil(page, {
+    timeout: 20_000,
+    label: "west caption",
+    done: (state) => state.x < -700,
+    step: async (current) => {
+      await holdCodes(current, ["KeyA", "KeyW"])
+      return current.evaluate(() => {
+        const self = window.__lastKeep.self
+        return self ? { x: self.x, y: self.y } : null
+      })
+    }
+  })
   await expect.poll(() => page.evaluate(captionHits), { timeout: 5_000 }).toEqual([])
   const far = await page.evaluate(() => window.__lastKeep.self)
   expect(far.x).toBeLessThan(-700)
@@ -1501,12 +1500,33 @@ async function assertPhoneClear(page) {
   }
 }
 
-async function steer(page, goal, done, timeout, label) {
+// Holds whatever `step` sets and returns only when `done` sees the server
+// position. The poll is how often that position is read. A timeout throws the
+// last position, unless `soft` is set for a leg that has another plan.
+async function walkUntil(page, { timeout, label, poll = 100, step, done, soft = false }) {
   const deadline = Date.now() + timeout
   let last = null
   try {
     while (Date.now() < deadline) {
-      const state = await page.evaluate((goal) => {
+      last = await step(page)
+      if (last && done(last)) return last
+      await page.waitForTimeout(poll)
+    }
+  } finally {
+    await releaseCodes(page)
+  }
+  if (soft) return last
+  throw new Error(`${label} timed out at ${JSON.stringify(last)}`)
+}
+
+async function steer(page, goal, done, timeout, label) {
+  return walkUntil(page, {
+    timeout,
+    label,
+    poll: 80,
+    done,
+    step: (current) =>
+      current.evaluate((goal) => {
         const me = window.__lastKeep.self
         const call = [...document.querySelectorAll(".hint-arrow")].some((node) => /goblin/i.test(node.textContent || ""))
         const keys = window.__lastKeepTest.around(goal.x, goal.y)
@@ -1518,16 +1538,7 @@ async function steer(page, goal, done, timeout, label) {
         )
         return me ? { x: me.x, y: me.y, alive: me.alive !== false, call, raiseReady } : null
       }, goal)
-      last = state
-      if (state && done(state)) return state
-      await page.waitForTimeout(80)
-    }
-  } finally {
-    await page.evaluate(() => {
-      for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, false)
-    })
-  }
-  throw new Error(`${label} timed out at ${JSON.stringify(last)}`)
+  })
 }
 
 async function phoneClear(browser) {
@@ -1886,16 +1897,25 @@ async function sixSeatMatch(browser) {
   }
   await page.waitForFunction(() => (window.__lastKeep.party || []).length >= 6)
   const engineer = guests[2].page
-  for (let step = 0; step < 50; step += 1) {
-    await page.evaluate(() => window.__lastKeepTest.home())
-    for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
-    const close = await engineer.evaluate(() => {
-      const self = window.__lastKeep.self
-      return !!self && Math.hypot(self.x, self.y) < 36
-    })
-    if (close) break
-    await page.waitForTimeout(200)
-  }
+  await walkUntil(page, {
+    timeout: 10_000,
+    label: "engineer beside the keep",
+    poll: 200,
+    soft: true,
+    done: (state) => state.close,
+    step: async () => {
+      await page.evaluate(() => window.__lastKeepTest.home())
+      for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
+      return engineer.evaluate(() => {
+        const self = window.__lastKeep.self
+        return {
+          x: self ? self.x : 0,
+          y: self ? self.y : 0,
+          close: !!self && Math.hypot(self.x, self.y) < 36
+        }
+      })
+    }
+  })
   for (let i = 0; i < 12; i += 1) {
     const angle = (i / 12) * Math.PI * 2
     const x = Math.cos(angle) * 100

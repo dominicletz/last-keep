@@ -128,6 +128,83 @@ export function patchStats(rgba) {
   return { r, g, b, luma: lumaOf(r, g, b), hue: hueOf(r, g, b), variance: variance / count }
 }
 
+// A color probe needs a real patch of the object. Fewer than this is a miss,
+// not a sample of the ground behind a crown or the gap between two boots.
+export const sampleMinPixels = 24
+
+function medianOf(values) {
+  const sorted = values.slice().sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  if (sorted.length % 2) return sorted[mid]
+  return (sorted[mid - 1] + sorted[mid]) / 2
+}
+
+// Median of the masked pixels. A sunset fleck in the tail does not move it.
+// A short mask throws. Callers do not treat that as "not this frame".
+export function maskedStats(rgba, mask, options = {}) {
+  const min = options.min ?? sampleMinPixels
+  const label = options.label || "object"
+  const reds = []
+  const greens = []
+  const blues = []
+  const pixels = Math.floor(rgba.length / 4)
+  for (let i = 0; i < pixels; i++) {
+    if (!mask[i]) continue
+    const o = i * 4
+    reds.push(rgba[o])
+    greens.push(rgba[o + 1])
+    blues.push(rgba[o + 2])
+  }
+  const count = reds.length
+  if (count < min) {
+    throw new Error(`sample short: ${count} pixels of ${label}, need ${min}`)
+  }
+  const r = medianOf(reds)
+  const g = medianOf(greens)
+  const b = medianOf(blues)
+  let variance = 0
+  for (let i = 0; i < count; i++) {
+    variance += (reds[i] - r) ** 2 + (greens[i] - g) ** 2 + (blues[i] - b) ** 2
+  }
+  return { r, g, b, luma: lumaOf(r, g, b), hue: hueOf(r, g, b), variance: variance / count, count, ok: true }
+}
+
+function nearClear(rgba, offset, clear) {
+  return (
+    Math.abs(rgba[offset] - clear[0]) <= 3 &&
+    Math.abs(rgba[offset + 1] - clear[1]) <= 3 &&
+    Math.abs(rgba[offset + 2] - clear[2]) <= 3
+  )
+}
+
+// Pixels of the isolated object nearest the query. The radius grows until the
+// mask holds `min` pixels or the rect is exhausted. Clear pixels are the gap.
+export function ownedNear(rgba, width, height, qx, qy, clear, min = sampleMinPixels) {
+  const mask = new Uint8Array(width * height)
+  const diag = Math.hypot(width, height)
+  let radius = 8
+  let count = 0
+  while (true) {
+    count = 0
+    mask.fill(0)
+    const limit = radius * radius
+    for (let y = 0; y < height; y++) {
+      const dy = y - qy
+      for (let x = 0; x < width; x++) {
+        const dx = x - qx
+        if (dx * dx + dy * dy > limit) continue
+        const i = y * width + x
+        if (nearClear(rgba, i * 4, clear)) continue
+        mask[i] = 1
+        count += 1
+      }
+    }
+    if (count >= min || radius >= diag) break
+    radius += 8
+  }
+  return { mask, count, radius }
+}
+
 export function hueGap(left, right) {
   const gap = Math.abs(left - right) % 360
   return Math.min(gap, 360 - gap)

@@ -22,6 +22,8 @@ Every change ships with tests. A simulation change needs an ExUnit test. A brows
 
 Each round adds a test for every backlog item it closes and links that test from `playtests/BACKLOG.md`. It updates `.agents/skills/verify-last-keep` and `.agents/skills/playtest-last-keep` with what the round taught. CI fails on browser console errors, reports coverage, and keeps a floor that only rises. The changelog is `docs/VERIFICATION.md`. A post-deploy smoke runs the same Playwright suite. Do not skip or loosen a check.
 
+A color or hue probe samples the object's own pixels. `sampleObject` renders that mesh or sprite alone, keeps the fragments that are not the clear color, and `maskedStats` takes the median. Fewer than 24 object pixels throws `sample short` with the count. Do not add a single-point `readPixels` probe under `e2e`. `e2e/probe.test.js` fails the run when one appears. A scripted walk uses `walkUntil`. It returns when the server position matches and throws that position on timeout. A key hold is not the arrival. The poll inside `walkUntil` is only how often the position is read.
+
 ## Layout
 
 - `lib/last_keep/game/sim.ex` is the pure tick. A `State` struct is the whole world. `phase` is `{:build, ticks}`, `{:wave, ticks}`, or `:over`.
@@ -54,6 +56,7 @@ mix test --cover
 npm test --prefix assets
 npm run check --prefix assets
 npm ci
+node --test e2e/steer.test.js e2e/probe.test.js
 npx playwright test
 ```
 
