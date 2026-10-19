@@ -108,7 +108,7 @@ Held, and visible here:
 4. The night is not silent. Day, build, horn, night, hit, kill, sting, keep-hit, and fall are on the bus. LK-024 held.
 5. The trap is the ground torch card and cost 6 wood. `playtests/round-11/shots/05-Bram.png`
 
-LK-104 and LK-105. The cloth does not draw the chunks, and the fog edge is a flat fill.
+LK-106 and LK-107. The cloth does not draw the chunks, and the fog edge is a flat fill.
 
 LK-094 and LK-097, re-checked and not fixed here. On this image, before #128, wave 1 still paid gold 2. Wave 2 still fell the keep after the heroes had reached the pack. #130 owns that reach. #128 owns the purse and was not deployed for this room.
 
