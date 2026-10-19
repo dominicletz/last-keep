@@ -437,6 +437,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-19 generation stays off the hot tick
 
 - `twenty ticks with fifteen heroes leave the generator count put` builds every chunk from -14 to 14, records `World.built/1`, joins 15 connected heroes, and ticks 20 times. The count stays put. The count rises only when `World.generate/1` misses its cache. There is no time ceiling. Pine wood stays planned. Night 1 stays two goblins. The coverage floor stays 77.
+
 ## 2026-10-19 the perf keep token is the harness door
 
 - A create on https://agentyard.letz.tw with `perf_keep` true returned a keep whose max was 100000. A create without that field stayed at 900. `docker-compose.prod.yml` set `PERF_KEEP=1`, and that flag accepted the public field. The server now accepts `perf_keep_token` only when it matches `PERF_KEEP_TOKEN`. A public `perf_keep` create stays at 900, and so does a wrong token. Production writes a random token into `.env` when the key is missing. The smoke reads that token over SSH and does not print it. The local harness token is `playwright`. `PLAYWRIGHT=1` does not open the door. The settled count, orphans, calls, triangles, paint, and facing ceilings stay. The later empty build still has to be at or under the earlier one. The coverage floor stays 77.
