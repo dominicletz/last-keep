@@ -16,11 +16,15 @@ export const masonryCrop = { x: 640, y: 100, w: 48, h: 64 }
 // roof-only patch is dark after the snap, and the full figure includes the
 // keep tower. The path token sits in a crop row, so the path window is the
 // dirt on that road. The pine figure stays under both floors, so it is not here.
+// Forge and the ground torch clear those floors in every phase. Tower, the
+// mage tower, the keep, the tree, and the felled wood still miss one.
 export const propCrops = {
   house: { x: 500, y: 200, w: 96, h: 110 },
   field: { x: 740, y: 300, w: 250, h: 140 },
   wall: { x: 224, y: 308, w: 48, h: 64 },
-  path: { x: 700, y: 324, w: 32, h: 32 }
+  path: { x: 700, y: 324, w: 32, h: 32 },
+  forge: { x: 500, y: 190, w: 200, h: 150 },
+  trap: { x: 520, y: 490, w: 100, h: 90 }
 }
 
 export function citedHexes(markdown) {
