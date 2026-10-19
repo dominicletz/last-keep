@@ -546,6 +546,15 @@ export function createView(stage) {
 
   viewApi = {
     canvas: renderer.domElement,
+    rims(show) {
+      showRims(show)
+    },
+    repaint() {
+      paintFrame()
+      publishPerf(null)
+      const perf = window.__lastKeepPerf
+      return { calls: perf.calls, triangles: perf.triangles, rims: perf.rims }
+    },
     queue(snap, selfId) {
       pending = { snap, selfId }
       placeCamera(snap, selfId)
@@ -1652,6 +1661,22 @@ export function createView(stage) {
     camera.updateProjectionMatrix()
   }
 
+  function visibleRims() {
+    let count = 0
+    scene.traverse((node) => {
+      const rim = node.userData && node.userData.rim
+      if (rim && node.visible && rim.visible) count += 1
+    })
+    return count
+  }
+
+  function showRims(show) {
+    scene.traverse((node) => {
+      const rim = node.userData && node.userData.rim
+      if (rim) rim.visible = show
+    })
+  }
+
   function publishPerf(paintMs) {
     const perf = window.__lastKeepPerf || (window.__lastKeepPerf = { paints: [] })
     perf.geometries = renderer.info.memory.geometries
@@ -1659,6 +1684,7 @@ export function createView(stage) {
     perf.calls = renderer.info.render.calls
     perf.triangles = renderer.info.render.triangles
     perf.census = geometryCensus(scene)
+    perf.rims = visibleRims()
     if (paintMs == null) return
     perf.paints.push(paintMs)
     if (perf.paints.length > 400) perf.paints.shift()
