@@ -69,6 +69,8 @@ export function createView(stage) {
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
   const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
   const probe = new THREE.Vector3()
+  const rimFrustum = new THREE.Frustum()
+  const rimProj = new THREE.Matrix4()
   let viewFrame = opening
   let townRank = 0
 
@@ -1663,9 +1665,6 @@ export function createView(stage) {
     camera.bottom = next.bottom
     camera.updateProjectionMatrix()
   }
-
-  const rimFrustum = new THREE.Frustum()
-  const rimProj = new THREE.Matrix4()
 
   function cullActors() {
     for (const [key, mesh] of meshes) {
