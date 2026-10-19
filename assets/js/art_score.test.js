@@ -6,7 +6,7 @@ import { decodePng, renderCloseup } from "../models/raster.js"
 import { loadSheet } from "../models/sheets.js"
 import { heroCrops, MONSTER_CROPS } from "../models/sprites.js"
 import { groundPixels } from "./ground.js"
-import { buildPaletteAtlas, paletteFragmentShader, samplePaletteAtlas } from "./palette_pass.js"
+import { buildPaletteAtlas, createPalettePass, paletteFragmentShader, samplePaletteAtlas } from "./palette_pass.js"
 import { groundFloor, groundSpread } from "./mood.js"
 import { cycleLight, hueOf, litYard, lumaOf } from "./scene.js"
 import {
@@ -310,6 +310,50 @@ test("the palette pass locks with one atlas lookup", () => {
   // sample's nearest on most of the cube, and the extra distance stays under
   // the measured 235. That bound only falls.
   assert.ok(worst <= 235, worst)
+  const draw = source.slice(source.indexOf("draw(scene, camera)"))
+  const offAt = draw.indexOf("renderer.info.autoReset = false")
+  const resetAt = draw.indexOf("renderer.info.reset()")
+  const sceneAt = draw.indexOf("renderer.render(scene, camera)")
+  const quadAt = draw.indexOf("renderer.render(passScene, passCamera)")
+  const restoreAt = draw.indexOf("renderer.info.autoReset = reset")
+  assert.ok(offAt >= 0 && offAt < resetAt)
+  assert.ok(resetAt < sceneAt && sceneAt < quadAt && quadAt < restoreAt)
+  assert.equal(draw.split("renderer.info.reset()").length - 1, 1)
+  assert.equal(source.includes("RGBFormat"), false)
+  assert.match(source, /THREE\.RGBAFormat/)
+})
+
+test("hiding a rim still changes the draw count after the quantize quad", () => {
+  const info = {
+    autoReset: true,
+    render: { calls: 7, triangles: 40, frame: 3 },
+    reset() {
+      this.render.calls = 0
+      this.render.triangles = 0
+    }
+  }
+  let renders = 0
+  const renderer = {
+    info,
+    getSize(out) {
+      out.x = 16
+      out.y = 16
+    },
+    setRenderTarget() {},
+    render() {
+      renders += 1
+      info.render.frame += 1
+      if (info.autoReset === true) info.reset()
+      info.render.calls += renders === 1 ? 4 : 1
+      info.render.triangles += renders === 1 ? 8 : 2
+    }
+  }
+  createPalettePass(renderer, palette).draw({}, {})
+  assert.equal(info.autoReset, true)
+  assert.equal(renders, 2)
+  assert.equal(info.render.calls, 5)
+  assert.equal(info.render.triangles, 10)
+  assert.equal(info.render.frame, 5)
 })
 
 test("the locked palette is the style tokens at the spec's four shades", () => {

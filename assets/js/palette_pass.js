@@ -138,11 +138,21 @@ export function createPalettePass(renderer, palette) {
       renderer.getSize(size)
       if (target.width !== size.x || target.height !== size.y) target.setSize(size.x, size.y)
       material.uniforms.resolution.value.set(size.x, size.y)
-      renderer.setRenderTarget(target)
-      renderer.render(scene, camera)
-      renderer.setRenderTarget(null)
-      target.texture.colorSpace = THREE.NoColorSpace
-      renderer.render(passScene, passCamera)
+      // The scene render and the quantize quad are one frame. Three resets
+      // renderer.info at the start of each render, so the quad was the only
+      // call publishPerf could see. Hiding a rim has to drop that one call.
+      const reset = renderer.info.autoReset
+      renderer.info.autoReset = false
+      renderer.info.reset()
+      try {
+        renderer.setRenderTarget(target)
+        renderer.render(scene, camera)
+        renderer.setRenderTarget(null)
+        target.texture.colorSpace = THREE.NoColorSpace
+        renderer.render(passScene, passCamera)
+      } finally {
+        renderer.info.autoReset = reset
+      }
     }
   }
 }
