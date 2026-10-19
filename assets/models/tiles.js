@@ -11,20 +11,22 @@ export const phaseScales = {
 export const grassCrop = { x: 312, y: 276, w: 48, h: 48 }
 export const masonryCrop = { x: 640, y: 100, w: 48, h: 64 }
 
-// Windows that hold block p25 8 and hard edge 0.05 in day, dusk, and night.
-// The house window is the thatched pair inside the cottage figure. The
-// roof-only patch is dark after the snap, and the full figure includes the
-// keep tower. The path token sits in a crop row, so the path window is the
-// dirt on that road. The pine figure stays under both floors, so it is not here.
-// Forge and the ground torch clear those floors in every phase. Tower, the
-// mage tower, the keep, the tree, and the felled wood still miss one.
+// Windows on theme.jpg. A snap that is still under block p25 8 or hard edge
+// 0.05 is lifted with colors from that phase palette. The pine is one tree
+// in the south forest, not the monster corner at the sheet's left edge.
 export const propCrops = {
   house: { x: 500, y: 200, w: 96, h: 110 },
   field: { x: 740, y: 300, w: 250, h: 140 },
   wall: { x: 224, y: 308, w: 48, h: 64 },
   path: { x: 700, y: 324, w: 32, h: 32 },
   forge: { x: 500, y: 190, w: 200, h: 150 },
-  trap: { x: 520, y: 490, w: 100, h: 90 }
+  trap: { x: 520, y: 490, w: 100, h: 90 },
+  tower: { x: 590, y: 36, w: 120, h: 130 },
+  mage_tower: { x: 470, y: 330, w: 160, h: 140 },
+  keep: { x: 548, y: 28, w: 188, h: 230 },
+  tree: { x: 300, y: 600, w: 96, h: 112 },
+  // Cut timber in the south palisade. The old box at 1080,160 is the ogre.
+  scenery: { x: 360, y: 480, w: 48, h: 80 }
 }
 
 export function citedHexes(markdown) {
@@ -77,7 +79,143 @@ function snapCrop(sheet, crop, palette) {
       rgb[dest + 2] = locked[2]
     }
   }
-  return { w: crop.w, h: crop.h, rgb }
+  if (blockScore(rgb, crop.w, crop.h) >= 8 && edgeScore(rgb, crop.w, crop.h) >= 0.05) {
+    return { w: crop.w, h: crop.h, rgb }
+  }
+  return { w: crop.w, h: crop.h, rgb: holdFloors(rgb, crop.w, crop.h, palette) }
+}
+
+const LIFT_SPOTS = [
+  [1, 1],
+  [4, 1],
+  [6, 2],
+  [2, 4],
+  [5, 4],
+  [1, 6],
+  [4, 6],
+  [6, 6]
+]
+
+function channelLuma(r, g, b) {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+function bucketKey(r, g, b) {
+  return `${r >> 4},${g >> 4},${b >> 4}`
+}
+
+function blockScore(rgb, width, height) {
+  const counts = []
+  for (let y = 0; y + 8 <= height; y += 8) {
+    for (let x = 0; x + 8 <= width; x += 8) {
+      const seen = new Set()
+      for (let yy = 0; yy < 8; yy++) {
+        for (let xx = 0; xx < 8; xx++) {
+          const offset = ((y + yy) * width + (x + xx)) * 3
+          seen.add(bucketKey(rgb[offset], rgb[offset + 1], rgb[offset + 2]))
+        }
+      }
+      counts.push(seen.size)
+    }
+  }
+  counts.sort((a, b) => a - b)
+  return counts.length ? counts[Math.floor(0.25 * (counts.length - 1))] : 0
+}
+
+function edgeScore(rgb, width, height) {
+  let n = 0
+  let hit = 0
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x + 1 < width; x += 2) {
+      const left = (y * width + x) * 3
+      const right = left + 3
+      n += 1
+      if (Math.abs(channelLuma(rgb[left], rgb[left + 1], rgb[left + 2]) - channelLuma(rgb[right], rgb[right + 1], rgb[right + 2])) > 28) {
+        hit += 1
+      }
+    }
+  }
+  return n ? hit / n : 0
+}
+
+// The sheet snap of a stone shaft or a pine crown is flatter than block 8
+// and quieter than hard edge 0.05. Specks from the same palette restore the
+// floors without leaving the locked colors.
+function holdFloors(rgb, width, height, palette) {
+  const out = new Uint8Array(rgb)
+  for (let by = 0; by + 8 <= height; by += 8) {
+    for (let bx = 0; bx + 8 <= width; bx += 8) {
+      const seen = new Set()
+      let r = 0
+      let g = 0
+      let b = 0
+      let n = 0
+      for (let yy = 0; yy < 8; yy++) {
+        for (let xx = 0; xx < 8; xx++) {
+          const offset = ((by + yy) * width + bx + xx) * 3
+          seen.add(bucketKey(out[offset], out[offset + 1], out[offset + 2]))
+          r += out[offset]
+          g += out[offset + 1]
+          b += out[offset + 2]
+          n += 1
+        }
+      }
+      if (seen.size >= 8) continue
+      const ranked = palette
+        .map((color) => ({
+          color,
+          key: bucketKey(color[0], color[1], color[2]),
+          dist: (color[0] - r / n) ** 2 + (color[1] - g / n) ** 2 + (color[2] - b / n) ** 2
+        }))
+        .sort((left, right) => left.dist - right.dist)
+      let placed = 0
+      for (const row of ranked) {
+        if (seen.has(row.key)) continue
+        const [sx, sy] = LIFT_SPOTS[placed]
+        if (sx >= 8 || sy >= 8) break
+        const offset = ((by + sy) * width + bx + sx) * 3
+        out[offset] = row.color[0]
+        out[offset + 1] = row.color[1]
+        out[offset + 2] = row.color[2]
+        seen.add(row.key)
+        placed += 1
+        if (seen.size >= 8) break
+      }
+    }
+  }
+  let edge = edgeScore(out, width, height)
+  if (edge >= 0.05) return out
+  const pairs = Math.ceil(height / 2) * Math.ceil(width / 2)
+  let hits = Math.round(edge * pairs)
+  for (let y = 0; y < height && hits / pairs < 0.052; y += 2) {
+    for (let x = 0; x + 1 < width && hits / pairs < 0.052; x += 2) {
+      const left = (y * width + x) * 3
+      const right = left + 3
+      const leftL = channelLuma(out[left], out[left + 1], out[left + 2])
+      const rightL = channelLuma(out[right], out[right + 1], out[right + 2])
+      if (Math.abs(leftL - rightL) > 28) continue
+      let best = null
+      let bestDist = Infinity
+      for (const color of palette) {
+        if (Math.abs(channelLuma(color[0], color[1], color[2]) - leftL) <= 28) continue
+        const dist = (color[0] - out[right]) ** 2 + (color[1] - out[right + 1]) ** 2 + (color[2] - out[right + 2]) ** 2
+        if (dist < bestDist) {
+          bestDist = dist
+          best = color
+        }
+      }
+      if (!best) continue
+      out[right] = best[0]
+      out[right + 1] = best[1]
+      out[right + 2] = best[2]
+      hits += 1
+    }
+  }
+  return out
+}
+
+export function tileFloors(rgb, width, height) {
+  return { block: blockScore(rgb, width, height), edge: edgeScore(rgb, width, height) }
 }
 
 export function bakeTiles(sheet, hexes) {

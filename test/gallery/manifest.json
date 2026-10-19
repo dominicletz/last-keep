@@ -324,11 +324,11 @@
     {
       "id": "keep",
       "family": "prop",
-      "area": 14896,
-      "minArea": 11930,
-      "day": 54.96,
-      "dusk": 26.49,
-      "night": 20.48,
+      "area": 96664,
+      "minArea": 77331,
+      "day": 46.26,
+      "dusk": 45.33,
+      "night": 43.71,
       "sheet": "theme.jpg",
       "figure": "keep",
       "crop": [
@@ -350,10 +350,10 @@
       "sheet": "theme.jpg",
       "figure": "pine",
       "crop": [
-        0,
-        500,
-        180,
-        210
+        300,
+        600,
+        96,
+        112
       ],
       "conceptPresent": true
     },
@@ -368,10 +368,10 @@
       "sheet": "theme.jpg",
       "figure": "felled wood",
       "crop": [
-        1080,
-        160,
-        180,
-        260
+        360,
+        480,
+        48,
+        80
       ],
       "conceptPresent": true
     },

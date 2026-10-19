@@ -87,8 +87,8 @@ Every Rules hero, every monster the simulation spawns, every building, and the y
 | forge | building | theme.jpg | lit house | 500,190,200,150 |
 | mage_tower | building | theme.jpg | spell light | 470,330,160,140 |
 | keep | prop | theme.jpg | keep | 548,28,188,230 |
-| tree | prop | theme.jpg | pine | 0,500,180,210 |
-| scenery | prop | theme.jpg | felled wood | 1080,160,180,260 |
+| tree | prop | theme.jpg | pine | 300,600,96,112 |
+| scenery | prop | theme.jpg | felled wood | 360,480,48,80 |
 | house | town | theme.jpg | cottage | 500,150,180,160 |
 
 ## Asset loop
