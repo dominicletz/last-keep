@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict")
 const { test } = require("node:test")
 const { keysAround } = require("../assets/js/input.js")
-const { axes, keysFor, walkHitsKeep, noteNorth } = require("./steer")
+const { axes, keysFor, walkHitsKeep, noteNorth, noteProgress } = require("./steer")
 
 const BODY = 68
 const SPEED = 155
@@ -88,4 +88,19 @@ test("a north walk with no gain steps out after three seconds", () => {
   assert.equal(early.action, "hold")
   const late = noteNorth(first.mark, 38, 3001)
   assert.equal(late.action, "step-out")
+})
+
+test("a heading stays while the server position gains and turns when it stops", () => {
+  const first = noteProgress(null, 10, 0)
+  assert.equal(first.action, "hold")
+  assert.equal(first.mark.heading, 0)
+  const moving = noteProgress(first.mark, 20, 400)
+  assert.equal(moving.action, "hold")
+  assert.equal(moving.mark.heading, 0)
+  const stalled = noteProgress(moving.mark, 21, 400 + 701)
+  assert.equal(stalled.action, "turn")
+  assert.equal(stalled.mark.heading, 1)
+  const again = noteProgress(stalled.mark, 30, 1200)
+  assert.equal(again.action, "hold")
+  assert.equal(again.mark.heading, 1)
 })

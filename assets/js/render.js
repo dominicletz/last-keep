@@ -24,8 +24,11 @@ import {
   groundColor,
   lightName,
   lumaOf,
+  maskedStats,
+  ownedNear,
   patchStats,
   plazaColor,
+  sampleMinPixels,
   plazaSides,
   ringColor,
   skyColor,
@@ -424,6 +427,13 @@ export function createView(stage) {
   let pending = null
   let drawnTick = -1
   let viewApi = null
+  let sampleTarget = null
+  const savedClear = new THREE.Color()
+  const samplePoint = new THREE.Vector3()
+  const sampleBox = new THREE.Box3()
+  const sampleSize = new THREE.Vector3()
+  const samplePos = new THREE.Vector3()
+  const sampleScale = new THREE.Vector3()
 
   function noteInput() {
     lastInput = performance.now()
@@ -756,6 +766,7 @@ export function createView(stage) {
         brightNear,
         patchAt,
         sampleWorld,
+        sampleObject,
         frameMood,
         frameGround,
         frameGrade,
@@ -856,22 +867,217 @@ export function createView(stage) {
   }
 
   function sampleWorld(x, y, z) {
-    paintFrame()
-    const gl = renderer.getContext()
+    return sampleObject(x, y, z)
+  }
+
+  // The object's own fragments, not an 8×8 patch that can land on the ground
+  // behind a crown, between the boots, or on a sunset fleck. The match loop
+  // does not call this.
+  function sampleObject(x, y, z) {
+    const label = `${x}, ${y}, ${z}`
+    const object = objectAt(x, y, z)
+    if (!object) throw new Error(`sample missed: no mesh owns (${label})`)
     const canvas = renderer.domElement
-    const point = new THREE.Vector3(x, y, z).project(camera)
-    if (point.z > 1) return null
-    const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
-    const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)
-    const size = 8
-    const sx0 = Math.max(0, px - size / 2)
-    const sy0 = Math.max(0, py - size / 2)
-    const width = Math.min(size, canvas.width - sx0)
-    const heightPx = Math.min(size, canvas.height - sy0)
-    if (width < 4 || heightPx < 4) return null
-    const buf = new Uint8Array(width * heightPx * 4)
-    gl.readPixels(sx0, Math.max(0, canvas.height - (sy0 + heightPx)), width, heightPx, gl.RGBA, gl.UNSIGNED_BYTE, buf)
-    return patchStats(buf)
+    const rect = boundsRect(object, canvas.width, canvas.height)
+    if (!rect) throw new Error(`sample missed: (${label}) has no screen bounds`)
+    const w = rect.x1 - rect.x0
+    const h = rect.y1 - rect.y0
+    const shot = renderIsolated(object, rect)
+    samplePoint.set(x, y, z).project(camera)
+    const px = (samplePoint.x * 0.5 + 0.5) * canvas.width
+    const py = (-samplePoint.y * 0.5 + 0.5) * canvas.height
+    const qx = Math.min(w - 1, Math.max(0, px - rect.x0))
+    const qy = Math.min(h - 1, Math.max(0, rect.y1 - 1 - py))
+    if (shot.clear[0] === 0 && shot.clear[1] === 0 && shot.clear[2] === 0) {
+      throw new Error(`sample unread: (${label})`)
+    }
+    const picked = ownedNear(shot.beauty, w, h, qx, qy, shot.clear, sampleMinPixels)
+    const role = objectRole(object)
+    return maskedStats(shot.beauty, picked.mask, {
+      min: sampleMinPixels,
+      label: `${role} at (${label})`
+    })
+  }
+
+  function objectRole(object) {
+    let node = object
+    while (node) {
+      if (node.userData && node.userData.role) return node.userData.role
+      node = node.parent
+    }
+    return object.isSprite ? "sprite" : "mesh"
+  }
+
+  function drawnObject(object) {
+    let node = object
+    while (node) {
+      if (node.visible === false) return false
+      node = node.parent
+    }
+    return true
+  }
+
+  function shadowOnly(object) {
+    const material = object.material
+    return !!(material && material.transparent && material.depthWrite === false)
+  }
+
+  function objectBounds(object, target) {
+    if (object.isSprite) {
+      object.getWorldPosition(samplePos)
+      object.getWorldScale(sampleScale)
+      const cx = object.center.x
+      const cy = object.center.y
+      const sw = Math.abs(sampleScale.x) || 1
+      const sh = Math.abs(sampleScale.y) || 1
+      const sd = Math.max(sw, 4)
+      const minX = (-0.5 - (cx - 0.5)) * sw
+      const maxX = (0.5 - (cx - 0.5)) * sw
+      const minY = (-0.5 - (cy - 0.5)) * sh
+      const maxY = (0.5 - (cy - 0.5)) * sh
+      target.min.set(samplePos.x + minX, samplePos.y + minY, samplePos.z - sd / 2)
+      target.max.set(samplePos.x + maxX, samplePos.y + maxY, samplePos.z + sd / 2)
+      return target
+    }
+    return target.setFromObject(object)
+  }
+
+  function objectAt(x, y, z) {
+    scene.updateMatrixWorld(true)
+    samplePoint.set(x, y, z)
+    let best = null
+    let bestVol = Infinity
+    scene.traverse((object) => {
+      if (!object.isMesh && !object.isSprite) return
+      if (!drawnObject(object) || shadowOnly(object)) return
+      objectBounds(object, sampleBox)
+      if (sampleBox.isEmpty()) return
+      sampleBox.expandByScalar(1.5)
+      if (!sampleBox.containsPoint(samplePoint)) return
+      sampleBox.getSize(sampleSize)
+      const volume = Math.max(sampleSize.x, 0.5) * Math.max(sampleSize.y, 0.5) * Math.max(sampleSize.z, 0.5)
+      if (volume < bestVol) {
+        best = object
+        bestVol = volume
+      }
+    })
+    return best
+  }
+
+  function boundsRect(object, width, height) {
+    objectBounds(object, sampleBox)
+    if (sampleBox.isEmpty()) return null
+    const corner = samplePoint
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+    let seen = 0
+    for (const cx of [sampleBox.min.x, sampleBox.max.x]) {
+      for (const cy of [sampleBox.min.y, sampleBox.max.y]) {
+        for (const cz of [sampleBox.min.z, sampleBox.max.z]) {
+          corner.set(cx, cy, cz).project(camera)
+          if (corner.z > 1) continue
+          const px = (corner.x * 0.5 + 0.5) * width
+          const py = (-corner.y * 0.5 + 0.5) * height
+          if (px < minX) minX = px
+          if (px > maxX) maxX = px
+          if (py < minY) minY = py
+          if (py > maxY) maxY = py
+          seen += 1
+        }
+      }
+    }
+    if (!seen) return null
+    const x0 = Math.max(0, Math.floor(minX))
+    const y0 = Math.max(0, Math.floor(minY))
+    const x1 = Math.min(width, Math.ceil(maxX))
+    const y1 = Math.min(height, Math.ceil(maxY))
+    if (x1 - x0 < 1 || y1 - y0 < 1) return null
+    return { x0, y0, x1, y1 }
+  }
+
+  function targetFor(width, height) {
+    if (!sampleTarget || sampleTarget.width !== width || sampleTarget.height !== height) {
+      if (sampleTarget) sampleTarget.dispose()
+      sampleTarget = new THREE.WebGLRenderTarget(width, height, {
+        minFilter: THREE.NearestFilter,
+        magFilter: THREE.NearestFilter,
+        format: THREE.RGBAFormat,
+        type: THREE.UnsignedByteType,
+        depthBuffer: true
+      })
+      sampleTarget.texture.colorSpace = THREE.SRGBColorSpace
+    }
+    return sampleTarget
+  }
+
+  function isolate(object) {
+    const saved = []
+    scene.traverse((node) => {
+      saved.push(node, node.visible)
+      if (node.isLight) return
+      node.visible = false
+    })
+    let node = object
+    while (node) {
+      node.visible = true
+      node = node.parent
+    }
+    object.traverse((child) => {
+      child.visible = true
+    })
+    return () => {
+      for (let i = 0; i < saved.length; i += 2) saved[i].visible = saved[i + 1]
+    }
+  }
+
+  function outsideCorner(rect, width, height) {
+    const spots = [
+      [0, 0],
+      [width - 1, 0],
+      [0, height - 1],
+      [width - 1, height - 1]
+    ]
+    for (const [x, y] of spots) {
+      const top = height - 1 - y
+      if (x < rect.x0 || x >= rect.x1 || top < rect.y0 || top >= rect.y1) return [x, y]
+    }
+    return [0, 0]
+  }
+
+  function renderIsolated(object, rect) {
+    const canvas = renderer.domElement
+    const target = targetFor(canvas.width, canvas.height)
+    const previousBackground = scene.background
+    const previousFog = scene.fog
+    const previousOverride = scene.overrideMaterial
+    const previousAlpha = renderer.getClearAlpha()
+    renderer.getClearColor(savedClear)
+    const restore = isolate(object)
+    const beauty = new Uint8Array((rect.x1 - rect.x0) * (rect.y1 - rect.y0) * 4)
+    const clearBuf = new Uint8Array(4)
+    try {
+      scene.background = new THREE.Color(0xff00ff)
+      scene.fog = null
+      scene.overrideMaterial = null
+      renderer.setClearColor(0xff00ff, 1)
+      renderer.setRenderTarget(target)
+      renderer.clear(true, true, true)
+      renderer.render(scene, camera)
+      const glY = canvas.height - rect.y1
+      renderer.readRenderTargetPixels(target, rect.x0, glY, rect.x1 - rect.x0, rect.y1 - rect.y0, beauty)
+      const corner = outsideCorner(rect, canvas.width, canvas.height)
+      renderer.readRenderTargetPixels(target, corner[0], corner[1], 1, 1, clearBuf)
+    } finally {
+      renderer.setRenderTarget(null)
+      scene.background = previousBackground
+      scene.fog = previousFog
+      scene.overrideMaterial = previousOverride
+      renderer.setClearColor(savedClear, previousAlpha)
+      restore()
+    }
+    return { beauty, clear: [clearBuf[0], clearBuf[1], clearBuf[2]] }
   }
 
   function readFrame() {
@@ -1018,22 +1224,7 @@ export function createView(stage) {
   }
 
   function patchAt(x, z) {
-    paintFrame()
-    const gl = renderer.getContext()
-    const canvas = renderer.domElement
-    const point = new THREE.Vector3(x, 2, z).project(camera)
-    if (point.z > 1) return null
-    const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
-    const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)
-    const size = 10
-    const sx0 = Math.max(0, px - size / 2)
-    const sy0 = Math.max(0, py - size / 2)
-    const width = Math.min(size, canvas.width - sx0)
-    const heightPx = Math.min(size, canvas.height - sy0)
-    if (width < 4 || heightPx < 4) return null
-    const buf = new Uint8Array(width * heightPx * 4)
-    gl.readPixels(sx0, Math.max(0, canvas.height - (sy0 + heightPx)), width, heightPx, gl.RGBA, gl.UNSIGNED_BYTE, buf)
-    return patchStats(buf)
+    return sampleObject(x, 2, z)
   }
 
   function brightNear(x, z, height = 16) {

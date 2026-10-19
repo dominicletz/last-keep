@@ -51,6 +51,6 @@ jobs:
           fi
       - run: npm run check --prefix assets
       - run: npm ci
-      - run: node --test e2e/steer.test.js
+      - run: node --test e2e/steer.test.js e2e/probe.test.js
       - run: npx playwright install chromium --with-deps
       - run: npx playwright test

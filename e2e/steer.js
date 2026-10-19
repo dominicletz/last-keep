@@ -54,4 +54,13 @@ function noteNorth(mark, y, now, stallMs = 700) {
   return { action: "hold", mark }
 }
 
-module.exports = { axes, keysFor, walkHitsKeep, noteNorth }
+// A heading is kept while the server position keeps gaining. The turn happens
+// when that gain stops, not because a hold lasted a fixed time.
+function noteProgress(mark, score, now, stallMs = 700) {
+  if (!mark) return { action: "hold", mark: { best: score, at: now, heading: 0 } }
+  if (score > mark.best + 4) return { action: "hold", mark: { best: score, at: now, heading: mark.heading } }
+  if (now - mark.at > stallMs) return { action: "turn", mark: { best: mark.best, at: now, heading: mark.heading + 1 } }
+  return { action: "hold", mark }
+}
+
+module.exports = { axes, keysFor, walkHitsKeep, noteNorth, noteProgress }
