@@ -1867,6 +1867,41 @@ async function takeTheShrine(browser) {
   await host.context.close()
 }
 
+async function meetTheHermit(browser) {
+  const errors = []
+  const hermit = { x: -5724, y: -648 }
+  const host = await createHost(browser, "Ada", "warrior", async (page) => {
+    await page.route("**/api/rooms", async (route) => {
+      const request = route.request()
+      if (request.method() !== "POST" || !request.url().endsWith("/api/rooms")) {
+        await route.continue()
+        return
+      }
+      const body = request.postDataJSON()
+      await route.continue({ postData: JSON.stringify({ ...body, seed: 5 }) })
+    })
+  })
+  const page = host.page
+  watch(page, "host", errors)
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.self)
+  await steerPast(
+    page,
+    hermit,
+    (state) => Math.hypot(state.x - hermit.x, state.y - hermit.y) < 30,
+    120_000,
+    "hermit"
+  )
+  await page.waitForFunction(
+    () => (window.__lastKeep.chunks || []).some((row) => row.cx === -14 && row.cy === -2),
+    null,
+    { timeout: 5_000 }
+  )
+  expect(await page.evaluate(() => window.__lastKeep.seats.length)).toBe(1)
+  await page.screenshot({ path: shot("hermit-host.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
 async function holdTheLand(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "warrior", async (page) => {
@@ -2486,6 +2521,7 @@ module.exports = {
   exploreLand,
   chopThePine,
   wakeTheCamp,
+  meetTheHermit,
   takeTheShrine,
   holdTheLand,
   readTheMap,
