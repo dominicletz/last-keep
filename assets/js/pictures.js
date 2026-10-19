@@ -1,6 +1,7 @@
 // Browser-safe hero card. The front cell is the concept crop. Eight directions,
 // four walk frames, three attack frames, and four death frames are made from
-// that one painting. Direction 0, walk 0 is the crop.
+// that one painting. Direction 0, walk 0 is the crop. A hero's side column is
+// a profile of that painting, with the left-hand gear in front of the body.
 
 export const spriteHeight = 32
 export const spriteDirections = 8
@@ -100,6 +101,53 @@ function sideOf(image) {
   return squash({ rgb, mask, w: slice, h: image.h }, Math.max(4, Math.round(image.w * 0.22)))
 }
 
+const HERO_KINDS = new Set(["warrior", "mage", "scout", "farmer", "engineer"])
+
+function paintStrip(image, y, x0, x1, destX, destW, rgb, mask, destWidth) {
+  if (destW <= 0 || x1 <= x0) return
+  const span = x1 - x0
+  for (let i = 0; i < destW; i++) {
+    const sx = Math.min(x1 - 1, x0 + Math.floor(((i + 0.5) * span) / destW))
+    const s = y * image.w + sx
+    if (sx < 0 || sx >= image.w || !image.mask[s]) continue
+    const dx = destX + i
+    if (dx < 0 || dx >= destWidth) continue
+    const d = y * destWidth + dx
+    mask[d] = 1
+    rgb.set(image.rgb.subarray(s * 3, s * 3 + 3), d * 3)
+  }
+}
+
+// A profile keeps the left-hand gear in front of the body and the right-hand
+// pack behind it. A center slice of the painting drops that gear.
+function profileOf(image) {
+  const w = Math.max(8, Math.round(image.w * 0.48))
+  const rgb = new Uint8Array(w * image.h * 3)
+  const mask = new Uint8Array(w * image.h)
+  for (let y = 0; y < image.h; y++) {
+    let minX = image.w
+    let maxX = -1
+    for (let x = 0; x < image.w; x++) {
+      if (!image.mask[y * image.w + x]) continue
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+    }
+    if (maxX < 0) continue
+    const span = maxX - minX + 1
+    const rowW = Math.max(1, Math.min(w, Math.round((w * span) / image.w)))
+    const bodyW = Math.max(1, Math.round(rowW * 0.46))
+    const leadW = Math.floor((rowW - bodyW) / 2)
+    const trailW = rowW - bodyW - leadW
+    const bodyX = Math.floor((w - bodyW) / 2)
+    const leadEnd = minX + Math.floor(span * 0.28)
+    const trailStart = minX + Math.ceil(span * 0.72)
+    paintStrip(image, y, minX, Math.max(leadEnd, minX + 1), bodyX - leadW, leadW, rgb, mask, w)
+    paintStrip(image, y, leadEnd, Math.max(trailStart, leadEnd + 1), bodyX, bodyW, rgb, mask, w)
+    paintStrip(image, y, trailStart, maxX + 1, bodyX + bodyW, trailW, rgb, mask, w)
+  }
+  return { rgb, mask, w, h: image.h }
+}
+
 function shift(image, dx, legsOnly) {
   const rgb = new Uint8Array(image.rgb.length)
   const mask = new Uint8Array(image.mask.length)
@@ -138,10 +186,10 @@ function bob(image) {
   return { rgb, mask, w: image.w, h: image.h }
 }
 
-function directionsOf(front) {
+function directionsOf(front, kind) {
   const three = squash(front, Math.max(4, Math.round(front.w * 0.72)))
   const threeBack = mirror(three, 1)
-  const side = sideOf(front)
+  const side = HERO_KINDS.has(kind) ? profileOf(front) : sideOf(front)
   const sideBack = mirror(side, 1)
   return [front, three, side, threeBack, mirror(front, 0.72), mirror(three, 0.72), sideBack, mirror(threeBack, 0.72)]
 }
@@ -239,7 +287,7 @@ function paste(cellW, cellH, image) {
 
 /** @returns {any} */
 export function buildCard(front, kind, height = spriteHeight) {
-  const views = directionsOf(front)
+  const views = directionsOf(front, kind)
   const cellW = front.w
   const cellH = front.h
   const atlasW = cellW * spriteDirections
