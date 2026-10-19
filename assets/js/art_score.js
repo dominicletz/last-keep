@@ -229,6 +229,154 @@ export function paletteMembership(rgb, width, height, mask, palette) {
   return ink ? hit / ink : 0
 }
 
+// The forty STYLE.md tokens, in sheet order. A test checks this list against the markdown.
+export const styleHexes = [
+  "d8cfc3", "b5afaa", "142a48", "374a26", "d99b64", "38516f", "3e6dab", "d99e66", "23d9f3", "88a05b",
+  "e5b268", "3a4a60", "e6ccad", "4c3d27", "472a17", "8e755b", "261e0e", "676f3c", "908b8a", "b2ada6",
+  "70724d", "6e6767", "4d433b", "4a464c", "3a264d", "f5751e", "5d505b", "e58e54", "080c0e", "353e27",
+  "4b3c33", "654e41", "2c2a2a", "43382e", "976122", "5c642f", "374115", "5e4529", "795237", "eea821"
+]
+
+function bucketOf(r, g, b) {
+  return ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
+}
+
+function nearestLocked(catalog, r, g, b, tone, stats) {
+  let best = Infinity
+  let pick = catalog[0].color
+  for (const entry of catalog) {
+    if (stats) stats.probes += 1
+    const dL = entry.luma - tone
+    const dr = r - entry.color[0]
+    const dg = g - entry.color[1]
+    const db = b - entry.color[2]
+    const dist = dr * dr + dg * dg + db * db + 16 * dL * dL
+    if (dist < best) {
+      best = dist
+      pick = entry.color
+    }
+  }
+  return pick
+}
+
+// Snap ink to the locked palette, then put back any 8×8 value buckets the snap collapsed.
+// Each distinct color is searched once. The luma weight keeps the registered score on the same side of its floor.
+export function lockInk(rgb, width, height, mask, palette, stats) {
+  const out = new Uint8Array(rgb)
+  const catalog = palette.map((color) => ({
+    color,
+    bucket: bucketOf(color[0], color[1], color[2]),
+    luma: luma(color[0], color[1], color[2])
+  }))
+  const blocks = []
+  for (let y = 0; y + 8 <= height; y += 8) {
+    for (let x = 0; x + 8 <= width; x += 8) {
+      const cells = []
+      const seen = new Set()
+      for (let dy = 0; dy < 8; dy++) {
+        for (let dx = 0; dx < 8; dx++) {
+          const i = (y + dy) * width + x + dx
+          if (mask && !mask[i]) continue
+          cells.push(i)
+          const o = i * 3
+          seen.add(bucketOf(out[o], out[o + 1], out[o + 2]))
+        }
+      }
+      blocks.push({ cells, need: cells.length >= 32 ? seen.size : 0 })
+    }
+  }
+  const snaps = new Map()
+  for (let i = 0; i < width * height; i++) {
+    if (mask && !mask[i]) continue
+    const o = i * 3
+    const key = ((out[o] << 16) | (out[o + 1] << 8) | out[o + 2]) >>> 0
+    let pick = snaps.get(key)
+    if (!pick) {
+      pick = nearestLocked(catalog, out[o], out[o + 1], out[o + 2], luma(out[o], out[o + 1], out[o + 2]), stats)
+      snaps.set(key, pick)
+    }
+    out[o] = pick[0]
+    out[o + 1] = pick[1]
+    out[o + 2] = pick[2]
+  }
+  for (const block of blocks) {
+    if (!block.need) continue
+    const seen = new Set()
+    for (const i of block.cells) {
+      const o = i * 3
+      seen.add(bucketOf(out[o], out[o + 1], out[o + 2]))
+    }
+    let guard = 0
+    while (seen.size < block.need && guard < block.cells.length) {
+      const i = block.cells[guard++]
+      const o = i * 3
+      const tone = luma(out[o], out[o + 1], out[o + 2])
+      let pick = null
+      let best = Infinity
+      for (const entry of catalog) {
+        if (seen.has(entry.bucket)) continue
+        const gap = Math.abs(entry.luma - tone)
+        if (gap < best && gap <= 18) {
+          best = gap
+          pick = entry
+        }
+      }
+      if (!pick) break
+      out[o] = pick.color[0]
+      out[o + 1] = pick.color[1]
+      out[o + 2] = pick.color[2]
+      seen.add(pick.bucket)
+    }
+  }
+  return out
+}
+
+export function inkHeight(mask, width, height) {
+  let minY = height
+  let maxY = -1
+  for (let i = 0; i < mask.length; i++) {
+    if (!mask[i]) continue
+    const y = (i / width) | 0
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
+  }
+  return maxY >= minY ? maxY - minY + 1 : 0
+}
+
+// Shared yard metric. Height is the ink box in internal pixels.
+// Contrast is the mean luma gap between silhouette-edge ink and the ground
+// buffer under those same pixels. Callers render both at the gameplay camera.
+// The floor is about 80% of the smallest measured monster, and it only rises.
+export const readabilityFloor = { height: 20, contrast: 60 }
+
+export function readability(frame, ground) {
+  const mask = frame.mask
+  const width = frame.width
+  const height = frame.height
+  if (!mask || !ground || ground.width !== width || ground.height !== height) return { height: 0, contrast: 0 }
+  let sum = 0
+  let n = 0
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x
+      if (!mask[i]) continue
+      const edge =
+        (x > 0 && !mask[i - 1]) ||
+        (x + 1 < width && !mask[i + 1]) ||
+        (y > 0 && !mask[i - width]) ||
+        (y + 1 < height && !mask[i + width])
+      if (!edge) continue
+      const o = i * 3
+      sum += Math.abs(
+        luma(frame.rgb[o], frame.rgb[o + 1], frame.rgb[o + 2]) -
+          luma(ground.rgb[o], ground.rgb[o + 1], ground.rgb[o + 2])
+      )
+      n += 1
+    }
+  }
+  return { height: inkHeight(mask, width, height), contrast: n ? sum / n : 0 }
+}
+
 export function scoreFrame(frame, crop, palette) {
   const mask = frame.mask || null
   const block = blockPercentiles(frame.rgb, frame.width, frame.height, mask)
