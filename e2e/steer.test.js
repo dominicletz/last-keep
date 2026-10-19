@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict")
 const { test } = require("node:test")
 const { keysAround } = require("../assets/js/input.js")
-const { axes, keysFor, walkHitsKeep } = require("./steer")
+const { axes, keysFor, walkHitsKeep, noteNorth } = require("./steer")
 
 const BODY = 68
 const SPEED = 155
@@ -61,4 +61,31 @@ test("a hero on the face or the spawn reaches a chest", () => {
       assert.ok(result.t < 45, JSON.stringify(result))
     }
   }
+})
+
+test("a north walk that stops after gaining ground steps out", () => {
+  const first = noteNorth(null, 40, 0)
+  assert.equal(first.action, "hold")
+  const gained = noteNorth(first.mark, -10, 500)
+  assert.equal(gained.action, "hold")
+  assert.ok(gained.mark.best < gained.mark.start - 40)
+  const moving = noteNorth(gained.mark, -20, 1100)
+  assert.equal(moving.action, "hold")
+  assert.equal(moving.mark.best, -20)
+  const stuck = noteNorth(moving.mark, -20, 1100 + 701)
+  assert.equal(stuck.action, "step-out")
+})
+
+test("a north walk that reaches the west line is done", () => {
+  const first = noteNorth(null, 20, 0)
+  const there = noteNorth(first.mark, -221, 200)
+  assert.equal(there.action, "arrived")
+})
+
+test("a north walk with no gain steps out after three seconds", () => {
+  const first = noteNorth(null, 40, 0)
+  const early = noteNorth(first.mark, 38, 2000)
+  assert.equal(early.action, "hold")
+  const late = noteNorth(first.mark, 38, 3001)
+  assert.equal(late.action, "step-out")
 })

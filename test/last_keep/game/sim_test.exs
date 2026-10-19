@@ -568,6 +568,21 @@ defmodule LastKeep.Game.SimTest do
     assert length(boss.relics) == 1
   end
 
+  test "heartwood raises the keep max by 280 once" do
+    state = Sim.new("KEEP01", seed: 1, keep_hp: 100_000)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    state = %{state | relics: [:whetstone, :swiftness, :banner, :granary]}
+
+    state = kill_bearer(state, %{kind: :goblin, elite: :fast, hp: 10})
+    assert :heartwood in state.relics
+    assert state.keep.max_hp == 100_280
+    assert state.keep.hp == 100_280
+
+    state = kill_bearer(state, %{kind: :boss, elite: nil, hp: 10})
+    assert state.relics == [:whetstone, :swiftness, :banner, :granary, :heartwood]
+    assert state.keep.max_hp == 100_280
+  end
+
   test "a held fireball still casts after a tick the mage could not act" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :mage))
@@ -731,7 +746,13 @@ defmodule LastKeep.Game.SimTest do
   defp slay(attrs) do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :warrior))
+    kill_bearer(state, attrs)
+  end
+
+  defp kill_bearer(state, attrs) do
     ada = hero(state, "ada")
+    ada = %{ada | cooldowns: %{ada.cooldowns | attack: 0}}
+    state = %{state | entities: Map.put(state.entities, ada.id, ada)}
 
     state =
       Sim.spawn_monster(
