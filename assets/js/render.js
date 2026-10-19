@@ -69,6 +69,8 @@ export function createView(stage) {
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
   const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
   const probe = new THREE.Vector3()
+  const rimFrustum = new THREE.Frustum()
+  const rimProj = new THREE.Matrix4()
   let viewFrame = opening
   let townRank = 0
 
@@ -526,11 +528,7 @@ export function createView(stage) {
     if (heroMesh && window.__lastKeep) {
       window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
     }
-    for (const [key, mesh] of meshes) {
-      if (!key.startsWith("monster:") && !key.startsWith("hero:")) continue
-      probe.set(mesh.position.x, 16, mesh.position.z).project(camera)
-      mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
-    }
+    cullActors()
     if (drawDue(now, lastRender, lastInput)) {
       const started = performance.now()
       paintFrame()
@@ -546,6 +544,22 @@ export function createView(stage) {
 
   viewApi = {
     canvas: renderer.domElement,
+    rims(show) {
+      showRims(show)
+    },
+    repaint() {
+      const frame = renderer.info.render.frame
+      cullActors()
+      paintFrame()
+      publishPerf(null)
+      const perf = window.__lastKeepPerf
+      return {
+        calls: perf.calls,
+        triangles: perf.triangles,
+        rims: perf.rims,
+        painted: renderer.info.render.frame !== frame
+      }
+    },
     queue(snap, selfId) {
       pending = { snap, selfId }
       placeCamera(snap, selfId)
@@ -1652,6 +1666,34 @@ export function createView(stage) {
     camera.updateProjectionMatrix()
   }
 
+  function cullActors() {
+    for (const [key, mesh] of meshes) {
+      if (!key.startsWith("monster:") && !key.startsWith("hero:")) continue
+      probe.set(mesh.position.x, 16, mesh.position.z).project(camera)
+      mesh.visible = monsterVisible(probe.x, probe.y, probe.z)
+    }
+  }
+
+  function visibleRims() {
+    rimProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+    rimFrustum.setFromProjectionMatrix(rimProj)
+    let count = 0
+    scene.traverse((node) => {
+      const rim = node.userData && node.userData.rim
+      if (!rim || !node.visible || !rim.visible) return
+      rim.updateWorldMatrix(true, false)
+      if (rimFrustum.intersectsSprite(rim)) count += 1
+    })
+    return count
+  }
+
+  function showRims(show) {
+    scene.traverse((node) => {
+      const rim = node.userData && node.userData.rim
+      if (rim) rim.visible = show
+    })
+  }
+
   function publishPerf(paintMs) {
     const perf = window.__lastKeepPerf || (window.__lastKeepPerf = { paints: [] })
     perf.geometries = renderer.info.memory.geometries
@@ -1659,6 +1701,7 @@ export function createView(stage) {
     perf.calls = renderer.info.render.calls
     perf.triangles = renderer.info.render.triangles
     perf.census = geometryCensus(scene)
+    perf.rims = visibleRims()
     if (paintMs == null) return
     perf.paints.push(paintMs)
     if (perf.paints.length > 400) perf.paints.shift()

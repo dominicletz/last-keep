@@ -184,6 +184,12 @@ function start(code, seat, ui) {
     pictures() {
       for (const kind of monsterKinds()) monsterParts(kind)
     },
+    rims(show) {
+      if (ui.view && ui.view.rims) ui.view.rims(show)
+    },
+    repaint() {
+      return ui.view.repaint()
+    },
     // The co-op night used to leave the mage standing on the far side of the
     // ring. The goblins killed that mage before they walked into the host's
     // camera, and Q arrived on a corpse.

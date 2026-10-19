@@ -1847,6 +1847,7 @@ async function readMatch(page) {
       textures: perf.textures || 0,
       calls: perf.calls || 0,
       triangles: perf.triangles || 0,
+      rims: perf.rims || 0,
       census: perf.census || { inScene: 0, orphans: 0, pooled: 0, byRole: {}, settled: 0 },
       p95: null,
       paints: perf.paints || [],
@@ -1922,6 +1923,8 @@ async function sixSeatMatch(browser) {
   const builds = new Map()
   const troughs = new Map()
   const gcHeaps = new Map()
+  const rimPairs = []
+  let wavePeak = null
   let sawWave = false
   let last = null
   const started = Date.now()
@@ -1942,6 +1945,31 @@ async function sixSeatMatch(browser) {
       if (row.phase === "over" || row.keep === 0) break
       if (row.phase === "wave") {
         sawWave = true
+        if (row.monsters > 0 && row.rims > 0) {
+          if (!wavePeak || row.calls > wavePeak.calls) {
+            wavePeak = {
+              shownWave: row.shownWave,
+              monsters: row.monsters,
+              rims: row.rims,
+              calls: row.calls,
+              triangles: row.triangles,
+              p95: row.p95
+            }
+          }
+        }
+        if (row.rims > 0 && rimPairs.length < 5) {
+          const pair = await page.evaluate(() => {
+            const on = window.__lastKeepTest.repaint()
+            if (!on.painted || !on.rims) return null
+            window.__lastKeepTest.rims(false)
+            const off = window.__lastKeepTest.repaint()
+            window.__lastKeepTest.rims(true)
+            window.__lastKeepTest.repaint()
+            if (!off.painted) return null
+            return { on, off }
+          })
+          if (pair) rimPairs.push(pair)
+        }
         if (!gcHeaps.has(row.shownWave)) {
           const heap = await page.evaluate(() => {
             if (typeof window.gc === "function") {
@@ -2005,7 +2033,26 @@ async function sixSeatMatch(browser) {
     }
   } finally {
     await fight(false)
+    await page.evaluate(() => window.__lastKeepTest.rims(true)).catch(() => null)
   }
+
+  // One six-seat run peaked at 447 calls and 6218 triangles on a frame with
+  // a visible rim, and at 569 calls and 7778 triangles on any wave frame.
+  // Hiding the rims on a frozen frame dropped exactly 1 call and 2 triangles
+  // per rim the camera drew. A rim outside the frustum is not in that count.
+  // 700 and 9800 sit above the run and under the empty-yard ceilings of 868
+  // and 11552. Paint p95 stays 424.
+  expect(rimPairs.length).toBeGreaterThan(0)
+  for (const pair of rimPairs) {
+    expect(pair.off.rims).toBe(0)
+    expect(pair.on.rims).toBeGreaterThan(0)
+    expect(pair.on.calls - pair.off.calls).toBe(pair.on.rims)
+    expect(pair.on.triangles - pair.off.triangles).toBe(pair.on.rims * 2)
+  }
+  expect(wavePeak && wavePeak.monsters > 0 && wavePeak.rims > 0, JSON.stringify(wavePeak)).toBe(true)
+  expect(wavePeak.calls, JSON.stringify(wavePeak)).toBeLessThanOrEqual(700)
+  expect(wavePeak.triangles, JSON.stringify(wavePeak)).toBeLessThanOrEqual(9800)
+  expect(wavePeak.p95, JSON.stringify(wavePeak)).toBeLessThanOrEqual(424)
 
   const waves = [...builds.keys()]
   expect(waves.some((wave) => builds.has(wave + 3)), JSON.stringify({ waves, last })).toBe(true)
