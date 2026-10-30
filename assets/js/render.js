@@ -500,8 +500,11 @@ export function createView(stage, picture = null) {
   }
 
   function paintFrame() {
-    if (!palettePass) palettePass = createPalettePass(renderer, palette)
-    palettePass.draw(scene, camera)
+    if (picture) picture.present(renderer, scene, camera)
+    else {
+      if (!palettePass) palettePass = createPalettePass(renderer, palette)
+      palettePass.draw(scene, camera)
+    }
     renders += 1
     if (window.__lastKeep) window.__lastKeep.renders = renders
   }

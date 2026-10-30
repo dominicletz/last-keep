@@ -4,7 +4,7 @@ import * as THREE from "three"
 import { pixelStep } from "../art_score.js"
 import { cameraLift } from "../frame.js"
 import { masonryBytes } from "../tiles.js"
-import { pictureFromSearch } from "./picture.js"
+import { circleOfConfusion, diskOffsets, fogMix, pictureFromSearch } from "./picture.js"
 
 const CALLS = ["open", "fit", "seat", "light", "dress", "present"]
 
@@ -52,7 +52,6 @@ test("fit and seat hold the palette world on a perspective camera", () => {
   }
   assert.throws(() => picture.open({}), { message: "open once" })
   assert.equal(picture.ready, ready)
-  assert.throws(() => picture.present(), /not implemented/)
 })
 
 function lightRig() {
@@ -330,4 +329,115 @@ test("dress without a keep throws", () => {
   assert.throws(() => picture.dress({ grounds: grounds.slice(0, 3), keep, stoneMat }), /dress kit/)
   assert.throws(() => picture.dress({ grounds, keep, heroes: [] }), /dress kit/)
   assert.throws(() => picture.dress({ grounds: [grounds[0], null, grounds[2], grounds[3]], keep, stoneMat }), /dress kit/)
+})
+
+test("height fog is stronger on the floor than at the ceiling", () => {
+  const span = 168 / Math.tan((7.5 * Math.PI) / 180)
+  const distances = [0, span * 0.5, span, span * 1.2, span * 4]
+  for (const distance of distances) {
+    const ceiling = fogMix(36, distance, span)
+    const floor = fogMix(0, distance, span)
+    assert.ok(ceiling < floor)
+    assert.ok(ceiling <= 0.85)
+    assert.ok(floor <= 0.85)
+  }
+  assert.equal(fogMix(0, span * 4, span), 0.85)
+})
+
+test("the circle of confusion is zero at the focus distance", () => {
+  const span = 168 / Math.tan((7.5 * Math.PI) / 180)
+  assert.equal(circleOfConfusion(span, span), 0)
+  const farther = span * (1 + 0.04) + 1
+  const nearer = span * (1 - 0.04) - 1
+  assert.ok(circleOfConfusion(farther, span) > 0)
+  assert.ok(circleOfConfusion(nearer, span) > 0)
+  assert.ok(circleOfConfusion(span * 10, span) <= 8)
+  assert.ok(circleOfConfusion(span * 10, span) > circleOfConfusion(farther, span))
+})
+
+test("disk offsets stay inside the requested radius", () => {
+  const origin = diskOffsets(0)
+  assert.equal(origin.length, 1)
+  assert.equal(origin[0].x, 0)
+  assert.equal(origin[0].y, 0)
+  for (const radius of [1, 6, 8]) {
+    const samples = diskOffsets(radius)
+    assert.ok(samples.length > 1)
+    let farthest = 0
+    for (const sample of samples) {
+      const reach = Math.hypot(sample.x, sample.y)
+      assert.ok(reach <= radius)
+      if (reach > farthest) farthest = reach
+    }
+    assert.ok(farthest > radius * 0.5)
+  }
+  const unit = diskOffsets(1)
+  const scaled = diskOffsets(4)
+  assert.equal(scaled.length, unit.length)
+  for (let i = 0; i < unit.length; i++) {
+    assert.ok(Math.abs(scaled[i].x - unit[i].x * 4) <= 1e-9)
+    assert.ok(Math.abs(scaled[i].y - unit[i].y * 4) <= 1e-9)
+  }
+})
+
+test("present submits the frame and reuses its targets", () => {
+  const picture = pictureFromSearch("?hd2d=1")
+  assert.equal(typeof picture.present, "function")
+  const info = { autoReset: true, reset() {} }
+  let width = 320
+  let height = 200
+  let bound = null
+  let sawOffscreen = false
+  let blitted = false
+  let autoResetDuringRender = null
+  const used = []
+  const renderer = {
+    info,
+    getSize(out) {
+      out.x = width
+      out.y = height
+    },
+    setRenderTarget(target) {
+      bound = target
+    },
+    clear() {},
+    render() {
+      autoResetDuringRender = info.autoReset
+      if (bound) {
+        sawOffscreen = true
+        used[used.length - 1].add(bound)
+      }
+      if (bound === null && sawOffscreen) blitted = true
+    }
+  }
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0x4e4651)
+  scene.fog = new THREE.Fog(0x112233, 10, 40)
+  const fog = scene.fog
+  const camera = new THREE.PerspectiveCamera()
+
+  used.push(new Set())
+  const first = picture.present(renderer, scene, camera)
+  used.push(new Set())
+  const second = picture.present(renderer, scene, camera)
+  width = 480
+  height = 300
+  used.push(new Set())
+  const resized = picture.present(renderer, scene, camera)
+
+  assert.equal(typeof first.submitMs, "number")
+  assert.equal(Number.isFinite(first.submitMs), true)
+  assert.ok(first.submitMs >= 0)
+  assert.equal(typeof second.submitMs, "number")
+  assert.equal(typeof resized.submitMs, "number")
+  assert.equal(autoResetDuringRender, false)
+  assert.equal(info.autoReset, true)
+  assert.equal(blitted, true)
+  assert.equal(sawOffscreen, true)
+  assert.equal(scene.fog, fog)
+  assert.ok(used[0].size > 0)
+  for (const target of used[1]) assert.equal(used[0].has(target), true)
+  assert.equal(used[1].size, used[0].size)
+  for (const target of used[2]) assert.equal(used[0].has(target), true)
+  assert.equal(used[2].size, used[0].size)
 })

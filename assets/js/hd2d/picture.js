@@ -20,8 +20,285 @@ const LOOK = {
   shadowBias: -0.0008
 }
 
-function notImplemented() {
-  throw new Error("not implemented")
+const FOG = { height: 0.65, distance: 0.35, near: 0.8, far: 1.6 }
+const COC_MAX_PX = 8
+const RESTORE_PX = 0.5
+const LUMA = [0.2126, 0.7152, 0.0722]
+const DISK_RING = 15
+
+function glslFloat(value) {
+  const text = String(value)
+  if (text.includes(".") || text.includes("e") || text.includes("E")) return text
+  return `${text}.0`
+}
+
+// GLSL smoothstep is undefined when the ceiling is above the floor, so this is that curve with the edges kept in that order.
+function hermite(edge0, edge1, x) {
+  const width = edge1 - edge0
+  const t = width === 0 ? (x >= edge0 ? 1 : 0) : Math.min(1, Math.max(0, (x - edge0) / width))
+  return t * t * (3 - 2 * t)
+}
+
+export function fogMix(worldY, distance, span) {
+  const heightFog = hermite(LOOK.fogCeilingY, LOOK.fogFloorY, worldY)
+  const distFog = hermite(span * FOG.near, span * FOG.far, distance)
+  return Math.min(LOOK.fogMixCap, Math.max(0, heightFog * FOG.height + distFog * FOG.distance))
+}
+
+export function circleOfConfusion(distance, span) {
+  if (!(span > 0)) return 0
+  const excess = Math.abs(distance - span) - LOOK.focusBand * span
+  if (excess <= 0) return 0
+  return Math.min(1, excess / span) * COC_MAX_PX
+}
+
+export function diskOffsets(radius) {
+  if (!(radius > 0)) return [{ x: 0, y: 0 }]
+  const points = [{ x: 0, y: 0 }]
+  // Golden angle so successive rings do not line up into a cross.
+  const golden = Math.PI * (3 - Math.sqrt(5))
+  for (let i = 0; i < DISK_RING; i++) {
+    // Mid-bin radius keeps the last ring strictly inside the requested radius.
+    const reach = Math.sqrt((i + 0.5) / DISK_RING) * radius
+    const angle = i * golden
+    points.push({ x: Math.cos(angle) * reach, y: Math.sin(angle) * reach })
+  }
+  return points
+}
+
+const PASS_VERTEX = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = vec4(position.xy, 0.0, 1.0);
+  }
+`
+
+function depthGlsl() {
+  return `
+    vec3 worldFromDepth(vec2 uv, float depth) {
+      vec4 clip = vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+      vec4 view = inverseProjection * clip;
+      view /= view.w;
+      return (inverseView * vec4(view.xyz, 1.0)).xyz;
+    }
+  `
+}
+
+function hermiteGlsl() {
+  return `
+    float hermite(float edge0, float edge1, float x) {
+      float width = edge1 - edge0;
+      float t = width == 0.0 ? step(edge0, x) : clamp((x - edge0) / width, 0.0, 1.0);
+      return t * t * (3.0 - 2.0 * t);
+    }
+  `
+}
+
+function cocGlsl() {
+  return `
+    float cocPixels(float dist, float span) {
+      float band = ${glslFloat(LOOK.focusBand)} * span;
+      float excess = max(0.0, abs(dist - span) - band);
+      float t = span > 0.0 ? min(1.0, excess / span) : 0.0;
+      return t * ${glslFloat(COC_MAX_PX)};
+    }
+  `
+}
+
+function fogFragment() {
+  return `
+    precision highp float;
+    uniform sampler2D tColor;
+    uniform sampler2D tDepth;
+    uniform vec2 resolution;
+    uniform mat4 inverseProjection;
+    uniform mat4 inverseView;
+    uniform vec3 eye;
+    uniform vec3 background;
+    uniform float span;
+    varying vec2 vUv;
+    ${hermiteGlsl()}
+    ${depthGlsl()}
+    void main() {
+      vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
+      vec3 color = texture2D(tColor, uv).rgb;
+      vec3 world = worldFromDepth(uv, texture2D(tDepth, uv).r);
+      float dist = distance(world, eye);
+      float heightFog = hermite(${glslFloat(LOOK.fogCeilingY)}, ${glslFloat(LOOK.fogFloorY)}, world.y);
+      float distFog = hermite(span * ${glslFloat(FOG.near)}, span * ${glslFloat(FOG.far)}, dist);
+      float fog = clamp(heightFog * ${glslFloat(FOG.height)} + distFog * ${glslFloat(FOG.distance)}, 0.0, ${glslFloat(LOOK.fogMixCap)});
+      gl_FragColor = vec4(mix(color, background, fog), 1.0);
+    }
+  `
+}
+
+function bloomDownFragment() {
+  const luma = `vec3(${LUMA.map(glslFloat).join(", ")})`
+  // Corner taps sit on the diagonal. Divide by sqrt(2) so that diagonal is bloomRadius buffer pixels.
+  const corner = glslFloat(LOOK.bloomRadius / Math.SQRT2)
+  return `
+    precision highp float;
+    uniform sampler2D tColor;
+    uniform vec2 resolution;
+    uniform vec2 fullResolution;
+    varying vec2 vUv;
+    float luma(vec3 color) {
+      return dot(color, ${luma});
+    }
+    vec3 gated(vec3 color) {
+      float l = luma(color);
+      // Excess over the threshold is what gets blurred. The base color is added back in the upsample.
+      return color * max(l - ${glslFloat(LOOK.bloomThreshold)}, 0.0) / max(l, 1e-4);
+    }
+    void main() {
+      vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
+      vec2 o = vec2(${corner}) / fullResolution;
+      // The center sample stands in for the 2 by 2 block, so its weight is 4.
+      vec3 sum = gated(texture2D(tColor, uv).rgb) * 4.0;
+      sum += gated(texture2D(tColor, uv + vec2(-o.x, -o.y)).rgb);
+      sum += gated(texture2D(tColor, uv + vec2(o.x, -o.y)).rgb);
+      sum += gated(texture2D(tColor, uv + vec2(-o.x, o.y)).rgb);
+      sum += gated(texture2D(tColor, uv + vec2(o.x, o.y)).rgb);
+      gl_FragColor = vec4(sum / 8.0, 1.0);
+    }
+  `
+}
+
+function bloomUpFragment() {
+  const luma = `vec3(${LUMA.map(glslFloat).join(", ")})`
+  // Outer taps are two steps of this offset, so they land bloomRadius buffer pixels out.
+  const halfRadius = glslFloat(LOOK.bloomRadius / 2)
+  return `
+    precision highp float;
+    uniform sampler2D tColor;
+    uniform sampler2D tBloom;
+    uniform vec2 resolution;
+    varying vec2 vUv;
+    float luma(vec3 color) {
+      return dot(color, ${luma});
+    }
+    void main() {
+      vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
+      vec2 h = vec2(${halfRadius}) / resolution;
+      vec3 bloom = texture2D(tBloom, uv + vec2(-2.0 * h.x, 0.0)).rgb;
+      bloom += texture2D(tBloom, uv + vec2(-h.x, h.y)).rgb * 2.0;
+      bloom += texture2D(tBloom, uv + vec2(0.0, 2.0 * h.y)).rgb;
+      bloom += texture2D(tBloom, uv + vec2(h.x, h.y)).rgb * 2.0;
+      bloom += texture2D(tBloom, uv + vec2(2.0 * h.x, 0.0)).rgb;
+      bloom += texture2D(tBloom, uv + vec2(h.x, -h.y)).rgb * 2.0;
+      bloom += texture2D(tBloom, uv + vec2(0.0, -2.0 * h.y)).rgb;
+      bloom += texture2D(tBloom, uv + vec2(-h.x, -h.y)).rgb * 2.0;
+      bloom /= 12.0;
+      vec3 color = texture2D(tColor, uv).rgb + bloom;
+      float l = luma(color);
+      float cap = ${glslFloat(LOOK.highlightCap)};
+      if (l > cap) color *= cap / l;
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `
+}
+
+function dofFragment() {
+  const disk = diskOffsets(1)
+  const taps = disk.map((point) => {
+    return `sum += texture2D(tColor, uv + vec2(${glslFloat(point.x)}, ${glslFloat(point.y)}) * radius * texel).rgb;`
+  })
+  return `
+    precision highp float;
+    uniform sampler2D tColor;
+    uniform sampler2D tDepth;
+    uniform vec2 resolution;
+    uniform mat4 inverseProjection;
+    uniform mat4 inverseView;
+    uniform vec3 eye;
+    uniform float span;
+    varying vec2 vUv;
+    ${depthGlsl()}
+    ${cocGlsl()}
+    void main() {
+      vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
+      vec2 texel = 1.0 / resolution;
+      vec3 world = worldFromDepth(uv, texture2D(tDepth, uv).r);
+      float radius = cocPixels(distance(world, eye), span);
+      vec3 sum = vec3(0.0);
+      ${taps.join("\n      ")}
+      gl_FragColor = vec4(sum / ${glslFloat(disk.length)}, 1.0);
+    }
+  `
+}
+
+function restoreFragment() {
+  return `
+    precision highp float;
+    uniform sampler2D tSharp;
+    uniform sampler2D tBlur;
+    uniform sampler2D tDepth;
+    uniform vec2 resolution;
+    uniform mat4 inverseProjection;
+    uniform mat4 inverseView;
+    uniform vec3 eye;
+    uniform float span;
+    varying vec2 vUv;
+    ${depthGlsl()}
+    ${cocGlsl()}
+    void main() {
+      vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
+      vec3 world = worldFromDepth(uv, texture2D(tDepth, uv).r);
+      float radius = cocPixels(distance(world, eye), span);
+      vec3 sharp = texture2D(tSharp, uv).rgb;
+      vec3 soft = texture2D(tBlur, uv).rgb;
+      gl_FragColor = vec4(radius < ${glslFloat(RESTORE_PX)} ? sharp : soft, 1.0);
+    }
+  `
+}
+
+function blitFragment() {
+  return `
+    precision highp float;
+    uniform sampler2D tColor;
+    uniform vec2 resolution;
+    varying vec2 vUv;
+    vec3 toSrgb(vec3 linear) {
+      vec3 c = clamp(linear, 0.0, 1.0);
+      vec3 low = c * 12.92;
+      vec3 high = 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055;
+      return mix(high, low, step(c, vec3(0.0031308)));
+    }
+    void main() {
+      vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
+      gl_FragColor = vec4(toSrgb(texture2D(tColor, uv).rgb), 1.0);
+    }
+  `
+}
+
+function passMaterial(fragment, uniforms) {
+  return new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: PASS_VERTEX,
+    fragmentShader: fragment,
+    depthTest: false,
+    depthWrite: false
+  })
+}
+
+function linearTarget(width, height, depthTexture = null, filter = THREE.NearestFilter) {
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    magFilter: filter,
+    minFilter: filter,
+    generateMipmaps: false,
+    depthBuffer: Boolean(depthTexture),
+    stencilBuffer: false,
+    // A multisampled target resolves color and does not leave a depth texture the later passes can sample.
+    samples: 0,
+    depthTexture,
+    type: THREE.UnsignedByteType,
+    format: THREE.RGBAFormat,
+    colorSpace: THREE.NoColorSpace
+  })
+  target.texture.colorSpace = THREE.NoColorSpace
+  target.texture.generateMipmaps = false
+  return target
 }
 
 function bottomRay(camera) {
@@ -68,6 +345,18 @@ function createHdPicture() {
   let masonry = null
   const torchWorld = new THREE.Vector3()
   const cardPos = new THREE.Vector3()
+  const drawSize = new THREE.Vector2()
+  const inverseProjection = new THREE.Matrix4()
+  const inverseView = new THREE.Matrix4()
+  const eye = new THREE.Vector3()
+  const background = new THREE.Color()
+  const spanSlot = { value: 0 }
+  const fullSize = new THREE.Vector2(1, 1)
+  const halfSize = new THREE.Vector2(1, 1)
+  let chain = null
+  let passScene = null
+  let passCamera = null
+  let passQuad = null
 
   function faceCamera(_renderer, _scene, camera) {
     const parent = this.parent
@@ -179,6 +468,89 @@ function createHdPicture() {
     }
   }
 
+  function viewUniforms(depth) {
+    return {
+      inverseProjection: { value: inverseProjection },
+      inverseView: { value: inverseView },
+      eye: { value: eye },
+      span: spanSlot,
+      tDepth: { value: depth },
+      resolution: { value: fullSize }
+    }
+  }
+
+  function buildChain(width, height) {
+    const halfW = Math.max(1, width >> 1)
+    const halfH = Math.max(1, height >> 1)
+    fullSize.set(width, height)
+    halfSize.set(halfW, halfH)
+    const depth = new THREE.DepthTexture(width, height)
+    depth.format = THREE.DepthFormat
+    depth.type = THREE.UnsignedIntType
+    depth.magFilter = THREE.NearestFilter
+    depth.minFilter = THREE.NearestFilter
+    const sceneTarget = linearTarget(width, height, depth)
+    const fogged = linearTarget(width, height)
+    // The tent filter interpolates the glow. Scene, graded, and restore stay nearest so the in-focus restore copies texels.
+    const bloom = linearTarget(halfW, halfH, null, THREE.LinearFilter)
+    const graded = linearTarget(width, height)
+    const blurred = linearTarget(width, height)
+    const shown = linearTarget(width, height)
+    const view = viewUniforms(depth)
+    const fog = passMaterial(fogFragment(), {
+      ...view,
+      tColor: { value: sceneTarget.texture },
+      background: { value: background }
+    })
+    const bloomDown = passMaterial(bloomDownFragment(), {
+      tColor: { value: fogged.texture },
+      resolution: { value: halfSize },
+      fullResolution: { value: fullSize }
+    })
+    const bloomUp = passMaterial(bloomUpFragment(), {
+      tColor: { value: fogged.texture },
+      tBloom: { value: bloom.texture },
+      resolution: { value: fullSize }
+    })
+    const dof = passMaterial(dofFragment(), {
+      ...view,
+      tColor: { value: graded.texture }
+    })
+    const restore = passMaterial(restoreFragment(), {
+      ...view,
+      tSharp: { value: graded.texture },
+      tBlur: { value: blurred.texture }
+    })
+    const blit = passMaterial(blitFragment(), {
+      tColor: { value: shown.texture },
+      resolution: { value: fullSize }
+    })
+    passScene = new THREE.Scene()
+    passCamera = new THREE.Camera()
+    passQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), fog)
+    passQuad.frustumCulled = false
+    passScene.add(passQuad)
+    return { width, height, scene: sceneTarget, fogged, bloom, graded, blurred, shown, fog, bloomDown, bloomUp, dof, restore, blit }
+  }
+
+  function resizeChain(width, height) {
+    const halfW = Math.max(1, width >> 1)
+    const halfH = Math.max(1, height >> 1)
+    chain.scene.setSize(width, height)
+    chain.fogged.setSize(width, height)
+    chain.graded.setSize(width, height)
+    chain.blurred.setSize(width, height)
+    chain.shown.setSize(width, height)
+    chain.bloom.setSize(halfW, halfH)
+    const depth = chain.scene.depthTexture
+    depth.image.width = width
+    depth.image.height = height
+    fullSize.set(width, height)
+    halfSize.set(halfW, halfH)
+    chain.width = width
+    chain.height = height
+  }
+
   return {
     fov: LOOK.fov,
     ready,
@@ -269,7 +641,45 @@ function createHdPicture() {
         .sort(heroOrder)
       for (const hero of heroes.slice(0, LOOK.litHeroes)) litHero(hero)
     },
-    present: notImplemented
+    present(renderer, scene, camera) {
+      const started = performance.now()
+      const previousAutoReset = renderer.info.autoReset
+      try {
+        renderer.info.autoReset = false
+        // Three clears renderer.info at the start of each render. One reset, then autoReset off, lets publishPerf count every pass in this frame.
+        renderer.info.reset()
+        const drawPass = (target, material) => {
+          passQuad.material = material
+          renderer.setRenderTarget(target)
+          renderer.render(passScene, passCamera)
+        }
+        renderer.getSize(drawSize)
+        const width = Math.max(1, drawSize.x)
+        const height = Math.max(1, drawSize.y)
+        if (!chain) chain = buildChain(width, height)
+        else if (chain.width !== width || chain.height !== height) resizeChain(width, height)
+        camera.updateMatrixWorld()
+        camera.updateProjectionMatrix()
+        inverseProjection.copy(camera.projectionMatrixInverse)
+        inverseView.copy(camera.matrixWorld)
+        eye.copy(camera.position)
+        spanSlot.value = span
+        if (scene.background && scene.background.isColor) background.copy(scene.background)
+        else background.setRGB(0, 0, 0)
+        renderer.setRenderTarget(chain.scene)
+        renderer.clear(true, true, true)
+        renderer.render(scene, camera)
+        drawPass(chain.fogged, chain.fog)
+        drawPass(chain.bloom, chain.bloomDown)
+        drawPass(chain.graded, chain.bloomUp)
+        drawPass(chain.blurred, chain.dof)
+        drawPass(chain.shown, chain.restore)
+        drawPass(null, chain.blit)
+      } finally {
+        renderer.info.autoReset = previousAutoReset
+      }
+      return { submitMs: performance.now() - started }
+    }
   }
 }
 
