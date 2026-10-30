@@ -2528,7 +2528,8 @@ async function hd2dFlag(browser) {
   expect(posts[0].hd2d).toBeUndefined()
   expect(posts[0].perf).toBeUndefined()
 
-  const still = await context.newPage()
+  const stillContext = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const still = await stillContext.newPage()
   watch(still, "still", errors)
   await still.goto(gameUrl(`/r/${code}?hd2d=1`))
   await still.waitForFunction(() => window.__lastKeepPicture && typeof window.__lastKeepPicture.grade === "function")
@@ -2549,6 +2550,7 @@ async function hd2dFlag(browser) {
     expect(buffer.frameMs).toBeGreaterThan(0)
   }
   expect(errors, errors.join("\n")).toEqual([])
+  await stillContext.close()
   await context.close()
   await host.context.close()
 }
