@@ -55,7 +55,14 @@ function figurePixels(mesh, camera, bufferHeight) {
   return Math.round((maxY - minY) * 0.5 * bufferHeight)
 }
 
-export function createView(stage) {
+export function createView(stage, picture = null) {
+  if (
+    picture !== null &&
+    ["open", "fit", "seat", "light", "dress", "present"].some((name) => typeof picture[name] !== "function")
+  ) {
+    throw new Error("createView picture must be null or pictureFromSearch")
+  }
+
   const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
   renderer.setSize(480, 270, false)
   renderer.setPixelRatio(1)

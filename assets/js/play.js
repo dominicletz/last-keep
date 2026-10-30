@@ -1,4 +1,5 @@
 import { Socket } from "phoenix"
+import { pictureFromSearch } from "./hd2d/picture"
 import { createView } from "./render"
 import { monsterKinds, monsterParts } from "./monsters.js"
 import { loadScores } from "./landing"
@@ -30,10 +31,17 @@ export function bootPlay(code) {
   const hud = document.querySelector("#hud")
   const join = document.querySelector("#join-game")
   const overlay = document.querySelector("#overlay")
-  const view = createView(stage)
+  const search = window.location.search
+  const picture = pictureFromSearch(search)
+  const view = createView(stage, picture)
+  if (picture) {
+    window.__lastKeepPicture = typeof view.grade === "function"
+      ? { ready: picture.ready, grade: () => view.grade() }
+      : { ready: picture.ready }
+  }
   const ui = { stage, hud, join, overlay, view }
   const saved = readSeat(code)
-  const queried = seatFromQuery(window.location.search)
+  const queried = seatFromQuery(search)
 
   join.addEventListener("submit", (event) => {
     event.preventDefault()
