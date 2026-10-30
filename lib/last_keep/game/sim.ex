@@ -783,6 +783,11 @@ defmodule LastKeep.Game.Sim do
   defp maybe_attack(state, player, hero) do
     clicked = edged?(player, :attack)
 
+    threat =
+      if match?({:wave, _}, state.phase) and Rules.meets?(state.wave) do
+        strike_target(state, hero)
+      end
+
     cond do
       edged?(player, :place) ->
         case player.input.build do
@@ -799,9 +804,32 @@ defmodule LastKeep.Game.Sim do
       (player.input.attack or clicked) && hero.cooldowns.attack <= 0 ->
         cast(state, player, hero, :attack, Rules.kit(hero.hero).attack)
 
+      threat && hero.cooldowns.attack <= 0 ->
+        {state, player, hero} = face_threat(state, player, hero, threat)
+        cast(state, player, hero, :attack, Rules.kit(hero.hero).attack)
+
       true ->
         state
     end
+  end
+
+  defp strike_target(state, hero) do
+    reach = Rules.strike_reach(Rules.kit(hero.hero).attack)
+
+    state
+    |> monsters()
+    |> Enum.filter(fn monster ->
+      hypot(monster.x - hero.x, monster.y - hero.y) <= reach + monster.r
+    end)
+    |> closest(fn monster -> hypot(monster.x - hero.x, monster.y - hero.y) end)
+  end
+
+  defp face_threat(state, player, hero, monster) do
+    facing = :math.atan2(monster.y - hero.y, monster.x - hero.x)
+    hero = %{hero | facing: facing}
+    player = %{player | input: %{player.input | ax: monster.x, ay: monster.y}}
+    state = state |> put_entity(hero) |> put_player(player)
+    {state, player, hero}
   end
 
   defp maybe_skill(state, player, hero, slot) do

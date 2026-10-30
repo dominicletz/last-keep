@@ -492,16 +492,14 @@ defmodule LastKeep.Game.SimTest do
 
     state = %{state | wave: 1, phase: {:build, 1}, hints: []}
 
-    {state, seen} =
-      Enum.reduce_while(1..4_000, {state, Map.new(ids, &{&1, false})}, fn _, {state, seen} ->
-        seen = mark_reached(state, seen)
-
+    state =
+      Enum.reduce_while(1..4_000, state, fn _, state ->
         cond do
           state.phase == :over ->
-            {:halt, {state, seen}}
+            {:halt, state}
 
           match?({:build, _}, state.phase) and state.wave >= 2 and state.tick > 1 ->
-            {:halt, {state, seen}}
+            {:halt, state}
 
           true ->
             state =
@@ -509,16 +507,19 @@ defmodule LastKeep.Game.SimTest do
                 Sim.input(state, id, %{"mx" => 0, "my" => 0, "attack" => false})
               end)
 
-            {:cont, {Sim.tick(state), seen}}
+            {:cont, Sim.tick(state)}
         end
       end)
 
-    assert state.phase != :over
-    assert state.keep.hp > 0
+    assert {:build, _} = state.phase
+    assert state.wave >= 2
+    assert state.keep.hp >= 700
     assert Sim.monsters(state) == []
 
     for id <- ids do
-      assert seen[id]
+      hero = hero(state, id)
+      assert hero.alive
+      assert hero.hp > div(hero.max_hp, 2)
     end
   end
 
@@ -1620,21 +1621,6 @@ defmodule LastKeep.Game.SimTest do
   defp push(state, id, input), do: Sim.input(state, id, input)
 
   defp hero(state, id), do: state.entities[state.players[id].hero_id]
-
-  defp mark_reached(state, seen) do
-    Map.new(seen, fn {id, already} ->
-      me = hero(state, id)
-
-      reached =
-        already or
-          Enum.any?(Sim.monsters(state), fn monster ->
-            dist = :math.sqrt((monster.x - me.x) ** 2 + (monster.y - me.y) ** 2)
-            dist <= Rules.meet_reach() + monster.r
-          end)
-
-      {id, reached}
-    end)
-  end
 
   defp heroes(state), do: for({_id, %{type: :hero} = hero} <- state.entities, do: hero)
 

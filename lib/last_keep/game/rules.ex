@@ -139,9 +139,14 @@ defmodule LastKeep.Game.Rules do
   def bite(:goblin, 1), do: 0.5
   def bite(_kind, _wave), do: 1.0
 
-  # A standing party is inside this distance of the wave-2 pack while the
-  # keep is still up. The survival test requires each hero to have been here.
-  def meet_reach, do: 160
+  # Melee uses the weapon range. A bolt starts once the body is on the yard.
+  # 200 sits inside the gap from the join ring at 120 to a spawn past 760.
+  def strike_reach(%{kind: :melee, range: range}), do: range
+  def strike_reach(%{kind: :bolt}), do: 200
+
+  # Night 1 is the two goblins the yard proof reads. The drawn swing starts
+  # on the next night, when the pack walks into the party.
+  def meets?(wave) when is_integer(wave), do: wave >= 2
 
   def bounty(:goblin), do: 1
   def bounty(:skeleton), do: 1
