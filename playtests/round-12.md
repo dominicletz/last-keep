@@ -4,7 +4,7 @@ Target: https://agentyard.letz.tw at `e0e9fd8` (deploy run 41109556810). That im
 
 Shots: `playtests/round-12/shots/`.
 
-The party stood on the join ring. Nobody walked to a spawn, a pine cell, or the map table. The attack button was held only on wave 1. From the wave 1 clear through the fall it stayed up, so those kills are the drawn swing. #130, the walk out to the pack, stayed unmerged. This round does not extend that swing and does not remove it.
+The party stood on the join ring. Nobody walked to a spawn, a pine cell, or the map table. The attack button was held only on wave 1. From the wave 1 clear through the fall it stayed up, so those kills are the drawn swing. Dominic later kept this swing and closed #130. The walk out to the pack is not the rule.
 
 This round is the comparison with round 11, room `BRG82T`, where the same pack reached the yard and the keep fell from 850 to 0.
 
@@ -121,7 +121,7 @@ Scored against the concept sheets from this yard. 1 is unlike the sheet. 5 would
 ## Aggregate
 
 1. The keep survived wave 2. Round 11 fell from 850 to 0 on that pack. This room cleared it at 900 with the button up, and cleared waves 3, 4, and 5 the same way. LK-097 is closed on that evidence. `playtests/round-12/shots/06-Ada.png`, `playtests/round-12/shots/14-Ada.png`
-2. Of 55 kills, 2 were the held button on wave 1 and 53 were the drawn swing. The keep took every point of damage during the button-up waves, and none during the hold. The swing stays as merged until Dominic decides on #130.
+2. Of 55 kills, 2 were the held button on wave 1 and 53 were the drawn swing. The keep took every point of damage during the button-up waves, and none during the hold. Dominic kept the swing and closed #130. Waves 4 and 5 still clear from the join ring. Making waves 4 to 6 demand a step, Q, E, R, a wall, or a raise is LK-108. It is not a change to the swing.
 3. The run ended on wave 6. Survived 5. Ten monsters were still up. Lux was down and was not refilled. `playtests/round-12/shots/14-Ada.png`
 
 LK-106 and LK-107 were not rechecked. The party never stood on the map table or past the last chunk.

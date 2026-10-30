@@ -68,6 +68,7 @@
     {"from": "monsters", "to": "keep", "via": "A monster in reach of the keep bites it. A boss slam hits harder.", "status": "implemented", "rule": "defp strike"},
     {"from": "monsters", "to": "warrior", "via": "A monster that is closer to a hero than to the keep bites the hero.", "status": "implemented", "rule": "defp monster_target"},
     {"from": "monsters", "to": "warrior", "via": "From wave 2, a monster inside strike reach draws that hero's swing.", "status": "implemented", "rule": "def strike_reach"},
+    {"from": "monsters", "to": "warrior", "via": "From wave 4, standing on the join ring is not enough. A step, Q, E, R, a wall, or a raise has to matter.", "status": "planned"},
     {"from": "goblin", "to": "keep", "via": "A goblin is the wave-1 biter. It is slower and softer on the first night.", "status": "implemented", "rule": "def monster(:goblin)"},
     {"from": "skeleton", "to": "keep", "via": "A skeleton is a tougher biter than a goblin.", "status": "implemented", "rule": "def monster(:skeleton)"},
     {"from": "wolf", "to": "keep", "via": "A wolf is the fast biter from the concept sheet.", "status": "implemented", "rule": "def monster(:wolf)"},
