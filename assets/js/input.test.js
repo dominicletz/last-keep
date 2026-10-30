@@ -4,6 +4,7 @@ import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, ke
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
+  assert.deepEqual(seatFromQuery("?hd2d=1&perf=1&name=Ada&hero=warrior"), { name: "Ada", hero: "warrior" })
 })
 
 test("a bare invite is not a seat", () => {

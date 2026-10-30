@@ -344,12 +344,38 @@ function heroOrder(a, b) {
   return String(a.userData.heroId || "").localeCompare(String(b.userData.heroId || ""))
 }
 
+let sharedShadow = null
+
+function softShadowTexture() {
+  if (sharedShadow) return sharedShadow
+  const size = 64
+  const data = new Uint8Array(size * size * 4)
+  const center = (size - 1) / 2
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const radius = Math.min(1, Math.hypot((x - center) / center, (y - center) / center))
+      const falloff = radius >= 1 ? 0 : (1 - radius) * (1 - radius)
+      const o = (y * size + x) * 4
+      data[o] = 26
+      data[o + 1] = 16
+      data[o + 2] = 12
+      data[o + 3] = Math.round(falloff * 170)
+    }
+  }
+  const map = new THREE.DataTexture(data, size, size)
+  map.colorSpace = THREE.NoColorSpace
+  map.magFilter = THREE.LinearFilter
+  map.minFilter = THREE.LinearFilter
+  map.needsUpdate = true
+  sharedShadow = map
+  return map
+}
+
 function shadowQuad() {
   const quad = new THREE.Mesh(
     new THREE.PlaneGeometry(14, 8),
     new THREE.MeshBasicMaterial({
-      color: 0x1a100c,
-      opacity: 0.55,
+      map: softShadowTexture(),
       transparent: true,
       depthWrite: false,
       polygonOffset: true,
@@ -365,11 +391,16 @@ function shadowQuad() {
 }
 
 function createHdPicture() {
-  const ready = new Promise(() => {})
+  let resolveReady = () => {}
+  let readySettled = false
+  const ready = new Promise((resolve) => {
+    resolveReady = resolve
+  })
   let opened = false
   let span = 0
   let live = false
   let strip = null
+  let stripNormal = null
   let spot = null
   let torchFill = null
   let masonry = null
@@ -523,7 +554,12 @@ function createHdPicture() {
     geometry.translate(0, source.h / 2, 0)
     const plane = new THREE.Mesh(
       geometry,
-      new THREE.MeshLambertMaterial({ map, alphaTest: 0.4, transparent: true })
+      new THREE.MeshLambertMaterial({
+        map,
+        normalMap: warrior ? stripNormal : null,
+        alphaTest: 0.4,
+        transparent: true
+      })
     )
     plane.castShadow = true
     plane.receiveShadow = false
@@ -534,6 +570,7 @@ function createHdPicture() {
     group.userData.hd = warrior ? "warrior" : "lit"
     for (const child of group.children) {
       if (child.userData.contact) child.visible = false
+      if (goldPlate(child)) child.visible = false
     }
     if (!group.userData.hdQuad) {
       const quad = shadowQuad()
@@ -625,14 +662,83 @@ function createHdPicture() {
     chain.height = height
   }
 
+  function settleReady() {
+    if (readySettled) return
+    readySettled = true
+    resolveReady()
+  }
+
+  function goldPlate(child) {
+    return !!(
+      child.isMesh &&
+      child.material &&
+      child.material.color &&
+      child.material.color.getHex() === 0xf0c14a &&
+      child.position.y > 0 &&
+      child.position.y < 2
+    )
+  }
+
+  function walkTexture(url, colorSpace) {
+    return new Promise((resolve, reject) => {
+      const loader = new THREE.TextureLoader()
+      loader.load(
+        url,
+        (texture) => {
+          texture.colorSpace = colorSpace
+          texture.magFilter = THREE.NearestFilter
+          texture.minFilter = THREE.NearestFilter
+          texture.flipY = true
+          texture.wrapS = THREE.ClampToEdgeWrapping
+          texture.wrapT = THREE.ClampToEdgeWrapping
+          texture.generateMipmaps = false
+          texture.needsUpdate = true
+          resolve(texture)
+        },
+        undefined,
+        reject
+      )
+    })
+  }
+
+  function loadWalk() {
+    Promise.all([
+      walkTexture("/images/hd2d/warrior-walk.png", THREE.SRGBColorSpace),
+      walkTexture("/images/hd2d/warrior-walk-normal.png", THREE.NoColorSpace)
+    ]).then(([map, normal]) => {
+      strip = map
+      stripNormal = normal
+      settleReady()
+    }).catch((err) => {
+      console.error(err)
+    })
+  }
+
+  function attachStrip(map, normalMap) {
+    if (!map || !map.isTexture) throw new Error("strip")
+    strip = map
+    stripNormal = normalMap && normalMap.isTexture ? normalMap : null
+    settleReady()
+  }
+
   return {
     fov: LOOK.fov,
     ready,
+    get live() {
+      return live
+    },
+    attachStrip,
+    grade(paint) {
+      if (live) throw new Error("grade refuses a live room")
+      if (typeof paint !== "function") throw new Error("grade")
+      return ready.then(() => paint())
+    },
     open(stage) {
       if (opened) throw new Error("open once")
       // A failed constructor still spends the one open.
       opened = true
       const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
+      if (typeof document !== "undefined") loadWalk()
       renderer.setPixelRatio(1)
       renderer.outputColorSpace = THREE.SRGBColorSpace
       renderer.shadowMap.enabled = true

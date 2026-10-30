@@ -15,7 +15,7 @@ import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
-import { pictureColumn, sheetRow } from "./pictures.js"
+import { cellOffset, pictureColumn, sheetRow } from "./pictures.js"
 import { keepParts, modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
@@ -499,9 +499,15 @@ export function createView(stage, picture = null) {
     return pixelStep(viewFrame.halfH, height)
   }
 
+  let lastSubmit = null
+  let driverLabel = null
+
   function paintFrame() {
-    if (picture) picture.present(renderer, scene, camera)
-    else {
+    if (picture) {
+      const presented = picture.present(renderer, scene, camera)
+      lastSubmit = presented && Number.isFinite(presented.submitMs) ? presented.submitMs : null
+    } else {
+      lastSubmit = null
       if (!palettePass) palettePass = createPalettePass(renderer, palette)
       palettePass.draw(scene, camera)
     }
@@ -856,6 +862,8 @@ export function createView(stage, picture = null) {
           halfH: viewFrame.halfH,
           ...(picture ? { fov: picture.fov } : {})
         },
+        contact: selfContact(heroMesh),
+        driver: driverName(),
         renders,
         toClient,
         redNear,
@@ -881,6 +889,18 @@ export function createView(stage, picture = null) {
         labels: kept.labels || [],
         audio: kept.audio
       }
+    },
+    grade() {
+      if (!picture) throw new Error("grade refuses a palette room")
+      return picture.grade(() => {
+        const buffers = []
+        for (const clock of ["day", "dusk", "night"]) {
+          viewApi.draw(stillSnap(clock), "still-warrior")
+          const shot = readFrame()
+          buffers.push({ rgba: shot.buf, width: shot.width, height: shot.height, frameMs: shot.frameMs })
+        }
+        return buffers
+      })
     },
     ghost(kind, x, z, ok) {
       ghost.visible = !!kind
@@ -1186,7 +1206,77 @@ export function createView(stage, picture = null) {
     return { beauty, clear: [clearBuf[0], clearBuf[1], clearBuf[2]] }
   }
 
+  function stillSnap(clock) {
+    const night = clock === "night"
+    const dusk = clock === "dusk"
+    const player = (id, hero, name, x, y, facing, hp) => ({
+      id,
+      hero,
+      name,
+      x,
+      y,
+      facing,
+      hp,
+      max: hp,
+      alive: true,
+      cds: { attack: 0 }
+    })
+    return {
+      hd2dStill: true,
+      tick: night ? 3 : dusk ? 2 : 1,
+      phase: night ? "wave" : "build",
+      phase_ms: dusk ? 4000 : 60000,
+      hold: false,
+      town: 0,
+      wave: night ? 1 : 0,
+      shown_wave: night ? 1 : 0,
+      keep: { hp: 900, max: 900 },
+      resources: { wood: 40, gold: 0, food: 0 },
+      players: [
+        player("still-warrior", "warrior", "Ada", 88, 36, 0, 100),
+        player("still-mage", "mage", "Lux", 112, 78, 0.4, 80)
+      ],
+      monsters: [],
+      buildings: [],
+      trees: [],
+      chests: [],
+      portals: [],
+      projectiles: [],
+      events: [],
+      relics: [],
+      vagrants: [],
+      chunks: [],
+      land: [],
+      kills: 0,
+      score: 0
+    }
+  }
+
+  function selfContact(mesh) {
+    if (mesh) {
+      for (const child of mesh.children) {
+        if (!child.visible || !child.isMesh || !child.material || !child.material.color) continue
+        if (child.material.color.getHex() === 0xf0c14a && child.position.y > 0 && child.position.y < 2) return "plate"
+      }
+    }
+    return picture ? "shadow" : "plate"
+  }
+
+  function driverName() {
+    if (driverLabel != null) return driverLabel
+    driverLabel = ""
+    try {
+      const gl = renderer.getContext()
+      const info = gl.getExtension("WEBGL_debug_renderer_info")
+      if (info) driverLabel = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || "")
+    } catch (_err) {
+      driverLabel = ""
+    }
+    return driverLabel
+  }
+
   function readFrame() {
+    const started = performance.now()
     paintFrame()
     const canvas = renderer.domElement
     const gl = renderer.getContext()
@@ -1202,7 +1292,7 @@ export function createView(stage, picture = null) {
       const src = (height - 1 - y) * stride
       buf.set(raw.subarray(src, src + stride), y * stride)
     }
-    return { buf, width, height }
+    return { buf, width, height, frameMs: performance.now() - started }
   }
 
   function frameMood() {
@@ -1534,9 +1624,8 @@ export function createView(stage, picture = null) {
     const frame = sheetRow(picture, anim, performance.now())
     // A 4-frame sheet has no death row. sheetRow still returns walk when death is 0.
     const row = Math.min(picture.frames - 1, Math.max(0, frame))
-    const offsetX = column / picture.directions
-    const offsetY = 1 - (row + 1) / picture.frames
-    card.material.map.offset.set(offsetX, offsetY)
+    const cell = cellOffset(column, row, picture.directions, picture.frames)
+    card.material.map.offset.set(cell.x, cell.y)
     card.renderOrder = 0
     const rim = mesh.userData.rim
     if (!rim) return
@@ -1548,7 +1637,7 @@ export function createView(stage, picture = null) {
     const seat = rimSeat(picture.h, picture.rim.scale, away)
     rim.position.set(seat.x, seat.y, seat.z)
     rim.renderOrder = seat.renderOrder
-    rim.material.map.offset.set(offsetX, offsetY)
+    rim.material.map.offset.set(cell.x, cell.y)
   }
 
   function heroCard(picture) {
@@ -1623,7 +1712,7 @@ export function createView(stage, picture = null) {
     group.userData.parts = picture ? picture.directions * picture.frames : sig.parts.length
     group.userData.marks = sig.marks.slice()
     group.userData.bounds = sig.bounds
-    if (row.id === selfId) {
+    if (row.id === selfId && !picture) {
       const gold = new THREE.Mesh(
         trackGeometry(new THREE.BoxGeometry(sig.bounds.w + 4, 1.2, Math.min(sig.bounds.d, 22) + 4)),
         mat(0xf0c14a)
@@ -1772,6 +1861,8 @@ export function createView(stage, picture = null) {
     perf.triangles = renderer.info.render.triangles
     perf.census = geometryCensus(scene)
     perf.rims = visibleRims()
+    perf.submitMs = lastSubmit
+    perf.driver = driverName()
     if (paintMs == null) return
     perf.paints.push(paintMs)
     if (perf.paints.length > 400) perf.paints.shift()

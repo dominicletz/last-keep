@@ -278,6 +278,11 @@ test("dress turns a mage sprite into one card and does not add another", () => {
   assert.equal(quads[0].geometry.parameters.width, 14)
   assert.equal(quads[0].geometry.parameters.height, 8)
   assert.equal(quads[0].rotation.x, -Math.PI / 2)
+  const shadow = quads[0].material.map
+  assert.ok(shadow)
+  const side = shadow.image.width
+  const center = ((side >> 1) * side + (side >> 1)) * 4 + 3
+  assert.ok(shadow.image.data[center] > shadow.image.data[3])
 
   mage.group.rotation.y = Math.PI / 2
   mage.group.position.set(5, 0, 7)
@@ -309,6 +314,41 @@ test("dress leaves a warrior sprite until a walk strip is loaded", () => {
   assert.equal(stone.material.isMeshStandardMaterial, true)
   assert.ok(stone.material.normalMap)
   assert.notEqual(stone.material, stoneMat)
+})
+
+test("dress paints the warrior from the walk strip and hides the gold plate", () => {
+  const picture = pictureFromSearch("?hd2d=1")
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const warrior = heroGroup("warrior", "still-warrior")
+  const gold = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 4), new THREE.MeshBasicMaterial({ color: 0xf0c14a }))
+  gold.position.y = 0.6
+  warrior.group.add(gold)
+  const map = new THREE.DataTexture(new Uint8Array([180, 176, 170, 255]), 1, 1)
+  const normal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1)
+  picture.attachStrip(map, normal)
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [warrior.group] })
+  const card = warrior.group.userData.card
+  assert.equal(card.isMesh, true)
+  assert.equal(card.material.map, map)
+  assert.equal(card.material.normalMap, normal)
+  assert.equal(card.castShadow, true)
+  assert.equal(gold.visible, false)
+  const quad = warrior.group.children.find((child) => child.isMesh && child.position.y === 0.62)
+  assert.ok(quad.material.map)
+  assert.equal(quad.castShadow, false)
+})
+
+test("grade refuses a live room before the strip resolves", () => {
+  const picture = pictureFromSearch("?hd2d=1")
+  const camera = new THREE.PerspectiveCamera()
+  const renderer = { setPixelRatio() {}, setSize() {}, domElement: { style: {} } }
+  picture.fit(renderer, camera, 1280, 800, 0)
+  assert.equal(picture.live, false)
+  picture.seat(camera, { x: 0, z: 0 }, 150, { hd2dStill: true })
+  assert.equal(picture.live, false)
+  picture.seat(camera, { x: 0, z: 0 }, 150, {})
+  assert.equal(picture.live, true)
+  assert.throws(() => picture.grade(() => "frames"), /grade refuses a live room/)
 })
 
 test("dress leaves the hero outside the cap of two as a sprite", () => {

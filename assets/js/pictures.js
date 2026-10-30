@@ -357,3 +357,13 @@ export function pictureColumn(viewYaw, facing) {
   rel = ((rel % turn) + turn) % turn
   return Math.round(rel / (Math.PI / 4)) % spriteDirections
 }
+
+export function cellOffset(column, frame, directions, frames) {
+  if (!directions || !frames) throw new Error("cell offset")
+  return {
+    x: column / directions,
+    y: 1 - (frame + 1) / frames,
+    repeatX: 1 / directions,
+    repeatY: 1 / frames
+  }
+}

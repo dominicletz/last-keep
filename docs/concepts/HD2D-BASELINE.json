@@ -1,0 +1,38 @@
+{
+  "checks": {
+    "3": {
+      "crisp": -0.024544216307690547
+    },
+    "4": {
+      "miniature": 3.7513561322141156
+    },
+    "5": {
+      "lit": 0.7909016934056368
+    },
+    "6": {
+      "shadows": -4.0157947058822785
+    },
+    "7": {
+      "pools": -13.817245874065083
+    },
+    "8": {
+      "cap": 221.5316,
+      "halo": -14.999798797206596
+    },
+    "9": {
+      "chroma": 39.3947565948675
+    },
+    "10": {
+      "ssim": null,
+      "reference": true
+    }
+  },
+  "times": {
+    "swiftshader": 991.6999999992549,
+    "iphone13": null,
+    "day": 991.6999999992549,
+    "dusk": 869.7000000011176,
+    "night": 386.69999999925494
+  },
+  "driver": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+}

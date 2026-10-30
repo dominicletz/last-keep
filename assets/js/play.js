@@ -1,5 +1,6 @@
 import { Socket } from "phoenix"
 import { pictureFromSearch } from "./hd2d/picture"
+import { perfRequested, perfText } from "./hd2d/perf"
 import { createView } from "./render"
 import { monsterKinds, monsterParts } from "./monsters.js"
 import { loadScores } from "./landing"
@@ -42,6 +43,7 @@ export function bootPlay(code) {
   const ui = { stage, hud, join, overlay, view }
   const saved = readSeat(code)
   const queried = seatFromQuery(search)
+  mountPerf(search)
 
   join.addEventListener("submit", (event) => {
     event.preventDefault()
@@ -62,6 +64,23 @@ export function bootPlay(code) {
   } else {
     prefill(join, localStorage.getItem("lastkeep-name") || "", "warrior")
   }
+}
+
+function mountPerf(search) {
+  if (!perfRequested(search) || !document.body) return
+  const node = document.createElement("pre")
+  node.id = "hd2d-perf"
+  node.style.cssText =
+    "position:fixed;left:8px;top:8px;z-index:50;margin:0;color:#f4efe6;font:12px/1.3 ui-monospace,monospace;pointer-events:none;text-shadow:0 1px 2px #000;background:transparent"
+  document.body.appendChild(node)
+  const tick = () => {
+    const perf = window.__lastKeepPerf || {}
+    const paints = perf.paints || []
+    const frameMs = paints.length ? paints[paints.length - 1] : null
+    node.textContent = perfText({ frameMs, submitMs: perf.submitMs, driver: perf.driver })
+    requestAnimationFrame(tick)
+  }
+  requestAnimationFrame(tick)
 }
 
 function prefill(join, name, hero) {
