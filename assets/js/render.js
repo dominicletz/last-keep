@@ -63,20 +63,26 @@ export function createView(stage, picture = null) {
     throw new Error("createView picture must be null or pictureFromSearch")
   }
 
-  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
-  renderer.setSize(480, 270, false)
-  renderer.setPixelRatio(1)
-  renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.BasicShadowMap
-  renderer.outputColorSpace = THREE.SRGBColorSpace
+  const opened = picture ? picture.open(stage) : null
+  const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
+  const renderer = opened
+    ? opened.renderer
+    : new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
+  const camera = opened
+    ? opened.camera
+    : new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
+  if (!opened) {
+    renderer.setSize(480, 270, false)
+    renderer.setPixelRatio(1)
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.BasicShadowMap
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+  }
   stage.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(skyColor)
   scene.fog = new THREE.Fog(skyColor, 900, 2400)
-
-  const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
-  const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
   const probe = new THREE.Vector3()
   const rimFrustum = new THREE.Frustum()
   const rimProj = new THREE.Matrix4()
@@ -488,7 +494,8 @@ export function createView(stage, picture = null) {
   let palettePass = null
 
   function worldStep() {
-    return pixelStep(viewFrame.halfH, viewFrame.bufferHeight)
+    const height = viewFrame.snapHeight || viewFrame.bufferHeight
+    return pixelStep(viewFrame.halfH, height)
   }
 
   function paintFrame() {
@@ -664,8 +671,11 @@ export function createView(stage, picture = null) {
         keep = makeKeep(townRank)
         scene.add(keep)
       }
-      camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-      camera.lookAt(focus.x, cameraLift, focus.z)
+      if (picture) picture.seat(camera, focus, dist, snap)
+      else {
+        camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
+        camera.lookAt(focus.x, cameraLift, focus.z)
+      }
       sun.position.set(focus.x + 90, 200, focus.z + 30)
       sun.target.position.copy(focus)
 
@@ -826,11 +836,13 @@ export function createView(stage, picture = null) {
           ? { fromX: heroTrack.fromX, fromZ: heroTrack.fromZ, toX: heroTrack.toX, toZ: heroTrack.toZ, at: heroTrack.at }
           : null,
         frame: {
-          aspect: camera.right / camera.top,
+          mode: picture ? "hd2d" : "palette",
+          aspect: picture ? viewFrame.aspect : camera.right / camera.top,
           bufferWidth: renderer.domElement.width,
           bufferHeight: renderer.domElement.height,
           halfW: viewFrame.halfW,
-          halfH: viewFrame.halfH
+          halfH: viewFrame.halfH,
+          ...(picture ? { fov: picture.fov } : {})
         },
         renders,
         toClient,
@@ -909,6 +921,10 @@ export function createView(stage, picture = null) {
     const step = worldStep()
     focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
     const dist = zoomFor(snap).camera
+    if (picture) {
+      picture.seat(camera, focus, dist, snap)
+      return
+    }
     camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
     camera.lookAt(focus.x, cameraLift, focus.z)
     camera.updateMatrixWorld(true)
@@ -1681,7 +1697,13 @@ export function createView(stage, picture = null) {
 
   function applyFrame() {
     const rect = stage.getBoundingClientRect()
-    const next = frameFor(rect.width || stage.clientWidth || 480, rect.height || stage.clientHeight || 270, townRank)
+    const cssW = rect.width || stage.clientWidth || 480
+    const cssH = rect.height || stage.clientHeight || 270
+    if (picture) {
+      viewFrame = picture.fit(renderer, camera, cssW, cssH, townRank)
+      return
+    }
+    const next = frameFor(cssW, cssH, townRank)
     const unchanged =
       viewFrame.bufferWidth === next.bufferWidth &&
       viewFrame.bufferHeight === next.bufferHeight &&
