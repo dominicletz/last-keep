@@ -371,6 +371,7 @@ export function createView(stage, picture = null) {
     mesh.rotation.x = -Math.PI / 2
     mesh.position.y = 0.46
     mesh.renderOrder = 2
+    mesh.userData.contact = true
     return mesh
   }
 
@@ -632,23 +633,25 @@ export function createView(stage, picture = null) {
       drawnTick = snap.tick
       const name = lightName(snap)
       liveLight = name
-      const rig = cycleLight[name]
-      if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
-      groundFill.color.set(rig.groundFill || 0x000000)
-      groundFill.intensity = rig.groundFillLevel || 0
-      brazierPool.intensity = rig.pool || 0
-      windowPool.intensity = rig.pool || 0
-      for (const light of yardTorches) light.intensity = (rig.pool || 0) * 0.55
-      paintYard(name)
-      sky.color.set(rig.sky)
-      sky.groundColor.set(rig.ground)
-      sky.intensity = rig.hemisphere
-      ambient.color.set(rig.ambient)
-      ambient.intensity = rig.ambientLevel
-      sun.color.set(rig.sun)
-      sun.intensity = rig.sunLevel
-      scene.background.set(rig.background)
-      scene.fog.color.set(rig.background)
+      if (!picture) {
+        const rig = cycleLight[name]
+        if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
+        groundFill.color.set(rig.groundFill || 0x000000)
+        groundFill.intensity = rig.groundFillLevel || 0
+        brazierPool.intensity = rig.pool || 0
+        windowPool.intensity = rig.pool || 0
+        for (const light of yardTorches) light.intensity = (rig.pool || 0) * 0.55
+        paintYard(name)
+        sky.color.set(rig.sky)
+        sky.groundColor.set(rig.ground)
+        sky.intensity = rig.hemisphere
+        ambient.color.set(rig.ambient)
+        ambient.intensity = rig.ambientLevel
+        sun.color.set(rig.sun)
+        sun.intensity = rig.sunLevel
+        scene.background.set(rig.background)
+        scene.fog.color.set(rig.background)
+      }
       townRank = snap.town || 0
       applyFrame()
       const zoom = zoomFor(snap)
@@ -675,9 +678,9 @@ export function createView(stage, picture = null) {
       else {
         camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
         camera.lookAt(focus.x, cameraLift, focus.z)
+        sun.position.set(focus.x + 90, 200, focus.z + 30)
+        sun.target.position.copy(focus)
       }
-      sun.position.set(focus.x + 90, 200, focus.z + 30)
-      sun.target.position.copy(focus)
 
       const keepRatio = snap.keep.max ? snap.keep.hp / snap.keep.max : 1
       keep.scale.y = 0.65 + keepRatio * 0.35
@@ -687,6 +690,12 @@ export function createView(stage, picture = null) {
       if (me) bearer = { x: me.x, z: me.y, range: me.range || bearer.range }
 
       sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
+
+      if (picture) {
+        const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
+        picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes })
+        picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
+      }
 
       liveMonsters = snap.monsters || []
 
@@ -1520,8 +1529,10 @@ export function createView(stage, picture = null) {
     anim.moving = travel > 0.4
     mesh.userData.pose = anim
     const frame = sheetRow(picture, anim, performance.now())
+    // A 4-frame sheet has no death row. sheetRow still returns walk when death is 0.
+    const row = Math.min(picture.frames - 1, Math.max(0, frame))
     const offsetX = column / picture.directions
-    const offsetY = 1 - (frame + 1) / picture.frames
+    const offsetY = 1 - (row + 1) / picture.frames
     card.material.map.offset.set(offsetX, offsetY)
     card.renderOrder = 0
     const rim = mesh.userData.rim
@@ -1605,6 +1616,7 @@ export function createView(stage, picture = null) {
     group.userData.face = true
     group.userData.role = "hero"
     group.userData.hero = row.hero
+    group.userData.heroId = row.id
     group.userData.parts = picture ? picture.directions * picture.frames : sig.parts.length
     group.userData.marks = sig.marks.slice()
     group.userData.bounds = sig.bounds
