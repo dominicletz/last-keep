@@ -2240,7 +2240,13 @@ async function sixSeatMatch(browser) {
       }
       const early =
         row.phase === "wave"
-          ? [...troughs.keys()].find((wave) => troughs.has(wave + 3) && row.shownWave >= wave + 3)
+          ? [...troughs.keys()].find(
+              (wave) =>
+                troughs.has(wave + 3) &&
+                gcHeaps.has(wave) &&
+                gcHeaps.has(wave + 3) &&
+                row.shownWave >= wave + 3
+            )
           : null
       if (early != null) {
         const first = builds.get(early)
