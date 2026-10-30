@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict")
 const { test } = require("node:test")
 const { keysAround } = require("../assets/js/input.js")
-const { axes, keysFor, walkHitsKeep, noteNorth, noteProgress } = require("./steer")
+const { axes, keysFor, settleFields, stoppedTick, walkHitsKeep, noteNorth, noteProgress } = require("./steer")
 
 const BODY = 68
 const SPEED = 155
@@ -90,6 +90,27 @@ test("a north walk with no gain steps out after three seconds", () => {
   assert.equal(early.action, "hold")
   const late = noteNorth(first.mark, 38, 3001)
   assert.equal(late.action, "step-out")
+})
+
+test("a walk is stopped only when a later tick shares the position", () => {
+  assert.equal(stoppedTick(null, { tick: 1, x: 432, y: 0 }), false)
+  assert.equal(stoppedTick({ tick: 1, x: 432, y: 0 }, { tick: 1, x: 432, y: 0 }), false)
+  assert.equal(stoppedTick({ tick: 1, x: 420, y: 0 }, { tick: 2, x: 427.8, y: 0 }), false)
+  assert.equal(stoppedTick({ tick: 4, x: 432, y: 0 }, { tick: 5, x: 432, y: 0 }), true)
+})
+
+test("a stopped sample refreshes the pose and keeps the goal fields", () => {
+  const settled = settleFields(
+    { x: 420, y: 0, travel: 24, alive: true, held: true, cloth: true, raiseReady: true, table: { cloth: true } },
+    { x: 432, y: 0, alive: true, raiseReady: false, held: true, cloth: true, table: { x: 0, y: 160, cloth: true } }
+  )
+  assert.equal(settled.travel, 24)
+  assert.equal(settled.x, 432)
+  assert.equal(settled.y, 0)
+  assert.equal(settled.alive, true)
+  assert.equal(settled.held, true)
+  assert.equal(settled.raiseReady, false)
+  assert.deepEqual(settled.table, { x: 0, y: 160, cloth: true })
 })
 
 test("a heading stays while the server position gains and turns when it stops", () => {

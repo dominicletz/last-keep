@@ -1,7 +1,7 @@
 const { expect } = require("@playwright/test")
 const { joinTogether, rosterReady } = require("./roster")
 const { settledHolds } = require("./settled")
-const { noteNorth, noteProgress } = require("./steer")
+const { noteNorth, noteProgress, settleFields, stoppedTick } = require("./steer")
 const fs = require("fs")
 const path = require("path")
 const proofDir = path.join("tmp", "verify-artifacts")
@@ -1485,16 +1485,24 @@ async function assertPhoneClear(page) {
   }
 }
 
-// Holds whatever `step` sets and returns only when `done` sees the server
-// position. The poll is how often that position is read. A timeout throws the
-// last position, unless `soft` is set for a leg that has another plan.
+// Holds whatever `step` sets. The first sample inside the goal still has
+// those keys down, and the hero keeps that step until the key-up reaches
+// the server. Arrival is two later snapshots that share a position, with
+// the keys already up, and that sample still has to satisfy `done`. The
+// wait stays inside `timeout`. A timeout throws the last position, unless
+// `soft` is set for a leg that has another plan.
 async function walkUntil(page, { timeout, label, poll = 100, step, done, soft = false }) {
   const deadline = Date.now() + timeout
   let last = null
   try {
     while (Date.now() < deadline) {
       last = await step(page)
-      if (last && done(last)) return last
+      if (last && done(last)) {
+        const settled = await stoppedSample(page, last, deadline)
+        if (settled && done(settled)) return settled
+        last = settled || last
+        continue
+      }
       await page.waitForTimeout(poll)
     }
   } finally {
@@ -1502,6 +1510,38 @@ async function walkUntil(page, { timeout, label, poll = 100, step, done, soft = 
   }
   if (soft) return last
   throw new Error(`${label} timed out at ${JSON.stringify(last)}`)
+}
+
+async function stoppedSample(page, last, deadline) {
+  await releaseCodes(page)
+  let previous = null
+  while (Date.now() < deadline) {
+    const fresh = await page.evaluate(() => {
+      const game = window.__lastKeep
+      const me = game && game.self
+      if (!me || typeof game.tick !== "number") return null
+      const bar = document.querySelector("[data-raise]")
+      const touch = document.querySelector("[data-touch-context]")
+      return {
+        x: me.x,
+        y: me.y,
+        alive: me.alive !== false,
+        tick: game.tick,
+        raiseReady: Boolean(
+          (bar && !bar.disabled) || (touch && !touch.hidden && touch.getAttribute("aria-disabled") === "false")
+        ),
+        held: Math.hypot(me.x, me.y - 160) < 70,
+        cloth: !!(game.table && game.table.cloth),
+        table: game.table || null
+      }
+    })
+    if (fresh && stoppedTick(previous, fresh)) return settleFields(last, fresh)
+    if (fresh) previous = fresh
+    const pause = Math.min(50, deadline - Date.now())
+    if (pause <= 0) break
+    await page.waitForTimeout(pause)
+  }
+  return null
 }
 
 async function steer(page, goal, done, timeout, label) {
@@ -2240,7 +2280,13 @@ async function sixSeatMatch(browser) {
       }
       const early =
         row.phase === "wave"
-          ? [...troughs.keys()].find((wave) => troughs.has(wave + 3) && row.shownWave >= wave + 3)
+          ? [...troughs.keys()].find(
+              (wave) =>
+                troughs.has(wave + 3) &&
+                gcHeaps.has(wave) &&
+                gcHeaps.has(wave + 3) &&
+                row.shownWave >= wave + 3
+            )
           : null
       if (early != null) {
         const first = builds.get(early)
@@ -2437,7 +2483,7 @@ async function readTheMap(browser) {
   const page = host.page
   watch(page, "host", errors)
   // The cloth exists only inside radius 80. The sample that sees the hero
-  // there clears the keys, and that same sample is the one the check reads.
+  // there clears the keys. The check reads the stopped sample.
   const report = await walkUntil(page, {
     timeout: 20_000,
     label: "table",

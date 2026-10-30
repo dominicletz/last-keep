@@ -63,4 +63,24 @@ function noteProgress(mark, score, now, stallMs = 700) {
   return { action: "hold", mark }
 }
 
-module.exports = { axes, keysFor, walkHitsKeep, noteNorth, noteProgress }
+// A moving hero changes cell between snapshots. Arrival is two snapshots
+// after the keys are up that still share a position. The same tick twice
+// is one sample, and a later tick at a new position is still walking.
+function stoppedTick(previous, fresh) {
+  if (!previous || !fresh) return false
+  return fresh.tick > previous.tick && fresh.x === previous.x && fresh.y === previous.y
+}
+
+// The pose comes from the stopped snapshot. Fields the goal already read
+// stay, and a field the goal does not use is left off the sample.
+function settleFields(last, fresh) {
+  const settled = { ...last, x: fresh.x, y: fresh.y }
+  if (Object.prototype.hasOwnProperty.call(last, "alive")) settled.alive = fresh.alive
+  if (Object.prototype.hasOwnProperty.call(last, "raiseReady")) settled.raiseReady = fresh.raiseReady
+  if (Object.prototype.hasOwnProperty.call(last, "held")) settled.held = fresh.held
+  if (Object.prototype.hasOwnProperty.call(last, "cloth")) settled.cloth = fresh.cloth
+  if (Object.prototype.hasOwnProperty.call(last, "table")) settled.table = fresh.table
+  return settled
+}
+
+module.exports = { axes, keysFor, walkHitsKeep, noteNorth, noteProgress, stoppedTick, settleFields }
