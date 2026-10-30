@@ -194,19 +194,25 @@ function meshCount(root) {
   return count
 }
 
-test("dress replaces stone with one lambert map and leaves the basic material", () => {
+test("dress lights the keep with a normal map and emissive windows", () => {
   const picture = pictureFromSearch("?hd2d=1")
   const { stoneMat, stone, other, flame, keep, floors, map } = stoneAndGrounds()
   const day = masonryBytes("day")
   const groundMap = floors[0].material.map
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [] })
 
-  assert.equal(stone.material.isMeshLambertMaterial, true)
+  assert.equal(stone.material.isMeshStandardMaterial, true)
+  assert.ok(stone.material.normalMap)
+  assert.equal(stone.material.normalMap.image.width, day.w)
+  assert.equal(stone.material.normalMap.image.height, day.h)
   assert.notEqual(stone.material, stoneMat)
   assert.equal(stone.material, other.material)
   assert.equal(stoneMat.isMeshBasicMaterial, true)
   assert.equal(stoneMat.map, map)
-  assert.equal(flame.material.isMeshBasicMaterial, true)
+  assert.equal(flame.material.isMeshStandardMaterial, true)
+  assert.ok(flame.material.emissiveIntensity > 1)
+  assert.equal(flame.material.emissive.getHex(), 0xeea821)
+  assert.equal(flame.children.filter((child) => child.isPointLight).length, 1)
   assert.notEqual(flame.material, stone.material)
   assert.equal(keep.scale.y, 0.8)
   assert.equal(stone.material.map.image.width, day.w)
@@ -227,9 +233,11 @@ test("dress replaces stone with one lambert map and leaves the basic material", 
 
   const litStone = stone.material
   const litGround = floors[0].material
+  const flameLights = flame.children.length
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [] })
   assert.equal(stone.material, litStone)
   assert.equal(floors[0].material, litGround)
+  assert.equal(flame.children.length, flameLights)
 })
 
 test("dress turns a mage sprite into one card and does not add another", () => {
@@ -298,7 +306,8 @@ test("dress leaves a warrior sprite until a walk strip is loaded", () => {
   assert.equal(warrior.group.userData.card, warrior.sprite)
   assert.equal(warrior.group.userData.hd, undefined)
   assert.equal(warrior.group.children.length, 1)
-  assert.equal(stone.material.isMeshLambertMaterial, true)
+  assert.equal(stone.material.isMeshStandardMaterial, true)
+  assert.ok(stone.material.normalMap)
   assert.notEqual(stone.material, stoneMat)
 })
 
@@ -331,17 +340,20 @@ test("dress without a keep throws", () => {
   assert.throws(() => picture.dress({ grounds: [grounds[0], null, grounds[2], grounds[3]], keep, stoneMat }), /dress kit/)
 })
 
-test("height fog is stronger on the floor than at the ceiling", () => {
+test("height fog stays off the focal plane and only softens the distance", () => {
   const span = 168 / Math.tan((7.5 * Math.PI) / 180)
-  const distances = [0, span * 0.5, span, span * 1.2, span * 4]
-  for (const distance of distances) {
-    const ceiling = fogMix(36, distance, span)
-    const floor = fogMix(0, distance, span)
-    assert.ok(ceiling < floor)
-    assert.ok(ceiling <= 0.85)
-    assert.ok(floor <= 0.85)
-  }
-  assert.equal(fogMix(0, span * 4, span), 0.85)
+  assert.equal(fogMix(0, span, span), 0)
+  assert.equal(fogMix(36, span, span), 0)
+  assert.equal(fogMix(0, span * 0.5, span), 0)
+  const far = span * 1.28
+  const floor = fogMix(0, far, span)
+  const ceiling = fogMix(36, far, span)
+  assert.ok(floor > ceiling)
+  assert.ok(floor > 0.15)
+  assert.ok(floor <= 0.38)
+  assert.ok(ceiling < 0.2)
+  assert.ok(fogMix(0, span * 4, span) <= 0.38)
+  assert.ok(fogMix(36, span * 4, span) < fogMix(0, span * 4, span))
 })
 
 test("the circle of confusion is zero at the focus distance", () => {
@@ -351,7 +363,8 @@ test("the circle of confusion is zero at the focus distance", () => {
   const nearer = span * (1 - 0.04) - 1
   assert.ok(circleOfConfusion(farther, span) > 0)
   assert.ok(circleOfConfusion(nearer, span) > 0)
-  assert.ok(circleOfConfusion(span * 10, span) <= 8)
+  assert.ok(circleOfConfusion(span * 10, span) <= 16)
+  assert.ok(circleOfConfusion(span * 1.2, span) > 4)
   assert.ok(circleOfConfusion(span * 10, span) > circleOfConfusion(farther, span))
 })
 

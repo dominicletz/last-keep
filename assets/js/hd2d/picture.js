@@ -5,8 +5,8 @@ import { masonryBytes } from "../tiles.js"
 const LOOK = {
   fov: 15,
   day: { ambient: 0xc8c6c2, ambientLevel: 0.35, sun: 0xfff3e4, sunLevel: 1.1, torch: 0, hemi: 0.4 },
-  dusk: { ambient: 0xb0a89c, ambientLevel: 0.22, sun: 0xffb060, sunLevel: 1.4, torch: 30, hemi: 0.25 },
-  night: { ambient: 0x6a6278, ambientLevel: 0.08, sun: 0x000000, sunLevel: 0, torch: 36, hemi: 0.05 },
+  dusk: { ambient: 0xb0a89c, ambientLevel: 0.22, sun: 0xffb060, sunLevel: 1.4, torch: 1600, hemi: 0.25 },
+  night: { ambient: 0x6a6278, ambientLevel: 0.08, sun: 0x000000, sunLevel: 0, torch: 7200, hemi: 0.05 },
   sunDir: [90, 200, 30],
   bloomThreshold: 0.72,
   bloomRadius: 6,
@@ -14,15 +14,18 @@ const LOOK = {
   focusBand: 0.04,
   fogFloorY: 0,
   fogCeilingY: 36,
-  fogMixCap: 0.85,
+  fogMixCap: 0.38,
   litHeroes: 2,
   shadowMap: 512,
   shadowBias: -0.0008
 }
 
-const FOG = { height: 0.65, distance: 0.35, near: 0.8, far: 1.6 }
-const COC_MAX_PX = 8
+// Distance carries the mist. Height only deepens it on the ground, and the ramp starts past the focal plane so the keep and the heroes stay clear.
+const FOG = { height: 0.78, near: 1.05, far: 1.42 }
+const COC_MAX_PX = 16
+const COC_REACH = 0.12
 const RESTORE_PX = 0.5
+const FLAME = new Set([0xeea821, 0xf5751e])
 const LUMA = [0.2126, 0.7152, 0.0722]
 const DISK_RING = 15
 
@@ -42,14 +45,15 @@ function hermite(edge0, edge1, x) {
 export function fogMix(worldY, distance, span) {
   const heightFog = hermite(LOOK.fogCeilingY, LOOK.fogFloorY, worldY)
   const distFog = hermite(span * FOG.near, span * FOG.far, distance)
-  return Math.min(LOOK.fogMixCap, Math.max(0, heightFog * FOG.height + distFog * FOG.distance))
+  const mix = distFog * (1 - FOG.height + FOG.height * heightFog)
+  return Math.min(LOOK.fogMixCap, Math.max(0, mix))
 }
 
 export function circleOfConfusion(distance, span) {
   if (!(span > 0)) return 0
   const excess = Math.abs(distance - span) - LOOK.focusBand * span
   if (excess <= 0) return 0
-  return Math.min(1, excess / span) * COC_MAX_PX
+  return Math.min(1, excess / (span * COC_REACH)) * COC_MAX_PX
 }
 
 export function diskOffsets(radius) {
@@ -100,7 +104,7 @@ function cocGlsl() {
     float cocPixels(float dist, float span) {
       float band = ${glslFloat(LOOK.focusBand)} * span;
       float excess = max(0.0, abs(dist - span) - band);
-      float t = span > 0.0 ? min(1.0, excess / span) : 0.0;
+      float t = span > 0.0 ? min(1.0, excess / (span * ${glslFloat(COC_REACH)})) : 0.0;
       return t * ${glslFloat(COC_MAX_PX)};
     }
   `
@@ -127,7 +131,7 @@ function fogFragment() {
       float dist = distance(world, eye);
       float heightFog = hermite(${glslFloat(LOOK.fogCeilingY)}, ${glslFloat(LOOK.fogFloorY)}, world.y);
       float distFog = hermite(span * ${glslFloat(FOG.near)}, span * ${glslFloat(FOG.far)}, dist);
-      float fog = clamp(heightFog * ${glslFloat(FOG.height)} + distFog * ${glslFloat(FOG.distance)}, 0.0, ${glslFloat(LOOK.fogMixCap)});
+      float fog = clamp(distFog * (${glslFloat(1 - FOG.height)} + ${glslFloat(FOG.height)} * heightFog), 0.0, ${glslFloat(LOOK.fogMixCap)});
       gl_FragColor = vec4(mix(color, background, fog), 1.0);
     }
   `
@@ -248,7 +252,8 @@ function restoreFragment() {
       float radius = cocPixels(distance(world, eye), span);
       vec3 sharp = texture2D(tSharp, uv).rgb;
       vec3 soft = texture2D(tBlur, uv).rgb;
-      gl_FragColor = vec4(radius < ${glslFloat(RESTORE_PX)} ? sharp : soft, 1.0);
+      float blend = smoothstep(${glslFloat(RESTORE_PX)}, 3.0, radius);
+      gl_FragColor = vec4(mix(sharp, soft, blend), 1.0);
     }
   `
 }
@@ -272,6 +277,30 @@ function blitFragment() {
   `
 }
 
+function masonryNormals(rgba, width, height) {
+  const out = new Uint8Array(width * height * 4)
+  const heightAt = (x, y) => {
+    const xx = (x + width) % width
+    const yy = (y + height) % height
+    const o = (yy * width + xx) * 4
+    return (LUMA[0] * rgba[o] + LUMA[1] * rgba[o + 1] + LUMA[2] * rgba[o + 2]) / 255
+  }
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const dx = (heightAt(x + 1, y) - heightAt(x - 1, y)) * 3.2
+      const dy = (heightAt(x, y + 1) - heightAt(x, y - 1)) * 3.2
+      const z = 1
+      const len = Math.hypot(dx, dy, z) || 1
+      const o = (y * width + x) * 4
+      out[o] = Math.round((-dx / len) * 127.5 + 127.5)
+      out[o + 1] = Math.round((-dy / len) * 127.5 + 127.5)
+      out[o + 2] = Math.round((z / len) * 127.5 + 127.5)
+      out[o + 3] = 255
+    }
+  }
+  return out
+}
+
 function passMaterial(fragment, uniforms) {
   return new THREE.ShaderMaterial({
     uniforms,
@@ -292,7 +321,7 @@ function linearTarget(width, height, depthTexture = null, filter = THREE.Nearest
     // A multisampled target resolves color and does not leave a depth texture the later passes can sample.
     samples: 0,
     depthTexture,
-    type: THREE.UnsignedByteType,
+    type: THREE.HalfFloatType,
     format: THREE.RGBAFormat,
     colorSpace: THREE.NoColorSpace
   })
@@ -342,6 +371,7 @@ function createHdPicture() {
   let live = false
   let strip = null
   let spot = null
+  let torchFill = null
   let masonry = null
   const torchWorld = new THREE.Vector3()
   const cardPos = new THREE.Vector3()
@@ -372,18 +402,29 @@ function createHdPicture() {
 
   function aimSpot(scene, torch, intensity) {
     if (!spot) {
-      spot = new THREE.SpotLight(0xeea821, 0, 240, 0.7, 0.45)
+      spot = new THREE.SpotLight(0xffa24a, 0, 240, 0.7, 0.45, 2)
       spot.shadow.mapSize.set(LOOK.shadowMap, LOOK.shadowMap)
       spot.shadow.bias = LOOK.shadowBias
     }
     const parent = torch.parent
     if (spot.parent !== parent) parent.add(spot)
-    spot.position.copy(torch.position)
+    // The keep point sits against the stone. Park the spot outside the base so the pool reaches the yard and the shadow map is not buried in the wall.
+    spot.position.set(torch.position.x + 30, 18, torch.position.z + 30)
     spot.distance = 240
     spot.angle = 0.7
     spot.penumbra = 0.45
     spot.intensity = intensity
     spot.castShadow = intensity > 0
+    spot.shadow.camera.near = 4
+    spot.shadow.camera.far = 70
+    spot.shadow.normalBias = 0.4
+    if (!torchFill) {
+      torchFill = new THREE.PointLight(0xffa24a, 0, 110, 2)
+      torchFill.castShadow = false
+    }
+    if (torchFill.parent !== parent) parent.add(torchFill)
+    torchFill.position.set(torch.position.x + 30, 12, torch.position.z + 30)
+    torchFill.intensity = intensity > 0 ? 2800 : 0
     torch.getWorldPosition(torchWorld)
     spot.target.position.set(torchWorld.x + 36, 0, torchWorld.z + 36)
     if (spot.target.parent !== scene) scene.add(spot.target)
@@ -414,10 +455,43 @@ function createHdPicture() {
       map.wrapT = THREE.RepeatWrapping
       map.repeat.set(stoneMat.map.repeat.x, stoneMat.map.repeat.y)
       map.needsUpdate = true
-      masonry = new THREE.MeshLambertMaterial({ map, color: 0xffffff })
+      const normals = masonryNormals(bytes.rgba, bytes.w, bytes.h)
+      const normalMap = new THREE.DataTexture(normals, bytes.w, bytes.h)
+      normalMap.colorSpace = THREE.NoColorSpace
+      normalMap.magFilter = THREE.LinearFilter
+      normalMap.minFilter = THREE.LinearFilter
+      normalMap.wrapS = THREE.RepeatWrapping
+      normalMap.wrapT = THREE.RepeatWrapping
+      normalMap.repeat.set(stoneMat.map.repeat.x, stoneMat.map.repeat.y)
+      normalMap.needsUpdate = true
+      masonry = new THREE.MeshStandardMaterial({
+        map,
+        normalMap,
+        normalScale: new THREE.Vector2(2.4, 2.4),
+        roughness: 0.84,
+        metalness: 0,
+        color: 0xffffff
+      })
     }
     keep.traverse((child) => {
       if (child.isMesh && child.material === stoneMat) child.material = masonry
+    })
+    keep.traverse((child) => {
+      if (!child.isMesh || child.userData.hdFlame || !child.material || !child.material.isMeshBasicMaterial) return
+      const hex = child.material.color && child.material.color.getHex()
+      if (!FLAME.has(hex)) return
+      const color = new THREE.Color(hex)
+      child.material = new THREE.MeshStandardMaterial({
+        color: 0x120800,
+        emissive: color,
+        emissiveIntensity: 8,
+        roughness: 1,
+        metalness: 0
+      })
+      const pool = new THREE.PointLight(hex, 2200, 40, 2)
+      pool.castShadow = false
+      child.add(pool)
+      child.userData.hdFlame = true
     })
   }
 
