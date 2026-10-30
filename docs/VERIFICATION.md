@@ -522,7 +522,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 ## 2026-10-30 HD-2D phase 0 stays behind the flag
 
-- `?hd2d=1` is the only way into the perspective picture. The default path stays the palette buffer at 640×400. The join body stays name, hero, and token. `hd2dFlag` checks that, the fov of 15, the perf overlay, and that `grade` resolves day, dusk, and night. It does not read the framebuffer and it does not assert the look floors. `assets/js/hd2d_score.js` records those floors in `docs/concepts/HD2D-BASELINE.json` once, and only when the driver string contains SwiftShader. `times.iphone13` stays null. CI times the same scene with SwiftShader after the browser suite. The coverage floor stays 77.
+- `?hd2d=1` is the only way into the perspective picture. The default path stays the palette buffer at 640×400. The join body stays name, hero, and token. `hd2dFlag` checks that, the fov of 15, the perf overlay, and that `grade` resolves day, dusk, and night. It does not read the framebuffer and it does not assert the look floors. `assets/js/hd2d_score.js` records those floors in `docs/concepts/HD2D-BASELINE.json` once, and only when the driver string contains SwiftShader. `times.iphone13` stays null. CI times the same scene with SwiftShader after the browser suite. The warrior concept, turnaround, and walk cycle are committed under `assets/reference/warrior`. `warrior reference plates stay committed` locks those sizes. The walk sheet is not rebuilt from them. The coverage floor stays 77.
 
 ## 2026-10-19 the disabled raise at the round-10 pose says to walk there
 
