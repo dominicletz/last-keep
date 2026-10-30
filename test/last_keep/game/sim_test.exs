@@ -476,6 +476,74 @@ defmodule LastKeep.Game.SimTest do
     assert paid <= purse + state.kills * Rules.kill_bonus(:warrior)
   end
 
+  test "five heroes reach the wave 2 pack before the keep falls" do
+    ids = ~w(ada lux nia bram kit)
+    heroes = [:warrior, :mage, :scout, :farmer, :engineer]
+
+    state =
+      Enum.reduce(
+        Enum.zip(ids, heroes),
+        Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false),
+        fn {id, hero}, state ->
+          {:ok, state} = Sim.join(state, player(id, hero))
+          state
+        end
+      )
+
+    state = %{state | wave: 1, phase: {:build, 1}, hints: []}
+
+    state =
+      Enum.reduce_while(1..4_000, state, fn _, state ->
+        cond do
+          state.phase == :over ->
+            {:halt, state}
+
+          match?({:build, _}, state.phase) and state.wave >= 2 and state.tick > 1 ->
+            {:halt, state}
+
+          true ->
+            state =
+              Enum.reduce(ids, state, fn id, state ->
+                Sim.input(state, id, %{"mx" => 0, "my" => 0, "attack" => false})
+              end)
+
+            {:cont, Sim.tick(state)}
+        end
+      end)
+
+    assert {:build, _} = state.phase
+    assert state.wave >= 2
+    assert state.keep.hp >= 700
+    assert Sim.monsters(state) == []
+
+    for id <- ids do
+      hero = hero(state, id)
+      assert hero.alive
+      assert hero.hp > div(hero.max_hp, 2)
+    end
+  end
+
+  test "night 1 leaves the two goblins for the players" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    {:ok, state} = Sim.join(state, player("bo", :mage))
+    state = Sim.tick(state)
+    assert {:wave, _} = state.phase
+    assert state.wave == 1
+
+    state =
+      Enum.reduce(1..400, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => 0, "my" => 0, "attack" => false})
+        |> Sim.input("bo", %{"mx" => 0, "my" => 0, "attack" => false})
+        |> Sim.tick()
+      end)
+
+    assert state.wave == 1
+    assert state.kills == 0
+    assert length(Sim.monsters(state)) == 2
+  end
+
   test "the night waits until the host starts" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :warrior))
