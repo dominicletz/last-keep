@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, chopThePine, exploreLand, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, paradeShowsEveryKind, pictureGrade, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
+const { captionsClearTheBuilds, chopThePine, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, paradeShowsEveryKind, pictureGrade, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -85,4 +85,8 @@ test("a wall outside the keep disc waits until that portal falls", async ({ brow
 
 test("the map table shows the explored land", async ({ browser }) => {
   await readTheMap(browser)
+})
+
+test("the hd2d flag keeps the palette path and grades three stills", async ({ browser }) => {
+  await hd2dFlag(browser)
 })

@@ -15,7 +15,7 @@ import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
-import { pictureColumn, sheetRow } from "./pictures.js"
+import { cellOffset, pictureColumn, sheetRow } from "./pictures.js"
 import { keepParts, modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
@@ -55,21 +55,34 @@ function figurePixels(mesh, camera, bufferHeight) {
   return Math.round((maxY - minY) * 0.5 * bufferHeight)
 }
 
-export function createView(stage) {
-  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
-  renderer.setSize(480, 270, false)
-  renderer.setPixelRatio(1)
-  renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.BasicShadowMap
-  renderer.outputColorSpace = THREE.SRGBColorSpace
+export function createView(stage, picture = null) {
+  if (
+    picture !== null &&
+    ["open", "fit", "seat", "light", "dress", "present"].some((name) => typeof picture[name] !== "function")
+  ) {
+    throw new Error("createView picture must be null or pictureFromSearch")
+  }
+
+  const opened = picture ? picture.open(stage) : null
+  const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
+  const renderer = opened
+    ? opened.renderer
+    : new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
+  const camera = opened
+    ? opened.camera
+    : new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
+  if (!opened) {
+    renderer.setSize(480, 270, false)
+    renderer.setPixelRatio(1)
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.BasicShadowMap
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+  }
   stage.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(skyColor)
   scene.fog = new THREE.Fog(skyColor, 900, 2400)
-
-  const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
-  const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
   const probe = new THREE.Vector3()
   const rimFrustum = new THREE.Frustum()
   const rimProj = new THREE.Matrix4()
@@ -358,6 +371,7 @@ export function createView(stage) {
     mesh.rotation.x = -Math.PI / 2
     mesh.position.y = 0.46
     mesh.renderOrder = 2
+    mesh.userData.contact = true
     return mesh
   }
 
@@ -481,12 +495,22 @@ export function createView(stage) {
   let palettePass = null
 
   function worldStep() {
-    return pixelStep(viewFrame.halfH, viewFrame.bufferHeight)
+    const height = viewFrame.snapHeight || viewFrame.bufferHeight
+    return pixelStep(viewFrame.halfH, height)
   }
 
+  let lastSubmit = null
+  let driverLabel = null
+
   function paintFrame() {
-    if (!palettePass) palettePass = createPalettePass(renderer, palette)
-    palettePass.draw(scene, camera)
+    if (picture) {
+      const presented = picture.present(renderer, scene, camera)
+      lastSubmit = presented && Number.isFinite(presented.submitMs) ? presented.submitMs : null
+    } else {
+      lastSubmit = null
+      if (!palettePass) palettePass = createPalettePass(renderer, palette)
+      palettePass.draw(scene, camera)
+    }
     renders += 1
     if (window.__lastKeep) window.__lastKeep.renders = renders
   }
@@ -618,23 +642,25 @@ export function createView(stage) {
       drawnTick = snap.tick
       const name = lightName(snap)
       liveLight = name
-      const rig = cycleLight[name]
-      if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
-      groundFill.color.set(rig.groundFill || 0x000000)
-      groundFill.intensity = rig.groundFillLevel || 0
-      brazierPool.intensity = rig.pool || 0
-      windowPool.intensity = rig.pool || 0
-      for (const light of yardTorches) light.intensity = (rig.pool || 0) * 0.55
-      paintYard(name)
-      sky.color.set(rig.sky)
-      sky.groundColor.set(rig.ground)
-      sky.intensity = rig.hemisphere
-      ambient.color.set(rig.ambient)
-      ambient.intensity = rig.ambientLevel
-      sun.color.set(rig.sun)
-      sun.intensity = rig.sunLevel
-      scene.background.set(rig.background)
-      scene.fog.color.set(rig.background)
+      if (!picture) {
+        const rig = cycleLight[name]
+        if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
+        groundFill.color.set(rig.groundFill || 0x000000)
+        groundFill.intensity = rig.groundFillLevel || 0
+        brazierPool.intensity = rig.pool || 0
+        windowPool.intensity = rig.pool || 0
+        for (const light of yardTorches) light.intensity = (rig.pool || 0) * 0.55
+        paintYard(name)
+        sky.color.set(rig.sky)
+        sky.groundColor.set(rig.ground)
+        sky.intensity = rig.hemisphere
+        ambient.color.set(rig.ambient)
+        ambient.intensity = rig.ambientLevel
+        sun.color.set(rig.sun)
+        sun.intensity = rig.sunLevel
+        scene.background.set(rig.background)
+        scene.fog.color.set(rig.background)
+      }
       townRank = snap.town || 0
       applyFrame()
       const zoom = zoomFor(snap)
@@ -657,10 +683,13 @@ export function createView(stage) {
         keep = makeKeep(townRank)
         scene.add(keep)
       }
-      camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-      camera.lookAt(focus.x, cameraLift, focus.z)
-      sun.position.set(focus.x + 90, 200, focus.z + 30)
-      sun.target.position.copy(focus)
+      if (picture) picture.seat(camera, focus, dist, snap)
+      else {
+        camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
+        camera.lookAt(focus.x, cameraLift, focus.z)
+        sun.position.set(focus.x + 90, 200, focus.z + 30)
+        sun.target.position.copy(focus)
+      }
 
       const keepRatio = snap.keep.max ? snap.keep.hp / snap.keep.max : 1
       keep.scale.y = 0.65 + keepRatio * 0.35
@@ -670,6 +699,12 @@ export function createView(stage) {
       if (me) bearer = { x: me.x, z: me.y, range: me.range || bearer.range }
 
       sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
+
+      if (picture) {
+        const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
+        picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes })
+        picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
+      }
 
       liveMonsters = snap.monsters || []
 
@@ -819,12 +854,16 @@ export function createView(stage) {
           ? { fromX: heroTrack.fromX, fromZ: heroTrack.fromZ, toX: heroTrack.toX, toZ: heroTrack.toZ, at: heroTrack.at }
           : null,
         frame: {
-          aspect: camera.right / camera.top,
+          mode: picture ? "hd2d" : "palette",
+          aspect: picture ? viewFrame.aspect : camera.right / camera.top,
           bufferWidth: renderer.domElement.width,
           bufferHeight: renderer.domElement.height,
           halfW: viewFrame.halfW,
-          halfH: viewFrame.halfH
+          halfH: viewFrame.halfH,
+          ...(picture ? { fov: picture.fov } : {})
         },
+        contact: selfContact(heroMesh),
+        driver: driverName(),
         renders,
         toClient,
         redNear,
@@ -850,6 +889,18 @@ export function createView(stage) {
         labels: kept.labels || [],
         audio: kept.audio
       }
+    },
+    grade() {
+      if (!picture) throw new Error("grade refuses a palette room")
+      return picture.grade(() => {
+        const buffers = []
+        for (const clock of ["day", "dusk", "night"]) {
+          viewApi.draw(stillSnap(clock), "still-warrior")
+          const shot = readFrame()
+          buffers.push({ rgba: shot.buf, width: shot.width, height: shot.height, frameMs: shot.frameMs })
+        }
+        return buffers
+      })
     },
     ghost(kind, x, z, ok) {
       ghost.visible = !!kind
@@ -902,6 +953,10 @@ export function createView(stage) {
     const step = worldStep()
     focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
     const dist = zoomFor(snap).camera
+    if (picture) {
+      picture.seat(camera, focus, dist, snap)
+      return
+    }
     camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
     camera.lookAt(focus.x, cameraLift, focus.z)
     camera.updateMatrixWorld(true)
@@ -1151,7 +1206,77 @@ export function createView(stage) {
     return { beauty, clear: [clearBuf[0], clearBuf[1], clearBuf[2]] }
   }
 
+  function stillSnap(clock) {
+    const night = clock === "night"
+    const dusk = clock === "dusk"
+    const player = (id, hero, name, x, y, facing, hp) => ({
+      id,
+      hero,
+      name,
+      x,
+      y,
+      facing,
+      hp,
+      max: hp,
+      alive: true,
+      cds: { attack: 0 }
+    })
+    return {
+      hd2dStill: true,
+      tick: night ? 3 : dusk ? 2 : 1,
+      phase: night ? "wave" : "build",
+      phase_ms: dusk ? 4000 : 60000,
+      hold: false,
+      town: 0,
+      wave: night ? 1 : 0,
+      shown_wave: night ? 1 : 0,
+      keep: { hp: 900, max: 900 },
+      resources: { wood: 40, gold: 0, food: 0 },
+      players: [
+        player("still-warrior", "warrior", "Ada", 88, 36, 0, 100),
+        player("still-mage", "mage", "Lux", 112, 78, 0.4, 80)
+      ],
+      monsters: [],
+      buildings: [],
+      trees: [],
+      chests: [],
+      portals: [],
+      projectiles: [],
+      events: [],
+      relics: [],
+      vagrants: [],
+      chunks: [],
+      land: [],
+      kills: 0,
+      score: 0
+    }
+  }
+
+  function selfContact(mesh) {
+    if (mesh) {
+      for (const child of mesh.children) {
+        if (!child.visible || !child.isMesh || !child.material || !child.material.color) continue
+        if (child.material.color.getHex() === 0xf0c14a && child.position.y > 0 && child.position.y < 2) return "plate"
+      }
+    }
+    return picture ? "shadow" : "plate"
+  }
+
+  function driverName() {
+    if (driverLabel != null) return driverLabel
+    driverLabel = ""
+    try {
+      const gl = renderer.getContext()
+      const info = gl.getExtension("WEBGL_debug_renderer_info")
+      if (info) driverLabel = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || "")
+    } catch (_err) {
+      driverLabel = ""
+    }
+    return driverLabel
+  }
+
   function readFrame() {
+    const started = performance.now()
     paintFrame()
     const canvas = renderer.domElement
     const gl = renderer.getContext()
@@ -1167,7 +1292,7 @@ export function createView(stage) {
       const src = (height - 1 - y) * stride
       buf.set(raw.subarray(src, src + stride), y * stride)
     }
-    return { buf, width, height }
+    return { buf, width, height, frameMs: performance.now() - started }
   }
 
   function frameMood() {
@@ -1497,9 +1622,10 @@ export function createView(stage) {
     anim.moving = travel > 0.4
     mesh.userData.pose = anim
     const frame = sheetRow(picture, anim, performance.now())
-    const offsetX = column / picture.directions
-    const offsetY = 1 - (frame + 1) / picture.frames
-    card.material.map.offset.set(offsetX, offsetY)
+    // A 4-frame sheet has no death row. sheetRow still returns walk when death is 0.
+    const row = Math.min(picture.frames - 1, Math.max(0, frame))
+    const cell = cellOffset(column, row, picture.directions, picture.frames)
+    card.material.map.offset.set(cell.x, cell.y)
     card.renderOrder = 0
     const rim = mesh.userData.rim
     if (!rim) return
@@ -1511,7 +1637,7 @@ export function createView(stage) {
     const seat = rimSeat(picture.h, picture.rim.scale, away)
     rim.position.set(seat.x, seat.y, seat.z)
     rim.renderOrder = seat.renderOrder
-    rim.material.map.offset.set(offsetX, offsetY)
+    rim.material.map.offset.set(cell.x, cell.y)
   }
 
   function heroCard(picture) {
@@ -1582,10 +1708,11 @@ export function createView(stage) {
     group.userData.face = true
     group.userData.role = "hero"
     group.userData.hero = row.hero
+    group.userData.heroId = row.id
     group.userData.parts = picture ? picture.directions * picture.frames : sig.parts.length
     group.userData.marks = sig.marks.slice()
     group.userData.bounds = sig.bounds
-    if (row.id === selfId) {
+    if (row.id === selfId && !picture) {
       const gold = new THREE.Mesh(
         trackGeometry(new THREE.BoxGeometry(sig.bounds.w + 4, 1.2, Math.min(sig.bounds.d, 22) + 4)),
         mat(0xf0c14a)
@@ -1674,7 +1801,13 @@ export function createView(stage) {
 
   function applyFrame() {
     const rect = stage.getBoundingClientRect()
-    const next = frameFor(rect.width || stage.clientWidth || 480, rect.height || stage.clientHeight || 270, townRank)
+    const cssW = rect.width || stage.clientWidth || 480
+    const cssH = rect.height || stage.clientHeight || 270
+    if (picture) {
+      viewFrame = picture.fit(renderer, camera, cssW, cssH, townRank)
+      return
+    }
+    const next = frameFor(cssW, cssH, townRank)
     const unchanged =
       viewFrame.bufferWidth === next.bufferWidth &&
       viewFrame.bufferHeight === next.bufferHeight &&
@@ -1728,6 +1861,8 @@ export function createView(stage) {
     perf.triangles = renderer.info.render.triangles
     perf.census = geometryCensus(scene)
     perf.rims = visibleRims()
+    perf.submitMs = lastSubmit
+    perf.driver = driverName()
     if (paintMs == null) return
     perf.paints.push(paintMs)
     if (perf.paints.length > 400) perf.paints.shift()

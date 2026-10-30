@@ -2527,6 +2527,80 @@ async function readTheMap(browser) {
   await host.context.close()
 }
 
+async function hd2dFlag(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior", (page) => watch(page, "host", errors))
+  await host.page.waitForFunction(() => window.__lastKeep && window.__lastKeep.frame && window.__lastKeep.frame.mode === "palette")
+  const palette = await host.page.evaluate(() => ({
+    frame: window.__lastKeep.frame,
+    picture: window.__lastKeepPicture || null,
+    perf: document.querySelector("#hd2d-perf"),
+    contact: window.__lastKeep.contact
+  }))
+  expect(palette.frame.mode).toBe("palette")
+  expect(palette.frame.bufferWidth).toBe(640)
+  expect(palette.frame.bufferHeight).toBe(400)
+  expect(palette.frame.fov).toBeUndefined()
+  expect(palette.picture).toBeNull()
+  expect(palette.perf).toBeNull()
+  expect(palette.contact).toBe("plate")
+
+  const code = new URL(host.page.url()).pathname.split("/").pop()
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const page = await context.newPage()
+  watch(page, "flag", errors)
+  const posts = []
+  page.on("request", (request) => {
+    if (request.method() !== "POST") return
+    const pathname = new URL(request.url()).pathname
+    if (!pathname.endsWith("/join")) return
+    posts.push(request.postDataJSON())
+  })
+  await page.goto(gameUrl(`/r/${code}?hd2d=1&perf=1&name=${encodeURIComponent("Lux")}&hero=mage`))
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.frame && window.__lastKeep.frame.mode === "hd2d")
+  await page.waitForFunction(() => /ms/.test(document.querySelector("#hd2d-perf")?.textContent || ""))
+  const flagged = await page.evaluate(() => ({
+    frame: window.__lastKeep.frame,
+    contact: window.__lastKeep.contact,
+    perf: document.querySelector("#hd2d-perf").textContent
+  }))
+  expect(flagged.frame.mode).toBe("hd2d")
+  expect(flagged.frame.fov).toBe(15)
+  expect(flagged.contact).toBe("shadow")
+  expect(flagged.perf).toContain("frame")
+  expect(posts.length).toBeGreaterThan(0)
+  expect(posts[0].name).toBe("Lux")
+  expect(posts[0].hero).toBe("mage")
+  expect(posts[0].hd2d).toBeUndefined()
+  expect(posts[0].perf).toBeUndefined()
+
+  const stillContext = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const still = await stillContext.newPage()
+  watch(still, "still", errors)
+  await still.goto(gameUrl(`/r/${code}?hd2d=1`))
+  await still.waitForFunction(() => window.__lastKeepPicture && typeof window.__lastKeepPicture.grade === "function")
+  const graded = await still.evaluate(async () => {
+    const buffers = await window.__lastKeepPicture.grade()
+    return buffers.map((buffer) => ({
+      width: buffer.width,
+      height: buffer.height,
+      bytes: buffer.rgba.length,
+      frameMs: buffer.frameMs
+    }))
+  })
+  expect(graded).toHaveLength(3)
+  for (const buffer of graded) {
+    expect(buffer.width).toBeGreaterThan(0)
+    expect(buffer.height).toBeGreaterThan(0)
+    expect(buffer.bytes).toBe(buffer.width * buffer.height * 4)
+    expect(buffer.frameMs).toBeGreaterThan(0)
+  }
+  expect(errors, errors.join("\n")).toEqual([])
+  await stillContext.close()
+  await context.close()
+  await host.context.close()
+}
+
 module.exports = {
   prepareProof,
   proofDir,
@@ -2553,5 +2627,6 @@ module.exports = {
   takeTheShrine,
   holdTheLand,
   readTheMap,
-  raiseNeedsTheKeep
+  raiseNeedsTheKeep,
+  hd2dFlag
 }
