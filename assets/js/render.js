@@ -501,6 +501,10 @@ export function createView(stage, picture) {
   window.addEventListener("keydown", noteInput)
 
   function frame() {
+    // A quiet guest stays in the room through the socket and the input
+    // interval. Presenting that page is the paint that fills the runner, so
+    // the loop stops until the page is closed.
+    if (window.__lastKeepQuiet) return
     const now = performance.now()
     // A slow paint used to chain straight into the next one. The 20ms blend
     // poll then never landed inside the 45ms window. The gap is the idle

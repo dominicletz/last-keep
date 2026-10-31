@@ -321,8 +321,9 @@ function start(code, seat, ui) {
     parade() {
       channel.push("parade", {})
     },
-    // A covered seat still has to stay in the room. Painting it is what
-    // saturates the runner, so the match and the phone walk quiet the guests.
+    // A covered seat still has to stay in the room. The render loop sees this
+    // flag and stops presenting. The socket and the input interval keep going,
+    // so the match and the phone walk can quiet the guests.
     quiet() {
       window.__lastKeepQuiet = true
     }

@@ -3,6 +3,10 @@ const { openParty, readState, keyInPage } = require("./playtest/room")
 
 test("five specialists share one room and the warrior can walk", async ({ browser }) => {
   const party = await openParty(browser)
+  for (const seat of party.seats) {
+    if (seat.name === "Ada" || seat.name === "Lux") continue
+    await seat.page.evaluate(() => window.__lastKeepTest.quiet())
+  }
   const names = party.seats.map((seat) => seat.name)
   expect(names).toEqual(["Ada", "Lux", "Bram", "Pip", "Nia"])
   expect(party.seats.map((seat) => seat.persona)).toEqual([

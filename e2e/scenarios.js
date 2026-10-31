@@ -2254,7 +2254,7 @@ async function sixSeatMatch(browser) {
     done: (state) => state.close,
     step: async () => {
       await page.evaluate(() => window.__lastKeepTest.home())
-      for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
+      await Promise.all(guests.map((guest) => guest.page.evaluate(() => window.__lastKeepTest.follow())))
       return engineer.evaluate(() => {
         const self = window.__lastKeep.self
         return {
@@ -2288,9 +2288,7 @@ async function sixSeatMatch(browser) {
   const seats = [page, ...guests.map((guest) => guest.page)]
 
   const fight = async (down) => {
-    for (const seat of seats) {
-      await seat.evaluate((attack) => window.__lastKeepTest.fight(attack), down)
-    }
+    await Promise.all(seats.map((seat) => seat.evaluate((attack) => window.__lastKeepTest.fight(attack), down)))
   }
 
   try {
@@ -2341,7 +2339,7 @@ async function sixSeatMatch(browser) {
       } else {
         await fight(false)
         await page.evaluate(() => window.__lastKeepTest.home())
-        for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
+        await Promise.all(guests.map((guest) => guest.page.evaluate(() => window.__lastKeepTest.follow())))
         const shots = row.census?.byRole?.shot || 0
         const bodies = row.census?.byRole?.monster || 0
         // The snapshot can already list zero projectiles while the last paint
