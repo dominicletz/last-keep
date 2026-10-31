@@ -420,6 +420,7 @@ function createHdPicture(env) {
   // 8-bit frame the screen already shows, and half-float targets are what
   // make a software rasterizer miss the blend window.
   let colorType = tier === "low" ? THREE.UnsignedByteType : THREE.HalfFloatType
+  let casting = false
   let driverNoted = false
   let slowPaints = 0
   let resolveReady = () => {}
@@ -552,8 +553,14 @@ function createHdPicture(env) {
       })
       const pool = new THREE.PointLight(hex, 2200, 40, 2)
       pool.castShadow = false
+      // The yard mesh covers the view. A point light on that mesh is evaluated
+      // for every pixel. The flame only needs to light the keep.
+      pool.layers.set(1)
       child.add(pool)
       child.userData.hdFlame = true
+    })
+    keep.traverse((child) => {
+      if (!child.isLight) child.layers.enable(1)
     })
   }
 
@@ -870,6 +877,8 @@ function createHdPicture(env) {
       sun.target.position.set(0, 0, 0)
       torch.intensity = 0
       torch.castShadow = false
+      torch.layers.set(1)
+      casting = rig.torch > 0
       aimSpot(scene, torch, rig.torch)
     },
     dress(kit) {
@@ -891,6 +900,10 @@ function createHdPicture(env) {
         // A software rasterizer, or a headless page that hides the GPU name,
         // cannot finish bloom and depth of field inside the 45ms blend window.
         if (kind === "software" || kind === "hidden") useLowExtras()
+      }
+      if (renderer.shadowMap) {
+        renderer.shadowMap.enabled = casting
+        if (extras.shadow <= 128) renderer.shadowMap.type = THREE.BasicShadowMap
       }
       const started = performance.now()
       const previousAutoReset = renderer.info.autoReset
