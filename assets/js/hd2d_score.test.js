@@ -3,7 +3,7 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
-import { recordBaseline, scoreChecks, ssim } from "./hd2d_score.js"
+import { clockScore, recordBaseline, scoreChecks, ssim } from "./hd2d_score.js"
 
 function solid(width, height, rgb) {
   const rgba = new Uint8Array(width * height * 4)
@@ -52,6 +52,14 @@ test("crisp, shadow, and light checks follow the buffers", () => {
     quads: [{ x: 4, y: 28, w: 8, h: 8 }]
   }
   const checks = scoreChecks({ day, dusk, night }, rects)
+  const dayOnly = clockScore("day", day, rects)
+  assert.equal(dayOnly.crisp, checks[3].crisp)
+  assert.equal(dayOnly.miniature, checks[4].miniature)
+  assert.equal(dayOnly.shadows, checks[6].shadows)
+  assert.equal(clockScore("dusk", dusk, rects).chroma, checks[9].chroma)
+  assert.equal(clockScore("night", night, rects).pools, checks[7].pools)
+  assert.equal(clockScore("night", night, rects).cap, checks[8].cap)
+  assert.equal(clockScore("night", night, rects).halo, checks[8].halo)
   assert.ok(checks[3].crisp > 0)
   assert.equal(checks[5].lit, 0)
   assert.ok(checks[6].shadows > 0)

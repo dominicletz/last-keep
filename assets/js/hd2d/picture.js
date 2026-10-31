@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { cameraLift, frameFor } from "../frame.js"
 import { masonryBytes } from "../tiles.js"
+import { tierExtras, tierFor } from "./tier.js"
 
 const LOOK = {
   fov: 15,
@@ -311,7 +312,7 @@ function passMaterial(fragment, uniforms) {
   })
 }
 
-function linearTarget(width, height, depthTexture = null, filter = THREE.NearestFilter) {
+function linearTarget(width, height, depthTexture = null, filter = THREE.NearestFilter, type = THREE.HalfFloatType) {
   const target = new THREE.WebGLRenderTarget(width, height, {
     magFilter: filter,
     minFilter: filter,
@@ -321,7 +322,7 @@ function linearTarget(width, height, depthTexture = null, filter = THREE.Nearest
     // A multisampled target resolves color and does not leave a depth texture the later passes can sample.
     samples: 0,
     depthTexture,
-    type: THREE.HalfFloatType,
+    type,
     format: THREE.RGBAFormat,
     colorSpace: THREE.NoColorSpace
   })
@@ -390,7 +391,39 @@ function shadowQuad() {
   return quad
 }
 
-function createHdPicture() {
+function softwareRenderer(label) {
+  return /SwiftShader|llvmpipe|softpipe|Basic Render/i.test(label)
+}
+
+// "gpu" keeps the tier the device asked for. "software" and "hidden" cannot
+// spend bloom and depth of field. A missing context stays "unknown" so a
+// test double that never opens WebGL still exercises the high path.
+function rendererKind(renderer) {
+  if (!renderer || typeof renderer.getContext !== "function") return "unknown"
+  try {
+    const gl = renderer.getContext()
+    if (!gl || typeof gl.getExtension !== "function") return "unknown"
+    const info = gl.getExtension("WEBGL_debug_renderer_info")
+    if (!info) return "hidden"
+    const label = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || "")
+    if (!label) return "hidden"
+    return softwareRenderer(label) ? "software" : "gpu"
+  } catch (_err) {
+    return "hidden"
+  }
+}
+
+function createHdPicture(env) {
+  let tier = tierFor(env)
+  let extras = { ...tierExtras(tier) }
+  // Bloom is the only pass that needs values above 1. The low picture is the
+  // 8-bit frame the screen already shows, and half-float targets are what
+  // make a software rasterizer miss the blend window.
+  let colorType = tier === "low" ? THREE.UnsignedByteType : THREE.HalfFloatType
+  let casting = false
+  let driverNoted = false
+  const lowFog = new THREE.FogExp2(0x4e4651, 0.0008)
+  let slowPaints = 0
   let resolveReady = () => {}
   let readySettled = false
   const ready = new Promise((resolve) => {
@@ -434,7 +467,7 @@ function createHdPicture() {
   function aimSpot(scene, torch, intensity) {
     if (!spot) {
       spot = new THREE.SpotLight(0xffa24a, 0, 240, 0.7, 0.45, 2)
-      spot.shadow.mapSize.set(LOOK.shadowMap, LOOK.shadowMap)
+      spot.shadow.mapSize.set(extras.shadow, extras.shadow)
       spot.shadow.bias = LOOK.shadowBias
     }
     const parent = torch.parent
@@ -470,7 +503,9 @@ function createHdPicture() {
       map.minFilter = THREE.NearestFilter
     }
     mesh.material = new THREE.MeshLambertMaterial({ map, color: material.color })
-    mesh.receiveShadow = true
+    // The contact decal is the shadow the yard reads. A full-screen shadow
+    // sample on this ground is the paint the runner frame cap is there to catch.
+    mesh.receiveShadow = false
     mesh.castShadow = false
     mesh.userData.hd = "ground"
   }
@@ -521,8 +556,14 @@ function createHdPicture() {
       })
       const pool = new THREE.PointLight(hex, 2200, 40, 2)
       pool.castShadow = false
+      // The yard mesh covers the view. A point light on that mesh is evaluated
+      // for every pixel. The flame only needs to light the keep.
+      pool.layers.set(1)
       child.add(pool)
       child.userData.hdFlame = true
+    })
+    keep.traverse((child) => {
+      if (!child.isLight) child.layers.enable(1)
     })
   }
 
@@ -600,13 +641,13 @@ function createHdPicture() {
     depth.type = THREE.UnsignedIntType
     depth.magFilter = THREE.NearestFilter
     depth.minFilter = THREE.NearestFilter
-    const sceneTarget = linearTarget(width, height, depth)
-    const fogged = linearTarget(width, height)
+    const sceneTarget = linearTarget(width, height, depth, THREE.NearestFilter, colorType)
+    const fogged = linearTarget(width, height, null, THREE.NearestFilter, colorType)
     // The tent filter interpolates the glow. Scene, graded, and restore stay nearest so the in-focus restore copies texels.
-    const bloom = linearTarget(halfW, halfH, null, THREE.LinearFilter)
-    const graded = linearTarget(width, height)
-    const blurred = linearTarget(width, height)
-    const shown = linearTarget(width, height)
+    const bloom = linearTarget(halfW, halfH, null, THREE.LinearFilter, colorType)
+    const graded = linearTarget(width, height, null, THREE.NearestFilter, colorType)
+    const blurred = linearTarget(width, height, null, THREE.NearestFilter, colorType)
+    const shown = linearTarget(width, height, null, THREE.NearestFilter, colorType)
     const view = viewUniforms(depth)
     const fog = passMaterial(fogFragment(), {
       ...view,
@@ -721,8 +762,40 @@ function createHdPicture() {
     settleReady()
   }
 
+  function dropChain() {
+    if (!chain) return
+    const depth = chain.scene.depthTexture
+    if (depth && depth.dispose) depth.dispose()
+    for (const key of ["scene", "fogged", "bloom", "graded", "blurred", "shown"]) {
+      if (chain[key] && chain[key].dispose) chain[key].dispose()
+    }
+    chain = null
+  }
+
+  function useLowExtras() {
+    if (!extras.bloom && !extras.dof && extras.shadow <= 128 && colorType === THREE.UnsignedByteType) return
+    tier = "low"
+    extras = { ...tierExtras("low") }
+    slowPaints = 0
+    colorType = THREE.UnsignedByteType
+    if (spot) {
+      spot.shadow.mapSize.set(extras.shadow, extras.shadow)
+      if (spot.shadow.map) {
+        spot.shadow.map.dispose()
+        spot.shadow.map = null
+      }
+    }
+    dropChain()
+  }
+
   return {
     fov: LOOK.fov,
+    get tier() {
+      return tier
+    },
+    get extras() {
+      return extras
+    },
     ready,
     get live() {
       return live
@@ -793,8 +866,11 @@ function createHdPicture() {
       if (clock !== "day" && clock !== "dusk" && clock !== "night") throw new Error("unknown clock")
       const rig = LOOK[clock]
       const { scene, sun, ambient, hemi, torch } = lights
-      scene.fog = null
       scene.background.set(clock === "night" ? 0x322c3c : 0x4e4651)
+      if (!extras.bloom && !extras.dof) {
+        lowFog.color.copy(scene.background)
+        scene.fog = lowFog
+      } else scene.fog = null
       hemi.color.set(rig.ambient)
       hemi.groundColor.set(0x3a342c)
       hemi.intensity = rig.hemi
@@ -807,6 +883,8 @@ function createHdPicture() {
       sun.target.position.set(0, 0, 0)
       torch.intensity = 0
       torch.castShadow = false
+      torch.layers.set(1)
+      casting = rig.torch > 0
       aimSpot(scene, torch, rig.torch)
     },
     dress(kit) {
@@ -822,6 +900,38 @@ function createHdPicture() {
       for (const hero of heroes.slice(0, LOOK.litHeroes)) litHero(hero)
     },
     present(renderer, scene, camera) {
+      if (!driverNoted) {
+        driverNoted = true
+        const kind = rendererKind(renderer)
+        // A software rasterizer, or a headless page that hides the GPU name,
+        // cannot finish bloom and depth of field inside the 45ms blend window.
+        if (kind === "software" || kind === "hidden") useLowExtras()
+      }
+      // Bloom and depth of field are off, so the post chain is three full-screen
+      // passes on top of a shadow map. One scene pass with the exponential fog
+      // is the same picture at a cost the wave ceiling can hold.
+      if (!extras.bloom && !extras.dof) {
+        if (renderer.shadowMap) renderer.shadowMap.enabled = false
+        const started = performance.now()
+        const previousAutoReset = renderer.info.autoReset
+        try {
+          renderer.info.autoReset = false
+          renderer.info.reset()
+          if (scene.background && scene.background.isColor) lowFog.color.copy(scene.background)
+          lowFog.density = span > 1 ? 0.9 / span : 0
+          if (scene.fog !== lowFog) scene.fog = lowFog
+          renderer.setRenderTarget(null)
+          renderer.clear(true, true, true)
+          renderer.render(scene, camera)
+        } finally {
+          renderer.info.autoReset = previousAutoReset
+        }
+        return { submitMs: performance.now() - started }
+      }
+      if (renderer.shadowMap) {
+        renderer.shadowMap.enabled = casting
+        if (extras.shadow <= 128) renderer.shadowMap.type = THREE.BasicShadowMap
+      }
       const started = performance.now()
       const previousAutoReset = renderer.info.autoReset
       try {
@@ -850,21 +960,35 @@ function createHdPicture() {
         renderer.clear(true, true, true)
         renderer.render(scene, camera)
         drawPass(chain.fogged, chain.fog)
-        drawPass(chain.bloom, chain.bloomDown)
-        drawPass(chain.graded, chain.bloomUp)
-        drawPass(chain.blurred, chain.dof)
-        drawPass(chain.shown, chain.restore)
+        if (extras.bloom) {
+          drawPass(chain.bloom, chain.bloomDown)
+          drawPass(chain.graded, chain.bloomUp)
+        }
+        const sharp = extras.bloom ? chain.graded.texture : chain.fogged.texture
+        if (extras.dof) {
+          chain.dof.uniforms.tColor.value = sharp
+          chain.restore.uniforms.tSharp.value = sharp
+          drawPass(chain.blurred, chain.dof)
+          drawPass(chain.shown, chain.restore)
+          chain.blit.uniforms.tColor.value = chain.shown.texture
+        } else {
+          chain.blit.uniforms.tColor.value = sharp
+        }
         drawPass(null, chain.blit)
       } finally {
         renderer.info.autoReset = previousAutoReset
       }
-      return { submitMs: performance.now() - started }
+      const submitMs = performance.now() - started
+      // Two slow paints in a row means this device cannot hold bloom and depth of field
+      // inside the blend window. The first paint may only be shader compile.
+      if (submitMs > 40 && (extras.bloom || extras.dof)) slowPaints += 1
+      else slowPaints = 0
+      if (slowPaints >= 2) useLowExtras()
+      return { submitMs }
     }
   }
 }
 
-export function pictureFromSearch(search) {
-  const raw = search && search.startsWith("?") ? search : `?${search || ""}`
-  if (new URLSearchParams(raw).get("hd2d") !== "1") return null
-  return createHdPicture()
+export function createPicture(env) {
+  return createHdPicture(env)
 }
