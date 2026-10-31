@@ -246,7 +246,7 @@ test("dress lights the keep with a normal map and emissive windows", () => {
   assert.equal(floors[0].material.map, groundMap)
   assert.equal(groundMap.magFilter, THREE.NearestFilter)
   assert.equal(groundMap.minFilter, THREE.NearestFilter)
-  assert.equal(floors[0].receiveShadow, true)
+  assert.equal(floors[0].receiveShadow, false)
   assert.equal(floors[0].castShadow, false)
 
   const litStone = stone.material
