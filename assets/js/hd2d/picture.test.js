@@ -567,3 +567,28 @@ test("low and phone tiers drop the passes they do not spend", () => {
   )
   assert.equal(count(createPicture({ hardwareConcurrency: 2 })), 3)
 })
+
+test("two slow paints drop bloom and depth of field", () => {
+  const picture = createPicture()
+  const renderer = {
+    info: { autoReset: true, reset() {} },
+    getSize(out) {
+      out.x = 64
+      out.y = 64
+    },
+    setRenderTarget() {},
+    clear() {},
+    render() {
+      const start = performance.now()
+      while (performance.now() - start < 25) {}
+    }
+  }
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera()
+  picture.present(renderer, scene, camera)
+  assert.equal(picture.tier, "high")
+  picture.present(renderer, scene, camera)
+  assert.equal(picture.tier, "low")
+  assert.equal(picture.extras.bloom, false)
+  assert.equal(picture.extras.dof, false)
+})
