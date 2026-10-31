@@ -636,6 +636,9 @@ async function twoPlayerNight(browser) {
   await assertWaveClear(page)
   await page.screenshot({ path: shot("coop-host.png") })
   await friend.screenshot({ path: shot("coop-guest.png") })
+  // The guest stays in the room. Its present is the second SwiftShader page
+  // that pushes this night past the test cap. The goblin read wakes it.
+  await friend.evaluate(() => window.__lastKeepTest.quiet())
 
   await focusClickDoesNotAttack(page)
   await clickDoesNotSpendWithoutABuilding(page)
@@ -706,6 +709,8 @@ async function twoPlayerNight(browser) {
   await expectGoblinsOnYard(page)
   await assertMonsterSpread(page)
   await sample(page, notes)
+  await friend.evaluate(() => window.__lastKeepTest.wake())
+  await friend.bringToFront()
   await expectGoblinsOnYard(friend)
   await castFireball(friend, notes)
   const sameKeep = await Promise.all([
@@ -715,6 +720,7 @@ async function twoPlayerNight(browser) {
   expect(Math.abs(sameKeep[0] - sameKeep[1])).toBeLessThan(40)
   await page.screenshot({ path: shot("wave-host.png") })
   await friend.screenshot({ path: shot("wave-guest.png") })
+  await friend.evaluate(() => window.__lastKeepTest.quiet())
 
   await stopWalk(friend)
   await fight(page, friend, notes)
@@ -960,6 +966,7 @@ async function heroSilhouettes(browser) {
   for (const [name, hero] of party.slice(1)) {
     const seat = await joinQuery(browser, code, name, hero)
     watch(seat.page, name, errors)
+    await seat.page.evaluate(() => window.__lastKeepTest.quiet())
     seats.push(seat)
   }
   await host.page.waitForFunction(() => (window.__lastKeep.figures || []).length >= 5)

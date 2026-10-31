@@ -322,10 +322,13 @@ function start(code, seat, ui) {
       channel.push("parade", {})
     },
     // A covered seat still has to stay in the room. The render loop sees this
-    // flag and stops presenting. The socket and the input interval keep going,
-    // so the match and the phone walk can quiet the guests.
+    // flag and skips the present. The socket and the input interval keep
+    // going. wake() presents again, for a check that has to read that page.
     quiet() {
       window.__lastKeepQuiet = true
+    },
+    wake() {
+      window.__lastKeepQuiet = false
     }
   }
   window.addEventListener("blur", () => {
