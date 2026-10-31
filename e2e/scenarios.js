@@ -1986,15 +1986,28 @@ async function holdTheLand(browser) {
   })
   const page = host.page
   watch(page, "host", errors)
-  await steerPast(page, { x: 420, y: 0 }, (state) => state.x > 360, 20_000, "past the disc")
+  // The seed-5 pine is cell (12, 0), center 432. cell_index rounds x/36, so
+  // that cell is x in [414, 450). A warrior standing there pays 1 wood every
+  // 12 ticks. The keep disc is meadow inside radius 400, and the yard trees
+  // on this heading sit past that. A stand in (360, 414) keeps the hero off
+  // the pine. The wall click is 80 ahead of the hero, so it lands outside the
+  // disc. Wood is the count on the deny snapshot: a later chop tick cannot
+  // land between the log line and the expect, and a spend still fails it.
+  await steerPast(
+    page,
+    { x: 390, y: 0 },
+    (state) => state.x > 360 && state.x < 414 && Math.abs(state.y) < 18,
+    20_000,
+    "short of the pine"
+  )
   const outside = await page.evaluate(() => {
     const me = window.__lastKeep.self
     return { x: me.x + 80, y: me.y }
   })
   const wood = await page.evaluate(() => window.__lastKeep.wood)
-  await refuseHeld(page, outside.x, outside.y)
-  expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
-  expect(await page.evaluate(() => window.__lastKeep.buildings)).toBe(0)
+  const denied = await refuseHeld(page, outside.x, outside.y)
+  expect(denied.wood).toBe(wood)
+  expect(denied.buildings).toBe(0)
 
   const portalGoal = { x: -1116, y: -1044 }
   await steerPast(
@@ -2062,11 +2075,18 @@ async function refuseHeld(page, x, y) {
   const mark = await page.evaluate(() => (window.__lastKeep.log || []).length)
   const spot = await page.evaluate(({ x, y }) => window.__lastKeep.toClient(x, y), { x, y })
   await page.mouse.click(spot.x, spot.y)
-  await page.waitForFunction(
-    (before) =>
-      (window.__lastKeep.log || []).slice(before).some((row) => row.type === "deny" && row.text === "The land is not held."),
+  const denied = await page.waitForFunction(
+    (before) => {
+      const game = window.__lastKeep
+      const hit = (game.log || [])
+        .slice(before)
+        .some((row) => row.type === "deny" && row.text === "The land is not held.")
+      if (!hit) return null
+      return { wood: game.wood, buildings: game.buildings }
+    },
     mark
   )
+  return denied.jsonValue()
 }
 
 async function steerPast(page, goal, done, timeout, label) {
