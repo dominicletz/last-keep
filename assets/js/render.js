@@ -928,10 +928,10 @@ export function createView(stage, picture) {
     }
   }
 
-  function redNear(x, z) {
+  function redNear(x, z, y = 16) {
     paintFrame()
     const gl = renderer.getContext()
-    const point = new THREE.Vector3(x, 16, z).project(camera)
+    const point = new THREE.Vector3(x, y, z).project(camera)
     const canvas = renderer.domElement
     const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
     const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)

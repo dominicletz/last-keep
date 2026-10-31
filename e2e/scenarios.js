@@ -209,7 +209,10 @@ async function expectGoblinsOnYard(page) {
       return (game.monsters || []).some((monster) => {
         const x = monster.drawX == null ? monster.x : monster.drawX
         const z = monster.drawZ == null ? monster.y : monster.drawZ
-        return game.redNear(x, z) > 8
+        // y=16 is the top of an 18-unit goblin, where the crop is sparse.
+        // The torso at y=8 is the dense band. One of the two reads has to
+        // clear the same body-pixel count.
+        return Math.max(game.redNear(x, z, 8), game.redNear(x, z, 16)) > 8
       })
     })
   let visible = await goblinInk()
@@ -271,7 +274,12 @@ async function sample(tab, notes) {
   if (row.floaters.some((left) => !left || left.includes("NaN"))) notes.nan = true
   if (row.rising) notes.rising = true
   for (const ev of row.log) {
-    if (ev.type === "hit" && ev.amount > 0) notes.hit = true
+    if (ev.type === "hit" && ev.amount > 0) {
+      notes.hit = true
+      // drawFx writes that amount onto the floater. The node leaves after
+      // 1.4s, so a slow poll can miss the digit that was already shown.
+      notes.digit = true
+    }
     if (ev.type === "death") notes.death = true
     if (ev.text === "Slain") notes.slain = true
     if (ev.type === "boom") notes.boom = true

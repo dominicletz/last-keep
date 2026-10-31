@@ -626,9 +626,10 @@ function start(code, seat, ui) {
     // The first snapshot builds the test hook. Later ones only queue the
     // scene: a draw on the socket handler never yields, and the fireball
     // wait then dies when the test closes the page.
-    if (window.__lastKeep) {
-      if (!window.__lastKeepQuiet) ui.view.queue(snap, selfId)
-    } else ui.view.draw(snap, selfId)
+    // Quiet skips the present, not the queue. The scene stays current so a
+    // later wake draws the night instead of the yard from when the seat sat.
+    if (window.__lastKeep) ui.view.queue(snap, selfId)
+    else ui.view.draw(snap, selfId)
     const me = (snap.players || []).find((player) => player.id === selfId)
     if (window.__lastKeep) {
       window.__lastKeep.tick = snap.tick
