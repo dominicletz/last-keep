@@ -201,10 +201,23 @@ async function expectGoblinsOnYard(page) {
       game.monsters.every((monster) => monster.onScreen)
     )
   })
-  const visible = await page.evaluate(() => {
-    const game = window.__lastKeep
-    return (game.monsters || []).some((monster) => game.redNear(monster.x, monster.y) > 8)
-  })
+  // The card is drawn at the mesh, which can sit off the sim point. One read
+  // of that mesh, then one more after the next paint if the first missed.
+  const goblinInk = () =>
+    page.evaluate(() => {
+      const game = window.__lastKeep
+      return (game.monsters || []).some((monster) => {
+        const x = monster.drawX == null ? monster.x : monster.drawX
+        const z = monster.drawZ == null ? monster.y : monster.drawZ
+        return game.redNear(x, z) > 8
+      })
+    })
+  let visible = await goblinInk()
+  if (!visible) {
+    const mark = await page.evaluate(() => window.__lastKeep.renders || 0)
+    await page.waitForFunction((n) => (window.__lastKeep.renders || 0) > n, mark)
+    visible = await goblinInk()
+  }
   expect(visible).toBe(true)
   const edgeLabels = await page.locator("[data-hints]").innerText()
   expect(edgeLabels).not.toMatch(/goblin \d/)
