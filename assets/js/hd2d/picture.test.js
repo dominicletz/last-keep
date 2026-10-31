@@ -4,24 +4,39 @@ import * as THREE from "three"
 import { pixelStep } from "../art_score.js"
 import { cameraLift } from "../frame.js"
 import { masonryBytes } from "../tiles.js"
-import { circleOfConfusion, diskOffsets, fogMix, pictureFromSearch } from "./picture.js"
+import { circleOfConfusion, createPicture, diskOffsets, fogMix } from "./picture.js"
 
 const CALLS = ["open", "fit", "seat", "light", "dress", "present"]
 
-test("hd2d is a picture only when the parameter is the string 1", () => {
-  assert.equal(pictureFromSearch(""), null)
-  assert.equal(pictureFromSearch("?hd2d=true"), null)
-  assert.equal(pictureFromSearch("?HD2D=1"), null)
-  assert.equal(pictureFromSearch("?name=Ada&hero=warrior"), null)
-
-  const picture = pictureFromSearch("?hd2d=1&name=Ada&hero=warrior")
+test("every room gets one hd2d picture", () => {
+  const picture = createPicture()
   assert.equal(picture.fov, 15)
+  assert.equal(picture.tier, "high")
+  assert.equal(picture.extras.dof, true)
+  assert.equal(picture.extras.bloom, true)
+  assert.equal(picture.extras.shadow, 512)
   assert.ok(picture.ready instanceof Promise)
   for (const name of CALLS) assert.equal(typeof picture[name], "function")
+
+  const phone = createPicture({ maxTouchPoints: 2, coarse: true, width: 844, height: 390, hardwareConcurrency: 8, deviceMemory: 8 })
+  assert.equal(phone.tier, "phone")
+  assert.equal(phone.extras.dof, false)
+  assert.equal(phone.extras.bloom, true)
+  assert.equal(phone.fov, 15)
+
+  const low = createPicture({ hardwareConcurrency: 2, width: 1280, height: 800 })
+  assert.equal(low.tier, "low")
+  assert.equal(low.extras.bloom, false)
+  assert.equal(low.extras.dof, false)
+  assert.equal(low.extras.shadow, 128)
+
+  const ignored = createPicture({ hd2d: "0", perf: "1", width: 1280, height: 800, hardwareConcurrency: 8, deviceMemory: 8 })
+  assert.equal(ignored.tier, "high")
+  assert.equal(ignored.fov, 15)
 })
 
 test("fit and seat hold the palette world on a perspective camera", () => {
-  const picture = pictureFromSearch("?hd2d=1&name=Ada&hero=warrior")
+  const picture = createPicture()
   const ready = picture.ready
   const camera = new THREE.PerspectiveCamera()
   const renderer = { setPixelRatio() {}, setSize() {}, domElement: { style: {} } }
@@ -83,7 +98,7 @@ function spotLights(root) {
 }
 
 test("light follows the day, dusk, and night clock", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   const renderer = { setPixelRatio() {}, setSize() {}, domElement: { style: {} } }
   const camera = new THREE.PerspectiveCamera()
   picture.fit(renderer, camera, 1280, 800, 0)
@@ -195,7 +210,7 @@ function meshCount(root) {
 }
 
 test("dress lights the keep with a normal map and emissive windows", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   const { stoneMat, stone, other, flame, keep, floors, map } = stoneAndGrounds()
   const day = masonryBytes("day")
   const groundMap = floors[0].material.map
@@ -213,6 +228,9 @@ test("dress lights the keep with a normal map and emissive windows", () => {
   assert.ok(flame.material.emissiveIntensity > 1)
   assert.equal(flame.material.emissive.getHex(), 0xeea821)
   assert.equal(flame.children.filter((child) => child.isPointLight).length, 1)
+  const pool = flame.children.find((child) => child.isPointLight)
+  assert.equal(pool.layers.test(stone.layers), true)
+  assert.equal(pool.layers.test(floors[0].layers), false)
   assert.notEqual(flame.material, stone.material)
   assert.equal(keep.scale.y, 0.8)
   assert.equal(stone.material.map.image.width, day.w)
@@ -228,7 +246,7 @@ test("dress lights the keep with a normal map and emissive windows", () => {
   assert.equal(floors[0].material.map, groundMap)
   assert.equal(groundMap.magFilter, THREE.NearestFilter)
   assert.equal(groundMap.minFilter, THREE.NearestFilter)
-  assert.equal(floors[0].receiveShadow, true)
+  assert.equal(floors[0].receiveShadow, false)
   assert.equal(floors[0].castShadow, false)
 
   const litStone = stone.material
@@ -241,7 +259,7 @@ test("dress lights the keep with a normal map and emissive windows", () => {
 })
 
 test("dress turns a mage sprite into one card and does not add another", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const mage = heroGroup("mage", "still-mage")
   const disc = new THREE.Mesh(new THREE.CircleGeometry(4, 8), new THREE.MeshBasicMaterial({ color: 0x140c0a }))
@@ -303,7 +321,7 @@ test("dress turns a mage sprite into one card and does not add another", () => {
 })
 
 test("dress leaves a warrior sprite until a walk strip is loaded", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   const { stoneMat, stone, keep, floors } = stoneAndGrounds()
   const warrior = heroGroup("warrior", "still-warrior")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [warrior.group] })
@@ -317,7 +335,7 @@ test("dress leaves a warrior sprite until a walk strip is loaded", () => {
 })
 
 test("dress paints the warrior from the walk strip and hides the gold plate", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const warrior = heroGroup("warrior", "still-warrior")
   const gold = new THREE.Mesh(new THREE.BoxGeometry(4, 1, 4), new THREE.MeshBasicMaterial({ color: 0xf0c14a }))
@@ -339,7 +357,7 @@ test("dress paints the warrior from the walk strip and hides the gold plate", ()
 })
 
 test("grade refuses a live room before the strip resolves", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   const camera = new THREE.PerspectiveCamera()
   const renderer = { setPixelRatio() {}, setSize() {}, domElement: { style: {} } }
   picture.fit(renderer, camera, 1280, 800, 0)
@@ -352,7 +370,7 @@ test("grade refuses a live room before the strip resolves", () => {
 })
 
 test("dress leaves the hero outside the cap of two as a sprite", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const warrior = heroGroup("warrior", "z")
   const mage = heroGroup("mage", "m")
@@ -370,7 +388,7 @@ test("dress leaves the hero outside the cap of two as a sprite", () => {
 })
 
 test("dress without a keep throws", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   const stoneMat = new THREE.MeshBasicMaterial()
   const grounds = [new THREE.Mesh(), new THREE.Mesh(), new THREE.Mesh(), new THREE.Mesh()]
   const keep = new THREE.Group()
@@ -434,7 +452,7 @@ test("disk offsets stay inside the requested radius", () => {
 })
 
 test("present submits the frame and reuses its targets", () => {
-  const picture = pictureFromSearch("?hd2d=1")
+  const picture = createPicture()
   assert.equal(typeof picture.present, "function")
   const info = { autoReset: true, reset() {} }
   let width = 320
@@ -493,4 +511,112 @@ test("present submits the frame and reuses its targets", () => {
   assert.equal(used[1].size, used[0].size)
   for (const target of used[2]) assert.equal(used[0].has(target), true)
   assert.equal(used[2].size, used[0].size)
+})
+
+test("low and phone tiers drop the passes they do not spend", () => {
+  function count(picture) {
+    let renders = 0
+    const renderer = {
+      info: { autoReset: true, reset() {} },
+      getSize(out) {
+        out.x = 320
+        out.y = 200
+      },
+      setRenderTarget() {},
+      clear() {},
+      render() {
+        renders += 1
+      }
+    }
+    picture.present(renderer, new THREE.Scene(), new THREE.PerspectiveCamera())
+    return renders
+  }
+  assert.equal(count(createPicture()), 7)
+  const software = createPicture()
+  let softwareRenders = 0
+  software.present(
+    {
+      info: { autoReset: true, reset() {} },
+      getSize(out) {
+        out.x = 320
+        out.y = 200
+      },
+      getContext() {
+        return {
+          getExtension() {
+            return { UNMASKED_RENDERER_WEBGL: 37446 }
+          },
+          getParameter() {
+            return "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+          }
+        }
+      },
+      setRenderTarget() {},
+      clear() {},
+      render() {
+        softwareRenders += 1
+      }
+    },
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera()
+  )
+  assert.equal(software.tier, "low")
+  assert.equal(software.extras.dof, false)
+  assert.equal(software.extras.bloom, false)
+  assert.equal(softwareRenders, 1)
+  const hidden = createPicture()
+  let hiddenTargets = 0
+  hidden.present(
+    {
+      info: { autoReset: true, reset() {} },
+      getSize(out) {
+        out.x = 32
+        out.y = 32
+      },
+      getContext() {
+        return { getExtension() { return null } }
+      },
+      setRenderTarget(target) {
+        hiddenTargets += target ? 1 : 0
+      },
+      clear() {},
+      render() {}
+    },
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera()
+  )
+  assert.equal(hidden.tier, "low")
+  assert.equal(hidden.extras.bloom, false)
+  assert.equal(hidden.extras.dof, false)
+  assert.equal(hiddenTargets, 0)
+  assert.equal(
+    count(createPicture({ maxTouchPoints: 2, coarse: true, width: 390, height: 844, hardwareConcurrency: 8, deviceMemory: 8 })),
+    5
+  )
+  assert.equal(count(createPicture({ hardwareConcurrency: 2 })), 1)
+})
+
+test("two slow paints drop bloom and depth of field", () => {
+  const picture = createPicture()
+  const renderer = {
+    info: { autoReset: true, reset() {} },
+    getSize(out) {
+      out.x = 64
+      out.y = 64
+    },
+    setRenderTarget() {},
+    clear() {},
+    render() {
+      const start = performance.now()
+      while (performance.now() - start < 25) {}
+    }
+  }
+  const scene = new THREE.Scene()
+  const camera = new THREE.PerspectiveCamera()
+  picture.present(renderer, scene, camera)
+  assert.equal(picture.tier, "high")
+  picture.present(renderer, scene, camera)
+  assert.equal(picture.tier, "low")
+  assert.equal(picture.extras.bloom, false)
+  assert.equal(picture.extras.dof, false)
 })

@@ -1,5 +1,5 @@
 import { Socket } from "phoenix"
-import { pictureFromSearch } from "./hd2d/picture"
+import { createPicture } from "./hd2d/picture"
 import { perfRequested, perfText } from "./hd2d/perf"
 import { createView } from "./render"
 import { monsterKinds, monsterParts } from "./monsters.js"
@@ -33,13 +33,9 @@ export function bootPlay(code) {
   const join = document.querySelector("#join-game")
   const overlay = document.querySelector("#overlay")
   const search = window.location.search
-  const picture = pictureFromSearch(search)
+  const picture = createPicture(deviceEnv())
   const view = createView(stage, picture)
-  if (picture) {
-    window.__lastKeepPicture = typeof view.grade === "function"
-      ? { ready: picture.ready, grade: () => view.grade() }
-      : { ready: picture.ready }
-  }
+  window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade() }
   const ui = { stage, hud, join, overlay, view }
   const saved = readSeat(code)
   const queried = seatFromQuery(search)
@@ -63,6 +59,21 @@ export function bootPlay(code) {
     enter(code, { token, name: queried.name, hero: queried.hero }, ui)
   } else {
     prefill(join, localStorage.getItem("lastkeep-name") || "", "warrior")
+  }
+}
+
+function deviceEnv() {
+  const nav = typeof navigator === "undefined" ? {} : navigator
+  const connection = nav.connection || {}
+  const coarse = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches
+  return {
+    hardwareConcurrency: nav.hardwareConcurrency,
+    deviceMemory: nav.deviceMemory,
+    saveData: !!connection.saveData,
+    maxTouchPoints: nav.maxTouchPoints || 0,
+    coarse: !!coarse,
+    width: typeof window === "undefined" ? 1280 : window.innerWidth,
+    height: typeof window === "undefined" ? 800 : window.innerHeight
   }
 }
 
@@ -309,6 +320,15 @@ function start(code, seat, ui) {
     },
     parade() {
       channel.push("parade", {})
+    },
+    // A covered seat still has to stay in the room. The render loop sees this
+    // flag and skips the present. The socket and the input interval keep
+    // going. wake() presents again, for a check that has to read that page.
+    quiet() {
+      window.__lastKeepQuiet = true
+    },
+    wake() {
+      window.__lastKeepQuiet = false
     }
   }
   window.addEventListener("blur", () => {
@@ -606,6 +626,8 @@ function start(code, seat, ui) {
     // The first snapshot builds the test hook. Later ones only queue the
     // scene: a draw on the socket handler never yields, and the fireball
     // wait then dies when the test closes the page.
+    // Quiet skips the present, not the queue. The scene stays current so a
+    // later wake draws the night instead of the yard from when the seat sat.
     if (window.__lastKeep) ui.view.queue(snap, selfId)
     else ui.view.draw(snap, selfId)
     const me = (snap.players || []).find((player) => player.id === selfId)
@@ -623,7 +645,24 @@ function start(code, seat, ui) {
         // The swing is 8 ticks. draw() is the only other writer, and an idle
         // page does not paint, so the click check never saw the cooldown.
         window.__lastKeep.attackCd = cd
-        if (window.__lastKeep.self) window.__lastKeep.self.attackCd = cd
+        if (window.__lastKeep.self) {
+          window.__lastKeep.self.attackCd = cd
+          if (window.__lastKeepQuiet) {
+            window.__lastKeep.self.x = me.x
+            window.__lastKeep.self.y = me.y
+            window.__lastKeep.self.hero = me.hero
+            window.__lastKeep.self.alive = me.alive !== false
+          }
+        }
+      }
+      if (window.__lastKeepQuiet) {
+        window.__lastKeep.phase = snap.phase
+        window.__lastKeep.monsters = (snap.monsters || []).map((row) => ({
+          id: row.id,
+          kind: row.kind,
+          x: row.x,
+          y: row.y
+        }))
       }
       // draw() replaces this object. The peak is copied there too, or the
       // next frame would forget a swing the channel had already cooled.

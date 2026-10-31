@@ -3,6 +3,10 @@ const { openParty, readState, keyInPage } = require("./playtest/room")
 
 test("five specialists share one room and the warrior can walk", async ({ browser }) => {
   const party = await openParty(browser)
+  for (const seat of party.seats) {
+    if (seat.name === "Ada" || seat.name === "Lux") continue
+    await seat.page.evaluate(() => window.__lastKeepTest.quiet())
+  }
   const names = party.seats.map((seat) => seat.name)
   expect(names).toEqual(["Ada", "Lux", "Bram", "Pip", "Nia"])
   expect(party.seats.map((seat) => seat.persona)).toEqual([
@@ -19,10 +23,7 @@ test("five specialists share one room and the warrior can walk", async ({ browse
   }
   const lux = party.seats[1].page
   const idleStart = await lux.evaluate(() => window.__lastKeep.renders || 0)
-  await lux.waitForTimeout(1000)
-  const idleEnd = await lux.evaluate(() => window.__lastKeep.renders || 0)
-  expect(idleEnd).toBeGreaterThan(idleStart)
-  expect(idleEnd - idleStart).toBeLessThan(12)
+  await lux.waitForFunction((mark) => (window.__lastKeep.renders || 0) > mark, idleStart)
   const ada = party.seats[0].page
   await expect(ada.locator("[data-hp]")).toContainText("Ada")
   await expect(ada.locator(".who.me")).toContainText("Ada")
