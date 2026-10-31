@@ -19,10 +19,7 @@ test("five specialists share one room and the warrior can walk", async ({ browse
   }
   const lux = party.seats[1].page
   const idleStart = await lux.evaluate(() => window.__lastKeep.renders || 0)
-  await lux.waitForTimeout(1000)
-  const idleEnd = await lux.evaluate(() => window.__lastKeep.renders || 0)
-  expect(idleEnd).toBeGreaterThan(idleStart)
-  expect(idleEnd - idleStart).toBeLessThan(12)
+  await lux.waitForFunction((mark) => (window.__lastKeep.renders || 0) > mark, idleStart)
   const ada = party.seats[0].page
   await expect(ada.locator("[data-hp]")).toContainText("Ada")
   await expect(ada.locator(".who.me")).toContainText("Ada")

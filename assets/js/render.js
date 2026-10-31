@@ -34,8 +34,7 @@ import {
   yardLight
 } from "./scene.js"
 
-function figurePixels(mesh, camera, bufferHeight) {
-  const box = new THREE.Box3().setFromObject(mesh)
+function projectBoxPixels(box, camera, bufferHeight) {
   const corner = new THREE.Vector3()
   let minY = Infinity
   let maxY = -Infinity
@@ -49,6 +48,28 @@ function figurePixels(mesh, camera, bufferHeight) {
     }
   }
   return Math.round((maxY - minY) * 0.5 * bufferHeight)
+}
+
+function figurePixels(mesh, camera, bufferHeight) {
+  return projectBoxPixels(new THREE.Box3().setFromObject(mesh), camera, bufferHeight)
+}
+
+// A sprite's center is (0.5, 0), so the feet sit on the group and the card
+// faces the camera. Box3 centers that sprite on its position and drops the
+// feet by half the height. The drawn quad is the camera-facing card.
+function spriteCardBox(group, camera) {
+  const picture = group.userData.picture
+  const halfW = picture.w / 2
+  const yaw = Math.atan2(camera.position.x - group.position.x, camera.position.z - group.position.z)
+  const hx = Math.abs(Math.cos(yaw) * halfW)
+  const hz = Math.abs(Math.sin(yaw) * halfW)
+  const x = group.position.x
+  const y = group.position.y
+  const z = group.position.z
+  return {
+    min: { x: x - hx, y, z: z - hz },
+    max: { x: x + hx, y: y + picture.h, z: z + hz }
+  }
 }
 
 export function createView(stage, picture) {
@@ -695,14 +716,28 @@ export function createView(stage, picture) {
       const figures = []
       for (const [key, mesh] of meshes) {
         if (!key.startsWith("hero:") || !mesh.userData.hero) continue
+        const card = mesh.userData.card
+        const px =
+          card && card.isSprite && mesh.userData.picture
+            ? projectBoxPixels(spriteCardBox(mesh, camera), camera, viewFrame.bufferHeight)
+            : figurePixels(card || mesh, camera, viewFrame.bufferHeight)
         figures.push({
           id: key.slice(5),
           hero: mesh.userData.hero,
           parts: mesh.userData.parts,
           marks: mesh.userData.marks,
           bounds: mesh.userData.bounds,
-          px: figurePixels(mesh, camera, viewFrame.snapHeight || viewFrame.bufferHeight)
+          x: mesh.position.x,
+          z: mesh.position.z,
+          px
         })
+      }
+      const keepBounds = new THREE.Box3().setFromObject(keep)
+      const keepFigure = {
+        px: figurePixels(keep, camera, viewFrame.bufferHeight),
+        worldH: keepBounds.max.y - keepBounds.min.y,
+        min: { x: keepBounds.min.x, y: keepBounds.min.y, z: keepBounds.min.z },
+        max: { x: keepBounds.max.x, y: keepBounds.max.y, z: keepBounds.max.z }
       }
       heroKey = me ? `hero:${me.id}` : null
       const heroMesh = heroKey ? meshes.get(heroKey) : null
@@ -738,6 +773,7 @@ export function createView(stage, picture) {
         monsters,
         vagrants: snap.vagrants || [],
         figures,
+        keepFigure,
         rangeRing: rangeRingState(rangeRing.visible, bearer.range),
         buildings: (snap.buildings || []).length,
         town: snap.town,
@@ -1637,6 +1673,7 @@ export function createView(stage, picture) {
     perf.rims = visibleRims()
     perf.submitMs = lastSubmit
     perf.driver = driverName()
+    perf.tier = picture.tier
     if (paintMs == null) return
     perf.paints.push(paintMs)
     if (perf.paints.length > 400) perf.paints.shift()
