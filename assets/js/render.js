@@ -373,6 +373,7 @@ export function createView(stage, picture) {
     for (const piece of keepParts(rank)) group.add(pieceMesh(piece))
     const torch = new THREE.PointLight(0xeea821, 8, 220)
     torch.position.set(22, 40, 22)
+    torch.layers.set(1)
     group.add(torch)
     group.userData.torch = torch
     return group
@@ -526,7 +527,13 @@ export function createView(stage, picture) {
     requestAnimationFrame(frame)
   }
 
-  requestAnimationFrame(frame)
+  // The first paint can sit inside shader compile. Waiting for load lets the
+  // document finish so a navigation is not stuck behind that compile.
+  if (typeof document !== "undefined" && document.readyState !== "complete") {
+    window.addEventListener("load", () => requestAnimationFrame(frame), { once: true })
+  } else {
+    requestAnimationFrame(frame)
+  }
 
   viewApi = {
     canvas: renderer.domElement,
