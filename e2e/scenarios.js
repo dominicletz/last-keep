@@ -201,27 +201,23 @@ async function expectGoblinsOnYard(page) {
       game.monsters.every((monster) => monster.onScreen)
     )
   })
-  // The card is drawn at the mesh, which can sit off the sim point. One read
-  // of that mesh, then one more after the next paint if the first missed.
-  const goblinInk = () =>
-    page.evaluate(() => {
-      const game = window.__lastKeep
-      return (game.monsters || []).some((monster) => {
-        const x = monster.drawX == null ? monster.x : monster.drawX
-        const z = monster.drawZ == null ? monster.y : monster.drawZ
-        // y=16 is the top of an 18-unit goblin, where the crop is sparse.
-        // The torso at y=8 is the dense band. One of the two reads has to
-        // clear the same body-pixel count.
-        return Math.max(game.redNear(x, z, 8), game.redNear(x, z, 16)) > 8
-      })
+  // A seat that just woke compiles its first presents. Those reads come
+  // back empty. Six later frames are a steady picture. The card is drawn at
+  // the mesh, which can sit off the sim point. y=16 is the sparse crown of
+  // an 18-unit goblin. y=8 is the torso. The count stays above 8.
+  const mark = await page.evaluate(() => window.__lastKeep.renders || 0)
+  await page.waitForFunction((n) => (window.__lastKeep.renders || 0) >= n + 6, mark)
+  const ink = await page.evaluate(() => {
+    const game = window.__lastKeep
+    return (game.monsters || []).map((monster) => {
+      const x = monster.drawX == null ? monster.x : monster.drawX
+      const z = monster.drawZ == null ? monster.y : monster.drawZ
+      const crown = game.redNear(x, z, 16)
+      const torso = game.redNear(x, z, 8)
+      return { kind: monster.kind, count: Math.max(crown, torso) }
     })
-  let visible = await goblinInk()
-  if (!visible) {
-    const mark = await page.evaluate(() => window.__lastKeep.renders || 0)
-    await page.waitForFunction((n) => (window.__lastKeep.renders || 0) > n, mark)
-    visible = await goblinInk()
-  }
-  expect(visible).toBe(true)
+  })
+  expect(ink.some((row) => row.count > 8), JSON.stringify(ink)).toBe(true)
   const edgeLabels = await page.locator("[data-hints]").innerText()
   expect(edgeLabels).not.toMatch(/goblin \d/)
   const { waveClock } = await import("../assets/js/hud.js")
@@ -1990,15 +1986,28 @@ async function holdTheLand(browser) {
   })
   const page = host.page
   watch(page, "host", errors)
-  await steerPast(page, { x: 420, y: 0 }, (state) => state.x > 360, 20_000, "past the disc")
+  // The seed-5 pine is cell (12, 0), center 432. cell_index rounds x/36, so
+  // that cell is x in [414, 450). A warrior standing there pays 1 wood every
+  // 12 ticks. The keep disc is meadow inside radius 400, and the yard trees
+  // on this heading sit past that. A stand in (360, 414) keeps the hero off
+  // the pine. The wall click is 80 ahead of the hero, so it lands outside the
+  // disc. Wood is the count on the deny snapshot: a later chop tick cannot
+  // land between the log line and the expect, and a spend still fails it.
+  await steerPast(
+    page,
+    { x: 390, y: 0 },
+    (state) => state.x > 360 && state.x < 414 && Math.abs(state.y) < 18,
+    20_000,
+    "short of the pine"
+  )
   const outside = await page.evaluate(() => {
     const me = window.__lastKeep.self
     return { x: me.x + 80, y: me.y }
   })
   const wood = await page.evaluate(() => window.__lastKeep.wood)
-  await refuseHeld(page, outside.x, outside.y)
-  expect(await page.evaluate(() => window.__lastKeep.wood)).toBe(wood)
-  expect(await page.evaluate(() => window.__lastKeep.buildings)).toBe(0)
+  const denied = await refuseHeld(page, outside.x, outside.y)
+  expect(denied.wood).toBe(wood)
+  expect(denied.buildings).toBe(0)
 
   const portalGoal = { x: -1116, y: -1044 }
   await steerPast(
@@ -2066,11 +2075,18 @@ async function refuseHeld(page, x, y) {
   const mark = await page.evaluate(() => (window.__lastKeep.log || []).length)
   const spot = await page.evaluate(({ x, y }) => window.__lastKeep.toClient(x, y), { x, y })
   await page.mouse.click(spot.x, spot.y)
-  await page.waitForFunction(
-    (before) =>
-      (window.__lastKeep.log || []).slice(before).some((row) => row.type === "deny" && row.text === "The land is not held."),
+  const denied = await page.waitForFunction(
+    (before) => {
+      const game = window.__lastKeep
+      const hit = (game.log || [])
+        .slice(before)
+        .some((row) => row.type === "deny" && row.text === "The land is not held.")
+      if (!hit) return null
+      return { wood: game.wood, buildings: game.buildings }
+    },
     mark
   )
+  return denied.jsonValue()
 }
 
 async function steerPast(page, goal, done, timeout, label) {

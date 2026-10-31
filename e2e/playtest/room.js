@@ -17,6 +17,9 @@ async function openParty(browser, options = {}) {
   const seats = [{ ...players[0], page: host.page, context: host.context }]
   for (const player of players.slice(1)) {
     const seat = await joinQuery(browser, code, player.name, player.hero)
+    // Five presenting pages stall the socket, and the roster text never lands.
+    // The host keeps painting. A later check can wake the seat it has to read.
+    await seat.page.evaluate(() => window.__lastKeepTest.quiet())
     seats.push({ ...player, page: seat.page, context: seat.context })
   }
   const names = players.map((player) => player.name)
