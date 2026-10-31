@@ -171,6 +171,10 @@ On screen the five heroes do not share a body. A warrior reads as broad shoulder
 
 The night has its own sound. Day and building play one loop, the wave plays another, a horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. Nothing is loaded from another host.
 
+## Session
+
+Sitting down, the host starting the night, the horn, a frenzy, a cleared night, a raise, a downed hero, a fallen keep, and a friend joining or leaving are [concepts/statechart/chart.mmd](concepts/statechart/chart.mmd). The model is [concepts/statechart/LastKeep.tla](concepts/statechart/LastKeep.tla). TLC's report is [concepts/statechart/report.md](concepts/statechart/report.md).
+
 ## Empty roles
 
 No implemented role is isolated. Each hero has an outgoing edge in `interactions.json`, and each of wood, food, gold, and stone has a producer and a consumer. The test fails if that stops being true.
