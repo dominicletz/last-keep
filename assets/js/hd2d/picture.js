@@ -422,6 +422,7 @@ function createHdPicture(env) {
   let colorType = tier === "low" ? THREE.UnsignedByteType : THREE.HalfFloatType
   let casting = false
   let driverNoted = false
+  const lowFog = new THREE.FogExp2(0x4e4651, 0.0008)
   let slowPaints = 0
   let resolveReady = () => {}
   let readySettled = false
@@ -903,6 +904,29 @@ function createHdPicture(env) {
         // A software rasterizer, or a headless page that hides the GPU name,
         // cannot finish bloom and depth of field inside the 45ms blend window.
         if (kind === "software" || kind === "hidden") useLowExtras()
+      }
+      // Bloom and depth of field are off, so the post chain is three full-screen
+      // passes on top of a shadow map. One scene pass with the exponential fog
+      // is the same picture at a cost the wave ceiling can hold.
+      if (!extras.bloom && !extras.dof) {
+        if (renderer.shadowMap) renderer.shadowMap.enabled = false
+        const started = performance.now()
+        const previousAutoReset = renderer.info.autoReset
+        const previousFog = scene.fog
+        try {
+          renderer.info.autoReset = false
+          renderer.info.reset()
+          if (scene.background && scene.background.isColor) lowFog.color.copy(scene.background)
+          lowFog.density = span > 1 ? 0.9 / span : 0
+          scene.fog = lowFog
+          renderer.setRenderTarget(null)
+          renderer.clear(true, true, true)
+          renderer.render(scene, camera)
+        } finally {
+          scene.fog = previousFog
+          renderer.info.autoReset = previousAutoReset
+        }
+        return { submitMs: performance.now() - started }
       }
       if (renderer.shadowMap) {
         renderer.shadowMap.enabled = casting
