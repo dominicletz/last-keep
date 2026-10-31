@@ -1637,6 +1637,7 @@ async function phoneClear(browser) {
   )
   await page.bringToFront()
   await waitForSeats(page, ["Nia", "Ada", "Lux", "Bram", "Pip"])
+  for (const seat of seats) await seat.page.evaluate(() => window.__lastKeepTest.quiet())
   await assertPhoneClear(page)
   await sowFour(page)
   await waitForRaiseGold(page)
@@ -2227,6 +2228,7 @@ async function sixSeatMatch(browser) {
   ]) {
     const guest = await joinQuery(browser, code, name, hero)
     watch(guest.page, name, errors)
+    await guest.page.evaluate(() => window.__lastKeepTest.quiet())
     guests.push(guest)
   }
   await page.waitForFunction(() => (window.__lastKeep.party || []).length >= 6)

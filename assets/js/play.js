@@ -320,6 +320,11 @@ function start(code, seat, ui) {
     },
     parade() {
       channel.push("parade", {})
+    },
+    // A covered seat still has to stay in the room. Painting it is what
+    // saturates the runner, so the match and the phone walk quiet the guests.
+    quiet() {
+      window.__lastKeepQuiet = true
     }
   }
   window.addEventListener("blur", () => {
@@ -617,8 +622,9 @@ function start(code, seat, ui) {
     // The first snapshot builds the test hook. Later ones only queue the
     // scene: a draw on the socket handler never yields, and the fireball
     // wait then dies when the test closes the page.
-    if (window.__lastKeep) ui.view.queue(snap, selfId)
-    else ui.view.draw(snap, selfId)
+    if (window.__lastKeep) {
+      if (!window.__lastKeepQuiet) ui.view.queue(snap, selfId)
+    } else ui.view.draw(snap, selfId)
     const me = (snap.players || []).find((player) => player.id === selfId)
     if (window.__lastKeep) {
       window.__lastKeep.tick = snap.tick
@@ -634,7 +640,24 @@ function start(code, seat, ui) {
         // The swing is 8 ticks. draw() is the only other writer, and an idle
         // page does not paint, so the click check never saw the cooldown.
         window.__lastKeep.attackCd = cd
-        if (window.__lastKeep.self) window.__lastKeep.self.attackCd = cd
+        if (window.__lastKeep.self) {
+          window.__lastKeep.self.attackCd = cd
+          if (window.__lastKeepQuiet) {
+            window.__lastKeep.self.x = me.x
+            window.__lastKeep.self.y = me.y
+            window.__lastKeep.self.hero = me.hero
+            window.__lastKeep.self.alive = me.alive !== false
+          }
+        }
+      }
+      if (window.__lastKeepQuiet) {
+        window.__lastKeep.phase = snap.phase
+        window.__lastKeep.monsters = (snap.monsters || []).map((row) => ({
+          id: row.id,
+          kind: row.kind,
+          x: row.x,
+          y: row.y
+        }))
       }
       // draw() replaces this object. The peak is copied there too, or the
       // next frame would forget a swing the channel had already cooled.
