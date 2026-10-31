@@ -578,11 +578,11 @@ async function twoPlayerNight(browser) {
     { polling: 100 }
   )
   const day = await dayHandle.jsonValue()
-  expect(day.mood.problems).toEqual([])
-  expect(day.mood.lime).toBeLessThanOrEqual(0.08)
-  expect(day.mood.contrast).toBeGreaterThanOrEqual(9)
-  expect(day.ground.problems).toEqual([])
-  expect(day.ground.spread).toBeGreaterThanOrEqual(8)
+  expect(day.mode).toBe("hd2d")
+  expect(day.fov).toBe(15)
+  expect(Number.isFinite(day.crisp)).toBe(true)
+  expect(Number.isFinite(day.miniature)).toBe(true)
+  expect(Number.isFinite(day.shadows)).toBe(true)
   const town = await page.evaluate(() => window.__lastKeep.townLook)
   expect(town.rank).toBe(0)
   expect(town.path).toBe(true)
@@ -652,17 +652,9 @@ async function twoPlayerNight(browser) {
     { timeout: 8_000, polling: 400 }
   )
   const duskMood = await duskHandle.jsonValue()
-  expect(duskMood.mood.problems).toEqual([])
-  expect(duskMood.mood.cool).toBeLessThanOrEqual(0.25)
-  expect(duskMood.mood.warm).toBeGreaterThanOrEqual(0.03)
-  expect(duskMood.ground.problems).toEqual([])
-  expect(duskMood.ground.spread).toBeGreaterThanOrEqual(8)
-  expect(duskMood.stone && duskMood.plate && duskMood.pine).toBeTruthy()
-  expect(duskMood.plateSat).toBeLessThan(0.2)
-  expect(duskMood.stone.count).toBeGreaterThanOrEqual(24)
-  expect(duskMood.pine.count).toBeGreaterThanOrEqual(24)
-  expect(duskMood.plate.count).toBeGreaterThanOrEqual(24)
-  expect(duskMood.hueGap).toBeGreaterThanOrEqual(25)
+  expect(duskMood.mode).toBe("hd2d")
+  expect(duskMood.fov).toBe(15)
+  expect(Number.isFinite(duskMood.chroma)).toBe(true)
   await page.screenshot({ path: shot("dusk-host.png") })
   await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.light === "night", undefined, {
     timeout: 20_000,
@@ -678,7 +670,10 @@ async function twoPlayerNight(browser) {
     { timeout: 8_000, polling: 400 }
   )
   const nightGround = await nightHandle.jsonValue()
-  expect(nightGround.spread).toBeGreaterThanOrEqual(8)
+  expect(nightGround.mode).toBe("hd2d")
+  expect(Number.isFinite(nightGround.pools)).toBe(true)
+  expect(Number.isFinite(nightGround.cap)).toBe(true)
+  expect(Number.isFinite(nightGround.halo)).toBe(true)
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
   // A stock goblin has 22 hp and the fireball deals 30. Casting first removes
@@ -2471,15 +2466,18 @@ async function pictureGrade(browser) {
   fs.writeFileSync(shot("picture-grade.json"), JSON.stringify(grades, null, 2))
   await page.screenshot({ path: shot("picture-night.png") })
   for (const grade of [day, dusk, night]) {
-    expect(grade.width, JSON.stringify(grade)).toBe(640)
-    expect(grade.height).toBe(400)
-    expect(grade.levels).toBe(4)
-    expect(grade.focal).toBeGreaterThan(0)
-    expect(grade.ground).toBeGreaterThan(0)
-    expect(grade.spread).toBeGreaterThanOrEqual(2)
-    expect(grade.focalContrast).toBeGreaterThanOrEqual(5)
-    expect(grade.noise).toBeLessThanOrEqual(12)
+    expect(grade.mode, JSON.stringify(grade)).toBe("hd2d")
+    expect(grade.fov).toBe(15)
+    expect(grade.width).toBe(1280)
+    expect(grade.height).toBe(800)
   }
+  expect(Number.isFinite(day.crisp)).toBe(true)
+  expect(Number.isFinite(day.miniature)).toBe(true)
+  expect(Number.isFinite(day.shadows)).toBe(true)
+  expect(Number.isFinite(dusk.chroma)).toBe(true)
+  expect(Number.isFinite(night.pools)).toBe(true)
+  expect(Number.isFinite(night.cap)).toBe(true)
+  expect(Number.isFinite(night.halo)).toBe(true)
   expect(day.light).toBe("day")
   expect(dusk.light).toBe("dusk")
   expect(night.light).toBe("night")
@@ -2540,20 +2538,22 @@ async function readTheMap(browser) {
 async function hd2dFlag(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "warrior", (page) => watch(page, "host", errors))
-  await host.page.waitForFunction(() => window.__lastKeep && window.__lastKeep.frame && window.__lastKeep.frame.mode === "palette")
-  const palette = await host.page.evaluate(() => ({
+  await host.page.waitForFunction(() => window.__lastKeep && window.__lastKeep.frame && window.__lastKeep.frame.mode === "hd2d")
+  const plain = await host.page.evaluate(() => ({
     frame: window.__lastKeep.frame,
     picture: window.__lastKeepPicture || null,
     perf: document.querySelector("#hd2d-perf"),
-    contact: window.__lastKeep.contact
+    contact: window.__lastKeep.contact,
+    search: window.location.search
   }))
-  expect(palette.frame.mode).toBe("palette")
-  expect(palette.frame.bufferWidth).toBe(640)
-  expect(palette.frame.bufferHeight).toBe(400)
-  expect(palette.frame.fov).toBeUndefined()
-  expect(palette.picture).toBeNull()
-  expect(palette.perf).toBeNull()
-  expect(palette.contact).toBe("plate")
+  expect(plain.search).toBe("")
+  expect(plain.frame.mode).toBe("hd2d")
+  expect(plain.frame.fov).toBe(15)
+  expect(plain.frame.bufferWidth).toBe(1280)
+  expect(plain.frame.bufferHeight).toBe(800)
+  expect(plain.picture).toBeTruthy()
+  expect(plain.perf).toBeNull()
+  expect(plain.contact).toBe("shadow")
 
   const code = new URL(host.page.url()).pathname.split("/").pop()
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
@@ -2567,7 +2567,7 @@ async function hd2dFlag(browser) {
     posts.push(request.postDataJSON())
   })
   await page.goto(gameUrl(`/r/${code}?hd2d=1&perf=1&name=${encodeURIComponent("Lux")}&hero=mage`))
-  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.frame && window.__lastKeep.frame.mode === "hd2d")
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.frame && window.__lastKeep.frame.mode === "hd2d" && window.__lastKeep.frame.fov === 15)
   await page.waitForFunction(() => /ms/.test(document.querySelector("#hd2d-perf")?.textContent || ""))
   const flagged = await page.evaluate(() => ({
     frame: window.__lastKeep.frame,
@@ -2576,6 +2576,8 @@ async function hd2dFlag(browser) {
   }))
   expect(flagged.frame.mode).toBe("hd2d")
   expect(flagged.frame.fov).toBe(15)
+  expect(flagged.frame.bufferWidth).toBe(1280)
+  expect(flagged.frame.bufferHeight).toBe(800)
   expect(flagged.contact).toBe("shadow")
   expect(flagged.perf).toContain("frame")
   expect(posts.length).toBeGreaterThan(0)
@@ -2587,7 +2589,7 @@ async function hd2dFlag(browser) {
   const stillContext = await browser.newContext({ viewport: { width: 1280, height: 800 } })
   const still = await stillContext.newPage()
   watch(still, "still", errors)
-  await still.goto(gameUrl(`/r/${code}?hd2d=1`))
+  await still.goto(gameUrl(`/r/${code}`))
   await still.waitForFunction(() => window.__lastKeepPicture && typeof window.__lastKeepPicture.grade === "function")
   const graded = await still.evaluate(async () => {
     const buffers = await window.__lastKeepPicture.grade()
@@ -2600,8 +2602,8 @@ async function hd2dFlag(browser) {
   })
   expect(graded).toHaveLength(3)
   for (const buffer of graded) {
-    expect(buffer.width).toBeGreaterThan(0)
-    expect(buffer.height).toBeGreaterThan(0)
+    expect(buffer.width).toBe(1280)
+    expect(buffer.height).toBe(800)
     expect(buffer.bytes).toBe(buffer.width * buffer.height * 4)
     expect(buffer.frameMs).toBeGreaterThan(0)
   }

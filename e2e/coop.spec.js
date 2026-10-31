@@ -87,6 +87,6 @@ test("the map table shows the explored land", async ({ browser }) => {
   await readTheMap(browser)
 })
 
-test("the hd2d flag keeps the palette path and grades three stills", async ({ browser }) => {
+test("the plain url is the hd2d picture and grades three stills", async ({ browser }) => {
   await hd2dFlag(browser)
 })

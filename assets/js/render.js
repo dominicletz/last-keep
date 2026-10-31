@@ -1,16 +1,15 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
+import { cameraFocus, drawDue, frameFor } from "./frame"
+import { clockScore } from "./hd2d/score.js"
 import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
-import { createPalettePass } from "./palette_pass.js"
-import { lockedPalette, pixelStep, snapWorld, styleHexes } from "./art_score.js"
+import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { masonryBytes, propBytes } from "./tiles.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
-import { noiseEnergy, valueStructure } from "./art_score.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
@@ -21,11 +20,8 @@ import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint.js"
 import {
-  cycleLight,
-  flameColor,
   groundColor,
   lightName,
-  hueGap,
   lumaOf,
   maskedStats,
   ownedNear,
@@ -55,29 +51,15 @@ function figurePixels(mesh, camera, bufferHeight) {
   return Math.round((maxY - minY) * 0.5 * bufferHeight)
 }
 
-export function createView(stage, picture = null) {
-  if (
-    picture !== null &&
-    ["open", "fit", "seat", "light", "dress", "present"].some((name) => typeof picture[name] !== "function")
-  ) {
-    throw new Error("createView picture must be null or pictureFromSearch")
+export function createView(stage, picture) {
+  if (["open", "fit", "seat", "light", "dress", "present"].some((name) => typeof picture?.[name] !== "function")) {
+    throw new Error("createView needs a picture")
   }
 
-  const opened = picture ? picture.open(stage) : null
+  const opened = picture.open(stage)
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
-  const renderer = opened
-    ? opened.renderer
-    : new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
-  const camera = opened
-    ? opened.camera
-    : new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
-  if (!opened) {
-    renderer.setSize(480, 270, false)
-    renderer.setPixelRatio(1)
-    renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.BasicShadowMap
-    renderer.outputColorSpace = THREE.SRGBColorSpace
-  }
+  const renderer = opened.renderer
+  const camera = opened.camera
   stage.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
@@ -105,26 +87,6 @@ export function createView(stage, picture = null) {
   sun.shadow.camera.bottom = -280
   scene.add(sun)
   scene.add(sun.target)
-  const groundFill = new THREE.AmbientLight(yardLight.sky, 0)
-  groundFill.layers.set(1)
-  scene.add(groundFill)
-  camera.layers.enable(1)
-  const brazierPool = new THREE.PointLight(flameColor, 0, 90, 2)
-  brazierPool.position.set(26, 14, 26)
-  const windowPool = new THREE.PointLight(flameColor, 0, 72, 2)
-  windowPool.position.set(0, 16, 36)
-  const yardTorches = []
-  for (const [x, z] of [
-    [150, 150],
-    [-150, 150],
-    [150, -150],
-    [-150, -150]
-  ]) {
-    const light = new THREE.PointLight(flameColor, 0, 64, 2)
-    light.position.set(x, 14, z)
-    yardTorches.push(light)
-  }
-  scene.add(brazierPool, windowPool, ...yardTorches)
 
   const stoneTile = masonryBytes("day")
   const stoneMap = new THREE.DataTexture(stoneTile.rgba, stoneTile.w, stoneTile.h)
@@ -157,7 +119,6 @@ export function createView(stage, picture = null) {
   )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = true
-  ground.layers.enable(1)
   scene.add(ground)
   const mapTable = new THREE.Mesh(
     trackGeometry(new THREE.BoxGeometry(36, 8, 22)),
@@ -196,7 +157,6 @@ export function createView(stage, picture = null) {
   yard.position.y = 0.08
   yard.receiveShadow = true
   scene.add(yard)
-  let painted = "day"
   const plazaBytes = plazaPixels("day")
   const plazaMap = new THREE.DataTexture(plazaBytes, PLAZA_TEX, PLAZA_TEX)
   plazaMap.colorSpace = THREE.SRGBColorSpace
@@ -329,26 +289,6 @@ export function createView(stage, picture = null) {
   window.addEventListener("resize", applyFrame)
 
   const forestLook = forestState()
-
-  function paintYard(phase) {
-    if (painted === phase) return
-    groundMap.image.data.set(groundPixels(phase))
-    groundMap.needsUpdate = true
-    plazaMap.image.data.set(plazaPixels(phase))
-    plazaMap.needsUpdate = true
-    const stone = masonryBytes(phase)
-    stoneMap.image.data.set(stone.rgba)
-    stoneMap.needsUpdate = true
-    for (const [name, map] of Object.entries(sheetMaps)) {
-      map.image.data.set(propBytes(name, phase).rgba)
-      map.needsUpdate = true
-    }
-    const path = propBytes("path", phase)
-    pathNSMap.image.data.set(path.rgba)
-    pathNSMap.needsUpdate = true
-    pathEWMap.needsUpdate = true
-    painted = phase
-  }
 
   function contactTexture() {
     const canvas = document.createElement("canvas")
@@ -491,9 +431,6 @@ export function createView(stage, picture = null) {
     lastInput = performance.now()
   }
 
-  const palette = lockedPalette(styleHexes)
-  let palettePass = null
-
   function worldStep() {
     const height = viewFrame.snapHeight || viewFrame.bufferHeight
     return pixelStep(viewFrame.halfH, height)
@@ -503,14 +440,8 @@ export function createView(stage, picture = null) {
   let driverLabel = null
 
   function paintFrame() {
-    if (picture) {
-      const presented = picture.present(renderer, scene, camera)
-      lastSubmit = presented && Number.isFinite(presented.submitMs) ? presented.submitMs : null
-    } else {
-      lastSubmit = null
-      if (!palettePass) palettePass = createPalettePass(renderer, palette)
-      palettePass.draw(scene, camera)
-    }
+    const presented = picture.present(renderer, scene, camera)
+    lastSubmit = presented && Number.isFinite(presented.submitMs) ? presented.submitMs : null
     renders += 1
     if (window.__lastKeep) window.__lastKeep.renders = renders
   }
@@ -642,25 +573,6 @@ export function createView(stage, picture = null) {
       drawnTick = snap.tick
       const name = lightName(snap)
       liveLight = name
-      if (!picture) {
-        const rig = cycleLight[name]
-        if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
-        groundFill.color.set(rig.groundFill || 0x000000)
-        groundFill.intensity = rig.groundFillLevel || 0
-        brazierPool.intensity = rig.pool || 0
-        windowPool.intensity = rig.pool || 0
-        for (const light of yardTorches) light.intensity = (rig.pool || 0) * 0.55
-        paintYard(name)
-        sky.color.set(rig.sky)
-        sky.groundColor.set(rig.ground)
-        sky.intensity = rig.hemisphere
-        ambient.color.set(rig.ambient)
-        ambient.intensity = rig.ambientLevel
-        sun.color.set(rig.sun)
-        sun.intensity = rig.sunLevel
-        scene.background.set(rig.background)
-        scene.fog.color.set(rig.background)
-      }
       townRank = snap.town || 0
       applyFrame()
       const zoom = zoomFor(snap)
@@ -683,13 +595,7 @@ export function createView(stage, picture = null) {
         keep = makeKeep(townRank)
         scene.add(keep)
       }
-      if (picture) picture.seat(camera, focus, dist, snap)
-      else {
-        camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-        camera.lookAt(focus.x, cameraLift, focus.z)
-        sun.position.set(focus.x + 90, 200, focus.z + 30)
-        sun.target.position.copy(focus)
-      }
+      picture.seat(camera, focus, dist, snap)
 
       const keepRatio = snap.keep.max ? snap.keep.hp / snap.keep.max : 1
       keep.scale.y = 0.65 + keepRatio * 0.35
@@ -700,11 +606,9 @@ export function createView(stage, picture = null) {
 
       sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
 
-      if (picture) {
-        const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
-        picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes })
-        picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
-      }
+      const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
+      picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes })
+      picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
 
       liveMonsters = snap.monsters || []
 
@@ -854,13 +758,13 @@ export function createView(stage, picture = null) {
           ? { fromX: heroTrack.fromX, fromZ: heroTrack.fromZ, toX: heroTrack.toX, toZ: heroTrack.toZ, at: heroTrack.at }
           : null,
         frame: {
-          mode: picture ? "hd2d" : "palette",
-          aspect: picture ? viewFrame.aspect : camera.right / camera.top,
+          mode: "hd2d",
+          aspect: viewFrame.aspect,
           bufferWidth: renderer.domElement.width,
           bufferHeight: renderer.domElement.height,
           halfW: viewFrame.halfW,
           halfH: viewFrame.halfH,
-          ...(picture ? { fov: picture.fov } : {})
+          fov: picture.fov
         },
         contact: selfContact(heroMesh),
         driver: driverName(),
@@ -891,7 +795,6 @@ export function createView(stage, picture = null) {
       }
     },
     grade() {
-      if (!picture) throw new Error("grade refuses a palette room")
       return picture.grade(() => {
         const buffers = []
         for (const clock of ["day", "dusk", "night"]) {
@@ -953,13 +856,7 @@ export function createView(stage, picture = null) {
     const step = worldStep()
     focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
     const dist = zoomFor(snap).camera
-    if (picture) {
-      picture.seat(camera, focus, dist, snap)
-      return
-    }
-    camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-    camera.lookAt(focus.x, cameraLift, focus.z)
-    camera.updateMatrixWorld(true)
+    picture.seat(camera, focus, dist, snap)
   }
 
   function toClient(x, z) {
@@ -1259,7 +1156,7 @@ export function createView(stage, picture = null) {
         if (child.material.color.getHex() === 0xf0c14a && child.position.y > 0 && child.position.y < 2) return "plate"
       }
     }
-    return picture ? "shadow" : "plate"
+    return "shadow"
   }
 
   function driverName() {
@@ -1317,57 +1214,34 @@ export function createView(stage, picture = null) {
     }
   }
 
-  // Day, dusk, and night each take one framebuffer read. The plate, the keep
-  // pine, and the stone sit here so a lane does not edit them in the scenario.
-  function yardGrade() {
-    if (liveLight !== "day") return null
-    const grade = frameGrade()
+  // One framebuffer read. The numbers are the HD-2D clock score for this light.
+  function clockGrade(clock) {
+    if (liveLight !== clock) return null
+    const shot = readFrame()
+    const score = clockScore(clock, { rgba: shot.buf, width: shot.width, height: shot.height })
+    const ok = Object.values(score).every((value) => Number.isFinite(value))
     return {
-      ok: grade.mood.problems.length === 0 && grade.ground.problems.length === 0,
-      mood: grade.mood,
-      ground: grade.ground
+      ok,
+      ...score,
+      light: clock,
+      mode: "hd2d",
+      fov: picture.fov,
+      width: shot.width,
+      height: shot.height
     }
   }
 
-  function plateSatOf(sample) {
-    const peak = Math.max(sample.r, sample.g, sample.b)
-    return (peak - Math.min(sample.r, sample.g, sample.b)) / Math.max(peak, 1)
+  function yardGrade() {
+    return clockGrade("day")
   }
 
   function duskGrade() {
-    if (liveLight !== "dusk") return null
-    const grade = frameGrade()
-    if (grade.mood.problems.length || grade.ground.problems.length) {
-      return { ok: false, mood: grade.mood, ground: grade.ground }
-    }
-    const stone = sampleObject(0, 36, 6)
-    const pine = sampleObject(-22, 30, -62)
-    const hero = window.__lastKeep && window.__lastKeep.self
-    if (!hero) return { ok: false, mood: grade.mood, ground: grade.ground }
-    // The card is 32 world units. Height 40 is above it. The steel is height 18.
-    const plate = sampleObject(hero.x, 18, hero.y)
-    const gap = hueGap(stone.hue, pine.hue)
-    const sat = plateSatOf(plate)
-    const counted =
-      stone.count >= sampleMinPixels && pine.count >= sampleMinPixels && plate.count >= sampleMinPixels
-    const ok = gap >= 25 && sat < 0.2 && counted
-    return {
-      ok,
-      mood: grade.mood,
-      ground: grade.ground,
-      stone,
-      pine,
-      plate,
-      hueGap: gap,
-      plateSat: sat
-    }
+    return clockGrade("dusk")
   }
 
   function nightGrade() {
-    if (liveLight !== "night") return null
-    const grade = frameGrade()
-    if (grade.mood.problems.length || grade.ground.problems.length) return null
-    return grade.ground
+    const grade = clockGrade("night")
+    return grade && grade.ok ? grade : null
   }
 
   // The blend window is 45ms. An open step is past a twitch and short of a teleport.
@@ -1385,106 +1259,8 @@ export function createView(stage, picture = null) {
     return { step, age, sx, sz, open, travel }
   }
 
-  function screenRect(object, width, height) {
-    const box = new THREE.Box3().setFromObject(object)
-    if (box.isEmpty()) return null
-    const corner = new THREE.Vector3()
-    let minX = Infinity
-    let maxX = -Infinity
-    let minY = Infinity
-    let maxY = -Infinity
-    let seen = 0
-    for (const x of [box.min.x, box.max.x]) {
-      for (const y of [box.min.y, box.max.y]) {
-        for (const z of [box.min.z, box.max.z]) {
-          corner.set(x, y, z).project(camera)
-          if (corner.z > 1) continue
-          const px = (corner.x * 0.5 + 0.5) * width
-          const py = (-corner.y * 0.5 + 0.5) * height
-          if (px < minX) minX = px
-          if (px > maxX) maxX = px
-          if (py < minY) minY = py
-          if (py > maxY) maxY = py
-          seen += 1
-        }
-      }
-    }
-    if (!seen) return null
-    const x0 = Math.max(0, Math.floor(minX))
-    const y0 = Math.max(0, Math.floor(minY))
-    const x1 = Math.min(width, Math.ceil(maxX))
-    const y1 = Math.min(height, Math.ceil(maxY))
-    if (x1 <= x0 || y1 <= y0) return null
-    return { x0, y0, x1, y1 }
-  }
-
-  // Explicit read. The match loop does not call this, so ordinary paints stay off readPixels.
   function pictureGrade() {
-    const canvas = renderer.domElement
-    const focal = new Uint8Array(canvas.width * canvas.height)
-    const cover = new Uint8Array(canvas.width * canvas.height)
-    const fill = (mask, rect) => {
-      for (let y = rect.y0; y < rect.y1; y++) {
-        mask.fill(1, y * canvas.width + rect.x0, y * canvas.width + rect.x1)
-      }
-    }
-    // The keep's screen box includes the cottage and the pines at its corners.
-    // The subject is the inner ninety percent. The whole box stays out of the ground.
-    const stamp = (object) => {
-      const rect = screenRect(object, canvas.width, canvas.height)
-      if (!rect) return
-      fill(cover, rect)
-      const dx = Math.floor((rect.x1 - rect.x0) * 0.05)
-      const dy = Math.floor((rect.y1 - rect.y0) * 0.05)
-      const core = { x0: rect.x0 + dx, y0: rect.y0 + dy, x1: rect.x1 - dx, y1: rect.y1 - dy }
-      if (core.x1 > core.x0 && core.y1 > core.y0) fill(focal, core)
-    }
-    stamp(keep)
-    for (const [key, mesh] of meshes) {
-      if (key.startsWith("hero:") || key.startsWith("monster:")) stamp(mesh)
-    }
-    const shot = readFrame()
-    const n = shot.width * shot.height
-    const rgb = new Uint8Array(n * 3)
-    for (let i = 0; i < n; i++) {
-      const o = i * 4
-      const d = i * 3
-      rgb[d] = shot.buf[o]
-      rgb[d + 1] = shot.buf[o + 1]
-      rgb[d + 2] = shot.buf[o + 2]
-    }
-    const y0 = Math.round(shot.height * 0.42)
-    const y1 = Math.round(shot.height * 0.9)
-    const ground = new Uint8Array(n)
-    let focalCount = 0
-    let groundCount = 0
-    for (let i = 0; i < n; i++) if (focal[i]) focalCount += 1
-    for (let y = y0; y < y1; y++) {
-      const row = y * shot.width
-      for (let x = 0; x < shot.width; x++) {
-        const i = row + x
-        if (cover[i]) continue
-        ground[i] = 1
-        groundCount += 1
-      }
-    }
-    const value = valueStructure(rgb, shot.width, shot.height, focal, ground)
-    return {
-      light: liveLight,
-      width: shot.width,
-      height: shot.height,
-      levels: value.levels,
-      spread: value.spread,
-      focalContrast: value.focalContrast,
-      focalLuma: value.focalLuma,
-      groundLuma: value.groundLuma,
-      noise: noiseEnergy(rgb, shot.width, shot.height, ground),
-      focal: focalCount,
-      ground: groundCount,
-      bands: value.bands,
-      focalBands: value.focalBands,
-      groundBands: value.groundBands
-    }
+    return clockGrade(liveLight)
   }
 
   function patchAt(x, z) {
@@ -1803,26 +1579,7 @@ export function createView(stage, picture = null) {
     const rect = stage.getBoundingClientRect()
     const cssW = rect.width || stage.clientWidth || 480
     const cssH = rect.height || stage.clientHeight || 270
-    if (picture) {
-      viewFrame = picture.fit(renderer, camera, cssW, cssH, townRank)
-      return
-    }
-    const next = frameFor(cssW, cssH, townRank)
-    const unchanged =
-      viewFrame.bufferWidth === next.bufferWidth &&
-      viewFrame.bufferHeight === next.bufferHeight &&
-      viewFrame.halfW === next.halfW &&
-      renderer.domElement.width === next.bufferWidth
-    viewFrame = next
-    if (unchanged) return
-    renderer.setSize(next.bufferWidth, next.bufferHeight, false)
-    renderer.domElement.style.width = "100%"
-    renderer.domElement.style.height = "100%"
-    camera.left = next.left
-    camera.right = next.right
-    camera.top = next.top
-    camera.bottom = next.bottom
-    camera.updateProjectionMatrix()
+    viewFrame = picture.fit(renderer, camera, cssW, cssH, townRank)
   }
 
   function cullActors() {
