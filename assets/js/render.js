@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { cameraFocus, drawDue, frameFor } from "./frame"
+import { cameraFocus, drawDue, frameFor, paintGap } from "./frame"
 import { clockScore } from "./hd2d/score.js"
 import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
 import { pixelStep, snapWorld } from "./art_score.js"
@@ -438,6 +438,7 @@ export function createView(stage, picture) {
 
   let lastSubmit = null
   let driverLabel = null
+  let yieldPaintUntil = 0
 
   function paintFrame() {
     const presented = picture.present(renderer, scene, camera)
@@ -479,6 +480,13 @@ export function createView(stage, picture) {
 
   function frame() {
     const now = performance.now()
+    // A slow paint used to chain straight into the next one. The 20ms blend
+    // poll then never landed inside the 45ms window. The gap is the idle
+    // stretch after that paint, and it is longer than the window.
+    if (now < yieldPaintUntil) {
+      requestAnimationFrame(frame)
+      return
+    }
     // The socket handler only queues. Drawing here lets the test's wait run
     // between snapshots. A draw inside the handler piles up and the page
     // never returns, so the fireball wait dies when the browser closes.
@@ -513,6 +521,8 @@ export function createView(stage, picture) {
     } else {
       publishPerf(null)
     }
+    const gap = paintGap(performance.now() - now)
+    if (gap) yieldPaintUntil = performance.now() + gap
     requestAnimationFrame(frame)
   }
 

@@ -19,7 +19,13 @@ module.exports = defineConfig({
     viewport: { width: 1280, height: 800 },
     launchOptions: {
       ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}),
-      args: ["--enable-precise-memory-info", "--js-flags=--expose-gc"]
+      args: [
+        "--enable-precise-memory-info",
+        "--js-flags=--expose-gc",
+        "--use-gl=angle",
+        "--use-angle=swiftshader",
+        "--enable-unsafe-swiftshader"
+      ]
     }
   },
   webServer: process.env.BASE_URL

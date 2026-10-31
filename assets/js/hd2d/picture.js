@@ -312,7 +312,7 @@ function passMaterial(fragment, uniforms) {
   })
 }
 
-function linearTarget(width, height, depthTexture = null, filter = THREE.NearestFilter) {
+function linearTarget(width, height, depthTexture = null, filter = THREE.NearestFilter, type = THREE.HalfFloatType) {
   const target = new THREE.WebGLRenderTarget(width, height, {
     magFilter: filter,
     minFilter: filter,
@@ -322,7 +322,7 @@ function linearTarget(width, height, depthTexture = null, filter = THREE.Nearest
     // A multisampled target resolves color and does not leave a depth texture the later passes can sample.
     samples: 0,
     depthTexture,
-    type: THREE.HalfFloatType,
+    type,
     format: THREE.RGBAFormat,
     colorSpace: THREE.NoColorSpace
   })
@@ -391,26 +391,35 @@ function shadowQuad() {
   return quad
 }
 
-function unmaskedRenderer(renderer) {
-  if (!renderer || typeof renderer.getContext !== "function") return ""
-  try {
-    const gl = renderer.getContext()
-    if (!gl || typeof gl.getExtension !== "function") return ""
-    const info = gl.getExtension("WEBGL_debug_renderer_info")
-    if (!info) return ""
-    return String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || "")
-  } catch (_err) {
-    return ""
-  }
-}
-
 function softwareRenderer(label) {
   return /SwiftShader|llvmpipe|softpipe|Basic Render/i.test(label)
+}
+
+// "gpu" keeps the tier the device asked for. "software" and "hidden" cannot
+// spend bloom and depth of field. A missing context stays "unknown" so a
+// test double that never opens WebGL still exercises the high path.
+function rendererKind(renderer) {
+  if (!renderer || typeof renderer.getContext !== "function") return "unknown"
+  try {
+    const gl = renderer.getContext()
+    if (!gl || typeof gl.getExtension !== "function") return "unknown"
+    const info = gl.getExtension("WEBGL_debug_renderer_info")
+    if (!info) return "hidden"
+    const label = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || "")
+    if (!label) return "hidden"
+    return softwareRenderer(label) ? "software" : "gpu"
+  } catch (_err) {
+    return "hidden"
+  }
 }
 
 function createHdPicture(env) {
   let tier = tierFor(env)
   let extras = { ...tierExtras(tier) }
+  // Bloom is the only pass that needs values above 1. The low picture is the
+  // 8-bit frame the screen already shows, and half-float targets are what
+  // make a software rasterizer miss the blend window.
+  let colorType = tier === "low" ? THREE.UnsignedByteType : THREE.HalfFloatType
   let driverNoted = false
   let slowPaints = 0
   let resolveReady = () => {}
@@ -622,13 +631,13 @@ function createHdPicture(env) {
     depth.type = THREE.UnsignedIntType
     depth.magFilter = THREE.NearestFilter
     depth.minFilter = THREE.NearestFilter
-    const sceneTarget = linearTarget(width, height, depth)
-    const fogged = linearTarget(width, height)
+    const sceneTarget = linearTarget(width, height, depth, THREE.NearestFilter, colorType)
+    const fogged = linearTarget(width, height, null, THREE.NearestFilter, colorType)
     // The tent filter interpolates the glow. Scene, graded, and restore stay nearest so the in-focus restore copies texels.
-    const bloom = linearTarget(halfW, halfH, null, THREE.LinearFilter)
-    const graded = linearTarget(width, height)
-    const blurred = linearTarget(width, height)
-    const shown = linearTarget(width, height)
+    const bloom = linearTarget(halfW, halfH, null, THREE.LinearFilter, colorType)
+    const graded = linearTarget(width, height, null, THREE.NearestFilter, colorType)
+    const blurred = linearTarget(width, height, null, THREE.NearestFilter, colorType)
+    const shown = linearTarget(width, height, null, THREE.NearestFilter, colorType)
     const view = viewUniforms(depth)
     const fog = passMaterial(fogFragment(), {
       ...view,
@@ -743,11 +752,22 @@ function createHdPicture(env) {
     settleReady()
   }
 
+  function dropChain() {
+    if (!chain) return
+    const depth = chain.scene.depthTexture
+    if (depth && depth.dispose) depth.dispose()
+    for (const key of ["scene", "fogged", "bloom", "graded", "blurred", "shown"]) {
+      if (chain[key] && chain[key].dispose) chain[key].dispose()
+    }
+    chain = null
+  }
+
   function useLowExtras() {
-    if (!extras.bloom && !extras.dof && extras.shadow <= 128) return
+    if (!extras.bloom && !extras.dof && extras.shadow <= 128 && colorType === THREE.UnsignedByteType) return
     tier = "low"
     extras = { ...tierExtras("low") }
     slowPaints = 0
+    colorType = THREE.UnsignedByteType
     if (spot) {
       spot.shadow.mapSize.set(extras.shadow, extras.shadow)
       if (spot.shadow.map) {
@@ -755,6 +775,7 @@ function createHdPicture(env) {
         spot.shadow.map = null
       }
     }
+    dropChain()
   }
 
   return {
@@ -866,10 +887,10 @@ function createHdPicture(env) {
     present(renderer, scene, camera) {
       if (!driverNoted) {
         driverNoted = true
-        const label = unmaskedRenderer(renderer)
-        // A software rasterizer cannot finish the full-size bloom and depth of field
-        // inside the 45ms blend window, so it takes the low extras. The picture stays.
-        if (softwareRenderer(label)) useLowExtras()
+        const kind = rendererKind(renderer)
+        // A software rasterizer, or a headless page that hides the GPU name,
+        // cannot finish bloom and depth of field inside the 45ms blend window.
+        if (kind === "software" || kind === "hidden") useLowExtras()
       }
       const started = performance.now()
       const previousAutoReset = renderer.info.autoReset

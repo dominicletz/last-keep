@@ -53,6 +53,14 @@ export const cameraLift = 32
 export const activeDrawMs = 50
 export const idleDrawMs = 250
 export const inputWindowMs = 1500
+// A paint that runs longer than this fills the frame, so the next one would
+// start immediately and the blend poll would never see the 45ms window.
+export const slowPaintMs = 40
+export const slowPaintGapMs = 70
+
+export function paintGap(submitMs) {
+  return Number(submitMs) > slowPaintMs ? slowPaintGapMs : 0
+}
 
 export function drawDue(now, lastRender, lastInput) {
   const gap = now - lastInput < inputWindowMs ? activeDrawMs : idleDrawMs
