@@ -88,6 +88,16 @@ function seat(settled, chest, portal, chests = chest, portals = portal) {
   return { chests, portals, census: { settled, byRole: { chest, portal } } }
 }
 
+test("a quiet build waits until the painted bodies are gone", () => {
+  const source = stripComments(fs.readFileSync(path.join(__dirname, "scenarios.js"), "utf8"))
+  const body = functionBody(source, "sixSeatMatch")
+  assert.match(body, /byRole\?\.shot/)
+  assert.match(body, /shots === 0/)
+  assert.match(body, /byRole\?\.monster/)
+  assert.match(body, /bodies === 0/)
+  assert.match(body, /settledHolds\(first, later\)/)
+})
+
 test("a discovered chest may raise the settled count", () => {
   const first = seat(764, 1, 1)
   const found = seat(767, 2, 3)

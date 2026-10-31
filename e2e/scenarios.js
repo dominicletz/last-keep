@@ -2265,9 +2265,19 @@ async function sixSeatMatch(browser) {
         await page.evaluate(() => window.__lastKeepTest.home())
         for (const guest of guests) await guest.page.evaluate(() => window.__lastKeepTest.follow())
         const shots = row.census?.byRole?.shot || 0
+        const bodies = row.census?.byRole?.monster || 0
         // The snapshot can already list zero projectiles while the last paint
-        // still holds the bolt. That one mesh made the later scene look larger.
-        if (sawWave && row.phase === "build" && row.monsters === 0 && row.projectiles === 0 && shots === 0 && row.geometries > 0) {
+        // still holds the bolt. The same paint can still hold a body after
+        // the snapshot lists no monsters. Either mesh made the later scene look larger.
+        if (
+          sawWave &&
+          row.phase === "build" &&
+          row.monsters === 0 &&
+          row.projectiles === 0 &&
+          shots === 0 &&
+          bodies === 0 &&
+          row.geometries > 0
+        ) {
           if (!builds.has(row.shownWave)) {
             const sample = { ...row }
             delete sample.paints
