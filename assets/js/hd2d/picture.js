@@ -412,6 +412,7 @@ function createHdPicture(env) {
   let tier = tierFor(env)
   let extras = { ...tierExtras(tier) }
   let driverNoted = false
+  let slowPaints = 0
   let resolveReady = () => {}
   let readySettled = false
   const ready = new Promise((resolve) => {
@@ -742,6 +743,20 @@ function createHdPicture(env) {
     settleReady()
   }
 
+  function useLowExtras() {
+    if (!extras.bloom && !extras.dof && extras.shadow <= 128) return
+    tier = "low"
+    extras = { ...tierExtras("low") }
+    slowPaints = 0
+    if (spot) {
+      spot.shadow.mapSize.set(extras.shadow, extras.shadow)
+      if (spot.shadow.map) {
+        spot.shadow.map.dispose()
+        spot.shadow.map = null
+      }
+    }
+  }
+
   return {
     fov: LOOK.fov,
     get tier() {
@@ -854,17 +869,7 @@ function createHdPicture(env) {
         const label = unmaskedRenderer(renderer)
         // A software rasterizer cannot finish the full-size bloom and depth of field
         // inside the 45ms blend window, so it takes the low extras. The picture stays.
-        if (softwareRenderer(label)) {
-          tier = "low"
-          extras = { ...tierExtras("low") }
-          if (spot) {
-            spot.shadow.mapSize.set(extras.shadow, extras.shadow)
-            if (spot.shadow.map) {
-              spot.shadow.map.dispose()
-              spot.shadow.map = null
-            }
-          }
-        }
+        if (softwareRenderer(label)) useLowExtras()
       }
       const started = performance.now()
       const previousAutoReset = renderer.info.autoReset
@@ -912,7 +917,13 @@ function createHdPicture(env) {
       } finally {
         renderer.info.autoReset = previousAutoReset
       }
-      return { submitMs: performance.now() - started }
+      const submitMs = performance.now() - started
+      // Two slow paints in a row means this device cannot hold bloom and depth of field
+      // inside the blend window. The first paint may only be shader compile.
+      if (submitMs > 40 && (extras.bloom || extras.dof)) slowPaints += 1
+      else slowPaints = 0
+      if (slowPaints >= 2) useLowExtras()
+      return { submitMs }
     }
   }
 }
