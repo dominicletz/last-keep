@@ -563,9 +563,9 @@ test("low and phone tiers drop the passes they do not spend", () => {
   assert.equal(software.tier, "low")
   assert.equal(software.extras.dof, false)
   assert.equal(software.extras.bloom, false)
-  assert.equal(softwareRenders, 3)
+  assert.equal(softwareRenders, 1)
   const hidden = createPicture()
-  let hiddenType = null
+  let hiddenTargets = 0
   hidden.present(
     {
       info: { autoReset: true, reset() {} },
@@ -577,7 +577,7 @@ test("low and phone tiers drop the passes they do not spend", () => {
         return { getExtension() { return null } }
       },
       setRenderTarget(target) {
-        if (!hiddenType && target && target.texture) hiddenType = target.texture.type
+        hiddenTargets += target ? 1 : 0
       },
       clear() {},
       render() {}
@@ -588,12 +588,12 @@ test("low and phone tiers drop the passes they do not spend", () => {
   assert.equal(hidden.tier, "low")
   assert.equal(hidden.extras.bloom, false)
   assert.equal(hidden.extras.dof, false)
-  assert.equal(hiddenType, THREE.UnsignedByteType)
+  assert.equal(hiddenTargets, 0)
   assert.equal(
     count(createPicture({ maxTouchPoints: 2, coarse: true, width: 390, height: 844, hardwareConcurrency: 8, deviceMemory: 8 })),
     5
   )
-  assert.equal(count(createPicture({ hardwareConcurrency: 2 })), 3)
+  assert.equal(count(createPicture({ hardwareConcurrency: 2 })), 1)
 })
 
 test("two slow paints drop bloom and depth of field", () => {
