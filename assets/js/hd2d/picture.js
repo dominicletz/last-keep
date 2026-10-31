@@ -503,9 +503,8 @@ function createHdPicture(env) {
       map.minFilter = THREE.NearestFilter
     }
     mesh.material = new THREE.MeshLambertMaterial({ map, color: material.color })
-    // The contact decal is the shadow the yard reads. Sampling a shadow map
-    // across this ground is a full-screen shader, and that paint misses the
-    // 424ms ceiling.
+    // The contact decal is the shadow the yard reads. A full-screen shadow
+    // sample on this ground is the paint the runner frame cap is there to catch.
     mesh.receiveShadow = false
     mesh.castShadow = false
     mesh.userData.hd = "ground"

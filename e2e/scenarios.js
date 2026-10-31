@@ -1,5 +1,7 @@
 const { expect } = require("@playwright/test")
+const { lowContext } = require("./low_tier")
 const { joinTogether, rosterReady } = require("./roster")
+const { cardSpan, projectBox } = require("./screen")
 const { settledHolds } = require("./settled")
 const { noteNorth, noteProgress, settleFields, stoppedTick } = require("./steer")
 const fs = require("fs")
@@ -22,7 +24,7 @@ function gameUrl(path) {
 async function createHost(browser, name, hero, prepare) {
   const options = prepare && typeof prepare !== "function" ? prepare : {}
   const ready = typeof prepare === "function" ? prepare : null
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, ...options })
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 }, ...options })
   const page = await context.newPage()
   if (ready) await ready(page)
   await page.goto(gameUrl("/"))
@@ -39,7 +41,7 @@ async function createHost(browser, name, hero, prepare) {
 }
 
 async function joinQuery(browser, code, name, hero, onPage) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
   if (onPage) onPage(page)
   await page.goto(gameUrl(`/r/${code}?name=${encodeURIComponent(name)}&hero=${hero}`))
@@ -50,11 +52,16 @@ async function joinQuery(browser, code, name, hero, onPage) {
 // The roster pin hides the node when the phone has no canvas box, and
 // innerText is then empty. The snapshot already lists who the room accepted.
 async function waitForSeats(page, names) {
-  for (;;) {
-    const seats = await page.evaluate(() => (window.__lastKeep && window.__lastKeep.seats) || null)
-    if (rosterReady(seats, names)) return
-    await page.waitForTimeout(100)
-  }
+  await page.waitForFunction(
+    (expected) => {
+      const seats = (window.__lastKeep && window.__lastKeep.seats) || null
+      if (!Array.isArray(seats)) return false
+      return expected.every((name) => seats.some((seat) => seat && seat.name === name && seat.connected === true))
+    },
+    names
+  )
+  const seats = await page.evaluate(() => window.__lastKeep.seats)
+  if (!rosterReady(seats, names)) throw new Error("roster")
 }
 
 function watch(page, label, errors) {
@@ -332,7 +339,8 @@ async function fight(page, friend, notes) {
     }
     hostKey = await step(page, hostKey)
     guestKey = await step(friend, guestKey)
-    await page.waitForTimeout(200)
+    const tick = await page.evaluate(() => window.__lastKeep.tick)
+    await page.waitForFunction((mark) => window.__lastKeep.tick > mark, tick)
   }
   if (hostKey) await holdKey(page, hostKey, false)
   if (guestKey) await holdKey(friend, guestKey, false)
@@ -388,8 +396,9 @@ async function holdKey(page, code, down) {
 }
 
 async function pressKey(page, code) {
+  const tick = await page.evaluate(() => window.__lastKeep.tick)
   await holdKey(page, code, true)
-  await page.waitForTimeout(80)
+  await page.waitForFunction((mark) => window.__lastKeep.tick > mark, tick)
   await holdKey(page, code, false)
 }
 
@@ -804,7 +813,7 @@ async function joinFromForm(browser) {
   const host = await createHost(browser, "Ada", "warrior")
   watch(host.page, "host", errors)
   const code = await host.page.evaluate(() => document.body.dataset.code)
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
   const friend = await context.newPage()
   watch(friend, "guest", errors)
   await friend.goto(`/r/${code}`)
@@ -944,13 +953,40 @@ async function heroSilhouettes(browser) {
     (figure) => `${figure.marks.join("+")}|${figure.bounds.w}x${figure.bounds.h}x${figure.bounds.d}|${figure.parts}`
   )
   expect(new Set(keys).size).toBe(5)
+  const view = await host.page.evaluate(() => ({
+    height: window.__lastKeep.frame.bufferHeight,
+    keep: window.__lastKeep.keepFigure
+  }))
+  // The drawing buffer is the window. cardSpan projects a card of world
+  // height 28 and 36 through the HD-2D camera (fov 15, span from halfH 168,
+  // cameraDistance 150, cameraLift 32). The span is the face-on and edge-on
+  // yaw of that card. figure.px has to sit between those two heights. The
+  // keep is the building in the same picture: its screen height is projectBox
+  // of its mesh, within a pixel, and the hero-to-keep ratio has to match.
+  const keepPred = projectBox(
+    { min: view.keep.min, max: view.keep.max },
+    view.height
+  )
+  expect(view.keep.worldH).toBeGreaterThan(0)
+  expect(Math.abs(view.keep.px - keepPred)).toBeLessThanOrEqual(1)
   for (const figure of figures) {
     expect(figure.parts).toBeGreaterThanOrEqual(5)
     expect(figure.marks.length).toBeGreaterThan(0)
     expect(figure.bounds.h).toBeLessThanOrEqual(36)
     expect(figure.bounds.h).toBeGreaterThanOrEqual(28)
-    expect(figure.px).toBeGreaterThanOrEqual(20)
-    expect(figure.px).toBeLessThan(96)
+    const floor = cardSpan(figure.x, figure.z, 28, figure.bounds.w, view.height).min
+    const cap = cardSpan(figure.x, figure.z, 36, figure.bounds.w, view.height).max
+    expect(figure.px).toBeGreaterThanOrEqual(Math.floor(floor))
+    expect(figure.px).toBeLessThanOrEqual(Math.ceil(cap))
+    const body = cardSpan(figure.x, figure.z, figure.bounds.h, figure.bounds.w, view.height)
+    expect(figure.px).toBeGreaterThanOrEqual(Math.floor(body.min))
+    expect(figure.px).toBeLessThanOrEqual(Math.ceil(body.max))
+    // figurePixels rounds to a pixel, so the ratio may move by one pixel
+    // on the hero and one pixel on the keep.
+    const ratio = figure.px / view.keep.px
+    const slack = 1 / view.keep.px + 1 / keepPred
+    expect(ratio).toBeGreaterThanOrEqual(body.min / keepPred - slack)
+    expect(ratio).toBeLessThanOrEqual(body.max / keepPred + slack)
   }
   await host.page.screenshot({ path: shot("heroes-host.png") })
   expect(errors, errors.join("\n")).toEqual([])
@@ -1039,7 +1075,7 @@ async function releaseStick(page) {
 
 async function mobileTouch(browser) {
   const errors = []
-  const context = await browser.newContext({
+  const context = await lowContext(browser, {
     viewport: { width: 844, height: 390 },
     hasTouch: true,
     isMobile: true
@@ -1116,7 +1152,8 @@ async function sowFour(page) {
     // A covered phone drops the mouse, and Q then aims at the keep. The hook
     // sets the meadow point, and the next push is the sow.
     await page.evaluate((point) => window.__lastKeepTest.aim(point.x, point.y), { x, y })
-    await page.waitForTimeout(80)
+    const aimed = await page.evaluate(() => window.__lastKeep.tick)
+    await page.waitForFunction((mark) => window.__lastKeep.tick > mark, aimed)
     await pressKey(page, "KeyQ")
     await page.waitForFunction(
       (count) => (window.__lastKeep.structures || []).filter((row) => row.kind === "field").length > count,
@@ -1532,9 +1569,15 @@ async function stoppedSample(page, last, deadline) {
     })
     if (fresh && stoppedTick(previous, fresh)) return settleFields(last, fresh)
     if (fresh) previous = fresh
-    const pause = Math.min(50, deadline - Date.now())
-    if (pause <= 0) break
-    await page.waitForTimeout(pause)
+    const mark = fresh ? fresh.tick : null
+    if (Date.now() >= deadline) break
+    if (mark == null) {
+      await page.waitForFunction(() => window.__lastKeep && typeof window.__lastKeep.tick === "number")
+    } else {
+      await page
+        .waitForFunction((tick) => window.__lastKeep.tick !== tick, mark, { timeout: Math.max(1, deadline - Date.now()) })
+        .catch(() => {})
+    }
   }
   return null
 }
@@ -1564,7 +1607,7 @@ async function steer(page, goal, done, timeout, label) {
 
 async function phoneClear(browser) {
   const errors = []
-  const context = await browser.newContext({
+  const context = await lowContext(browser, {
     viewport: { width: 844, height: 390 },
     hasTouch: true,
     isMobile: true
@@ -1722,13 +1765,11 @@ async function shotsDoNotGrowGeometries(browser) {
   await page.mouse.move(x, y)
   await page.mouse.down()
   let seen = 0
-  const started = Date.now()
   try {
-    while (Date.now() - started < 3_000) {
-      seen = Math.max(seen, await page.evaluate(() => (window.__lastKeep.projectiles || []).length))
-      if (seen > 1) break
-      await page.waitForTimeout(100)
-    }
+    await page.waitForFunction(() => (window.__lastKeep.projectiles || []).length > 1, undefined, { timeout: 3_000 })
+    seen = await page.evaluate(() => (window.__lastKeep.projectiles || []).length)
+  } catch (error) {
+    if (!/Timeout/.test(String(error && error.message))) throw error
   } finally {
     await page.mouse.up()
   }
@@ -1960,8 +2001,21 @@ async function holdTheLand(browser) {
     if (gone) break
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await page.mouse.down()
-    await page.waitForTimeout(700)
-    await page.mouse.up()
+    const swing = await page.evaluate((id) => {
+      const row = (window.__lastKeep.portals || []).find((portal) => portal.id === id)
+      return { tick: window.__lastKeep.tick, hp: row ? row.hp : 0 }
+    }, portal.id)
+    try {
+      await page.waitForFunction(
+        (mark) => {
+          const row = (window.__lastKeep.portals || []).find((portal) => portal.id === mark.id)
+          return !row || row.hp < mark.hp || window.__lastKeep.tick > mark.tick + 8
+        },
+        { id: portal.id, hp: swing.hp, tick: swing.tick }
+      )
+    } finally {
+      await page.mouse.up()
+    }
   }
   const broke = await page.evaluate((id) => !(window.__lastKeep.portals || []).some((row) => row.id === id), portal.id)
   if (!broke) throw new Error("portal still stands")
@@ -2049,8 +2103,21 @@ async function exploreLand(browser) {
     if (gone) break
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await page.mouse.down()
-    await page.waitForTimeout(700)
-    await page.mouse.up()
+    const swing = await page.evaluate((id) => {
+      const row = (window.__lastKeep.portals || []).find((portal) => portal.id === id)
+      return { tick: window.__lastKeep.tick, hp: row ? row.hp : 0 }
+    }, portal.id)
+    try {
+      await page.waitForFunction(
+        (mark) => {
+          const row = (window.__lastKeep.portals || []).find((portal) => portal.id === mark.id)
+          return !row || row.hp < mark.hp || window.__lastKeep.tick > mark.tick + 8
+        },
+        { id: portal.id, hp: swing.hp, tick: swing.tick }
+      )
+    } finally {
+      await page.mouse.up()
+    }
   }
   const broke = await page.evaluate((id) => {
     const row = (window.__lastKeep.portals || []).find((portal) => portal.id === id)
@@ -2187,8 +2254,9 @@ async function sixSeatMatch(browser) {
     const angle = (i / 12) * Math.PI * 2
     const x = Math.cos(angle) * 100
     const y = Math.sin(angle) * 100
+    const tick = await engineer.evaluate(() => window.__lastKeep.tick)
     await engineer.evaluate(([wx, wy]) => window.__lastKeepTest.order("wall", wx, wy), [x, y])
-    await page.waitForTimeout(120)
+    await engineer.waitForFunction((mark) => window.__lastKeep.tick > mark, tick)
   }
   await page.evaluate(() => window.__lastKeepTest.pictures())
   await page.locator("[data-start]").click()
@@ -2301,15 +2369,14 @@ async function sixSeatMatch(browser) {
         expect(later.calls, note).toBeLessThanOrEqual(868)
         expect(first.triangles, note).toBeLessThanOrEqual(11552)
         expect(later.triangles, note).toBeLessThanOrEqual(11552)
-        expect(first.p95, note).toBeLessThanOrEqual(424)
-        expect(later.p95, note).toBeLessThanOrEqual(424)
         expect(later.maxStep, note).toBeGreaterThan(0)
         expect(later.maxStep, note).toBeLessThanOrEqual(0.7 + 1e-6)
         expect(heaps[0], note).toBeGreaterThan(0)
         expect(heaps[1], note).toBeGreaterThan(0)
         break
       }
-      await page.waitForTimeout(400)
+      const tick = await page.evaluate(() => window.__lastKeep.tick)
+      await page.waitForFunction((mark) => window.__lastKeep.tick >= mark + 4, tick)
     }
   } finally {
     await fight(false)
@@ -2321,7 +2388,7 @@ async function sixSeatMatch(browser) {
   // Hiding the rims on a frozen frame dropped exactly 1 call and 2 triangles
   // per rim the camera drew. A rim outside the frustum is not in that count.
   // 700 and 9800 sit above the run and under the empty-yard ceilings of 868
-  // and 11552. Paint p95 stays 424.
+  // and 11552. Paint time is the perf job, not this match.
   expect(rimPairs.length).toBeGreaterThan(0)
   for (const pair of rimPairs) {
     expect(pair.off.rims).toBe(0)
@@ -2332,7 +2399,6 @@ async function sixSeatMatch(browser) {
   expect(wavePeak && wavePeak.monsters > 0 && wavePeak.rims > 0, JSON.stringify(wavePeak)).toBe(true)
   expect(wavePeak.calls, JSON.stringify(wavePeak)).toBeLessThanOrEqual(700)
   expect(wavePeak.triangles, JSON.stringify(wavePeak)).toBeLessThanOrEqual(9800)
-  expect(wavePeak.p95, JSON.stringify(wavePeak)).toBeLessThanOrEqual(424)
 
   const waves = [...builds.keys()]
   expect(waves.some((wave) => builds.has(wave + 3)), JSON.stringify({ waves, last })).toBe(true)
@@ -2546,7 +2612,7 @@ async function hd2dFlag(browser) {
   expect(plain.contact).toBe("shadow")
 
   const code = new URL(host.page.url()).pathname.split("/").pop()
-  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
   const page = await context.newPage()
   watch(page, "flag", errors)
   const posts = []
@@ -2576,7 +2642,7 @@ async function hd2dFlag(browser) {
   expect(posts[0].hd2d).toBeUndefined()
   expect(posts[0].perf).toBeUndefined()
 
-  const stillContext = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const stillContext = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
   const still = await stillContext.newPage()
   watch(still, "still", errors)
   await still.goto(gameUrl(`/r/${code}`))

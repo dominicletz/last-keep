@@ -60,13 +60,15 @@ mix test --cover
 npm test --prefix assets
 npm run check --prefix assets
 npm ci
-node --test e2e/steer.test.js e2e/probe.test.js e2e/roster.test.js
+node --test e2e/steer.test.js e2e/probe.test.js e2e/roster.test.js e2e/screen.test.js script/ci_budget.test.js
 npx playwright test
 ```
 
 `mix test --cover` covers room membership, reconnect, combat, wave plans, the interaction graph, the HTTP API, a channel with three clients, and a warrior who clears wave 1. The coverage floor is 62, from a measured total of 62.90%. Tests that touch the room supervisor are `async: false` because the registry is a single process.
 
 `npx playwright test` is the browser proof. The scenarios are `e2e/scenarios.js`, called from `e2e/coop.spec.js`. The run uses a 1280 by 800 viewport. It joins two players, ignores the click that only focuses the window, refuses an illegal wall without spending wood, places a legal wall, and fights wave 1 until a goblin dies on screen with a damage number. Set `BASE_URL` to point it at a deployed site. Unset `BASE_URL` for a local run. CI and the deploy workflow both run it.
+
+CI wall clock, from push to green or red, is 10 minutes. Every job in `.github/workflows/ci.yml` sets `timeout-minutes: 10`, and the job named `test` fails when any completed job ran longer than that. Functional browser tests run at the low tier and are split with `--shard` across the `browser` matrix. `fullyParallel` is on so a shard can split one file, and workers stay at 1 so a shard does not paint several rooms at once. The six-seat match and the frame-time check are their own jobs. A new test that makes one shard unable to finish, with setup, inside 10 minutes needs another shard or another job. Do not raise `timeout-minutes`. Cache `deps`, `_build`, `node_modules`, and the Playwright browser. Wait on a tick, a seat list, or a paint count. The product frame target is an iPhone 13 at 30 fps. The runner cap is the quiet-build baseline in `docs/concepts/PERFORMANCE.md` times the margin in `e2e/perf_budget.js`.
 
 ## Deploy
 

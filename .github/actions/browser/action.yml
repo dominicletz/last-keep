@@ -1,0 +1,48 @@
+name: Browser toolchain
+description: Cache and install Elixir, the client, and Chromium for a Playwright job
+
+runs:
+  using: composite
+  steps:
+    - uses: erlef/setup-beam@v1
+      with:
+        otp-version: "28.5.0.7"
+        elixir-version: "1.18.4"
+        version-type: strict
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: npm
+        cache-dependency-path: |
+          package-lock.json
+          assets/package-lock.json
+
+    - uses: actions/cache@v4
+      with:
+        path: |
+          deps
+          _build
+          assets/node_modules
+          node_modules
+          ~/.cache/ms-playwright
+        key: ci-browser-${{ hashFiles('mix.lock', 'assets/package-lock.json', 'package-lock.json') }}
+
+    - run: mix local.hex --force
+      shell: bash
+    - run: mix local.rebar --force
+      shell: bash
+    - run: mix deps.get
+      shell: bash
+    - run: mix compile
+      shell: bash
+    - run: mix assets.setup
+      shell: bash
+    - run: npm ci --prefix assets
+      shell: bash
+    - run: mix assets.build
+      shell: bash
+    - run: npm ci
+      shell: bash
+    - run: npx playwright install chromium --with-deps
+      shell: bash

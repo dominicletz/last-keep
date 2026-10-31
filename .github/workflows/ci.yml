@@ -7,10 +7,11 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
-  test:
-    # Playwright 1.56 cannot install Chromium on ubuntu-latest once that image is 26.04.
+  unit:
+    timeout-minutes: 10
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +26,17 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: assets/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            assets/package-lock.json
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+            assets/node_modules
+          key: ci-unit-${{ hashFiles('mix.lock', 'assets/package-lock.json') }}
 
       - run: mix local.hex --force
       - run: mix local.rebar --force
@@ -52,8 +63,65 @@ jobs:
           fi
       - run: npm run check --prefix assets
       - run: npm ci
-      - run: node --test e2e/steer.test.js e2e/probe.test.js e2e/roster.test.js
-      - run: npx playwright install chromium --with-deps
-      - run: npx playwright test
-      - name: Time the HD-2D scene on SwiftShader
-        run: node script/hd2d_swiftshader.mjs
+      - run: node --test e2e/steer.test.js e2e/probe.test.js e2e/roster.test.js e2e/screen.test.js script/ci_budget.test.js
+
+  browser:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser
+      - run: npx playwright test --project=functional --grep-invert "six seats hold" --shard=${{ matrix.shard }}/6
+
+  match:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser
+      - run: npx playwright test --project=functional -g "six seats hold"
+
+  perf:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/browser
+      - run: npx playwright test --project=perf
+
+  budget:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test script/ci_budget.test.js
+
+  test:
+    timeout-minutes: 10
+    runs-on: ubuntu-24.04
+    needs: [unit, browser, perf, match, budget]
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: required check stays red unless every job passed
+        env:
+          UNIT: ${{ needs.unit.result }}
+          BROWSER: ${{ needs.browser.result }}
+          PERF: ${{ needs.perf.result }}
+          MATCH: ${{ needs.match.result }}
+          BUDGET: ${{ needs.budget.result }}
+        run: node script/ci_gate.js
+      - name: slowest job stays under 10 minutes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node script/ci_wall.js

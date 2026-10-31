@@ -64,7 +64,7 @@ These are ceilings. A later change may only lower one.
 - Textures stay at 4.
 - Empty-yard draw calls stay at or under 868 on the desktop viewport and 973 on the 844 by 390 viewport. Empty-yard triangles stay at or under 11552 and 12880 for those same viewports. This run held that line. Wave 6 with monsters may use up to 1043 calls and 13436 triangles on desktop, and 1236 calls and 15820 triangles on the phone viewport. The six-seat match now also fails a frame that has a visible bone rim above 700 calls or 9800 triangles. Those sit under the empty-yard ceilings. The 1043 and 13436 notes do not move up.
 - JS heap trough after a wave does not rise across three waves. This run held that line. The trough stayed under 35 MB.
-- The paint the player waits on, submit plus any forced read, has a target of p95 under 16.7 ms on a desktop GPU and under 33 ms on the phone viewport at wave 6 with about 16 monsters and six heroes. SwiftShader does not meet that target today. The CI ceiling starts at the measured wave-6 window p95 from this run, 424 ms on desktop and 256 ms on the phone viewport, and only moves down. A check that required 33 ms on this driver would fail before any fix existed.
+- The paint the player waits on, submit plus any forced read, has a target of p95 under 16.7 ms on a desktop GPU. The phone target is an iPhone 13 at 30 fps, which is `1000/30` ms (33.3). The 18 Oct window of 424 ms on desktop and 256 ms on the phone viewport is history. It is not the CI gate. SwiftShader on the runner does not measure the phone.
 - A rendered facing step is at most 0.7 radians. A half turn takes at least five steps. This run fails that. Steps of 3.1 radians were applied in one snapshot.
 
 ## What changes
@@ -77,7 +77,17 @@ Facing joins the pose track. The rendered yaw moves on the shortest arc, and eac
 
 ## How to verify
 
-`e2e/scenarios.js` grows a scripted match with six seats through at least three waves and records paint percentiles plus `renderer.info`. The run fails if geometries or the JS heap trough rise from wave N to wave N+3, if empty-yard draw calls or triangles exceed the ceilings above, or if the paint p95 exceeds the CI ceiling. Those ceilings only move down.
+`e2e/scenarios.js` grows a scripted match with six seats through at least three waves and records `renderer.info`. The run fails if geometries or the JS heap trough rise from wave N to wave N+3, or if empty-yard draw calls or triangles exceed the ceilings above. Those draw-call ceilings only move down. Paint time is `e2e/perf.spec.js`, one page, described below.
+
+## CI frame cap
+
+A p95 taken while six SwiftShader pages paint at once is not a frame cost for the game. On run 41232497345 the quiet build on ubuntu-24.04 was 6.6 ms, and the same match later read 691 ms and 741 ms while six pages fought, with draw calls still near 200. That spread is what flaked the old 424 ms ceiling. The ceiling was not raised.
+
+CI measures one low-tier page. Low keeps the HD-2D picture and turns the shadow map, bloom, and depth of field off. The sample waits until eight paints have landed, drops those, then takes p95 of the next 24. The first paints are shader compile and can be a second. They are not the cap.
+
+The runner baseline is that 6.6 ms quiet-build p95. The margin is 8. The cap is 52.8 ms. It stays above the iPhone 13 frame (33.3 ms) and below 424, so a regression into the hundreds of milliseconds still fails. `e2e/perf_budget.js` holds the three numbers. `e2e/screen.test.js` fails if the cap leaves that band. An idle page paints fewer than 12 frames in one measured second, because `idleDrawMs` is 250.
+
+The product target remains the iPhone 13 at 30 fps. The runner does not execute that phone. A new baseline is a quiet-build p95 measured on ubuntu-24.04 and written down here and in `e2e/perf_budget.js`. Do not type a larger cap to clear a red run.
 
 A unit test on the facing step feeds a half turn and checks that no step exceeds 0.7 radians and that the half turn takes at least five steps. Heroes and monsters share that step.
 
