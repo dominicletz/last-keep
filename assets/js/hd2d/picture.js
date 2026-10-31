@@ -391,9 +391,27 @@ function shadowQuad() {
   return quad
 }
 
+function unmaskedRenderer(renderer) {
+  if (!renderer || typeof renderer.getContext !== "function") return ""
+  try {
+    const gl = renderer.getContext()
+    if (!gl || typeof gl.getExtension !== "function") return ""
+    const info = gl.getExtension("WEBGL_debug_renderer_info")
+    if (!info) return ""
+    return String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || "")
+  } catch (_err) {
+    return ""
+  }
+}
+
+function softwareRenderer(label) {
+  return /SwiftShader|llvmpipe|softpipe|Basic Render/i.test(label)
+}
+
 function createHdPicture(env) {
-  const tier = tierFor(env)
-  const extras = tierExtras(tier)
+  let tier = tierFor(env)
+  let extras = { ...tierExtras(tier) }
+  let driverNoted = false
   let resolveReady = () => {}
   let readySettled = false
   const ready = new Promise((resolve) => {
@@ -726,8 +744,12 @@ function createHdPicture(env) {
 
   return {
     fov: LOOK.fov,
-    tier,
-    extras,
+    get tier() {
+      return tier
+    },
+    get extras() {
+      return extras
+    },
     ready,
     get live() {
       return live
@@ -827,6 +849,23 @@ function createHdPicture(env) {
       for (const hero of heroes.slice(0, LOOK.litHeroes)) litHero(hero)
     },
     present(renderer, scene, camera) {
+      if (!driverNoted) {
+        driverNoted = true
+        const label = unmaskedRenderer(renderer)
+        // A software rasterizer cannot finish the full-size bloom and depth of field
+        // inside the 45ms blend window, so it takes the low extras. The picture stays.
+        if (softwareRenderer(label)) {
+          tier = "low"
+          extras = { ...tierExtras("low") }
+          if (spot) {
+            spot.shadow.mapSize.set(extras.shadow, extras.shadow)
+            if (spot.shadow.map) {
+              spot.shadow.map.dispose()
+              spot.shadow.map = null
+            }
+          }
+        }
+      }
       const started = performance.now()
       const previousAutoReset = renderer.info.autoReset
       try {

@@ -529,6 +529,38 @@ test("low and phone tiers drop the passes they do not spend", () => {
     return renders
   }
   assert.equal(count(createPicture()), 7)
+  const software = createPicture()
+  let softwareRenders = 0
+  software.present(
+    {
+      info: { autoReset: true, reset() {} },
+      getSize(out) {
+        out.x = 320
+        out.y = 200
+      },
+      getContext() {
+        return {
+          getExtension() {
+            return { UNMASKED_RENDERER_WEBGL: 37446 }
+          },
+          getParameter() {
+            return "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+          }
+        }
+      },
+      setRenderTarget() {},
+      clear() {},
+      render() {
+        softwareRenders += 1
+      }
+    },
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera()
+  )
+  assert.equal(software.tier, "low")
+  assert.equal(software.extras.dof, false)
+  assert.equal(software.extras.bloom, false)
+  assert.equal(softwareRenders, 3)
   assert.equal(
     count(createPicture({ maxTouchPoints: 2, coarse: true, width: 390, height: 844, hardwareConcurrency: 8, deviceMemory: 8 })),
     5
