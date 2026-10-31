@@ -1,5 +1,5 @@
 import { Socket } from "phoenix"
-import { pictureFromSearch } from "./hd2d/picture"
+import { createPicture } from "./hd2d/picture"
 import { perfRequested, perfText } from "./hd2d/perf"
 import { createView } from "./render"
 import { monsterKinds, monsterParts } from "./monsters.js"
@@ -33,13 +33,9 @@ export function bootPlay(code) {
   const join = document.querySelector("#join-game")
   const overlay = document.querySelector("#overlay")
   const search = window.location.search
-  const picture = pictureFromSearch(search)
+  const picture = createPicture(deviceEnv())
   const view = createView(stage, picture)
-  if (picture) {
-    window.__lastKeepPicture = typeof view.grade === "function"
-      ? { ready: picture.ready, grade: () => view.grade() }
-      : { ready: picture.ready }
-  }
+  window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade() }
   const ui = { stage, hud, join, overlay, view }
   const saved = readSeat(code)
   const queried = seatFromQuery(search)
@@ -63,6 +59,21 @@ export function bootPlay(code) {
     enter(code, { token, name: queried.name, hero: queried.hero }, ui)
   } else {
     prefill(join, localStorage.getItem("lastkeep-name") || "", "warrior")
+  }
+}
+
+function deviceEnv() {
+  const nav = typeof navigator === "undefined" ? {} : navigator
+  const connection = nav.connection || {}
+  const coarse = typeof window !== "undefined" && window.matchMedia && window.matchMedia("(pointer: coarse)").matches
+  return {
+    hardwareConcurrency: nav.hardwareConcurrency,
+    deviceMemory: nav.deviceMemory,
+    saveData: !!connection.saveData,
+    maxTouchPoints: nav.maxTouchPoints || 0,
+    coarse: !!coarse,
+    width: typeof window === "undefined" ? 1280 : window.innerWidth,
+    height: typeof window === "undefined" ? 800 : window.innerHeight
   }
 }
 

@@ -89,7 +89,7 @@ async function timeOnServer() {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
     page.setDefaultTimeout(180000)
     const needPixels = !fs.existsSync(path.join(root, "docs/concepts/HD2D-BASELINE.json"))
-    await page.goto(`${origin}/r/${room.code}?hd2d=1`)
+    await page.goto(`${origin}/r/${room.code}`)
     await page.waitForFunction(() => window.__lastKeepPicture && typeof window.__lastKeepPicture.grade === "function")
     const payload = await page.evaluate(async (pixels) => {
       const buffers = await window.__lastKeepPicture.grade()
@@ -205,10 +205,10 @@ async function timeStatic() {
   const entry = path.join(os.tmpdir(), "hd2d-grade-entry.js")
   fs.writeFileSync(
     entry,
-    `import { pictureFromSearch } from ${JSON.stringify(path.join(root, "assets/js/hd2d/picture.js"))}
+    `import { createPicture } from ${JSON.stringify(path.join(root, "assets/js/hd2d/picture.js"))}
 import { createView } from ${JSON.stringify(path.join(root, "assets/js/render.js"))}
 const stage = document.querySelector("#stage")
-const picture = pictureFromSearch(location.search)
+const picture = createPicture()
 const view = createView(stage, picture)
 window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade() }
 `
@@ -233,7 +233,7 @@ window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade() }
       "--enable-unsafe-swiftshader",
       `--user-data-dir=${profile}`,
       "--window-size=1280,800",
-      `http://127.0.0.1:${port}/?hd2d=1`
+      `http://127.0.0.1:${port}/`
     ],
     { stdio: "inherit" }
   )

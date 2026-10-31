@@ -1,6 +1,8 @@
 # Art pipeline
 
-The concept sheets in `docs/concept/` are isometric pixel art. The live yard is orthographic 3D with flat faces, drawn through a nearest-neighbor buffer. A low-resolution quantize and a dark edge on those faces leave the faces flat. The picture has to be sprites and tiles taken from the sheets, snapped to the buffer the game already uses, and locked to the `STYLE.md` palette.
+The live picture is one HD-2D camera. It fills the window (a 1280×800 window is a 1280×800 buffer), the field of view is 15 degrees, and there is no second renderer and no `hd2d` flag. Quality tiers change the shadow map, bloom, and depth of field. They do not change the style. The gallery raster below still judges concept crops on a 640×400 orthographic frame. That raster is not the page.
+
+The concept sheets in `docs/concept/` are isometric pixel art. A low-resolution quantize and a dark edge on flat faces leave the faces flat. The picture has to be sprites and tiles taken from the sheets, snapped to the world step the game already uses (0.84), and locked to the `STYLE.md` palette.
 
 `docs/concepts/measure.png` is the measurement. The left panels are crops of `theme.jpg`. The middle panels are `test/gallery/house/day.png` and `test/gallery/keep/day.png`, cut to the ink and scaled with nearest-neighbor. The right panels run the quantize-and-outline pass described below. The keep's block score stays at 1.
 

@@ -4,6 +4,10 @@ This is the source of truth for how roles touch each other. The machine-readable
 
 [`CONCEPT.md`](../CONCEPT.md) is the original pitch. Where this page and the concept disagree, the concept line is an edge marked `planned` in the JSON, and the gap is in [`playtests/BACKLOG.md`](../playtests/BACKLOG.md).
 
+## Picture
+
+The browser has one picture. It is the HD-2D camera: perspective, field of view 15, buffer the size of the window. There is no palette renderer and no flag that selects one. High, phone, and low tiers keep that picture and only spend less on the shadow map, bloom, and depth of field. `?perf=1` draws a timing line and does not change the picture. The join body stays name, hero, and token.
+
 ## Graph
 
 ```mermaid

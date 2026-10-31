@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { cameraLift, frameFor } from "../frame.js"
 import { masonryBytes } from "../tiles.js"
+import { tierExtras, tierFor } from "./tier.js"
 
 const LOOK = {
   fov: 15,
@@ -390,7 +391,9 @@ function shadowQuad() {
   return quad
 }
 
-function createHdPicture() {
+function createHdPicture(env) {
+  const tier = tierFor(env)
+  const extras = tierExtras(tier)
   let resolveReady = () => {}
   let readySettled = false
   const ready = new Promise((resolve) => {
@@ -434,7 +437,7 @@ function createHdPicture() {
   function aimSpot(scene, torch, intensity) {
     if (!spot) {
       spot = new THREE.SpotLight(0xffa24a, 0, 240, 0.7, 0.45, 2)
-      spot.shadow.mapSize.set(LOOK.shadowMap, LOOK.shadowMap)
+      spot.shadow.mapSize.set(extras.shadow, extras.shadow)
       spot.shadow.bias = LOOK.shadowBias
     }
     const parent = torch.parent
@@ -723,6 +726,8 @@ function createHdPicture() {
 
   return {
     fov: LOOK.fov,
+    tier,
+    extras,
     ready,
     get live() {
       return live
@@ -850,10 +855,20 @@ function createHdPicture() {
         renderer.clear(true, true, true)
         renderer.render(scene, camera)
         drawPass(chain.fogged, chain.fog)
-        drawPass(chain.bloom, chain.bloomDown)
-        drawPass(chain.graded, chain.bloomUp)
-        drawPass(chain.blurred, chain.dof)
-        drawPass(chain.shown, chain.restore)
+        if (extras.bloom) {
+          drawPass(chain.bloom, chain.bloomDown)
+          drawPass(chain.graded, chain.bloomUp)
+        }
+        const sharp = extras.bloom ? chain.graded.texture : chain.fogged.texture
+        if (extras.dof) {
+          chain.dof.uniforms.tColor.value = sharp
+          chain.restore.uniforms.tSharp.value = sharp
+          drawPass(chain.blurred, chain.dof)
+          drawPass(chain.shown, chain.restore)
+          chain.blit.uniforms.tColor.value = chain.shown.texture
+        } else {
+          chain.blit.uniforms.tColor.value = sharp
+        }
         drawPass(null, chain.blit)
       } finally {
         renderer.info.autoReset = previousAutoReset
@@ -863,8 +878,6 @@ function createHdPicture() {
   }
 }
 
-export function pictureFromSearch(search) {
-  const raw = search && search.startsWith("?") ? search : `?${search || ""}`
-  if (new URLSearchParams(raw).get("hd2d") !== "1") return null
-  return createHdPicture()
+export function createPicture(env) {
+  return createHdPicture(env)
 }
