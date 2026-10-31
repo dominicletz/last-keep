@@ -264,6 +264,8 @@ async function sample(tab, notes) {
   if (/next/i.test(row.wave)) notes.unstable = true
   if (row.wave) notes.waves.push(row.wave)
   if (/\d/.test(row.fx)) notes.digit = true
+  // The floater node leaves after 2.5s. drawFx writes the same word onto the
+  // log when it appends the node, and that log outlives the poll gap.
   if (row.fx.includes("Slain")) notes.slain = true
   if (row.fx.includes("Boom")) notes.boom = true
   if (row.floaters.some((left) => !left || left.includes("NaN"))) notes.nan = true
@@ -271,6 +273,7 @@ async function sample(tab, notes) {
   for (const ev of row.log) {
     if (ev.type === "hit" && ev.amount > 0) notes.hit = true
     if (ev.type === "death") notes.death = true
+    if (ev.text === "Slain") notes.slain = true
     if (ev.type === "boom") notes.boom = true
   }
   if (row.kinds.includes("fireball") || row.projectiles.some((shot) => shot.kind === "fireball")) notes.fireball = true
