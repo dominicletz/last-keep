@@ -201,27 +201,23 @@ async function expectGoblinsOnYard(page) {
       game.monsters.every((monster) => monster.onScreen)
     )
   })
-  // The card is drawn at the mesh, which can sit off the sim point. One read
-  // of that mesh, then one more after the next paint if the first missed.
-  const goblinInk = () =>
-    page.evaluate(() => {
-      const game = window.__lastKeep
-      return (game.monsters || []).some((monster) => {
-        const x = monster.drawX == null ? monster.x : monster.drawX
-        const z = monster.drawZ == null ? monster.y : monster.drawZ
-        // y=16 is the top of an 18-unit goblin, where the crop is sparse.
-        // The torso at y=8 is the dense band. One of the two reads has to
-        // clear the same body-pixel count.
-        return Math.max(game.redNear(x, z, 8), game.redNear(x, z, 16)) > 8
-      })
+  // A seat that just woke compiles its first presents. Those reads come
+  // back empty. Six later frames are a steady picture. The card is drawn at
+  // the mesh, which can sit off the sim point. y=16 is the sparse crown of
+  // an 18-unit goblin. y=8 is the torso. The count stays above 8.
+  const mark = await page.evaluate(() => window.__lastKeep.renders || 0)
+  await page.waitForFunction((n) => (window.__lastKeep.renders || 0) >= n + 6, mark)
+  const ink = await page.evaluate(() => {
+    const game = window.__lastKeep
+    return (game.monsters || []).map((monster) => {
+      const x = monster.drawX == null ? monster.x : monster.drawX
+      const z = monster.drawZ == null ? monster.y : monster.drawZ
+      const crown = game.redNear(x, z, 16)
+      const torso = game.redNear(x, z, 8)
+      return { kind: monster.kind, count: Math.max(crown, torso) }
     })
-  let visible = await goblinInk()
-  if (!visible) {
-    const mark = await page.evaluate(() => window.__lastKeep.renders || 0)
-    await page.waitForFunction((n) => (window.__lastKeep.renders || 0) > n, mark)
-    visible = await goblinInk()
-  }
-  expect(visible).toBe(true)
+  })
+  expect(ink.some((row) => row.count > 8), JSON.stringify(ink)).toBe(true)
   const edgeLabels = await page.locator("[data-hints]").innerText()
   expect(edgeLabels).not.toMatch(/goblin \d/)
   const { waveClock } = await import("../assets/js/hud.js")
