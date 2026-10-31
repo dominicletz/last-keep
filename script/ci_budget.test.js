@@ -31,6 +31,21 @@ test("the gate has to need every other job", () => {
   assert.deepEqual(gateGaps(jobs), ["perf"])
 })
 
+test("the browser install bounds apt before Playwright asks for deps", () => {
+  const action = fs.readFileSync(path.join(__dirname, "../.github/actions/browser/action.yml"), "utf8")
+  const deploy = fs.readFileSync(path.join(__dirname, "../.github/workflows/deploy.yml"), "utf8")
+  const bound = fs.readFileSync(path.join(__dirname, "apt_bound.sh"), "utf8")
+  const installAt = action.indexOf("npx playwright install chromium --with-deps")
+  const boundAt = action.indexOf("bash script/apt_bound.sh")
+  assert.ok(boundAt >= 0 && boundAt < installAt)
+  const deployInstall = deploy.indexOf("npx playwright install chromium --with-deps")
+  const deployBound = deploy.indexOf("bash script/apt_bound.sh")
+  assert.ok(deployBound >= 0 && deployBound < deployInstall)
+  assert.match(bound, /Acquire::http::Timeout "20"/)
+  assert.match(bound, /azure\.archive\.ubuntu\.com/)
+  assert.match(bound, /archive\.ubuntu\.com/)
+})
+
 test("the slowest completed job fails once it passes 10 minutes", () => {
   const start = "2026-10-31T12:00:00Z"
   const under = overBudget([
