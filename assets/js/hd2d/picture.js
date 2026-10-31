@@ -867,8 +867,11 @@ function createHdPicture(env) {
       if (clock !== "day" && clock !== "dusk" && clock !== "night") throw new Error("unknown clock")
       const rig = LOOK[clock]
       const { scene, sun, ambient, hemi, torch } = lights
-      scene.fog = null
       scene.background.set(clock === "night" ? 0x322c3c : 0x4e4651)
+      if (!extras.bloom && !extras.dof) {
+        lowFog.color.copy(scene.background)
+        scene.fog = lowFog
+      } else scene.fog = null
       hemi.color.set(rig.ambient)
       hemi.groundColor.set(0x3a342c)
       hemi.intensity = rig.hemi
@@ -912,18 +915,16 @@ function createHdPicture(env) {
         if (renderer.shadowMap) renderer.shadowMap.enabled = false
         const started = performance.now()
         const previousAutoReset = renderer.info.autoReset
-        const previousFog = scene.fog
         try {
           renderer.info.autoReset = false
           renderer.info.reset()
           if (scene.background && scene.background.isColor) lowFog.color.copy(scene.background)
           lowFog.density = span > 1 ? 0.9 / span : 0
-          scene.fog = lowFog
+          if (scene.fog !== lowFog) scene.fog = lowFog
           renderer.setRenderTarget(null)
           renderer.clear(true, true, true)
           renderer.render(scene, camera)
         } finally {
-          scene.fog = previousFog
           renderer.info.autoReset = previousAutoReset
         }
         return { submitMs: performance.now() - started }
