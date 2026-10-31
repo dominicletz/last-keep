@@ -118,7 +118,7 @@ export function createView(stage, picture) {
     mat(groundColor)
   )
   ground.rotation.x = -Math.PI / 2
-  ground.receiveShadow = true
+  ground.receiveShadow = false
   scene.add(ground)
   const mapTable = new THREE.Mesh(
     trackGeometry(new THREE.BoxGeometry(36, 8, 22)),
@@ -155,7 +155,7 @@ export function createView(stage, picture) {
   )
   yard.rotation.x = -Math.PI / 2
   yard.position.y = 0.08
-  yard.receiveShadow = true
+  yard.receiveShadow = false
   scene.add(yard)
   const plazaBytes = plazaPixels("day")
   const plazaMap = new THREE.DataTexture(plazaBytes, PLAZA_TEX, PLAZA_TEX)
@@ -180,12 +180,12 @@ export function createView(stage, picture) {
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
   plaza.position.y = 0.2
-  plaza.receiveShadow = true
+  plaza.receiveShadow = false
   plaza.layers.enable(1)
   const ring = new THREE.Mesh(new THREE.RingGeometry(154, 164, plazaSides), mat(ringColor))
   ring.rotation.x = -Math.PI / 2
   ring.position.y = 0.28
-  ring.receiveShadow = true
+  ring.receiveShadow = false
   scene.add(plaza, ring)
   const sheetKinds = {
     house: { w: 56, h: 64, stand: true },
@@ -701,7 +701,7 @@ export function createView(stage, picture) {
           parts: mesh.userData.parts,
           marks: mesh.userData.marks,
           bounds: mesh.userData.bounds,
-          px: figurePixels(mesh, camera, renderer.domElement.height)
+          px: figurePixels(mesh, camera, viewFrame.snapHeight || viewFrame.bufferHeight)
         })
       }
       heroKey = me ? `hero:${me.id}` : null
