@@ -561,6 +561,31 @@ test("low and phone tiers drop the passes they do not spend", () => {
   assert.equal(software.extras.dof, false)
   assert.equal(software.extras.bloom, false)
   assert.equal(softwareRenders, 3)
+  const hidden = createPicture()
+  let hiddenType = null
+  hidden.present(
+    {
+      info: { autoReset: true, reset() {} },
+      getSize(out) {
+        out.x = 32
+        out.y = 32
+      },
+      getContext() {
+        return { getExtension() { return null } }
+      },
+      setRenderTarget(target) {
+        if (!hiddenType && target && target.texture) hiddenType = target.texture.type
+      },
+      clear() {},
+      render() {}
+    },
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera()
+  )
+  assert.equal(hidden.tier, "low")
+  assert.equal(hidden.extras.bloom, false)
+  assert.equal(hidden.extras.dof, false)
+  assert.equal(hiddenType, THREE.UnsignedByteType)
   assert.equal(
     count(createPicture({ maxTouchPoints: 2, coarse: true, width: 390, height: 844, hardwareConcurrency: 8, deviceMemory: 8 })),
     5

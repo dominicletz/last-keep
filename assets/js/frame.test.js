@@ -1,9 +1,16 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as THREE from "three"
-import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, idleDrawMs, inputWindowMs, pixelSize } from "./frame.js"
+import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, idleDrawMs, inputWindowMs, paintGap, pixelSize, slowPaintGapMs } from "./frame.js"
 import { heroSignature } from "./heroes.js"
 import { viewScale } from "./town.js"
+
+test("a slow paint leaves a gap longer than the blend window", () => {
+  assert.equal(paintGap(0), 0)
+  assert.equal(paintGap(40), 0)
+  assert.equal(paintGap(41), slowPaintGapMs)
+  assert.ok(slowPaintGapMs > 45)
+})
 
 test("wide, square, and portrait windows keep square pixels and frame the yard", () => {
   for (const [width, height] of [
