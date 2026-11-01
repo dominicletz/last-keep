@@ -69,6 +69,10 @@ function launch(code, seat, ui) {
   }
   if (ui.view && ui.view.stop) ui.view.stop()
   ui.stage.replaceChildren()
+  if (sessionStorage.getItem("lastkeep-arrive") === "1") {
+    window.__lastKeepArrive = "wait"
+    sessionStorage.removeItem("lastkeep-arrive")
+  }
   const picture = createPicture(deviceEnv())
   const view = createView(ui.stage, picture)
   window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade(), tier: picture.tier }
@@ -131,6 +135,7 @@ async function enter(code, seat, ui) {
     })
     const body = await response.json()
     if (!response.ok) {
+      sessionStorage.removeItem("lastkeep-arrive")
       ensureMenu(code, ui, seat)
       revealJoin(ui.join)
       error.hidden = false
@@ -144,6 +149,7 @@ async function enter(code, seat, ui) {
     concealJoin(ui.join)
     launch(code, { ...stored, retried: seat.retried }, ui)
   } catch (_err) {
+    sessionStorage.removeItem("lastkeep-arrive")
     ensureMenu(code, ui, seat)
     revealJoin(ui.join)
     error.hidden = false

@@ -12,14 +12,16 @@ Triangle Strategy's title is a still of the party. Choosing units is a list: a p
 
 ## What Last Keep takes from that
 
-The yard at dusk is the screen. The same HD-2D picture draws it. The hero stands in the centre, in front of the keep. Left and right are the only class control, on every device:
+The yard at dusk is the screen. The same HD-2D picture draws it, with a camera of its own. That camera sits low and to the side, close enough that the hero is about two fifths of the window, and the keep, the trees, and the sky sit in layers behind. The card height is an integer multiple of the 160px source, and the textures stay nearest, so the pixels stay square. On a short landscape window the hero stands left of centre and the class card sits on the right. Left and right are the only class control, on every device:
 
 - Arrow keys, and A and D, while the name field is not being edited.
 - On-screen arrows, for the mouse and for a tap.
 - A sideways swipe on the picture.
 - The gamepad bumpers, when the browser exposes a pad. Keys and arrows stay the path when it does not.
 
-The swap is a short scale-in of the new sheet. The sheet comes from `hero-data.js` through `heroParts`. A new sheet replaces the picture without a change to this screen. The one-line role sits in `heroes.js` beside that list, because `hero-data.js` is the locked atlas.
+The hero idles on the sheet that is already dressed. A warrior uses the walk sheet's idle rows. The other classes stand on their generated cards until a sheet is attached the same way. Changing class steps the new sheet in: it fades up, slides in, and turns. A new sheet replaces the picture without a change to this screen. The one-line role sits in `heroes.js` beside that list, because `hero-data.js` is the locked atlas.
+
+Create and Join hand the seat to the yard camera. That camera starts on the same close framing, around the hero who just sat down, and glides to the gameplay seat. A stored seat does not play that glide.
 
 The copy is the class name and that one line. The name field is small, prefilled from this machine, and it is not focused until the player chooses it, so the arrows keep changing the class. Enter and the one button accept. The button says Create on the home page and Join on `/r/<code>`.
 

@@ -23,6 +23,7 @@ export function bootLanding() {
         })
         const body = await response.json()
         if (!response.ok) {
+          sessionStorage.removeItem("lastkeep-arrive")
           error.hidden = false
           error.textContent = body.error || "Could not create the game."
           return
@@ -33,6 +34,7 @@ export function bootLanding() {
         localStorage.setItem(`lastkeep:${body.code}`, JSON.stringify(stored))
         window.location = body.path
       } catch (_err) {
+        sessionStorage.removeItem("lastkeep-arrive")
         error.hidden = false
         error.textContent = "The keep did not answer."
       }

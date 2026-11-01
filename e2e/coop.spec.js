@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, oneSeat, paradeShowsEveryKind, pictureGrade, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
+const { captionsClearTheBuilds, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -95,6 +95,10 @@ test("the map table shows the explored land", async ({ browser }) => {
 
 test("the plain url is the hd2d picture and grades three stills", async ({ browser }) => {
   await hd2dFlag(browser)
+})
+
+test("the start hero fills the frame", async ({ browser }) => {
+  await portraitHero(browser)
 })
 
 test("six seats hold the match budgets across three waves", async ({ browser }) => {

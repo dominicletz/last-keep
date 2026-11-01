@@ -1,9 +1,8 @@
 import { createPicture } from "./hd2d/picture"
 import { createView } from "./render"
 import { heroKinds, heroLine } from "./heroes.js"
+import { heroMotion, PORTRAIT_STAND, portraitPose } from "./portrait.js"
 import { acceptWord, classFromKey, menuEnv, stepClass } from "./start_pick.js"
-
-const STAND = { x: 18, y: 86 }
 
 export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   const kinds = heroKinds()
@@ -13,6 +12,7 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   let alive = true
   let pads = [false, false]
   let swipe = null
+  let swap = 0
   const nameInput = form.querySelector("#player-name")
   const button = form.querySelector("#start-button")
   nameInput.value = name || localStorage.getItem("lastkeep-name") || ""
@@ -53,6 +53,7 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
     event.preventDefault()
     const picked = nameInput.value.trim()
     if (!picked) return
+    sessionStorage.setItem("lastkeep-arrive", "1")
     onAccept({ name: picked, hero: kinds[index] })
   })
   window.addEventListener("keydown", onKey)
@@ -62,6 +63,7 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   const poll = () => {
     if (!alive) return
     readPads()
+    if (swap) paint()
     requestAnimationFrame(poll)
   }
   requestAnimationFrame(poll)
@@ -71,11 +73,14 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
     view = createView(stage, picture)
     window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade(), tier: picture.tier }
     paint()
+    if (picture.ready && picture.ready.then) picture.ready.then(() => { if (alive) paint() })
   })
+  window.addEventListener("resize", paint)
 
   function choose(delta) {
     index = stepClass(index, delta, kinds.length)
     show(kinds[index])
+    swap = performance.now()
     paint()
   }
 
@@ -86,9 +91,10 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   }
 
   function paint() {
-    if (!view) return
-    const kind = kinds[index]
-    view.draw(previewSnap(kind, tick), "pick")
+    if (!view || !alive) return
+    const motion = heroMotion(swap, performance.now())
+    if (swap && motion.opacity === 1 && motion.slide === 0) swap = 0
+    view.draw(previewSnap(kinds[index], tick, motion), "pick")
     tick += 1
   }
 
@@ -112,16 +118,20 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
       window.removeEventListener("keydown", onKey)
       window.removeEventListener("pointerdown", onPointerDown)
       window.removeEventListener("pointerup", onPointerUp)
+      window.removeEventListener("resize", paint)
       if (view && view.stop) view.stop()
       view = null
     }
   }
 }
 
-function previewSnap(kind, tick) {
+function previewSnap(kind, tick, motion) {
+  const pose = portraitPose(stand(), viewWidth(), viewHeight())
+  const step = motion || { slide: 0, opacity: 1, turn: 0 }
   return {
     tick,
     hd2dStill: true,
+    portrait: true,
     phase: "build",
     phase_ms: 4000,
     hold: false,
@@ -134,9 +144,10 @@ function previewSnap(kind, tick) {
         id: "pick",
         name: " ",
         hero: kind,
-        x: STAND.x,
-        y: STAND.y,
-        facing: Math.PI,
+        x: PORTRAIT_STAND.x + pose.side.x * step.slide,
+        y: PORTRAIT_STAND.z + pose.side.z * step.slide,
+        facing: pose.facing + step.turn,
+        opacity: step.opacity,
         hp: 100,
         max: 100,
         alive: true,
@@ -151,6 +162,18 @@ function previewSnap(kind, tick) {
     projectiles: [],
     events: []
   }
+}
+
+function stand() {
+  return { x: PORTRAIT_STAND.x, z: PORTRAIT_STAND.z }
+}
+
+function viewWidth() {
+  return typeof window === "undefined" ? 1280 : window.innerWidth
+}
+
+function viewHeight() {
+  return typeof window === "undefined" ? 800 : window.innerHeight
 }
 
 function storedHero() {

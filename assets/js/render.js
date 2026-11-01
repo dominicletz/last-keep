@@ -15,6 +15,7 @@ import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
 import { cellOffset, pictureColumn, sheetRow } from "./pictures.js"
+import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
 import { keepParts, modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
@@ -415,10 +416,13 @@ export function createView(stage, picture) {
       }
       if (!mesh) {
         mesh = build(row)
-        if (row.preview) mesh.userData.arrived = performance.now()
         if (!mesh.userData.role) mesh.userData.role = kind
         meshes.set(key, mesh)
         scene.add(mesh)
+      }
+      if (kind === "hero") {
+        mesh.userData.preview = !!row.preview
+        mesh.userData.fade = Number.isFinite(row.opacity) ? row.opacity : 1
       }
       remember(key, row.x, row.y)
       aimFacing(mesh, row.facing)
@@ -534,6 +538,7 @@ export function createView(stage, picture) {
       viewApi.draw(pending.snap, pending.selfId)
       drawnTick = pending.snap.tick
     }
+    if (window.__lastKeepArrive && pending) placeCamera(pending.snap, pending.selfId)
     for (const [, mesh] of meshes) stepFacing(mesh)
     for (const [key, mesh] of meshes) placeMesh(key, mesh)
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
@@ -639,10 +644,7 @@ export function createView(stage, picture) {
       applyFrame()
       const zoom = zoomFor(snap)
       const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
-      const anchor = cameraFocus(me?.x, me?.y)
-      const step = worldStep()
-      focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
-      const dist = zoom.camera
+      seatCamera(snap, me)
       const yardScale = zoom.dirt / 150
       plaza.scale.setScalar(yardScale)
       ring.scale.setScalar(yardScale)
@@ -657,8 +659,6 @@ export function createView(stage, picture) {
         keep = makeKeep(townRank)
         scene.add(keep)
       }
-      picture.seat(camera, focus, dist, snap)
-
       const keepRatio = snap.keep.max ? snap.keep.hp / snap.keep.max : 1
       keep.scale.y = 0.65 + keepRatio * 0.35
 
@@ -748,6 +748,7 @@ export function createView(stage, picture) {
         figures.push({
           id: key.slice(5),
           hero: mesh.userData.hero,
+          box: heroScreenBox(mesh),
           parts: mesh.userData.parts,
           marks: mesh.userData.marks,
           bounds: mesh.userData.bounds,
@@ -927,13 +928,74 @@ export function createView(stage, picture) {
     }
   }
 
-  function placeCamera(snap, selfId) {
-    const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
-    const anchor = cameraFocus(me?.x, me?.y)
+  function arriveBlend() {
+    const mark = window.__lastKeepArrive
+    if (!mark) return 1
+    if (mark === "wait") {
+      window.__lastKeepArrive = performance.now()
+      return 0
+    }
+    const t = (performance.now() - mark) / ARRIVE_MS
+    if (t >= 1) {
+      window.__lastKeepArrive = 0
+      return 1
+    }
+    return t
+  }
+
+  function seatCamera(snap, me) {
+    const portrait = !!snap.portrait
+    const hero = portrait
+      ? { x: PORTRAIT_STAND.x, z: PORTRAIT_STAND.z }
+      : { x: me?.x || 0, z: me?.y || 0 }
+    const anchor = portrait ? hero : cameraFocus(me?.x, me?.y)
     const step = worldStep()
     focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
     const dist = zoomFor(snap).camera
-    picture.seat(camera, focus, dist, snap)
+    picture.seat(camera, focus, dist, snap, {
+      blend: portrait ? 0 : arriveBlend(),
+      hero,
+      cssW: viewFrame.bufferWidth,
+      cssH: viewFrame.bufferHeight
+    })
+  }
+
+  function placeCamera(snap, selfId) {
+    const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
+    seatCamera(snap, me)
+  }
+
+  function heroScreenBox(mesh) {
+    const picture = mesh.userData.picture
+    const rect = renderer.domElement.getBoundingClientRect()
+    if (!picture || rect.width < 1 || rect.height < 1) return null
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).normalize()
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).normalize()
+    const center = mesh.position.clone().addScaledVector(up, picture.h / 2)
+    const corners = [
+      [1, -1],
+      [1, 1],
+      [-1, -1],
+      [-1, 1]
+    ]
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const [uy, rx] of corners) {
+      const point = center
+        .clone()
+        .addScaledVector(up, (uy * picture.h) / 2)
+        .addScaledVector(right, (rx * picture.w) / 2)
+        .project(camera)
+      const x = rect.left + (point.x * 0.5 + 0.5) * rect.width
+      const y = rect.top + (-point.y * 0.5 + 0.5) * rect.height
+      if (x < minX) minX = x
+      if (y < minY) minY = y
+      if (x > maxX) maxX = x
+      if (y > maxY) maxY = y
+    }
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
   }
 
   function toClient(x, z) {
@@ -1379,6 +1441,11 @@ export function createView(stage, picture) {
   function aimFacing(mesh, facing) {
     if (!mesh.userData.face || !Number.isFinite(facing)) return
     const target = -facing
+    if (mesh.userData.preview) {
+      mesh.rotation.y = target
+      mesh.userData.yawTarget = target
+      return
+    }
     if (!Number.isFinite(mesh.userData.yawTarget)) mesh.rotation.y = target
     mesh.userData.yawTarget = target
   }
@@ -1456,15 +1523,6 @@ export function createView(stage, picture) {
   }
 
   function placeMesh(key, mesh) {
-    const arrived = mesh.userData.arrived
-    if (arrived) {
-      const age = performance.now() - arrived
-      if (age < 220) mesh.scale.setScalar(0.84 + (0.16 * age) / 220)
-      else {
-        mesh.scale.setScalar(1)
-        mesh.userData.arrived = 0
-      }
-    }
     const pose = smoothed(key)
     const spread = mesh.userData.spread || { x: 0, z: 0 }
     const step = worldStep()
@@ -1483,6 +1541,7 @@ export function createView(stage, picture) {
     const anim = mesh.userData.pose || {}
     anim.moving = travel > 0.4
     mesh.userData.pose = anim
+    if (Number.isFinite(mesh.userData.fade) && card.material) card.material.opacity = mesh.userData.fade
     const frame = sheetRow(picture, anim, performance.now())
     // A 4-frame sheet has no death row. sheetRow still returns walk when death is 0.
     const row = Math.min(picture.frames - 1, Math.max(0, frame))
