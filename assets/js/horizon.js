@@ -212,6 +212,34 @@ function gateGeometry() {
   return trackGeometry(geometry)
 }
 
+// The yard tile already covers ±380. Shading the horizon under that square
+// doubled the ground fill on the software rasterizer and pushed the night
+// smoke past its cap. The hole stops at 300 so the stippled yard edge still
+// has land under it. Local Y becomes world -Z after the same -90° rotation
+// the old plane used.
+function farGeometry() {
+  const outer = HORIZON_SPAN / 2
+  const inner = 300
+  const positions = []
+  const push = (x, y, z) => positions.push(x, y, z)
+  const quad = (x0, y0, x1, y1) => {
+    push(x0, y0, 0)
+    push(x1, y0, 0)
+    push(x1, y1, 0)
+    push(x0, y0, 0)
+    push(x1, y1, 0)
+    push(x0, y1, 0)
+  }
+  quad(-outer, -outer, outer, -inner)
+  quad(-outer, inner, outer, outer)
+  quad(inner, -inner, outer, inner)
+  quad(-outer, -inner, -inner, inner)
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
+  geometry.computeVertexNormals()
+  return trackGeometry(geometry)
+}
+
 function cellRange(origin, reach) {
   const min = roundAway((origin - reach) / CELL) - 1
   const max = roundAway((origin + reach) / CELL) + 1
@@ -272,14 +300,11 @@ export function mountPicture(scene) {
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tvec2 landUv = vec2((vHorizonWorld.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (vHorizonWorld.z - windowOrigin.y) / windowSpan);\n\tdiffuseColor.rgb = texture2D(map, clamp(landUv, 0.001, 0.999)).rgb;\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, mistColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
+        "#include <color_fragment>\n\tif (abs(vHorizonWorld.x) < 300.0 && abs(vHorizonWorld.z) < 300.0) discard;\n\tvec2 landUv = vec2((vHorizonWorld.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (vHorizonWorld.z - windowOrigin.y) / windowSpan);\n\tdiffuseColor.rgb = texture2D(map, clamp(landUv, 0.001, 0.999)).rgb;\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, mistColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
       )
   }
 
-  const horizon = new THREE.Mesh(
-    trackGeometry(new THREE.PlaneGeometry(HORIZON_SPAN, HORIZON_SPAN)),
-    material
-  )
+  const horizon = new THREE.Mesh(farGeometry(), material)
   horizon.rotation.x = -Math.PI / 2
   horizon.position.y = 0.04
   horizon.userData.role = "horizon"
