@@ -572,6 +572,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 
 ## 2026-11-01 the warrior sheet keeps its views
 
+- `squarePixels` waits until `__lastKeepArrive` is 0 before it compares the three windows. The start glide was still moving on a fast runner, so one window was the portrait pitch and the gap was about 0.45. The 0.12 limit stays.
 - The frames are still the z-buffer in `script/warrior_sheet.py`, not a Cycles render. CI stays on `python3 script/warrior_sheet.py --check` because the Blender 4.2.9 tarball is 339MB and `download.blender.org` returns 403. A local `blender --background --python script/warrior_sheet.py -- --check` of Blender 4.2.9 (`a10f621e649a`) rewrote the sheet and left the bytes unchanged: albedo `93a24b27a14a5c01fa430aa2d16a4a4f85d44da6303696ebf8f0b5b04e437a18`, normal `59191ad6cfccfe4a70431078f3c10e5d227aae3130e8f869d98d0d4034dff94a`. Those are the same hashes `python3` locks. `no direction equals another or its mirror, and the walk stays on the palette` reads the committed PNG: eight directions are unique and not mirrors, back columns 3–5 show the cape and no skin, the shield stays on the hero's left in every cell, walk legs move at least 8 px and the south contacts alternate feet, height and the foot row stay within 1 px, every opaque pixel is in the palette, and the normal alpha matches. This does not change the simulation. The coverage floor stays 77.
 
 ## 2026-10-31 the warrior sheet is one posed mesh
