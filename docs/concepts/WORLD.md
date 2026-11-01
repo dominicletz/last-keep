@@ -6,6 +6,34 @@ The keep stays in the middle. Heroes still defend it together, and nights still 
 
 The chest and the portal already follow this page. The rest of it is the contract for the slices that have not landed. Edges in [`../GAME-INTERACTIONS.md`](../GAME-INTERACTIONS.md) that name that remaining land are `planned` in [`../interactions.json`](../interactions.json).
 
+## How a bounded land reads as endless
+
+The frame the player sees ends on the yard plane. `GROUND_SPAN` in `assets/js/ground.js` is 760, so the plane runs from -380 to 380. Past that quad the clear color shows. That is the hard rectangle. The seeded land already continues to radius 7200. The picture does not.
+
+Three games keep a finite play space and still fill the frame. The notes below are what this slice copies. Each one names the page it came from.
+
+Kingdom Two Crowns walks a strip and stops. The Kingdom wiki page Plain says every land ends in two cliffs, or in one cliff and a beach. The Cliff portal page puts a portal on that cliff face. It opens at night and sends the Greed. Destroying it stops that side until the portal rebuilds. The picture past the cliff is still a picture. A Steam thread on the Two Crowns water describes distant mountains that barely scroll, nearer cliffs and trees that scroll a little, and water that scrolls fastest. A player on the New Lands forum, recalling a developer stream, says those layers sit at real depth in a 3D scene. The walk ends on rock or water. The sky and the far layers do not end with it.
+
+Octopath Traveler keeps each place on a small board. Digital Foundry's 2018 article says the bokeh depth of field uses the 3D depth under the pixels, holds a shallow range in focus, and reads as a tilt-shift miniature. The far edge of the board goes soft. Last Keep already has that camera and that fog. Soft blur on an empty clear color is still an edge. The ground has to continue under the blur.
+
+Don't Starve Together generates one finite tile map from a seed. The wiki page Map says a new world is black on the map except the ground around the character, and walking fills the map in. The tiles were generated before anyone walked there. The tile-definition notes split land, ocean, and impassable. Ocean is a tile. The character does not walk it. The guide All About Night treats the dark as the unlit part of that same ground. A light falls off. It does not delete tiles. Shipwrecked's Ocean Fog page puts mist at the charted edge. Entering it wraps the character. The edge reads as fog over a place.
+
+This slice copies those three stops.
+
+Undiscovered chunks are drawn from the same seed as land under mist. Points of interest stay out of the snapshot until the chunk is discovered. Past radius 7200 the picture keeps forest, hills, and mountains into the depth fog, so no camera shows a clear-color ground edge. The walk stops on dense forest or cliff in that skirt. The 7200 clamp stays behind the terrain so a gap cannot send a hero off the seed. From wave 2 on, monsters leave a living portal and march to the keep. Breaking that portal still drops its share. Night 1 stays two goblins on the yard ring.
+
+Sources, read before this slice was built:
+
+- [Plain](https://kingdomthegame.fandom.com/wiki/Plain), Kingdom wiki.
+- [Cliff portal](https://kingdomthegame.fandom.com/wiki/Cliff_portal), Kingdom wiki.
+- [Two Crowns parallax thread](https://steamcommunity.com/app/701160/discussions/0/3001047413716382185/).
+- [New Lands parallax thread](https://steamcommunity.com/app/496300/discussions/1/5064850575742403848/). The 3D-layer sentence there is a player's memory of a stream.
+- [Octopath Traveler, Digital Foundry, 2018](https://www.digitalfoundry.net/articles/digitalfoundry-2018-octopath-traveler-a-hybrid-game-for-a-hybrid-console).
+- [Map](https://dontstarve.wiki.gg/wiki/Map/DST), Don't Starve wiki.
+- [Tile definitions](https://vietnd69.github.io/dst-api-webdocs/docs/game-scripts/tiledefs), Don't Starve Together API notes.
+- [All About Night](https://dontstarve.wiki.gg/wiki/Guides/All_About_Night), Don't Starve wiki.
+- [Ocean Fog](https://dontstarve.fandom.com/wiki/Ocean_Fog), Don't Starve wiki.
+
 ## The land
 
 `World.generate/1` takes the room seed and returns one world. The same seed returns the same biomes, the same blocked cells, and the same points of interest. Visit order does not matter. `World.chunk/3` is the same bytes as the matching slice of `World.generate/1`.
