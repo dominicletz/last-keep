@@ -22,7 +22,8 @@ import hero_sprites as hs  # noqa: E402
 HEROES = ["engineer", "farmer", "mage", "scout", "warrior"]
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
             "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
-            "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164}}
+            "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164},
+            "farmer": {"SW": 42, "NW": 82, "NE": 117, "SE": 158}}
 
 
 def png_bytes(arr):
@@ -93,10 +94,11 @@ class DirsTest(unittest.TestCase):
 
     def test_picker_lands_near_the_hand_picked_diagonals(self):
         # mage SW 46 is the approved pick; SE 156 was picked by eye over a
-        # clean front-right 3/4 at 162. Warrior picks came from an older eye pass; scout picks are Dominic's.
+        # clean front-right 3/4 at 162. Warrior picks came from an older eye pass; scout and farmer picks are Dominic's.
         slack = {"mage": {"SW": 2, "NW": 12, "NE": 12, "SE": 8},
                  "warrior": {"SW": 10, "NW": 6, "NE": 6, "SE": 10},
-                 "scout": {"SW": 6, "NW": 8, "NE": 6, "SE": 6}}
+                 "scout": {"SW": 6, "NW": 8, "NE": 6, "SE": 6},
+                 "farmer": {"SW": 8, "NW": 4, "NE": 4, "SE": 10}}
         for h in APPROVED:
             cfg = hs.load_config(h)
             picked = hs.pick_diagonals(self.frames[h], self.cards(h), hs.key_frames(cfg, len(self.frames[h])))
@@ -136,6 +138,13 @@ class PromptsTest(unittest.TestCase):
         c = self.calls("mage")
         self.assertIn("(on the image-left side)", c["walk-NW"]["args"]["prompt"])
         self.assertIn("(on the image-right side)", c["walk-SE"]["args"]["prompt"])
+
+    def test_farmer_pitchfork_sides_match_the_clips(self):
+        c = self.calls("farmer")
+        self.assertIn("pitchfork with iron tines in his right hand (in front of the body, on the image-left side)",
+                      c["walk-W"]["args"]["prompt"])
+        self.assertIn("pitchfork with iron tines in his right hand (on the image-right side)", c["walk-SE"]["args"]["prompt"])
+        self.assertIn("pitchfork with iron tines in his right hand (on the image-right side)", c["walk-E"]["args"]["prompt"])
 
     def test_walk_and_idle_prompts_carry_the_lessons(self):
         for h in HEROES:

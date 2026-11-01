@@ -54,7 +54,7 @@ class PaletteTest(unittest.TestCase):
 
 class HeroProfileTest(unittest.TestCase):
     def test_every_profile_names_its_checks(self):
-        self.assertEqual(sorted(cs.HEROES), ["mage", "scout", "warrior"])
+        self.assertEqual(sorted(cs.HEROES), ["farmer", "mage", "scout", "warrior"])
         for name, hero in cs.HEROES.items():
             roles = {r for r, _ in hero["roles"]}
             self.assertIn(hero["prop"][1], roles, name)
@@ -80,6 +80,13 @@ class HeroProfileTest(unittest.TestCase):
         self.assertEqual(cs.HEROES["warrior"]["prop_dirs"], tuple(cs.COLUMNS))
         self.assertEqual(cs.HEROES["mage"]["prop_dirs"], tuple(cs.COLUMNS))
         self.assertEqual(set(cs.COLUMNS) - set(cs.HEROES["scout"]["prop_dirs"]), {"W", "E"})
+
+    def test_a_neutral_role_claims_greys_and_only_greys(self):
+        table = cs.HEROES["farmer"]["roles"]
+        self.assertEqual(cs.role((101, 93, 87), table), "iron")
+        self.assertEqual(cs.role((40, 25, 11), table), "neutral")
+        self.assertEqual(cs.role((43, 62, 86), table), "blue")
+        self.assertEqual(cs.role((101, 93, 87), cs.HEROES["warrior"]["roles"]), "neutral")
 
     def test_head_measure_can_skip_a_prop_beside_the_head(self):
         table = cs.HEROES["mage"]["roles"]

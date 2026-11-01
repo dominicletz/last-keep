@@ -8,7 +8,7 @@ Every pro pipeline keeps all frames on one source, because separate drawings dri
 
 ## Screen convention
 
-S faces the camera. E faces screen-right. N is the back. W faces screen-left. The sword is in the warrior's right hand and the blue kite shield with the gold cross is on his left arm. The mage holds the staff in their right hand. The scout holds the bow in their right hand, with the spyglass at the left hip. No view is a mirror of another. Never flip a frame to make a missing direction, because that moves the shield to the other arm.
+S faces the camera. E faces screen-right. N is the back. W faces screen-left. The sword is in the warrior's right hand and the blue kite shield with the gold cross is on his left arm. The mage holds the staff in their right hand. The scout holds the bow in their right hand, with the spyglass at the left hip. The farmer holds the pitchfork in his right hand and carries the grain sack on his back. No view is a mirror of another. Never flip a frame to make a missing direction, because that moves the shield to the other arm.
 
 Sheet columns follow `pictureColumn`: S, SW, W, NW, N, NE, E, SE. Column 0 is the hero facing the camera: walking toward screen-bottom in game, and on the start screen. Column 2 faces screen-left and column 6 faces screen-right. `heroes.test.js` locks this with the camera that `seat` places and the headings of the movement keys.
 
@@ -73,6 +73,7 @@ Look at the four diagonals before the clips. A diagonal near the front can look 
 | warrior | 28 / 78 / 118 / 174 | 20 / 74 / 122 / 166 |
 | mage | 45 / 78 / 134 / 162 | 46 / 67 / 122 / 156 |
 | scout | 28 / 79 / 123 / 165 | 32 / 72 / 120 / 164 |
+| farmer | 36 / 82 / 117 / 167 | 42 / 82 / 117 / 158 |
 
 ### 7. Walk and idle clips (manual)
 
@@ -113,14 +114,14 @@ The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536. The client 
 
 `check_sprite_sheet.py` checks the same things for every hero. The colours it reads come from the `check` profile in the hero's `hero.json`: roles (hue range, chroma and lightness bounds), concept anchors, the prop colour, and floors and ceilings for the back and front views. `hero_sprites.py HERO colours` lists the concept's main colours with hue, lightness and chroma to start a new profile from.
 
-| | warrior | mage | scout |
-|---|---|---|---|
-| Concept anchors (ΔE 15) | shield blue, gold cross, skin, red cape | staff crystal cyan, skin, robe blue, gold trim, staff brown | cloak green, skin, leather brown, brass, spyglass blue |
-| Prop side | shield (blue) | staff crystal (cyan, hue 180–200°) | spyglass (blue, hue 195–240°), not in W and E |
-| Back view N | face ≤ 6 px, cape red ≥ 201 | hood: face in head columns ≤ 10, robe blue ≥ 1001 | face in head columns ≤ 6, green ≥ 630 |
-| Front view S | blue ≥ 60, cross ≥ 8, face ≥ 8 | robe blue ≥ 600, gold trim ≥ 150, crystal ≥ 40, face ≥ 30 | green ≥ 260, leather ≥ 570, spyglass ≥ 12, face in head columns ≥ 24 |
+| | warrior | mage | scout | farmer |
+|---|---|---|---|---|
+| Concept anchors (ΔE 15) | shield blue, gold cross, skin, red cape | staff crystal cyan, skin, robe blue, gold trim, staff brown | cloak green, skin, leather brown, brass, spyglass blue | denim blue, skin, straw, leather brown, shirt cream, iron grey |
+| Prop side | shield (blue) | staff crystal (cyan, hue 180–200°) | spyglass (blue, hue 195–240°), not in W and E | pitchfork tines (neutral iron, lightness > 0.3), all 8 |
+| Back view N | face ≤ 6 px, cape red ≥ 201 | hood: face in head columns ≤ 10, robe blue ≥ 1001 | face in head columns ≤ 6, green ≥ 630 | face in head columns ≤ 10, straw (hat and sack) ≥ 107 |
+| Front view S | blue ≥ 60, cross ≥ 8, face ≥ 8 | robe blue ≥ 600, gold trim ≥ 150, crystal ≥ 40, face ≥ 30 | green ≥ 260, leather ≥ 570, spyglass ≥ 12, face in head columns ≥ 24 | denim ≥ 95, straw ≥ 58, iron ≥ 68, face in head columns ≥ 8 |
 
-The mage and scout faces count only the head columns 54–74, so the staff head or the quiver beside the head is not counted as a face. The scout's spyglass hangs at the left hip, so in W it faces the camera and in E it hides behind the body. Both put it on the body midline, so `prop_dirs` leaves those two out. The scout floors are about 60% of the start poses' counts.
+The mage and scout faces count only the head columns 54–74, so the staff head or the quiver beside the head is not counted as a face. The scout's spyglass hangs at the left hip, so in W it faces the camera and in E it hides behind the body. Both put it on the body midline, so `prop_dirs` leaves those two out. The scout and farmer floors are about 60% of the start poses' counts. The farmer's pitchfork is grey iron and brown wood. Colour roles never claim a grey (chroma under 0.12), so the profile adds the role `iron` with `"neutral": true` and lightness above 0.3, which keeps the light tines and drops the dark shading. The tines sit 7 to 22 px off the body in every pose and every sheet row, so the farmer needs no `prop_dirs`. The farmer N face ceiling is 10, as for the mage: the N rows show up to 7 skin pixels at the neck and ears, and the S rows at least 15.
 
 - Sheet size, alpha only 0 or 255, at most 32 colours.
 - The palette keeps the profile's concept anchors within ΔE 15.
@@ -158,11 +159,13 @@ python3 script/test_hero_sprites.py        # configs, crop, views, picker, pins,
 - No flashing lights in the idle. The mage's first E idle pulsed the crystal, and the glow changed the silhouette by 1334 px per step. The idle prompt now names every glowing part and asks for the same brightness in every frame.
 - A diagonal near the front can look frontal. Check the four diagonals by eye after `dirs` and pin a frame further round when one does.
 - Never mirror a frame for a missing direction: it moves the held item to the other hand.
+- Write each held item's side in `hero.json` `sides` to match the frames the clips use, then rerun `prep`, so `prompts.json` records the prompts actually sent. A side can be `image-left`, `image-right` or a phrase used as written, such as "in front of the body, on the image-left side". The farmer's W, E and SE walks needed that.
+- A grey prop such as iron needs a role with `"neutral": true`: the colour roles never see greys. On the farmer the plain neutral class also took the dark shading and fell on the body midline.
 - Grok clips are not perfectly camera-locked, so the build scales and anchors each frame on its own.
 
 ## In the client
 
-`SHEET_HEROES` in `assets/js/pictures.js` lists the heroes with a walk sheet: `warrior`, `mage` and `scout`. `walkSheetUrl(hero)` gives each sheet's URL. `litHero` in `assets/js/hd2d/picture.js` draws each of them from its own sheet on a square card of 128 sheet texels. The nominal texel is 32/88 world units, so the hero stays `spriteHeight` (32) tall and his boots stand on y = 0. Every frame `present` calls `snapHeroCard`, which scales the card so one texel covers a whole number of screen pixels at its depth for the drawing camera. That covers the start screen too. Under half a pixel per texel the card keeps its nominal size. The lit-hero cap (`LOOK.litHeroes`, 2) goes to sheet heroes first. A sheet hero whose sheet has not loaded stays a sprite and does not borrow another hero's sheet. Other heroes stay on the 4-frame voxel atlas.
+`SHEET_HEROES` in `assets/js/pictures.js` lists the heroes with a walk sheet: `warrior`, `mage`, `scout` and `farmer`. `walkSheetUrl(hero)` gives each sheet's URL. `litHero` in `assets/js/hd2d/picture.js` draws each of them from its own sheet on a square card of 128 sheet texels. The nominal texel is 32/88 world units, so the hero stays `spriteHeight` (32) tall and his boots stand on y = 0. Every frame `present` calls `snapHeroCard`, which scales the card so one texel covers a whole number of screen pixels at its depth for the drawing camera. That covers the start screen too. Under half a pixel per texel the card keeps its nominal size. The lit-hero cap (`LOOK.litHeroes`, 2) goes to sheet heroes first. A sheet hero whose sheet has not loaded stays a sprite and does not borrow another hero's sheet. Other heroes stay on the 4-frame voxel atlas.
 
 ## Superseded: the Blender box mesh
 

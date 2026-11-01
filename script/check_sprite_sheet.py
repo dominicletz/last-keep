@@ -32,14 +32,17 @@ GROUND = (58, 66, 52, 255)
 
 def _role_test(spec):
     """A role from hero.json: hue range in degrees ([340, 12] wraps through
-    0), with optional strict chroma_gt, light_gt and light_lt bounds."""
-    lo, hi = spec["hue"]
+    0), with optional strict chroma_gt, light_gt and light_lt bounds. A role
+    with "neutral": true names greys (chroma under 0.12) instead, such as
+    iron, and needs no hue."""
+    lo, hi = spec.get("hue", (0, 360))
     cg, lg, ll = spec.get("chroma_gt"), spec.get("light_gt"), spec.get("light_lt")
 
     def test(h, l, c):
         in_hue = lo <= h <= hi if lo <= hi else (h >= lo or h <= hi)
         return (in_hue and (cg is None or c > cg) and (lg is None or l > lg)
                 and (ll is None or l < ll))
+    test.neutral = bool(spec.get("neutral"))
     return test
 
 
@@ -62,7 +65,8 @@ def profile(check):
 def load_heroes(reference=os.path.join(ROOT, "assets/reference")):
     """Every hero whose assets/reference/<hero>/hero.json has a check profile.
     roles: ordered colour tests on hue in degrees, HLS lightness and chroma;
-    the first match names a colour, chroma under 0.12 is neutral. anchors:
+    the first match names a colour, chroma under 0.12 is neutral unless a
+    "neutral" role claims it. anchors:
     concept colours the palette keeps within dE 15. prop: the role whose side
     of the body each start pose fixes. back and front: per-frame floors and
     ceilings on the N and S columns. prop_dirs (default all): the directions
@@ -93,12 +97,11 @@ def role(rgb, table):
     h, l, s = colorsys.rgb_to_hls(r, g, b)
     h *= 360
     chroma = max(r, g, b) - min(r, g, b)
-    if chroma < 0.12:
-        return "neutral"
+    grey = chroma < 0.12
     for name, test in table:
-        if test(h, l, chroma):
+        if test.neutral == grey and test(h, l, chroma):
             return name
-    return "other"
+    return "neutral" if grey else "other"
 
 
 def roles(cell, table):

@@ -91,7 +91,7 @@ function sheetTest(hero, name) {
 }
 
 test("every sheet hero loads its own walk sheet and normal map", () => {
-  assert.deepEqual(SHEET_HEROES, ["warrior", "mage", "scout"])
+  assert.deepEqual(SHEET_HEROES, ["warrior", "mage", "scout", "farmer"])
   for (const hero of SHEET_HEROES) {
     assert.equal(walkSheetUrl(hero), `images/hd2d/${hero}-walk.png`)
     assert.equal(walkSheetUrl(hero, true), `images/hd2d/${hero}-walk-normal.png`)
@@ -105,6 +105,8 @@ test("every sheet hero loads its own walk sheet and normal map", () => {
   assert.notEqual(changedPixels(warrior.rgba, mage.rgba), 0)
   assert.notEqual(changedPixels(mage.rgba, scout.rgba), 0)
   assert.notEqual(changedPixels(warrior.rgba, scout.rgba), 0)
+  const farmer = readWalkSheet(walkSheetPath(root, "farmer"))
+  for (const other of [warrior, mage, scout]) assert.notEqual(changedPixels(other.rgba, farmer.rgba), 0)
 })
 
 for (const hero of SHEET_HEROES) {
@@ -207,6 +209,26 @@ function isSkin(cell, i) {
   return c.chroma > 0.3 && c.h >= 20 && c.h <= 34 && c.light > 0.5
 }
 
+function isIron(cell, i) {
+  const c = hue(cell[i], cell[i + 1], cell[i + 2])
+  return c.chroma < 0.12 && c.light > 0.3
+}
+
+function isDenim(cell, i) {
+  const c = hue(cell[i], cell[i + 1], cell[i + 2])
+  return c.chroma >= 0.12 && c.h >= 195 && c.h <= 240
+}
+
+function isStraw(cell, i) {
+  const c = hue(cell[i], cell[i + 1], cell[i + 2])
+  return c.chroma > 0.4 && c.h >= 31 && c.h <= 40 && c.light > 0.45
+}
+
+function isFarmerSkin(cell, i) {
+  const c = hue(cell[i], cell[i + 1], cell[i + 2])
+  return c.chroma > 0.4 && c.h >= 24 && c.h <= 30 && c.light > 0.55
+}
+
 function count(cell, keep) {
   let n = 0
   for (let i = 0; i < cell.length; i += 4) if (cell[i + 3] && keep(cell, i)) n += 1
@@ -297,6 +319,22 @@ const HERO_MARKS = {
       assert.ok(count(front, isGreen) >= 260, `green missing on the front view row ${row}`)
       assert.ok(count(front, isSpyglass) >= 12, `spyglass missing on the front view row ${row}`)
       assert.ok(headCount(front, isSkin, HEAD) >= 24, `face missing on the front view row ${row}`)
+    }
+  },
+  // The pitchfork's grey iron tines hold a side in every direction: screen-left
+  // in S, SW and W, screen-right from NW round to SE (in SE the clips carry it
+  // in front on the image-right side). Straw is the hat and the grain sack.
+  farmer: {
+    propName: "pitchfork tines",
+    prop: isIron,
+    side: { S: -1, SW: -1, W: -1, NW: 1, N: 1, NE: 1, E: 1, SE: 1 },
+    views(back, front, row) {
+      assert.ok(headCount(back, isFarmerSkin, HEAD) <= 10, `face on the back view row ${row}`)
+      assert.ok(count(back, isStraw) >= 107, `hat and grain sack missing on the back view row ${row}`)
+      assert.ok(count(front, isDenim) >= 95, `overalls missing on the front view row ${row}`)
+      assert.ok(count(front, isStraw) >= 58, `hat missing on the front view row ${row}`)
+      assert.ok(count(front, isIron) >= 68, `pitchfork tines missing on the front view row ${row}`)
+      assert.ok(headCount(front, isFarmerSkin, HEAD) >= 8, `face missing on the front view row ${row}`)
     }
   }
 }

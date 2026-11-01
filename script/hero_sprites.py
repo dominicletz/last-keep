@@ -290,10 +290,12 @@ def place_vector(at):
 
 def placement(item, d):
     """Where the item shows on screen in direction d: the item's own "sides"
-    entry if it has one, else the body position turned to the facing."""
+    entry if it has one ("image-left", "image-right", or a phrase used as
+    written), else the body position turned to the facing."""
     sides = item.get("sides") or {}
     if d in sides:
-        return f"on the {sides[d]} side"
+        side = sides[d]
+        return f"on the {side} side" if side in ("image-left", "image-right") else side
     v = place_vector(item.get("at", ""))
     if v is None:
         return ""

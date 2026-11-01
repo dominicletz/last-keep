@@ -17,7 +17,7 @@ export const cardSourceHeight = 160
 
 // Heroes drawn from a video walk sheet (docs/concepts/SPRITE-PIPELINE.md)
 // instead of the voxel atlas, in lighting priority order.
-export const SHEET_HEROES = ["warrior", "mage", "scout"]
+export const SHEET_HEROES = ["warrior", "mage", "scout", "farmer"]
 
 export function walkSheetUrl(hero, normal = false) {
   return `images/hd2d/${hero}-walk${normal ? "-normal" : ""}.png`

@@ -1,5 +1,5 @@
 {
- "_note": "Stub. Fill check after the first build.",
+ "_note": "Diagonals are Dominic's hand picks (0-based turntable frames). Pitchfork sides follow the clips. Check profile: anchors are concept colours (hero_sprites.py farmer colours); floors are about 60% of the start poses' counts. The prop is the grey iron of the pitchfork tines, a neutral role, which holds a side in all 8 directions.",
  "noun": "farmer",
  "possessive": "his",
  "concept": {
@@ -17,7 +17,17 @@
    "name": "wooden pitchfork with iron tines",
    "at": "right hand",
    "walk": "pitchfork held upright in his right hand",
-   "still": "pitchfork"
+   "still": "pitchfork",
+   "sides": {
+    "S": "image-left",
+    "SW": "image-left",
+    "W": "in front of the body, on the image-left side",
+    "NW": "image-right",
+    "N": "image-right",
+    "NE": "image-right",
+    "E": "image-right",
+    "SE": "image-right"
+   }
   },
   {
    "name": "burlap grain sack",
@@ -35,6 +45,159 @@
    "E": 6
   }
  },
- "diagonals": {},
- "check": null
+ "diagonals": {
+  "SW": 42,
+  "NW": 82,
+  "NE": 117,
+  "SE": 158
+ },
+ "check": {
+  "anchors": {
+   "denim blue": [
+    39,
+    55,
+    74
+   ],
+   "skin": [
+    225,
+    168,
+    114
+   ],
+   "straw": [
+    231,
+    182,
+    105
+   ],
+   "leather brown": [
+    104,
+    67,
+    31
+   ],
+   "shirt cream": [
+    202,
+    172,
+    139
+   ],
+   "iron grey": [
+    106,
+    99,
+    92
+   ]
+  },
+  "roles": [
+   {
+    "name": "iron",
+    "neutral": true,
+    "light_gt": 0.3
+   },
+   {
+    "name": "blue",
+    "hue": [
+     195,
+     240
+    ]
+   },
+   {
+    "name": "skin",
+    "hue": [
+     24,
+     30
+    ],
+    "chroma_gt": 0.4,
+    "light_gt": 0.55
+   },
+   {
+    "name": "straw",
+    "hue": [
+     31,
+     40
+    ],
+    "chroma_gt": 0.4,
+    "light_gt": 0.45
+   },
+   {
+    "name": "brown",
+    "hue": [
+     14,
+     40
+    ]
+   }
+  ],
+  "prop": [
+   "pitchfork tines",
+   "iron"
+  ],
+  "back": {
+   "title": "back view N shows hat and grain sack, no face",
+   "bounds": [
+    [
+     "face",
+     [
+      "head",
+      "skin",
+      [
+       54,
+       74
+      ]
+     ],
+     null,
+     10
+    ],
+    [
+     "straw",
+     [
+      "count",
+      "straw"
+     ],
+     107,
+     null
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view keeps overalls, hat, pitchfork, face",
+   "bounds": [
+    [
+     "blue",
+     [
+      "count",
+      "blue"
+     ],
+     95,
+     null
+    ],
+    [
+     "straw",
+     [
+      "count",
+      "straw"
+     ],
+     58,
+     null
+    ],
+    [
+     "iron",
+     [
+      "count",
+      "iron"
+     ],
+     68,
+     null
+    ],
+    [
+     "face",
+     [
+      "head",
+      "skin",
+      [
+       54,
+       74
+      ]
+     ],
+     8,
+     null
+    ]
+   ]
+  }
+ }
 }

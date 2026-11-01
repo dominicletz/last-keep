@@ -278,24 +278,24 @@ test("dress lights the keep with a normal map and emissive windows", () => {
 test("dress turns a voxel-atlas sprite into one card and does not add another", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
-  const farmer = heroGroup("farmer", "still-farmer")
+  const engineer = heroGroup("engineer", "still-engineer")
   const disc = new THREE.Mesh(new THREE.CircleGeometry(4, 8), new THREE.MeshBasicMaterial({ color: 0x140c0a }))
   const discMat = disc.material
   disc.userData.contact = true
-  farmer.group.add(disc)
-  const kit = { grounds: floors, keep, stoneMat, heroes: [farmer.group] }
+  engineer.group.add(disc)
+  const kit = { grounds: floors, keep, stoneMat, heroes: [engineer.group] }
 
   picture.dress(kit)
-  assert.equal(farmer.group.children.includes(farmer.sprite), false)
-  const card = farmer.group.userData.card
+  assert.equal(engineer.group.children.includes(engineer.sprite), false)
+  const card = engineer.group.userData.card
   assert.equal(card.isMesh, true)
-  assert.equal(card.material.map, farmer.map)
+  assert.equal(card.material.map, engineer.map)
   assert.ok(card.material.map.offset)
   assert.equal(card.material.map.offset.isVector2, true)
   assert.equal(card.material.map.repeat.x, 1 / 8)
   assert.equal(card.material.map.repeat.y, 1 / 11)
   assert.equal(card.material.map.magFilter, THREE.NearestFilter)
-  assert.equal(farmer.group.userData.picture.frames, 11)
+  assert.equal(engineer.group.userData.picture.frames, 11)
   assert.equal(card.material.isMeshLambertMaterial, true)
   assert.equal(card.material.alphaTest, 0.4)
   assert.equal(card.material.transparent, true)
@@ -304,7 +304,7 @@ test("dress turns a voxel-atlas sprite into one card and does not add another", 
   assert.ok(Math.abs(card.geometry.boundingBox.min.y) < 1e-6)
   assert.equal(disc.visible, false)
   assert.equal(disc.material, discMat)
-  const quads = farmer.group.children.filter((child) => child.isMesh && child.position.y === 0.62)
+  const quads = engineer.group.children.filter((child) => child.isMesh && child.position.y === 0.62)
   assert.equal(quads.length, 1)
   assert.equal(quads[0].castShadow, false)
   assert.equal(quads[0].receiveShadow, false)
@@ -319,8 +319,8 @@ test("dress turns a voxel-atlas sprite into one card and does not add another", 
   const center = ((side >> 1) * side + (side >> 1)) * 4 + 3
   assert.ok(shadow.image.data[center] > shadow.image.data[3])
 
-  farmer.group.rotation.y = Math.PI / 2
-  farmer.group.position.set(5, 0, 7)
+  engineer.group.rotation.y = Math.PI / 2
+  engineer.group.position.set(5, 0, 7)
   const camera = new THREE.PerspectiveCamera()
   camera.position.set(105, 30, 7)
   card.onBeforeRender(null, null, camera)
@@ -330,11 +330,11 @@ test("dress turns a voxel-atlas sprite into one card and does not add another", 
   assert.ok(Math.abs(ahead.y) < 1e-4)
   assert.ok(up.y > 0.99)
 
-  const meshes = meshCount(farmer.group)
+  const meshes = meshCount(engineer.group)
   picture.dress(kit)
-  assert.equal(meshCount(farmer.group), meshes)
-  assert.equal(farmer.group.children.filter((child) => child.isMesh && child.position.y === 0.62).length, 1)
-  assert.equal(farmer.group.userData.card, card)
+  assert.equal(meshCount(engineer.group), meshes)
+  assert.equal(engineer.group.children.filter((child) => child.isMesh && child.position.y === 0.62).length, 1)
+  assert.equal(engineer.group.userData.card, card)
 })
 
 test("dress leaves a warrior sprite until a walk strip is loaded", () => {
@@ -383,7 +383,7 @@ test("dress paints the mage from its own walk sheet, not the warrior's", () => {
   const mageNormal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1)
   picture.attachStrip(warriorMap, null, "warrior")
   picture.attachStrip(mageMap, mageNormal, "mage")
-  assert.throws(() => picture.attachStrip(mageMap, null, "farmer"), /strip/)
+  assert.throws(() => picture.attachStrip(mageMap, null, "engineer"), /strip/)
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [mage.group, warrior.group] })
   const card = mage.group.userData.card
   assert.equal(card.isMesh, true)
@@ -488,7 +488,7 @@ test("dress leaves the hero outside the cap of two as a sprite", () => {
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const warrior = heroGroup("warrior", "z")
   const mage = heroGroup("mage", "m")
-  const farmer = heroGroup("farmer", "f")
+  const engineer = heroGroup("engineer", "f")
   for (const hero of ["warrior", "mage"]) {
     picture.attachStrip(new THREE.DataTexture(new Uint8Array(4), 1, 1), null, hero)
   }
@@ -496,26 +496,26 @@ test("dress leaves the hero outside the cap of two as a sprite", () => {
     grounds: floors,
     keep,
     stoneMat,
-    heroes: [farmer.group, warrior.group, mage.group]
+    heroes: [engineer.group, warrior.group, mage.group]
   })
   // Sheet heroes take the two lit slots before a voxel-atlas hero.
   assert.equal(warrior.group.userData.card.isMesh, true)
   assert.equal(mage.group.userData.card.isMesh, true)
-  assert.equal(farmer.group.children.includes(farmer.sprite), true)
-  assert.equal(farmer.group.userData.card.isSprite, true)
+  assert.equal(engineer.group.children.includes(engineer.sprite), true)
+  assert.equal(engineer.group.userData.card.isSprite, true)
 })
 
 test("dress leaves a sheet hero as a sprite when only another hero's sheet loaded", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const mage = heroGroup("mage", "m")
-  const farmer = heroGroup("farmer", "f")
+  const engineer = heroGroup("engineer", "f")
   picture.attachStrip(new THREE.DataTexture(new Uint8Array(4), 1, 1), null, "warrior")
-  picture.dress({ grounds: floors, keep, stoneMat, heroes: [mage.group, farmer.group] })
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [mage.group, engineer.group] })
   assert.equal(mage.group.userData.card, mage.sprite)
   assert.equal(mage.group.userData.hd, undefined)
-  assert.equal(farmer.group.userData.card.isMesh, true)
-  assert.equal(farmer.group.userData.hd, "lit")
+  assert.equal(engineer.group.userData.card.isMesh, true)
+  assert.equal(engineer.group.userData.hd, "lit")
 })
 
 test("dress paints the scout from its own walk sheet beside the mage", () => {
@@ -539,6 +539,32 @@ test("dress paints the scout from its own walk sheet beside the mage", () => {
   assert.equal(scoutMap.repeat.y, 1 / 12)
   assert.deepEqual(
     { ...scout.group.userData.picture, w: 0, h: 0 },
+    { directions: 8, frames: 12, walk: 8, idle: 4, attack: 0, death: 0, w: 0, h: 0 }
+  )
+})
+
+test("dress paints the farmer from its own walk sheet beside the scout", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const farmer = heroGroup("farmer", "still-farmer")
+  const scout = heroGroup("scout", "still-scout")
+  const farmerMap = new THREE.DataTexture(new Uint8Array([43, 62, 86, 255]), 1, 1)
+  const farmerNormal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1)
+  const scoutMap = new THREE.DataTexture(new Uint8Array([71, 95, 49, 255]), 1, 1)
+  picture.attachStrip(farmerMap, farmerNormal, "farmer")
+  picture.attachStrip(scoutMap, null, "scout")
+  assert.throws(() => picture.attachStrip(farmerMap, null, "engineer"), /strip/)
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [farmer.group, scout.group] })
+  const card = farmer.group.userData.card
+  assert.equal(card.isMesh, true)
+  assert.equal(card.material.map, farmerMap)
+  assert.equal(card.material.normalMap, farmerNormal)
+  assert.equal(farmer.group.userData.hd, "farmer")
+  assert.equal(scout.group.userData.card.material.map, scoutMap)
+  assert.equal(farmerMap.repeat.x, 1 / 8)
+  assert.equal(farmerMap.repeat.y, 1 / 12)
+  assert.deepEqual(
+    { ...farmer.group.userData.picture, w: 0, h: 0 },
     { directions: 8, frames: 12, walk: 8, idle: 4, attack: 0, death: 0, w: 0, h: 0 }
   )
 })
