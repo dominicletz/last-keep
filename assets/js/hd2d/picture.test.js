@@ -1,10 +1,25 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { createRequire } from "node:module"
 import * as THREE from "three"
 import { pixelStep } from "../art_score.js"
 import { cameraLift } from "../frame.js"
 import { masonryBytes } from "../tiles.js"
-import { circleOfConfusion, createPicture, diskOffsets, fogMix } from "./picture.js"
+import {
+  circleOfConfusion,
+  createPicture,
+  diskOffsets,
+  fogMix,
+  heroTexel,
+  snapHeroCard,
+  SHEET_CELL,
+  SHEET_FOOT_ROW,
+  SHEET_HERO,
+  SHEET_TEXEL,
+  sheetCardGeometry,
+  sheetHeroSize
+} from "./picture.js"
+import { spriteHeight } from "../pictures.js"
 
 const CALLS = ["open", "fit", "seat", "light", "dress", "present"]
 
@@ -185,6 +200,10 @@ function stoneAndGrounds() {
   return { stoneMat, stone, other, flame, keep, floors, map }
 }
 
+// Every hero has a walk sheet now, so the voxel-atlas fallback is tested
+// with a hero id that is not in SHEET_HEROES.
+const ATLAS_HERO = "atlas-only"
+
 function heroGroup(hero, id) {
   const map = new THREE.DataTexture(new Uint8Array([40, 50, 60, 255]), 1, 1)
   map.magFilter = THREE.LinearFilter
@@ -262,27 +281,27 @@ test("dress lights the keep with a normal map and emissive windows", () => {
   assert.equal(flame.children.length, flameLights)
 })
 
-test("dress turns a mage sprite into one card and does not add another", () => {
+test("dress turns a voxel-atlas sprite into one card and does not add another", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
-  const mage = heroGroup("mage", "still-mage")
+  const atlas = heroGroup(ATLAS_HERO, "still-atlas")
   const disc = new THREE.Mesh(new THREE.CircleGeometry(4, 8), new THREE.MeshBasicMaterial({ color: 0x140c0a }))
   const discMat = disc.material
   disc.userData.contact = true
-  mage.group.add(disc)
-  const kit = { grounds: floors, keep, stoneMat, heroes: [mage.group] }
+  atlas.group.add(disc)
+  const kit = { grounds: floors, keep, stoneMat, heroes: [atlas.group] }
 
   picture.dress(kit)
-  assert.equal(mage.group.children.includes(mage.sprite), false)
-  const card = mage.group.userData.card
+  assert.equal(atlas.group.children.includes(atlas.sprite), false)
+  const card = atlas.group.userData.card
   assert.equal(card.isMesh, true)
-  assert.equal(card.material.map, mage.map)
+  assert.equal(card.material.map, atlas.map)
   assert.ok(card.material.map.offset)
   assert.equal(card.material.map.offset.isVector2, true)
   assert.equal(card.material.map.repeat.x, 1 / 8)
   assert.equal(card.material.map.repeat.y, 1 / 11)
   assert.equal(card.material.map.magFilter, THREE.NearestFilter)
-  assert.equal(mage.group.userData.picture.frames, 11)
+  assert.equal(atlas.group.userData.picture.frames, 11)
   assert.equal(card.material.isMeshLambertMaterial, true)
   assert.equal(card.material.alphaTest, 0.4)
   assert.equal(card.material.transparent, true)
@@ -291,7 +310,7 @@ test("dress turns a mage sprite into one card and does not add another", () => {
   assert.ok(Math.abs(card.geometry.boundingBox.min.y) < 1e-6)
   assert.equal(disc.visible, false)
   assert.equal(disc.material, discMat)
-  const quads = mage.group.children.filter((child) => child.isMesh && child.position.y === 0.62)
+  const quads = atlas.group.children.filter((child) => child.isMesh && child.position.y === 0.62)
   assert.equal(quads.length, 1)
   assert.equal(quads[0].castShadow, false)
   assert.equal(quads[0].receiveShadow, false)
@@ -306,8 +325,8 @@ test("dress turns a mage sprite into one card and does not add another", () => {
   const center = ((side >> 1) * side + (side >> 1)) * 4 + 3
   assert.ok(shadow.image.data[center] > shadow.image.data[3])
 
-  mage.group.rotation.y = Math.PI / 2
-  mage.group.position.set(5, 0, 7)
+  atlas.group.rotation.y = Math.PI / 2
+  atlas.group.position.set(5, 0, 7)
   const camera = new THREE.PerspectiveCamera()
   camera.position.set(105, 30, 7)
   card.onBeforeRender(null, null, camera)
@@ -317,11 +336,11 @@ test("dress turns a mage sprite into one card and does not add another", () => {
   assert.ok(Math.abs(ahead.y) < 1e-4)
   assert.ok(up.y > 0.99)
 
-  const meshes = meshCount(mage.group)
+  const meshes = meshCount(atlas.group)
   picture.dress(kit)
-  assert.equal(meshCount(mage.group), meshes)
-  assert.equal(mage.group.children.filter((child) => child.isMesh && child.position.y === 0.62).length, 1)
-  assert.equal(mage.group.userData.card, card)
+  assert.equal(meshCount(atlas.group), meshes)
+  assert.equal(atlas.group.children.filter((child) => child.isMesh && child.position.y === 0.62).length, 1)
+  assert.equal(atlas.group.userData.card, card)
 })
 
 test("dress leaves a warrior sprite until a walk strip is loaded", () => {
@@ -360,6 +379,132 @@ test("dress paints the warrior from the walk strip and hides the gold plate", ()
   assert.equal(quad.castShadow, false)
 })
 
+test("dress paints the mage from its own walk sheet, not the warrior's", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const mage = heroGroup("mage", "still-mage")
+  const warrior = heroGroup("warrior", "still-warrior")
+  const warriorMap = new THREE.DataTexture(new Uint8Array([180, 176, 170, 255]), 1, 1)
+  const mageMap = new THREE.DataTexture(new Uint8Array([44, 70, 98, 255]), 1, 1)
+  const mageNormal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1)
+  picture.attachStrip(warriorMap, null, "warrior")
+  picture.attachStrip(mageMap, mageNormal, "mage")
+  assert.throws(() => picture.attachStrip(mageMap, null, ATLAS_HERO), /strip/)
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [mage.group, warrior.group] })
+  const card = mage.group.userData.card
+  assert.equal(card.isMesh, true)
+  assert.equal(card.material.map, mageMap)
+  assert.equal(card.material.normalMap, mageNormal)
+  assert.equal(mage.group.userData.hd, "mage")
+  assert.equal(warrior.group.userData.card.material.map, warriorMap)
+  assert.equal(warrior.group.userData.hd, "warrior")
+  // Same sheet layout as the warrior: 8 directions, 8 walk and 4 idle rows.
+  assert.equal(mageMap.repeat.x, 1 / 8)
+  assert.equal(mageMap.repeat.y, 1 / 12)
+  assert.deepEqual(
+    { ...mage.group.userData.picture, w: 0, h: 0 },
+    { directions: 8, frames: 12, walk: 8, idle: 4, attack: 0, death: 0, w: 0, h: 0 }
+  )
+  card.geometry.computeBoundingBox()
+  const size = SHEET_CELL * SHEET_TEXEL
+  assert.ok(Math.abs(card.geometry.boundingBox.max.y - card.geometry.boundingBox.min.y - size) < 1e-4)
+  // Mage cards snap to whole screen pixels like the warrior's.
+  const camera = new THREE.PerspectiveCamera(15, 1.6, 1, 4000)
+  camera.position.set(0, 0, 900)
+  camera.lookAt(0, 0, 0)
+  camera.updateMatrixWorld()
+  const scene = new THREE.Scene()
+  scene.add(mage.group)
+  mage.group.updateMatrixWorld()
+  // The snap runs before present reaches the render chain; stop it there.
+  const renderer = {
+    getDrawingBufferSize: (v) => v.set(1280, 800),
+    get info() {
+      throw new Error("past the snap")
+    }
+  }
+  assert.throws(() => picture.present(renderer, scene, camera), /past the snap/)
+  const worldPerPixel = (2 * 900 * Math.tan(THREE.MathUtils.degToRad(7.5))) / 800
+  const pixels = (SHEET_TEXEL * card.scale.x) / worldPerPixel
+  assert.ok(Math.abs(pixels - Math.round(pixels)) < 1e-9, `${pixels} px per texel`)
+})
+
+test("the warrior card is a square 128 px cell with the boots on the ground", () => {
+  const geometry = sheetCardGeometry()
+  geometry.computeBoundingBox()
+  const box = geometry.boundingBox
+  const size = SHEET_CELL * SHEET_TEXEL
+  // Geometry positions are float32.
+  assert.ok(Math.abs(box.max.x - box.min.x - size) < 1e-4)
+  assert.ok(Math.abs(box.max.y - box.min.y - size) < 1e-4)
+  assert.ok(Math.abs(SHEET_HERO * SHEET_TEXEL - spriteHeight) < 1e-9)
+  // The lowest outline row ends exactly at y = 0.
+  const soles = box.max.y - (SHEET_FOOT_ROW + 1) * SHEET_TEXEL
+  assert.ok(Math.abs(soles) < 1e-4, `soles at ${soles}`)
+})
+
+test("hero texels land on a whole number of screen pixels", () => {
+  for (const worldPerPixel of [0.05, 0.1, 0.19, 0.25, 0.3, 0.42, 0.6]) {
+    const texel = heroTexel(worldPerPixel)
+    const pixels = texel / worldPerPixel
+    assert.ok(Math.abs(pixels - Math.round(pixels)) < 1e-9, `${pixels} px per texel`)
+    assert.ok(Math.round(pixels) >= 1)
+    assert.ok(Math.abs(texel - SHEET_TEXEL) <= worldPerPixel / 2 + 1e-9)
+  }
+  // Under half a pixel per texel the card minifies at its nominal size.
+  assert.equal(heroTexel(SHEET_TEXEL * 3), SHEET_TEXEL)
+  assert.equal(heroTexel(0), SHEET_TEXEL)
+  assert.equal(heroTexel(Number.NaN), SHEET_TEXEL)
+})
+
+test("snapHeroCard scales the card to integer pixels for the camera that draws it", () => {
+  const camera = new THREE.PerspectiveCamera(15, 1.6, 1, 4000)
+  camera.position.set(0, 0, 900)
+  camera.lookAt(0, 0, 0)
+  camera.updateMatrixWorld()
+  const plane = new THREE.Mesh(sheetCardGeometry(), new THREE.MeshBasicMaterial())
+  plane.updateMatrixWorld()
+  const height = 800
+  const scale = snapHeroCard(plane, camera, height)
+  const worldPerPixel = (2 * 900 * Math.tan(THREE.MathUtils.degToRad(7.5))) / height
+  const pixels = (SHEET_TEXEL * scale) / worldPerPixel
+  assert.ok(Math.abs(pixels - Math.round(pixels)) < 1e-9, `${pixels} px per texel`)
+  assert.equal(plane.scale.x, scale)
+  assert.equal(plane.scale.y, scale)
+  const ortho = new THREE.OrthographicCamera()
+  assert.equal(snapHeroCard(plane, ortho, height), 1)
+  assert.equal(snapHeroCard(plane, camera, 0), 1)
+})
+
+test("a sheet hero measures the drawn hero, not the 128 px cell", () => {
+  const plane = new THREE.Mesh(sheetCardGeometry(), new THREE.MeshBasicMaterial())
+  const body = { w: 15.4, h: spriteHeight, d: 4.3 }
+  const nominal = sheetHeroSize(plane, body)
+  assert.ok(Math.abs(nominal.h - spriteHeight) < 1e-9)
+  assert.equal(nominal.w, body.w)
+  plane.geometry.computeBoundingBox()
+  const cell = plane.geometry.boundingBox.max.y - plane.geometry.boundingBox.min.y
+  assert.ok(cell > nominal.h * 1.4, `cell ${cell} vs hero ${nominal.h}`)
+  // After snapHeroCard the drawn hero grows with the card.
+  plane.scale.setScalar(1.25)
+  const snapped = sheetHeroSize(plane, body)
+  assert.ok(Math.abs(snapped.h - SHEET_HERO * SHEET_TEXEL * 1.25) < 1e-9)
+  assert.ok(Math.abs(snapped.w - body.w * 1.25) < 1e-9)
+})
+
+test("the e2e sheet-hero height uses the card's own constants", () => {
+  const screen = createRequire(import.meta.url)("../../../e2e/screen.js")
+  assert.equal(screen.SHEET_HERO, SHEET_HERO)
+  assert.equal(screen.SPRITE_HEIGHT, spriteHeight)
+  // Same rounding as heroTexel: heroSilhouettes predicts what snapHeroCard draws.
+  const camera = screen.hd2dCamera()
+  const eye = new THREE.Vector3(camera.eye.x, camera.eye.y, camera.eye.z)
+  const look = new THREE.Vector3(camera.look.x, camera.look.y, camera.look.z)
+  const depth = new THREE.Vector3(120, 0, 0).sub(eye).dot(look.clone().sub(eye).normalize())
+  const worldPerPixel = (2 * depth * Math.tan(camera.fov / 2)) / 800
+  assert.ok(Math.abs(screen.sheetHeroHeight(120, 0, 800) - SHEET_HERO * heroTexel(worldPerPixel)) < 1e-9)
+})
+
 test("grade refuses a live room before the strip resolves", () => {
   const picture = createPicture()
   const camera = new THREE.PerspectiveCamera()
@@ -378,17 +523,110 @@ test("dress leaves the hero outside the cap of two as a sprite", () => {
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const warrior = heroGroup("warrior", "z")
   const mage = heroGroup("mage", "m")
-  const scout = heroGroup("scout", "s")
+  const atlas = heroGroup(ATLAS_HERO, "f")
+  for (const hero of ["warrior", "mage"]) {
+    picture.attachStrip(new THREE.DataTexture(new Uint8Array(4), 1, 1), null, hero)
+  }
   picture.dress({
     grounds: floors,
     keep,
     stoneMat,
-    heroes: [scout.group, warrior.group, mage.group]
+    heroes: [atlas.group, warrior.group, mage.group]
   })
-  assert.equal(warrior.group.userData.card.isSprite, true)
+  // Sheet heroes take the two lit slots before a voxel-atlas hero.
+  assert.equal(warrior.group.userData.card.isMesh, true)
   assert.equal(mage.group.userData.card.isMesh, true)
-  assert.equal(scout.group.children.includes(scout.sprite), true)
-  assert.equal(scout.group.userData.card.isSprite, true)
+  assert.equal(atlas.group.children.includes(atlas.sprite), true)
+  assert.equal(atlas.group.userData.card.isSprite, true)
+})
+
+test("dress leaves a sheet hero as a sprite when only another hero's sheet loaded", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const mage = heroGroup("mage", "m")
+  const atlas = heroGroup(ATLAS_HERO, "f")
+  picture.attachStrip(new THREE.DataTexture(new Uint8Array(4), 1, 1), null, "warrior")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [mage.group, atlas.group] })
+  assert.equal(mage.group.userData.card, mage.sprite)
+  assert.equal(mage.group.userData.hd, undefined)
+  assert.equal(atlas.group.userData.card.isMesh, true)
+  assert.equal(atlas.group.userData.hd, "lit")
+})
+
+test("dress paints the scout from its own walk sheet beside the mage", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const scout = heroGroup("scout", "still-scout")
+  const mage = heroGroup("mage", "still-mage")
+  const scoutMap = new THREE.DataTexture(new Uint8Array([71, 95, 49, 255]), 1, 1)
+  const scoutNormal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1)
+  const mageMap = new THREE.DataTexture(new Uint8Array([44, 70, 98, 255]), 1, 1)
+  picture.attachStrip(scoutMap, scoutNormal, "scout")
+  picture.attachStrip(mageMap, null, "mage")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [scout.group, mage.group] })
+  const card = scout.group.userData.card
+  assert.equal(card.isMesh, true)
+  assert.equal(card.material.map, scoutMap)
+  assert.equal(card.material.normalMap, scoutNormal)
+  assert.equal(scout.group.userData.hd, "scout")
+  assert.equal(mage.group.userData.card.material.map, mageMap)
+  assert.equal(scoutMap.repeat.x, 1 / 8)
+  assert.equal(scoutMap.repeat.y, 1 / 12)
+  assert.deepEqual(
+    { ...scout.group.userData.picture, w: 0, h: 0 },
+    { directions: 8, frames: 12, walk: 8, idle: 4, attack: 0, death: 0, w: 0, h: 0 }
+  )
+})
+
+test("dress paints the farmer from its own walk sheet beside the scout", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const farmer = heroGroup("farmer", "still-farmer")
+  const scout = heroGroup("scout", "still-scout")
+  const farmerMap = new THREE.DataTexture(new Uint8Array([43, 62, 86, 255]), 1, 1)
+  const farmerNormal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1)
+  const scoutMap = new THREE.DataTexture(new Uint8Array([71, 95, 49, 255]), 1, 1)
+  picture.attachStrip(farmerMap, farmerNormal, "farmer")
+  picture.attachStrip(scoutMap, null, "scout")
+  assert.throws(() => picture.attachStrip(farmerMap, null, ATLAS_HERO), /strip/)
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [farmer.group, scout.group] })
+  const card = farmer.group.userData.card
+  assert.equal(card.isMesh, true)
+  assert.equal(card.material.map, farmerMap)
+  assert.equal(card.material.normalMap, farmerNormal)
+  assert.equal(farmer.group.userData.hd, "farmer")
+  assert.equal(scout.group.userData.card.material.map, scoutMap)
+  assert.equal(farmerMap.repeat.x, 1 / 8)
+  assert.equal(farmerMap.repeat.y, 1 / 12)
+  assert.deepEqual(
+    { ...farmer.group.userData.picture, w: 0, h: 0 },
+    { directions: 8, frames: 12, walk: 8, idle: 4, attack: 0, death: 0, w: 0, h: 0 }
+  )
+})
+
+test("dress paints the engineer from its own walk sheet beside the farmer", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const engineer = heroGroup("engineer", "still-engineer")
+  const farmer = heroGroup("farmer", "still-farmer")
+  const engineerMap = new THREE.DataTexture(new Uint8Array([76, 47, 27, 255]), 1, 1)
+  const engineerNormal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1)
+  const farmerMap = new THREE.DataTexture(new Uint8Array([43, 62, 86, 255]), 1, 1)
+  picture.attachStrip(engineerMap, engineerNormal, "engineer")
+  picture.attachStrip(farmerMap, null, "farmer")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [engineer.group, farmer.group] })
+  const card = engineer.group.userData.card
+  assert.equal(card.isMesh, true)
+  assert.equal(card.material.map, engineerMap)
+  assert.equal(card.material.normalMap, engineerNormal)
+  assert.equal(engineer.group.userData.hd, "engineer")
+  assert.equal(farmer.group.userData.card.material.map, farmerMap)
+  assert.equal(engineerMap.repeat.x, 1 / 8)
+  assert.equal(engineerMap.repeat.y, 1 / 12)
+  assert.deepEqual(
+    { ...engineer.group.userData.picture, w: 0, h: 0 },
+    { directions: 8, frames: 12, walk: 8, idle: 4, attack: 0, death: 0, w: 0, h: 0 }
+  )
 })
 
 test("dress without a keep throws", () => {

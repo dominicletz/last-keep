@@ -1,0 +1,337 @@
+{
+ "hero": "scout",
+ "paths": "relative to the repository root",
+ "calls": [
+  {
+   "id": "view-S",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the scout from the reference image, front view, facing the camera. Same design exactly: green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots. Wooden longbow in their right hand (on the image-left side); brass and blue spyglass at their left hip (on the image-right side); quiver of arrows over their right shoulder (on the image-left side, partly hidden behind the body); green cloak on their back (partly hidden behind the body). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/scout/concept.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "scout-v-S.png"
+   },
+   "save_as": "assets/reference/scout/video/views/v-S.png"
+  },
+  {
+   "id": "view-N",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the scout from the reference image, back view, seen from directly behind, back to the camera. Same design exactly: green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots. Wooden longbow in their right hand (on the image-right side); brass and blue spyglass at their left hip (on the image-left side); quiver of arrows over their right shoulder (on the image-right side, toward the camera); green cloak on their back (toward the camera). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/scout/concept.png",
+     "assets/reference/scout/video/views/v-S.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "scout-v-N.png"
+   },
+   "save_as": "assets/reference/scout/video/views/v-N.png"
+  },
+  {
+   "id": "view-W",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the scout from the reference image, left profile view, facing screen-left, their left side toward the camera. Same design exactly: green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots. Wooden longbow in their right hand (partly hidden behind the body); brass and blue spyglass at their left hip (toward the camera); quiver of arrows over their right shoulder (on the image-right side, partly hidden behind the body); green cloak on their back (on the image-right side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/scout/concept.png",
+     "assets/reference/scout/video/views/v-S.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "scout-v-W.png"
+   },
+   "save_as": "assets/reference/scout/video/views/v-W.png"
+  },
+  {
+   "id": "view-E",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the scout from the reference image, right profile view, facing screen-right, their right side toward the camera. Same design exactly: green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots. Wooden longbow in their right hand (toward the camera); brass and blue spyglass at their left hip (partly hidden behind the body); quiver of arrows over their right shoulder (on the image-left side, toward the camera); green cloak on their back (on the image-left side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/scout/concept.png",
+     "assets/reference/scout/video/views/v-S.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "scout-v-E.png"
+   },
+   "save_as": "assets/reference/scout/video/views/v-E.png",
+   "then": "hero_sprites.py views"
+  },
+  {
+   "id": "turntable",
+   "step": "dirs",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game character turnaround reference. The scout stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show their left side, then their back, then their right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.",
+    "image_path": "assets/reference/scout/video/views/k-S.png",
+    "last_frame_path": "assets/reference/scout/video/views/k-S.png",
+    "keyframes": [
+     {
+      "image_path": "assets/reference/scout/video/views/k-W.png",
+      "timestamp_s": 2
+     },
+     {
+      "image_path": "assets/reference/scout/video/views/k-N.png",
+      "timestamp_s": 4
+     },
+     {
+      "image_path": "assets/reference/scout/video/views/k-E.png",
+      "timestamp_s": 6
+     }
+    ],
+    "duration": 8,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-turntable.mp4"
+   },
+   "save_as": "assets/reference/scout/video/turntable.mp4",
+   "then": "hero_sprites.py dirs"
+  },
+  {
+   "id": "walk-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The scout walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, bow held low in their right hand, spyglass steady at their left hip, quiver steady over their right shoulder, cloak swaying. Props stay where the first frame has them: wooden longbow in their right hand (on the image-left side); brass and blue spyglass at their left hip (on the image-right side); quiver of arrows over their right shoulder (on the image-left side, partly hidden behind the body); green cloak on their back (partly hidden behind the body). The scout stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/scout/video/dirs/S.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-walk-S.mp4"
+   },
+   "save_as": "assets/reference/scout/video/walk-S.mp4"
+  },
+  {
+   "id": "idle-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The scout holds exactly the pose, angle and facing of the first frame (facing the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cloak edge moves very slightly. Bow, spyglass and quiver stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/scout/video/dirs/S.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-idle-S.mp4"
+   },
+   "save_as": "assets/reference/scout/video/idle-S.mp4"
+  },
+  {
+   "id": "walk-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The scout walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, bow held low in their right hand, spyglass steady at their left hip, quiver steady over their right shoulder, cloak swaying. Props stay where the first frame has them: wooden longbow in their right hand (on the image-left side, partly hidden behind the body); brass and blue spyglass at their left hip (on the image-right side, toward the camera); quiver of arrows over their right shoulder (partly hidden behind the body); green cloak on their back (on the image-right side, partly hidden behind the body). The scout stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/scout/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-walk-SW.mp4"
+   },
+   "save_as": "assets/reference/scout/video/walk-SW.mp4"
+  },
+  {
+   "id": "idle-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The scout holds exactly the pose, angle and facing of the first frame (three-quarter front view, facing down and to screen-left) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cloak edge moves very slightly. Bow, spyglass and quiver stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/scout/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-idle-SW.mp4"
+   },
+   "save_as": "assets/reference/scout/video/idle-SW.mp4"
+  },
+  {
+   "id": "walk-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The scout walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-left, their left side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, bow held low in their right hand, spyglass steady at their left hip, quiver steady over their right shoulder, cloak swaying. Props stay where the first frame has them: wooden longbow in their right hand (partly hidden behind the body); brass and blue spyglass at their left hip (toward the camera); quiver of arrows over their right shoulder (on the image-right side, partly hidden behind the body); green cloak on their back (on the image-right side). The scout stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/scout/video/dirs/W.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-walk-W.mp4"
+   },
+   "save_as": "assets/reference/scout/video/walk-W.mp4"
+  },
+  {
+   "id": "idle-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The scout holds exactly the pose, angle and facing of the first frame (facing screen-left, their left side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cloak edge moves very slightly. Bow, spyglass and quiver stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/scout/video/dirs/W.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-idle-W.mp4"
+   },
+   "save_as": "assets/reference/scout/video/idle-W.mp4"
+  },
+  {
+   "id": "walk-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The scout walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, bow held low in their right hand, spyglass steady at their left hip, quiver steady over their right shoulder, cloak swaying. Props stay where the first frame has them: wooden longbow in their right hand (on the image-right side, partly hidden behind the body); brass and blue spyglass at their left hip (on the image-left side, toward the camera); quiver of arrows over their right shoulder (on the image-right side); green cloak on their back (on the image-right side, toward the camera). The scout stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/scout/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-walk-NW.mp4"
+   },
+   "save_as": "assets/reference/scout/video/walk-NW.mp4"
+  },
+  {
+   "id": "idle-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The scout holds exactly the pose, angle and facing of the first frame (seen from behind and to the left, facing up and to screen-left) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cloak edge moves very slightly. Bow, spyglass and quiver stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/scout/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-idle-NW.mp4"
+   },
+   "save_as": "assets/reference/scout/video/idle-NW.mp4"
+  },
+  {
+   "id": "walk-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The scout walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from directly behind, back to the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, bow held low in their right hand, spyglass steady at their left hip, quiver steady over their right shoulder, cloak swaying. Props stay where the first frame has them: wooden longbow in their right hand (on the image-right side); brass and blue spyglass at their left hip (on the image-left side); quiver of arrows over their right shoulder (on the image-right side, toward the camera); green cloak on their back (toward the camera). The scout stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/scout/video/dirs/N.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-walk-N.mp4"
+   },
+   "save_as": "assets/reference/scout/video/walk-N.mp4"
+  },
+  {
+   "id": "idle-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The scout holds exactly the pose, angle and facing of the first frame (seen from directly behind, back to the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cloak edge moves very slightly. Bow, spyglass and quiver stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/scout/video/dirs/N.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-idle-N.mp4"
+   },
+   "save_as": "assets/reference/scout/video/idle-N.mp4"
+  },
+  {
+   "id": "walk-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The scout walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, bow held low in their right hand, spyglass steady at their left hip, quiver steady over their right shoulder, cloak swaying. Props stay where the first frame has them: wooden longbow in their right hand (on the image-right side, toward the camera); brass and blue spyglass at their left hip (on the image-left side, partly hidden behind the body); quiver of arrows over their right shoulder (toward the camera); green cloak on their back (on the image-left side, toward the camera). The scout stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/scout/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-walk-NE.mp4"
+   },
+   "save_as": "assets/reference/scout/video/walk-NE.mp4"
+  },
+  {
+   "id": "idle-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The scout holds exactly the pose, angle and facing of the first frame (seen from behind and to the right, facing up and to screen-right) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cloak edge moves very slightly. Bow, spyglass and quiver stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/scout/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-idle-NE.mp4"
+   },
+   "save_as": "assets/reference/scout/video/idle-NE.mp4"
+  },
+  {
+   "id": "walk-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The scout walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-right, their right side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, bow held low in their right hand, spyglass steady at their left hip, quiver steady over their right shoulder, cloak swaying. Props stay where the first frame has them: wooden longbow in their right hand (toward the camera); brass and blue spyglass at their left hip (partly hidden behind the body); quiver of arrows over their right shoulder (on the image-left side, toward the camera); green cloak on their back (on the image-left side). The scout stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/scout/video/dirs/E.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-walk-E.mp4"
+   },
+   "save_as": "assets/reference/scout/video/walk-E.mp4"
+  },
+  {
+   "id": "idle-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The scout holds exactly the pose, angle and facing of the first frame (facing screen-right, their right side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cloak edge moves very slightly. Bow, spyglass and quiver stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/scout/video/dirs/E.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-idle-E.mp4"
+   },
+   "save_as": "assets/reference/scout/video/idle-E.mp4"
+  },
+  {
+   "id": "walk-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The scout walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, bow held low in their right hand, spyglass steady at their left hip, quiver steady over their right shoulder, cloak swaying. Props stay where the first frame has them: wooden longbow in their right hand (on the image-left side, toward the camera); brass and blue spyglass at their left hip (on the image-right side, partly hidden behind the body); quiver of arrows over their right shoulder (on the image-left side); green cloak on their back (on the image-left side, partly hidden behind the body). The scout stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/scout/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-walk-SE.mp4"
+   },
+   "save_as": "assets/reference/scout/video/walk-SE.mp4"
+  },
+  {
+   "id": "idle-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The scout holds exactly the pose, angle and facing of the first frame (three-quarter front view, facing down and to screen-right) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cloak edge moves very slightly. Bow, spyglass and quiver stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/scout/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/scout/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-idle-SE.mp4"
+   },
+   "save_as": "assets/reference/scout/video/idle-SE.mp4",
+   "then": "hero_sprites.py precheck"
+  }
+ ]
+}

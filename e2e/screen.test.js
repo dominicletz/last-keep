@@ -1,6 +1,16 @@
 const assert = require("node:assert/strict")
 const { test } = require("node:test")
-const { CAMERA_DISTANCE, FOV_DEG, HALF_H, cardSpan, hd2dCamera, projectBox } = require("./screen")
+const {
+  CAMERA_DISTANCE,
+  FOV_DEG,
+  HALF_H,
+  SHEET_HERO,
+  SPRITE_HEIGHT,
+  cardSpan,
+  hd2dCamera,
+  projectBox,
+  sheetHeroHeight
+} = require("./screen")
 const { iphone13FrameMs, retiredWindowMs, runnerBaselineMs, runnerCapMs, runnerMargin } = require("./perf_budget")
 
 test("the camera span is halfH over tan of half the fov", () => {
@@ -28,6 +38,37 @@ test("a hero card's screen span grows with its world height", () => {
   assert.ok(Math.abs(high.max - 94.162) < 0.01)
   const wide = cardSpan(120, 0, 32, 80, 800)
   assert.ok(wide.min > body.max + 20)
+})
+
+test("a sheet hero's height is 88 texels snapped to whole screen pixels", () => {
+  assert.equal(SHEET_HERO, 88)
+  assert.equal(SPRITE_HEIGHT, 32)
+  const camera = hd2dCamera()
+  const dir = {
+    x: camera.look.x - camera.eye.x,
+    y: camera.look.y - camera.eye.y,
+    z: camera.look.z - camera.eye.z
+  }
+  const length = Math.hypot(dir.x, dir.y, dir.z)
+  for (const [x, z] of [[120, 0], [-70.56, 96.6], [-36.96, -114.24]]) {
+    const height = sheetHeroHeight(x, z, 800)
+    const depth = ((x - camera.eye.x) * dir.x + (0 - camera.eye.y) * dir.y + (z - camera.eye.z) * dir.z) / length
+    const worldPerPixel = (2 * depth * Math.tan(camera.fov / 2)) / 800
+    const pixels = height / SHEET_HERO / worldPerPixel
+    assert.ok(Math.abs(pixels - Math.round(pixels)) < 1e-9, `${pixels} px per texel`)
+    assert.ok(Math.round(pixels) >= 1)
+    // The snap moves the texel by at most half a pixel.
+    assert.ok(Math.abs(height / SHEET_HERO - SPRITE_HEIGHT / SHEET_HERO) <= worldPerPixel / 2 + 1e-9)
+  }
+  // Host ring, buffer 800: one pixel per texel, 88 px, about 15% over 32.
+  // Locked so a refactor that returns SPRITE_HEIGHT fails.
+  assert.ok(Math.abs(sheetHeroHeight(120, 0, 800) - 36.746) < 0.01)
+  // Twice the buffer is two pixels per texel at the same world height.
+  assert.ok(Math.abs(sheetHeroHeight(120, 0, 1600) - sheetHeroHeight(120, 0, 800)) < 1e-9)
+  // Under half a pixel per texel the card keeps its nominal height.
+  assert.equal(sheetHeroHeight(120, 0, 200), SPRITE_HEIGHT)
+  // The snapped card spans more pixels than the 32-unit body at the same spot.
+  assert.ok(cardSpan(120, 0, sheetHeroHeight(120, 0, 800), 15.4, 800).min > cardSpan(120, 0, 32, 15.4, 800).max + 8)
 })
 
 test("the keep box projects several times a hero", () => {

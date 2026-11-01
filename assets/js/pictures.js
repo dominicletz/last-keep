@@ -15,6 +15,14 @@ export const spriteFrames = spriteWalk + spriteAttack + spriteDeath
 // The full crop's atlas is about 46MB and stalls the page.
 export const cardSourceHeight = 160
 
+// Heroes drawn from a video walk sheet (docs/concepts/SPRITE-PIPELINE.md)
+// instead of the voxel atlas, in lighting priority order.
+export const SHEET_HEROES = ["warrior", "mage", "scout", "farmer", "engineer"]
+
+export function walkSheetUrl(hero, normal = false) {
+  return `images/hd2d/${hero}-walk${normal ? "-normal" : ""}.png`
+}
+
 export function scaleFront(image, height) {
   const h = Math.max(1, height)
   const w = Math.max(1, Math.round((image.w * h) / image.h))
@@ -352,9 +360,13 @@ export function buildCard(front, kind, height = spriteHeight) {
 }
 
 
+// Column 0 faces the camera. viewYaw is atan2(dx, dz) toward the camera and
+// facing is atan2(dz, dx) of the heading, so a hero faces the camera when
+// facing = PI/2 - viewYaw. Columns then turn S, SW, W, NW, N, NE, E, SE:
+// column 2 faces screen-left and column 6 faces screen-right.
 export function pictureColumn(viewYaw, facing) {
   const turn = Math.PI * 2
-  let rel = viewYaw + facing - Math.PI / 4
+  let rel = viewYaw + facing - Math.PI / 2
   rel = ((rel % turn) + turn) % turn
   return Math.round(rel / (Math.PI / 4)) % spriteDirections
 }

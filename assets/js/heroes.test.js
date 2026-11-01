@@ -1,13 +1,70 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import * as THREE from "three"
 import { fitSlack, horizontalRadius, models } from "../models/registry.js"
 import { gameFrame, renderParts } from "../models/raster.js"
 import { heroCrops, conceptFigure } from "../models/sprites.js"
 import { heroReadabilityFloor, readability } from "./art_score.js"
 import { groundPixels } from "./ground.js"
+import { createPicture } from "./hd2d/picture.js"
+import { keysToward } from "./input.js"
+import { portraitPose } from "./portrait.js"
 import { cardSourceHeight, pictureColumn, scaleFront, sheetRow, spriteHeight } from "./pictures.js"
 import { heroKinds, heroLine, heroParts, heroSignature } from "./heroes.js"
 import { groundUnderMask } from "./yard_sample.js"
+
+// The column a hero gets for a heading, with the camera the game really seats.
+function columnOnScreen(camera, hero, dx, dz) {
+  const viewYaw = Math.atan2(camera.position.x - hero.x, camera.position.z - hero.z)
+  return pictureColumn(viewYaw, Math.atan2(dz, dx))
+}
+
+function screenStep(camera, hero, dx, dz) {
+  const a = new THREE.Vector3(hero.x, 0, hero.z).project(camera)
+  const b = new THREE.Vector3(hero.x + dx, 0, hero.z + dz).project(camera)
+  return { right: b.x - a.x, up: b.y - a.y }
+}
+
+test("a hero walking toward the camera gets the front column and screen-right gets E", () => {
+  const camera = new THREE.PerspectiveCamera(15, 1280 / 800, 1, 8000)
+  const picture = createPicture()
+  const hero = { x: 120, z: 0 }
+  const renderer = { setPixelRatio() {}, setSize() {}, domElement: { style: {} } }
+  picture.fit(renderer, camera, 1280, 800, 0)
+  picture.seat(camera, hero, 150, {}, { blend: 1 })
+  camera.updateMatrixWorld()
+  assert.ok(camera.position.x > hero.x && camera.position.z > hero.z && camera.position.y > 0)
+  // Headings from the movement keys in input.js, named by where they go on screen.
+  const s = Math.SQRT1_2
+  const headings = [
+    { keys: ["KeyS"], dx: s, dz: s, column: 0, screen: "down" },
+    { keys: ["KeyS", "KeyA"], dx: 0, dz: 1, column: 1, screen: "down-left" },
+    { keys: ["KeyA"], dx: -s, dz: s, column: 2, screen: "left" },
+    { keys: ["KeyA", "KeyW"], dx: -1, dz: 0, column: 3, screen: "up-left" },
+    { keys: ["KeyW"], dx: -s, dz: -s, column: 4, screen: "up" },
+    { keys: ["KeyW", "KeyD"], dx: 0, dz: -1, column: 5, screen: "up-right" },
+    { keys: ["KeyD"], dx: s, dz: -s, column: 6, screen: "right" },
+    { keys: ["KeyD", "KeyS"], dx: 1, dz: 0, column: 7, screen: "down-right" }
+  ]
+  for (const heading of headings) {
+    assert.deepEqual(keysToward(heading.dx * 100, heading.dz * 100), heading.keys)
+    const step = screenStep(camera, hero, heading.dx, heading.dz)
+    const tol = 1e-4
+    const h = step.right > tol ? "right" : step.right < -tol ? "left" : ""
+    const v = step.up > tol ? "up" : step.up < -tol ? "down" : ""
+    assert.equal([v, h].filter(Boolean).join("-"), heading.screen, heading.keys.join("+"))
+    assert.equal(columnOnScreen(camera, hero, heading.dx, heading.dz), heading.column, heading.screen)
+  }
+})
+
+test("the start screen shows the hero's front column", () => {
+  for (const [w, h] of [[1280, 800], [390, 844], [844, 390]]) {
+    const hero = { x: 108, z: 28 }
+    const pose = portraitPose(hero, w, h)
+    const viewYaw = Math.atan2(pose.position.x - hero.x, pose.position.z - hero.z)
+    assert.equal(pictureColumn(viewYaw, pose.facing), 0, `${w}x${h}`)
+  }
+})
 
 test("each hero builds a distinct mesh signature", () => {
   const kinds = heroKinds()
@@ -42,8 +99,9 @@ test("each hero builds a distinct mesh signature", () => {
     if (model.family !== "hero") continue
     assert.deepEqual(crops[model.id], model.concept.crop)
   }
-  assert.equal(pictureColumn(Math.PI / 4, 0), 0)
-  assert.notEqual(pictureColumn(Math.PI / 4, Math.PI / 4), 0)
+  // Camera at +x+z (viewYaw PI/4): facing PI/4 walks toward it, facing 0 is a diagonal.
+  assert.equal(pictureColumn(Math.PI / 4, Math.PI / 4), 0)
+  assert.notEqual(pictureColumn(Math.PI / 4, 0), 0)
   for (const kind of kinds) {
     const embedded = heroParts(kind)[0].image
     const crop = scaleFront(conceptFigure(kind), cardSourceHeight)

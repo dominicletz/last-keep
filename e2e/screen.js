@@ -134,7 +134,29 @@ function cardSpan(x, z, height, width, bufferHeight) {
   return { min, max }
 }
 
+// A sheet hero (assets/js/hd2d/picture.js) is SHEET_HERO texels tall inside
+// its cell, at a nominal texel of spriteHeight / SHEET_HERO world units.
+// snapHeroCard rounds that texel to a whole number of screen pixels at the
+// card's depth along the view direction, so nearest sampling stays even.
+// The drawn hero's world height is SHEET_HERO times the snapped texel. Under
+// half a pixel per texel the card keeps its nominal size.
+const SPRITE_HEIGHT = 32
+const SHEET_HERO = 88
+
+function sheetHeroHeight(x, z, bufferHeight) {
+  const camera = hd2dCamera()
+  const dir = norm(sub(camera.look, camera.eye))
+  const depth = dot(sub({ x, y: 0, z }, camera.eye), dir)
+  const worldPerPixel = (2 * depth * Math.tan(camera.fov / 2)) / bufferHeight
+  const nominal = SPRITE_HEIGHT / SHEET_HERO
+  const k = Math.round(nominal / worldPerPixel)
+  return SHEET_HERO * (k >= 1 ? k * worldPerPixel : nominal)
+}
+
 module.exports = {
+  SPRITE_HEIGHT,
+  SHEET_HERO,
+  sheetHeroHeight,
   FOV_DEG,
   HALF_H,
   CAMERA_DISTANCE,

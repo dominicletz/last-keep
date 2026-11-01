@@ -1,0 +1,337 @@
+{
+ "hero": "mage",
+ "paths": "relative to the repository root",
+ "calls": [
+  {
+   "id": "view-S",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the mage from the reference image, front view, facing the camera. Same design exactly: deep blue hooded robe with gold trim, face half shadowed by the hood, brown leather belt with pouches, brown boots. Wooden staff topped with a cyan crystal in their right hand (on the image-left side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/mage/concept.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "mage-v-S.png"
+   },
+   "save_as": "assets/reference/mage/video/views/v-S.png"
+  },
+  {
+   "id": "view-N",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the mage from the reference image, back view, seen from directly behind, back to the camera. Same design exactly: deep blue hooded robe with gold trim, face half shadowed by the hood, brown leather belt with pouches, brown boots. Wooden staff topped with a cyan crystal in their right hand (on the image-right side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/mage/concept.png",
+     "assets/reference/mage/video/views/v-S.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "mage-v-N.png"
+   },
+   "save_as": "assets/reference/mage/video/views/v-N.png"
+  },
+  {
+   "id": "view-W",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the mage from the reference image, left profile view, facing screen-left, their left side toward the camera. Same design exactly: deep blue hooded robe with gold trim, face half shadowed by the hood, brown leather belt with pouches, brown boots. Wooden staff topped with a cyan crystal in their right hand (on the image-left side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/mage/concept.png",
+     "assets/reference/mage/video/views/v-S.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "mage-v-W.png"
+   },
+   "save_as": "assets/reference/mage/video/views/v-W.png"
+  },
+  {
+   "id": "view-E",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the mage from the reference image, right profile view, facing screen-right, their right side toward the camera. Same design exactly: deep blue hooded robe with gold trim, face half shadowed by the hood, brown leather belt with pouches, brown boots. Wooden staff topped with a cyan crystal in their right hand (on the image-right side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/mage/concept.png",
+     "assets/reference/mage/video/views/v-S.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "mage-v-E.png"
+   },
+   "save_as": "assets/reference/mage/video/views/v-E.png",
+   "then": "hero_sprites.py views"
+  },
+  {
+   "id": "turntable",
+   "step": "dirs",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game character turnaround reference. The mage stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show their left side, then their back, then their right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: deep blue hooded robe with gold trim, face half shadowed by the hood, brown leather belt with pouches, brown boots. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.",
+    "image_path": "assets/reference/mage/video/views/k-S.png",
+    "last_frame_path": "assets/reference/mage/video/views/k-S.png",
+    "keyframes": [
+     {
+      "image_path": "assets/reference/mage/video/views/k-W.png",
+      "timestamp_s": 2
+     },
+     {
+      "image_path": "assets/reference/mage/video/views/k-N.png",
+      "timestamp_s": 4
+     },
+     {
+      "image_path": "assets/reference/mage/video/views/k-E.png",
+      "timestamp_s": 6
+     }
+    ],
+    "duration": 8,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-turntable.mp4"
+   },
+   "save_as": "assets/reference/mage/video/turntable.mp4",
+   "then": "hero_sprites.py dirs"
+  },
+  {
+   "id": "walk-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The mage walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, staff held upright in their right hand, robe hem swaying. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/mage/video/dirs/S.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-walk-S.mp4"
+   },
+   "save_as": "assets/reference/mage/video/walk-S.mp4"
+  },
+  {
+   "id": "idle-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The mage holds exactly the pose, angle and facing of the first frame (facing the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, robe hem moves very slightly. Staff stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/mage/video/dirs/S.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-idle-S.mp4"
+   },
+   "save_as": "assets/reference/mage/video/idle-S.mp4"
+  },
+  {
+   "id": "walk-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The mage walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, staff held upright in their right hand, robe hem swaying. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/mage/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-walk-SW.mp4"
+   },
+   "save_as": "assets/reference/mage/video/walk-SW.mp4"
+  },
+  {
+   "id": "idle-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The mage holds exactly the pose, angle and facing of the first frame (three-quarter front view, facing down and to screen-left) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, robe hem moves very slightly. Staff stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/mage/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-idle-SW.mp4"
+   },
+   "save_as": "assets/reference/mage/video/idle-SW.mp4"
+  },
+  {
+   "id": "walk-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The mage walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-left, their left side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, staff held upright in their right hand, robe hem swaying. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/mage/video/dirs/W.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-walk-W.mp4"
+   },
+   "save_as": "assets/reference/mage/video/walk-W.mp4"
+  },
+  {
+   "id": "idle-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The mage holds exactly the pose, angle and facing of the first frame (facing screen-left, their left side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, robe hem moves very slightly. Staff stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/mage/video/dirs/W.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-idle-W.mp4"
+   },
+   "save_as": "assets/reference/mage/video/idle-W.mp4"
+  },
+  {
+   "id": "walk-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The mage walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, staff held upright in their right hand, robe hem swaying. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/mage/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-walk-NW.mp4"
+   },
+   "save_as": "assets/reference/mage/video/walk-NW.mp4"
+  },
+  {
+   "id": "idle-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The mage holds exactly the pose, angle and facing of the first frame (seen from behind and to the left, facing up and to screen-left) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, robe hem moves very slightly. Staff stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/mage/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-idle-NW.mp4"
+   },
+   "save_as": "assets/reference/mage/video/idle-NW.mp4"
+  },
+  {
+   "id": "walk-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The mage walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from directly behind, back to the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, staff held upright in their right hand, robe hem swaying. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/mage/video/dirs/N.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-walk-N.mp4"
+   },
+   "save_as": "assets/reference/mage/video/walk-N.mp4"
+  },
+  {
+   "id": "idle-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The mage holds exactly the pose, angle and facing of the first frame (seen from directly behind, back to the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, robe hem moves very slightly. Staff stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/mage/video/dirs/N.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-idle-N.mp4"
+   },
+   "save_as": "assets/reference/mage/video/idle-N.mp4"
+  },
+  {
+   "id": "walk-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The mage walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, staff held upright in their right hand, robe hem swaying. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/mage/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-walk-NE.mp4"
+   },
+   "save_as": "assets/reference/mage/video/walk-NE.mp4"
+  },
+  {
+   "id": "idle-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The mage holds exactly the pose, angle and facing of the first frame (seen from behind and to the right, facing up and to screen-right) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, robe hem moves very slightly. Staff stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/mage/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-idle-NE.mp4"
+   },
+   "save_as": "assets/reference/mage/video/idle-NE.mp4"
+  },
+  {
+   "id": "walk-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The mage walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-right, their right side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, staff held upright in their right hand, robe hem swaying. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/mage/video/dirs/E.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-walk-E.mp4"
+   },
+   "save_as": "assets/reference/mage/video/walk-E.mp4"
+  },
+  {
+   "id": "idle-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The mage holds exactly the pose, angle and facing of the first frame (facing screen-right, their right side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, robe hem moves very slightly. Staff stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/mage/video/dirs/E.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-idle-E.mp4"
+   },
+   "save_as": "assets/reference/mage/video/idle-E.mp4"
+  },
+  {
+   "id": "walk-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The mage walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, staff held upright in their right hand, robe hem swaying. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/mage/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-walk-SE.mp4"
+   },
+   "save_as": "assets/reference/mage/video/walk-SE.mp4"
+  },
+  {
+   "id": "idle-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The mage holds exactly the pose, angle and facing of the first frame (three-quarter front view, facing down and to screen-right) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, robe hem moves very slightly. Staff stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/mage/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-idle-SE.mp4"
+   },
+   "save_as": "assets/reference/mage/video/idle-SE.mp4",
+   "then": "hero_sprites.py precheck"
+  }
+ ]
+}

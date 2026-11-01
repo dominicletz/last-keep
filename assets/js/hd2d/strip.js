@@ -2,7 +2,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { heroFronts } from "../hero-data.js"
-import { cellOffset, spriteDirections, spriteWalk } from "../pictures.js"
+import { cellOffset, spriteDirections, spriteWalk, walkSheetUrl } from "../pictures.js"
 import { readRgbaPng, writeRgbaPng } from "./png.js"
 
 export const WALK_COLUMNS = [
@@ -29,18 +29,18 @@ export const WALK_ROWS = [
   "idle-2",
   "idle-3"
 ]
-export const WALK_SHEET = "images/hd2d/warrior-walk.png"
-export const WALK_NORMAL = "images/hd2d/warrior-walk-normal.png"
+export const WALK_SHEET = walkSheetUrl("warrior")
+export const WALK_NORMAL = walkSheetUrl("warrior", true)
 
 const PLATE = [0xb5, 0xaf, 0xaa]
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 
-export function walkSheetPath(dir = root) {
-  return path.join(dir, "priv/static", WALK_SHEET)
+export function walkSheetPath(dir = root, hero = "warrior") {
+  return path.join(dir, "priv/static", walkSheetUrl(hero))
 }
 
-export function walkNormalPath(dir = root) {
-  return path.join(dir, "priv/static", WALK_NORMAL)
+export function walkNormalPath(dir = root, hero = "warrior") {
+  return path.join(dir, "priv/static", walkSheetUrl(hero, true))
 }
 
 export function cellOrigin(column, frame, directions, frames, width, height) {

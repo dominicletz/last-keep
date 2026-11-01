@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { cameraLift, frameFor } from "../frame.js"
 import { mixPose, PORTRAIT_FOV, portraitPose } from "../portrait.js"
+import { SHEET_HEROES, spriteHeight, walkSheetUrl } from "../pictures.js"
 import { masonryBytes } from "../tiles.js"
 import { tierExtras, tierFor } from "./tier.js"
 
@@ -20,6 +21,55 @@ const LOOK = {
   litHeroes: 2,
   shadowMap: 512,
   shadowBias: -0.0008
+}
+
+// Every hero walk sheet is 8 x 12 cells of 128 px. The hero is 88 px tall with
+// the outline, and the lowest outline row is 117 (docs/concepts/SPRITE-PIPELINE.md).
+export const SHEET_CELL = 128
+export const SHEET_HERO = 88
+export const SHEET_FOOT_ROW = 117
+// World units per sheet texel when the hero stands spriteHeight tall.
+export const SHEET_TEXEL = spriteHeight / SHEET_HERO
+
+// Integer scaling. A texel covers a whole number of screen pixels at the
+// card's depth, so nearest sampling never doubles one column and not the next.
+// Under half a pixel per texel the card keeps its nominal size and minifies.
+export function heroTexel(worldPerPixel, nominal = SHEET_TEXEL) {
+  if (!(worldPerPixel > 0)) return nominal
+  const k = Math.round(nominal / worldPerPixel)
+  return k >= 1 ? k * worldPerPixel : nominal
+}
+
+export function sheetCardGeometry() {
+  const size = SHEET_CELL * SHEET_TEXEL
+  const geometry = new THREE.PlaneGeometry(size, size)
+  // The cell bottom sits under the ground so the boot soles touch y = 0.
+  geometry.translate(0, size / 2 - (SHEET_CELL - 1 - SHEET_FOOT_ROW) * SHEET_TEXEL, 0)
+  return geometry
+}
+
+// The hero drawn inside a sheet card, not the whole cell: SHEET_HERO texels
+// tall from the soles at y = 0, at the scale snapHeroCard gave the card. The
+// width is the hero's body width at that same scale.
+export function sheetHeroSize(plane, body) {
+  const scale = plane.scale.y
+  return { w: body.w * scale, h: SHEET_HERO * SHEET_TEXEL * scale }
+}
+
+const snapPos = new THREE.Vector3()
+const snapDir = new THREE.Vector3()
+
+// Scale a sheet hero card so one texel is a whole number of pixels for this camera.
+export function snapHeroCard(plane, camera, bufferHeight) {
+  if (!plane || !camera || !camera.isPerspectiveCamera || !(bufferHeight > 0)) return 1
+  plane.getWorldPosition(snapPos)
+  camera.getWorldDirection(snapDir)
+  const depth = snapPos.sub(camera.position).dot(snapDir)
+  if (!(depth > 0)) return 1
+  const worldPerPixel = (2 * depth * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) / (bufferHeight * (camera.zoom || 1))
+  const scale = heroTexel(worldPerPixel) / SHEET_TEXEL
+  plane.scale.setScalar(scale)
+  return scale
 }
 
 // Distance carries the mist. Height only deepens it on the ground, and the ramp starts past the focal plane so the keep and the heroes stay clear.
@@ -340,8 +390,14 @@ function bottomRay(camera) {
   return forward.multiplyScalar(Math.cos(half)).addScaledVector(up, -Math.sin(half))
 }
 
+// Sheet heroes first, in SHEET_HEROES order, then the voxel-atlas heroes.
+function sheetRank(hero) {
+  const index = SHEET_HEROES.indexOf(hero)
+  return index < 0 ? SHEET_HEROES.length : index
+}
+
 function heroOrder(a, b) {
-  const rank = (a.userData.hero === "warrior" ? 0 : 1) - (b.userData.hero === "warrior" ? 0 : 1)
+  const rank = sheetRank(a.userData.hero) - sheetRank(b.userData.hero)
   if (rank !== 0) return rank
   return String(a.userData.heroId || "").localeCompare(String(b.userData.heroId || ""))
 }
@@ -434,8 +490,9 @@ function createHdPicture(env) {
   let opened = false
   let span = 0
   let live = false
-  let strip = null
-  let stripNormal = null
+  // hero -> { map, normal } for each loaded SHEET_HEROES walk sheet.
+  const sheets = new Map()
+  const sheetCards = new Set()
   let spot = null
   let torchFill = null
   let masonry = null
@@ -571,17 +628,19 @@ function createHdPicture(env) {
 
   function litHero(group) {
     if (group.userData.hd) return
-    const warrior = group.userData.hero === "warrior"
-    if (warrior && !strip) return
+    const hero = group.userData.hero
+    const sheetHero = SHEET_HEROES.includes(hero)
+    const sheet = sheetHero ? sheets.get(hero) : null
+    if (sheetHero && !sheet) return
     const sprite = group.userData.card
     if (!sprite || !sprite.isSprite) return
     const source = group.userData.picture
-    const map = warrior ? strip : sprite.material.map
+    const map = sheet ? sheet.map : sprite.material.map
     if (map) {
       map.magFilter = THREE.NearestFilter
       map.minFilter = THREE.NearestFilter
     }
-    if (warrior) {
+    if (sheet) {
       map.repeat.set(1 / 8, 1 / 12)
       group.userData.picture = {
         directions: 8,
@@ -594,13 +653,18 @@ function createHdPicture(env) {
         h: source.h
       }
     }
-    const geometry = new THREE.PlaneGeometry(source.w, source.h)
-    geometry.translate(0, source.h / 2, 0)
+    let geometry
+    if (sheet) {
+      geometry = sheetCardGeometry()
+    } else {
+      geometry = new THREE.PlaneGeometry(source.w, source.h)
+      geometry.translate(0, source.h / 2, 0)
+    }
     const plane = new THREE.Mesh(
       geometry,
       new THREE.MeshLambertMaterial({
         map,
-        normalMap: warrior ? stripNormal : null,
+        normalMap: sheet ? sheet.normal : null,
         alphaTest: 0.4,
         transparent: true
       })
@@ -611,7 +675,8 @@ function createHdPicture(env) {
     group.remove(sprite)
     group.add(plane)
     group.userData.card = plane
-    group.userData.hd = warrior ? "warrior" : "lit"
+    group.userData.hd = sheet ? hero : "lit"
+    if (sheet) sheetCards.add(plane)
     for (const child of group.children) {
       if (child.userData.contact) child.visible = false
       if (goldPlate(child)) child.visible = false
@@ -745,23 +810,26 @@ function createHdPicture(env) {
     })
   }
 
+  // Each sheet is used as soon as it loads. ready waits for all of them, so a
+  // graded still never shows a hero on the voxel card by accident.
   function loadWalk() {
-    Promise.all([
-      walkTexture("/images/hd2d/warrior-walk.png", THREE.SRGBColorSpace),
-      walkTexture("/images/hd2d/warrior-walk-normal.png", THREE.NoColorSpace)
-    ]).then(([map, normal]) => {
-      strip = map
-      stripNormal = normal
-      settleReady()
-    }).catch((err) => {
+    Promise.all(
+      SHEET_HEROES.map((hero) =>
+        Promise.all([
+          walkTexture("/" + walkSheetUrl(hero), THREE.SRGBColorSpace),
+          walkTexture("/" + walkSheetUrl(hero, true), THREE.NoColorSpace)
+        ]).then(([map, normal]) => {
+          sheets.set(hero, { map, normal })
+        })
+      )
+    ).then(settleReady).catch((err) => {
       console.error(err)
     })
   }
 
-  function attachStrip(map, normalMap) {
-    if (!map || !map.isTexture) throw new Error("strip")
-    strip = map
-    stripNormal = normalMap && normalMap.isTexture ? normalMap : null
+  function attachStrip(map, normalMap, hero = "warrior") {
+    if (!map || !map.isTexture || !SHEET_HEROES.includes(hero)) throw new Error("strip")
+    sheets.set(hero, { map, normal: normalMap && normalMap.isTexture ? normalMap : null })
     settleReady()
   }
 
@@ -921,6 +989,13 @@ function createHdPicture(env) {
       for (const hero of heroes.slice(0, LOOK.litHeroes)) litHero(hero)
     },
     present(renderer, scene, camera) {
+      if (sheetCards.size && renderer.getDrawingBufferSize) {
+        renderer.getDrawingBufferSize(drawSize)
+        for (const plane of sheetCards) {
+          if (!plane.parent) sheetCards.delete(plane)
+          else snapHeroCard(plane, camera, drawSize.y)
+        }
+      }
       if (!driverNoted) {
         driverNoted = true
         const kind = rendererKind(renderer)

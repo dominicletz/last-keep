@@ -1,7 +1,7 @@
 const { expect } = require("@playwright/test")
 const { lowContext } = require("./low_tier")
 const { joinTogether, rosterReady } = require("./roster")
-const { cardSpan, projectBox } = require("./screen")
+const { SPRITE_HEIGHT, cardSpan, projectBox, sheetHeroHeight } = require("./screen")
 const { settledHolds } = require("./settled")
 const { noteNorth, noteProgress, settleFields, stoppedTick } = require("./steer")
 const fs = require("fs")
@@ -1124,16 +1124,23 @@ async function heroSilhouettes(browser) {
   )
   expect(view.keep.worldH).toBeGreaterThan(0)
   expect(Math.abs(view.keep.px - keepPred)).toBeLessThanOrEqual(1)
+  // A sheet hero (figure.hd names its own walk sheet) is drawn SHEET_HERO
+  // texels tall with each texel snapped to whole screen pixels, so its world
+  // height is sheetHeroHeight, not SPRITE_HEIGHT. The snap scales the whole
+  // card, so every world size below takes that one factor: the band 28 to 36,
+  // the body height, and the card width. The ±1 pixel rounding stays as it
+  // was. A voxel or atlas hero keeps scale 1.
   for (const figure of figures) {
     expect(figure.parts).toBeGreaterThanOrEqual(5)
     expect(figure.marks.length).toBeGreaterThan(0)
     expect(figure.bounds.h).toBeLessThanOrEqual(36)
     expect(figure.bounds.h).toBeGreaterThanOrEqual(28)
-    const floor = cardSpan(figure.x, figure.z, 28, figure.bounds.w, view.height).min
-    const cap = cardSpan(figure.x, figure.z, 36, figure.bounds.w, view.height).max
+    const scale = figure.hd === figure.hero ? sheetHeroHeight(figure.x, figure.z, view.height) / SPRITE_HEIGHT : 1
+    const floor = cardSpan(figure.x, figure.z, 28 * scale, figure.bounds.w * scale, view.height).min
+    const cap = cardSpan(figure.x, figure.z, 36 * scale, figure.bounds.w * scale, view.height).max
     expect(figure.px).toBeGreaterThanOrEqual(Math.floor(floor))
     expect(figure.px).toBeLessThanOrEqual(Math.ceil(cap))
-    const body = cardSpan(figure.x, figure.z, figure.bounds.h, figure.bounds.w, view.height)
+    const body = cardSpan(figure.x, figure.z, figure.bounds.h * scale, figure.bounds.w * scale, view.height)
     expect(figure.px).toBeGreaterThanOrEqual(Math.floor(body.min))
     expect(figure.px).toBeLessThanOrEqual(Math.ceil(body.max))
     // figurePixels rounds to a pixel, so the ratio may move by one pixel
