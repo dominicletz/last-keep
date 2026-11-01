@@ -322,7 +322,8 @@ test("the camera and a sprite origin snap to the internal pixel", () => {
   assert.equal(snapWorld(step * 3, step), step * 3)
   const render = fs.readFileSync(new URL("./render.js", import.meta.url), "utf8")
   assert.equal(render.includes("focus.set(anchor.x, 0, anchor.z)"), false)
-  assert.equal(render.split("snapWorld(anchor.x, step)").length - 1, 2)
+  assert.equal(render.split("snapWorld(anchor.x, step)").length - 1, 1)
+  assert.equal(render.split("seatCamera(").length - 1, 3)
 })
 
 function linearByte(channel) {
