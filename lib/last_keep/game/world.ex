@@ -80,6 +80,39 @@ defmodule LastKeep.Game.World do
     end
   end
 
+  def picture(seed, x, y) when is_integer(seed) and is_number(x) and is_number(y) do
+    {i, j} = cell_index(x, y)
+    world = generate(seed)
+
+    if in_world?(i, j) do
+      cx = Integer.floor_div(i * @cell, @chunk)
+      cy = Integer.floor_div(j * @cell, @chunk)
+
+      case get_in(world.chunks, [{cx, cy}, :cells, {i, j}]) do
+        nil -> %{biome: :void, blocked: true}
+        cell -> %{biome: cell.biome, blocked: cell.blocked}
+      end
+    else
+      %{biome: skirt_biome(seed, i, j, world.attempt), blocked: true}
+    end
+  end
+
+  def open?(x, y) when is_number(x) and is_number(y) do
+    {i, j} = cell_index(x, y)
+    in_world?(i, j)
+  end
+
+  defp skirt_biome(seed, i, j, attempt) do
+    band = rem(:erlang.phash2({seed, i, j, attempt}), 100)
+
+    cond do
+      band <= 40 -> :pine
+      band <= 70 -> :cliff
+      band <= 88 -> :hill
+      true -> :mountain
+    end
+  end
+
   defp layout(seed) do
     Enum.find_value(0..7, fn attempt ->
       grid = grid(seed, attempt)
