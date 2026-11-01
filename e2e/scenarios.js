@@ -28,16 +28,22 @@ async function createHost(browser, name, hero, prepare) {
   const page = await context.newPage()
   if (ready) await ready(page)
   await page.goto(gameUrl("/"))
-  await page.waitForFunction(() => {
-    const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
-    return imgs.length === 5 && imgs.every((img) => img.complete && img.naturalHeight >= 64 && img.naturalHeight <= 128)
-  })
+  await page.locator("#start-button").waitFor()
   await page.locator("#player-name").fill(name)
-  await page.locator(`input[value="${hero}"]`).check()
-  await page.locator("#create-button").click()
+  await pickClass(page, hero)
+  await page.locator("#start-button").click()
   await page.waitForURL(/\/r\/[A-Z0-9]+$/)
   await page.waitForFunction((who) => document.querySelector("[data-roster]")?.innerText?.includes(who), name)
   return { context, page }
+}
+
+async function pickClass(page, hero) {
+  for (let i = 0; i < 5; i += 1) {
+    const current = await page.locator("#start-screen").getAttribute("data-hero")
+    if (current === hero) return
+    await page.locator("[data-class=next]").click()
+  }
+  throw new Error(`class ${hero}`)
 }
 
 async function joinQuery(browser, code, name, hero, onPage) {
@@ -843,13 +849,14 @@ async function joinFromForm(browser) {
   const friend = await context.newPage()
   watch(friend, "guest", errors)
   await friend.goto(`/r/${code}`)
-  await expect(friend.locator("#join-game")).toBeVisible()
+  await expect(friend.locator("#start-screen")).toBeVisible()
   await friend.locator("#player-name").fill("Bo")
-  await friend.locator('input[value="engineer"]').check()
-  await friend.locator('#join-game button[type="submit"]').click()
+  await pickClass(friend, "engineer")
+  await friend.locator("#start-button").click()
   await friend.waitForFunction(() => {
     const roster = document.querySelector("[data-roster]")?.innerText || ""
-    return roster.includes("Bo") && roster.includes("Ada") && document.querySelector("#join-game").hidden
+    const start = document.querySelector("#start-screen")
+    return roster.includes("Bo") && roster.includes("Ada") && start && start.hidden
   })
   await friend.screenshot({ path: shot("form-join.png") })
   expect(errors, errors.join("\n")).toEqual([])
@@ -1110,13 +1117,10 @@ async function mobileTouch(browser) {
   const page = await context.newPage()
   watch(page, "phone", errors)
   await page.goto(gameUrl("/"))
-  await page.waitForFunction(() => {
-    const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
-    return imgs.length === 5 && imgs.every((img) => img.complete && img.naturalHeight >= 64 && img.naturalHeight <= 128)
-  })
+  await page.locator("#start-button").waitFor()
   await page.locator("#player-name").fill("Nia")
-  await page.locator('input[value="warrior"]').check()
-  await page.locator("#create-button").click()
+  await pickClass(page, "warrior")
+  await page.locator("#start-button").click()
   await page.waitForURL(/\/r\/[A-Z0-9]+$/)
   await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Nia"))
   await expect(page.locator("[data-touch-pad]")).toBeVisible()
@@ -1642,13 +1646,10 @@ async function phoneClear(browser) {
   const page = await context.newPage()
   watch(page, "phone", errors)
   await page.goto(gameUrl("/"))
-  await page.waitForFunction(() => {
-    const imgs = [...document.querySelectorAll(".hero-card img.portrait")]
-    return imgs.length === 5 && imgs.every((img) => img.complete && img.naturalHeight >= 64 && img.naturalHeight <= 128)
-  })
+  await page.locator("#start-button").waitFor()
   await page.locator("#player-name").fill("Nia")
-  await page.locator('input[value="farmer"]').check()
-  await page.locator("#create-button").click()
+  await pickClass(page, "farmer")
+  await page.locator("#start-button").click()
   await page.waitForURL(/\/r\/[A-Z0-9]+$/)
   await waitForSeats(page, ["Nia"])
   const code = await page.evaluate(() => document.body.dataset.code)
@@ -2726,6 +2727,132 @@ async function hd2dFlag(browser) {
   await host.context.close()
 }
 
+async function classSelect(browser) {
+  const errors = []
+  const desktop = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
+  const page = await desktop.newPage()
+  watch(page, "class", errors)
+  await page.goto(gameUrl("/"))
+  await page.locator("#start-button").waitFor()
+  await page.locator("#stage").click({ position: { x: 24, y: 24 } })
+  const keyed = []
+  for (let i = 0; i < 5; i += 1) {
+    keyed.push(await page.locator("[data-class-name]").innerText())
+    await page.keyboard.press("ArrowRight")
+  }
+  expect(new Set(keyed).size).toBe(5)
+  await page.waitForFunction(() => {
+    const figure = window.__lastKeep && window.__lastKeep.figures && window.__lastKeep.figures[0]
+    return figure && figure.hero === document.querySelector("#start-screen").dataset.hero
+  })
+  await desktop.close()
+
+  const phone = await lowContext(browser, {
+    viewport: { width: 844, height: 390 },
+    hasTouch: true,
+    isMobile: true
+  })
+  const touch = await phone.newPage()
+  watch(touch, "touch", errors)
+  await touch.goto(gameUrl("/"))
+  await touch.locator("#start-button").waitFor()
+  const swiped = []
+  for (let i = 0; i < 5; i += 1) {
+    swiped.push(await touch.locator("[data-class-name]").innerText())
+    await touch.evaluate(() => {
+      window.dispatchEvent(new PointerEvent("pointerdown", { pointerType: "touch", clientX: 500, clientY: 180, bubbles: true }))
+      window.dispatchEvent(new PointerEvent("pointerup", { pointerType: "touch", clientX: 360, clientY: 180, bubbles: true }))
+    })
+  }
+  expect(new Set(swiped).size).toBe(5)
+  await touch.locator("#player-name").fill("Nia")
+  await pickClass(touch, "farmer")
+  await touch.locator("#start-button").click()
+  await touch.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await waitForSeats(touch, ["Nia"])
+  const seats = await touch.evaluate(() => window.__lastKeep.seats)
+  expect(seats).toHaveLength(1)
+  expect(seats[0].name).toBe("Nia")
+  expect(seats[0].hero).toBe("farmer")
+  expect(errors, errors.join("\n")).toEqual([])
+  await phone.close()
+}
+
+async function oneSeat(browser) {
+  const errors = []
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
+  const page = await context.newPage()
+  await page.addInitScript(() => {
+    window.__seatAsked = 0
+    const mark = () => {
+      if (!location.pathname.startsWith("/r/")) return
+      const start = document.querySelector("#start-screen")
+      const join = document.querySelector("#join-game")
+      if ((start && !start.hidden) || (join && !join.hidden)) window.__seatAsked += 1
+    }
+    const arm = (root) => {
+      new MutationObserver(mark).observe(root, {
+        attributes: true,
+        subtree: true,
+        childList: true,
+        attributeFilter: ["hidden"]
+      })
+      mark()
+    }
+    if (document.documentElement) arm(document.documentElement)
+    else {
+      new MutationObserver(() => {
+        if (!document.documentElement) return
+        arm(document.documentElement)
+      }).observe(document, { childList: true })
+    }
+  })
+  watch(page, "seat", errors)
+  await page.goto(gameUrl("/"))
+  await page.locator("#start-button").waitFor()
+  expect(await page.locator("#player-name").count()).toBe(1)
+  await page.locator("#player-name").fill("Ada")
+  await pickClass(page, "scout")
+  await page.locator("#start-button").click()
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await waitForSeats(page, ["Ada"])
+  const first = await page.evaluate(() => ({
+    asked: window.__seatAsked,
+    hidden: document.querySelector("#start-screen").hidden,
+    seats: window.__lastKeep.seats
+  }))
+  expect(first.asked).toBe(0)
+  expect(first.hidden).toBe(true)
+  expect(first.seats).toHaveLength(1)
+  expect(first.seats[0].hero).toBe("scout")
+
+  await page.reload()
+  await waitForSeats(page, ["Ada"])
+  const reloaded = await page.evaluate(() => ({
+    asked: window.__seatAsked,
+    hidden: document.querySelector("#start-screen").hidden,
+    seats: window.__lastKeep.seats
+  }))
+  expect(reloaded.asked).toBe(0)
+  expect(reloaded.hidden).toBe(true)
+  expect(reloaded.seats).toHaveLength(1)
+
+  await page.evaluate(() => window.__lastKeepTest.forget())
+  await page.reload()
+  await waitForSeats(page, ["Ada"])
+  const recovered = await page.evaluate(() => ({
+    asked: window.__seatAsked,
+    hidden: document.querySelector("#start-screen").hidden,
+    seats: window.__lastKeep.seats
+  }))
+  expect(recovered.asked).toBe(0)
+  expect(recovered.hidden).toBe(true)
+  expect(recovered.seats).toHaveLength(1)
+  expect(recovered.seats[0].hero).toBe("scout")
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
 module.exports = {
   prepareProof,
   proofDir,
@@ -2734,6 +2861,8 @@ module.exports = {
   joinQuery,
   twoPlayerNight,
   joinFromForm,
+  classSelect,
+  oneSeat,
   squarePixels,
   scoreList,
   heroSilhouettes,

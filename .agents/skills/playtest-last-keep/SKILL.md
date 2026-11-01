@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Playtest Last Keep
 
-Five specialists play together in one room. They do not split into separate games. Each one may pick a hero. The report is written from the speciality, not from the hero's role. The browser proof stays `.agents/skills/verify-last-keep/SKILL.md`. This skill does not copy the steps in `e2e/scenarios.js`.
+Five specialists play together in one room. They do not split into separate games. Each one may pick a hero. The home page and a bare invite are the dusk yard. The hero stands in the centre, and the arrows change the class. A stored seat does not show that screen. The report is written from the speciality, not from the hero's role. The browser proof stays `.agents/skills/verify-last-keep/SKILL.md`. This skill does not copy the steps in `e2e/scenarios.js`.
 
 ## Harness
 

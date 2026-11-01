@@ -6,12 +6,13 @@ import { heroCrops, conceptFigure } from "../models/sprites.js"
 import { heroReadabilityFloor, readability } from "./art_score.js"
 import { groundPixels } from "./ground.js"
 import { cardSourceHeight, pictureColumn, scaleFront, sheetRow, spriteHeight } from "./pictures.js"
-import { heroKinds, heroParts, heroSignature } from "./heroes.js"
+import { heroKinds, heroLine, heroParts, heroSignature } from "./heroes.js"
 import { groundUnderMask } from "./yard_sample.js"
 
 test("each hero builds a distinct mesh signature", () => {
   const kinds = heroKinds()
   assert.deepEqual(kinds, ["warrior", "mage", "scout", "farmer", "engineer"])
+  for (const kind of kinds) assert.ok(heroLine(kind).length > 12, kind)
   const sigs = kinds.map((kind) => heroSignature(kind))
   const keys = sigs.map((sig) => `${sig.marks.join("+")}|${sig.bounds.w}x${sig.bounds.h}x${sig.bounds.d}|${sig.parts.length}`)
   assert.equal(new Set(keys).size, kinds.length)

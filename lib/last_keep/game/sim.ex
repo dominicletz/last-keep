@@ -77,6 +77,20 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
+  def forget(%State{} = state, id) do
+    case state.players[id] do
+      nil ->
+        state
+
+      player ->
+        %{
+          state
+          | entities: Map.delete(state.entities, player.hero_id),
+            players: Map.delete(state.players, id)
+        }
+    end
+  end
+
   def disconnect(%State{} = state, id, generation \\ nil) do
     case state.players[id] do
       nil ->

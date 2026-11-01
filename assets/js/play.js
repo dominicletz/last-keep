@@ -9,6 +9,7 @@ import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCap
 import { absorbShots, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
+import { mountStart } from "./start"
 
 const BUILD = ["wall", "tower", "trap", "field", "forge", "mage_tower"]
 const PLACE_WORD = {
@@ -30,36 +31,49 @@ const SKILL_NAME = {
 export function bootPlay(code) {
   const stage = document.querySelector("#stage")
   const hud = document.querySelector("#hud")
-  const join = document.querySelector("#join-game")
+  const join = document.querySelector("#start-screen")
   const overlay = document.querySelector("#overlay")
   const search = window.location.search
-  const picture = createPicture(deviceEnv())
-  const view = createView(stage, picture)
-  window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade() }
-  const ui = { stage, hud, join, overlay, view }
+  const ui = { stage, hud, join, overlay, view: null, menu: null }
   const saved = readSeat(code)
   const queried = seatFromQuery(search)
   mountPerf(search)
 
-  join.addEventListener("submit", (event) => {
-    event.preventDefault()
-    const name = join.querySelector("#player-name").value
-    const hero = join.querySelector("input[name=hero]:checked").value
-    const token = crypto.randomUUID().replaceAll("-", "")
-    enter(code, { token, name, hero }, ui)
-  })
-
   if (saved) {
     concealJoin(join)
-    start(code, saved, ui)
+    launch(code, saved, ui)
   } else if (queried) {
-    prefill(join, queried.name, queried.hero)
     concealJoin(join)
-    const token = crypto.randomUUID().replaceAll("-", "")
-    enter(code, { token, name: queried.name, hero: queried.hero }, ui)
+    enter(code, { token: tokenFor(code), name: queried.name, hero: queried.hero }, ui)
   } else {
-    prefill(join, localStorage.getItem("lastkeep-name") || "", "warrior")
+    ui.menu = mountStart({
+      stage,
+      form: join,
+      mode: "join",
+      onAccept: (pick) => enter(code, { token: tokenFor(code), name: pick.name, hero: pick.hero }, ui)
+    })
   }
+}
+
+function tokenFor(code) {
+  const saved = readSeat(code)
+  if (saved && saved.token) return saved.token
+  if (!tokenFor.held) tokenFor.held = crypto.randomUUID().replaceAll("-", "")
+  return tokenFor.held
+}
+
+function launch(code, seat, ui) {
+  if (ui.menu) {
+    ui.menu.stop()
+    ui.menu = null
+  }
+  if (ui.view && ui.view.stop) ui.view.stop()
+  ui.stage.replaceChildren()
+  const picture = createPicture(deviceEnv())
+  const view = createView(ui.stage, picture)
+  window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade(), tier: picture.tier }
+  ui.view = view
+  start(code, seat, ui)
 }
 
 function deviceEnv() {
@@ -94,14 +108,20 @@ function mountPerf(search) {
   requestAnimationFrame(tick)
 }
 
-function prefill(join, name, hero) {
-  join.querySelector("#player-name").value = name
-  const radio = join.querySelector(`input[value="${hero}"]`)
-  if (radio) radio.checked = true
+function ensureMenu(code, ui, seat) {
+  if (ui.menu || !ui.join) return
+  ui.menu = mountStart({
+    stage: ui.stage,
+    form: ui.join,
+    mode: "join",
+    name: seat && seat.name,
+    hero: seat && seat.hero,
+    onAccept: (pick) => enter(code, { token: tokenFor(code), name: pick.name, hero: pick.hero }, ui)
+  })
 }
 
 async function enter(code, seat, ui) {
-  const error = ui.join.querySelector("#join-error")
+  const error = ui.join.querySelector("#start-error")
   error.hidden = true
   try {
     const response = await fetch(`/api/rooms/${code}/join`, {
@@ -111,6 +131,7 @@ async function enter(code, seat, ui) {
     })
     const body = await response.json()
     if (!response.ok) {
+      ensureMenu(code, ui, seat)
       revealJoin(ui.join)
       error.hidden = false
       error.textContent = body.error === "full" ? "This keep is full." : "Could not join."
@@ -118,10 +139,12 @@ async function enter(code, seat, ui) {
     }
     const stored = { token: body.token, name: seat.name.trim(), hero: seat.hero }
     localStorage.setItem("lastkeep-name", stored.name)
+    localStorage.setItem("lastkeep-hero", stored.hero)
     localStorage.setItem(`lastkeep:${code}`, JSON.stringify(stored))
     concealJoin(ui.join)
-    start(code, stored, ui)
+    launch(code, { ...stored, retried: seat.retried }, ui)
   } catch (_err) {
+    ensureMenu(code, ui, seat)
     revealJoin(ui.join)
     error.hidden = false
     error.textContent = "The keep did not answer."
@@ -321,6 +344,11 @@ function start(code, seat, ui) {
     parade() {
       channel.push("parade", {})
     },
+    forget() {
+      return new Promise((resolve) => {
+        channel.push("forget", {}).receive("ok", () => resolve(true))
+      })
+    },
     // A covered seat still has to stay in the room. The render loop sees this
     // flag and skips the present. The socket and the input interval keep
     // going. wake() presents again, for a check that has to read that page.
@@ -357,12 +385,18 @@ function start(code, seat, ui) {
       paint(ui, snap, selfId, build)
     })
     .receive("error", (body) => {
-      revealJoin(ui.join)
+      socket.disconnect()
       ui.hud.hidden = true
-      const error = ui.join.querySelector("#join-error")
+      const lost = body.reason === "unknown" || body.reason === "not_found"
+      if (lost && !seat.retried) {
+        enter(code, { ...seat, retried: true }, ui)
+        return
+      }
+      ensureMenu(code, ui, seat)
+      revealJoin(ui.join)
+      const error = ui.join.querySelector("#start-error")
       error.hidden = false
-      error.textContent = body.reason === "unknown" ? "Sit down again. This seat was lost." : "Could not enter."
-      localStorage.removeItem(`lastkeep:${code}`)
+      error.textContent = lost ? "Sit down again. This seat was lost." : "Could not enter."
     })
 
   channel.on("snap", (snap) => {

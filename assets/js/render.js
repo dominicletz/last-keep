@@ -406,8 +406,16 @@ export function createView(stage, picture) {
       const key = `${kind}:${row.id}`
       seen.add(key)
       let mesh = meshes.get(key)
+      if (mesh && kind === "hero" && mesh.userData.hero !== row.hero) {
+        scene.remove(mesh)
+        releaseGeometries(mesh)
+        meshes.delete(key)
+        tracks.delete(key)
+        mesh = null
+      }
       if (!mesh) {
         mesh = build(row)
+        if (row.preview) mesh.userData.arrived = performance.now()
         if (!mesh.userData.role) mesh.userData.role = kind
         meshes.set(key, mesh)
         scene.add(mesh)
@@ -500,7 +508,10 @@ export function createView(stage, picture) {
   window.addEventListener("pointerdown", noteInput)
   window.addEventListener("keydown", noteInput)
 
+  let closed = false
+
   function frame() {
+    if (closed) return
     // A quiet guest stays in the room through the socket and the input
     // interval. Presenting that page is the paint that fills the runner.
     // The callback stays so wake() can present again without a new loop.
@@ -585,6 +596,12 @@ export function createView(stage, picture) {
       pending = { snap, selfId }
       placeCamera(snap, selfId)
       nudge(snap, selfId)
+    },
+    stop() {
+      closed = true
+      window.removeEventListener("resize", applyFrame)
+      window.removeEventListener("pointerdown", noteInput)
+      window.removeEventListener("keydown", noteInput)
     },
     aim(clientX, clientY) {
       const rect = renderer.domElement.getBoundingClientRect()
@@ -1439,6 +1456,15 @@ export function createView(stage, picture) {
   }
 
   function placeMesh(key, mesh) {
+    const arrived = mesh.userData.arrived
+    if (arrived) {
+      const age = performance.now() - arrived
+      if (age < 220) mesh.scale.setScalar(0.84 + (0.16 * age) / 220)
+      else {
+        mesh.scale.setScalar(1)
+        mesh.userData.arrived = 0
+      }
+    }
     const pose = smoothed(key)
     const spread = mesh.userData.spread || { x: 0, z: 0 }
     const step = worldStep()
@@ -1534,13 +1560,15 @@ export function createView(stage, picture) {
     } else {
       for (const piece of sig.parts) group.add(pieceMesh(piece))
     }
-    const top = sig.bounds.h + 4
-    const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(22, sig.bounds.w * 0.45), 3, 2)), mat(0x1a100c))
-    const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(20, sig.bounds.w * 0.4), 2, 2)), mat(0x7ea35a))
-    plate.position.y = top
-    fill.position.set(0, top, 1.2)
-    group.add(plate, fill)
-    group.userData.hp = fill
+    if (!row.preview) {
+      const top = sig.bounds.h + 4
+      const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(22, sig.bounds.w * 0.45), 3, 2)), mat(0x1a100c))
+      const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(20, sig.bounds.w * 0.4), 2, 2)), mat(0x7ea35a))
+      plate.position.y = top
+      fill.position.set(0, top, 1.2)
+      group.add(plate, fill)
+      group.userData.hp = fill
+    }
     group.userData.face = true
     group.userData.role = "hero"
     group.userData.hero = row.hero

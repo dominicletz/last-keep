@@ -592,3 +592,91 @@ html.touch-play .stick { display: block; }
   .home { grid-template-columns: 1fr; padding: 1.2rem; }
   .roster { display: none; }
 }
+
+#start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  margin: 0;
+  pointer-events: none;
+  color: var(--ink);
+}
+#start-screen[hidden] { display: none !important; }
+.start-title {
+  position: absolute;
+  top: 0.8rem;
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.6rem, 4vw, 3rem);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 #140c08;
+}
+#start-screen [data-class] {
+  position: absolute;
+  top: 42%;
+  width: 3rem;
+  height: 3rem;
+  min-width: 44px;
+  min-height: 44px;
+  pointer-events: auto;
+  font-size: 2rem;
+  line-height: 1;
+}
+#start-screen [data-class="prev"] { left: 0.8rem; }
+#start-screen [data-class="next"] { right: 0.8rem; }
+.start-card {
+  position: absolute;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  width: min(22rem, calc(100% - 8rem));
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  text-align: center;
+  text-shadow: 2px 2px 0 #140c08;
+}
+.start-card p { margin: 0; }
+.start-card [data-class-name] {
+  font-size: 1.4rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.start-card [data-class-role] { color: var(--muted); max-width: 28rem; }
+.start-card label, .start-card button, .start-card input { pointer-events: auto; }
+.start-card input {
+  background: #140e12cc;
+  border: 3px solid #6a4a30;
+  padding: 0.35rem 0.5rem;
+  width: 10rem;
+}
+.start-scores {
+  position: absolute;
+  left: 0.8rem;
+  bottom: 0.8rem;
+  width: min(16rem, 34vw);
+  max-height: 30vh;
+  overflow: auto;
+  pointer-events: auto;
+  font-size: 0.75rem;
+  text-shadow: 2px 2px 0 #140c08;
+}
+.start-scores h2 { margin: 0 0 0.3rem; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
+@media (max-height: 500px) {
+  .start-scores { display: none; }
+  .start-title { font-size: 1.2rem; top: 0.3rem; }
+  .start-card {
+    left: auto;
+    right: 4.4rem;
+    bottom: 0.45rem;
+    transform: none;
+    width: min(15rem, 40vw);
+    justify-items: end;
+    text-align: right;
+    gap: 0.15rem;
+  }
+  .start-card [data-class-role] { font-size: 0.75rem; }
+}

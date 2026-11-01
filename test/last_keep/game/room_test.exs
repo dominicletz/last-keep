@@ -88,6 +88,26 @@ defmodule LastKeep.Game.RoomTest do
     assert length(Highscores.list()) == 1
   end
 
+  test "a seat that has not connected keeps the lobby wait" do
+    {:ok, code} = Rooms.create(idle_ms: 200, lobby_ms: 4_000, seed: 9)
+
+    {:ok, token, _id, _snap} =
+      Rooms.enlist(code, %{name: "Ada", hero: :scout, token: "token-token-token"})
+
+    Process.sleep(500)
+    assert Rooms.exists?(code)
+    assert length(Room.snapshot(code).players) == 1
+
+    assert Room.forget(code, token) == :ok
+    assert Room.snapshot(code).players == []
+
+    {:ok, ^token, "p1", back} =
+      Rooms.enlist(code, %{name: "Ada", hero: :scout, token: token})
+
+    assert length(back.players) == 1
+    assert hd(back.players).hero == "scout"
+  end
+
   test "a stale tick does not start a second clock" do
     {:ok, code} = Rooms.create(seed: 5)
 
