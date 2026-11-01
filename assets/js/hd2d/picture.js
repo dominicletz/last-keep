@@ -49,10 +49,11 @@ export function sheetCardGeometry() {
 }
 
 // The hero drawn inside a sheet card, not the whole cell: SHEET_HERO texels
-// tall from the soles at y = 0, at the scale snapHeroCard gave the card.
-export function sheetHeroSize(plane, picture) {
+// tall from the soles at y = 0, at the scale snapHeroCard gave the card. The
+// width is the hero's body width at that same scale.
+export function sheetHeroSize(plane, body) {
   const scale = plane.scale.y
-  return { w: picture.w * scale, h: SHEET_HERO * SHEET_TEXEL * scale }
+  return { w: body.w * scale, h: SHEET_HERO * SHEET_TEXEL * scale }
 }
 
 const snapPos = new THREE.Vector3()

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
+import { createRequire } from "node:module"
 import * as THREE from "three"
 import { pixelStep } from "../art_score.js"
 import { cameraLift } from "../frame.js"
@@ -477,18 +478,31 @@ test("snapHeroCard scales the card to integer pixels for the camera that draws i
 
 test("a sheet hero measures the drawn hero, not the 128 px cell", () => {
   const plane = new THREE.Mesh(sheetCardGeometry(), new THREE.MeshBasicMaterial())
-  const picture = { w: 15.4, h: spriteHeight }
-  const nominal = sheetHeroSize(plane, picture)
+  const body = { w: 15.4, h: spriteHeight, d: 4.3 }
+  const nominal = sheetHeroSize(plane, body)
   assert.ok(Math.abs(nominal.h - spriteHeight) < 1e-9)
-  assert.equal(nominal.w, picture.w)
+  assert.equal(nominal.w, body.w)
   plane.geometry.computeBoundingBox()
   const cell = plane.geometry.boundingBox.max.y - plane.geometry.boundingBox.min.y
   assert.ok(cell > nominal.h * 1.4, `cell ${cell} vs hero ${nominal.h}`)
   // After snapHeroCard the drawn hero grows with the card.
   plane.scale.setScalar(1.25)
-  const snapped = sheetHeroSize(plane, picture)
+  const snapped = sheetHeroSize(plane, body)
   assert.ok(Math.abs(snapped.h - SHEET_HERO * SHEET_TEXEL * 1.25) < 1e-9)
-  assert.ok(Math.abs(snapped.w - picture.w * 1.25) < 1e-9)
+  assert.ok(Math.abs(snapped.w - body.w * 1.25) < 1e-9)
+})
+
+test("the e2e sheet-hero height uses the card's own constants", () => {
+  const screen = createRequire(import.meta.url)("../../../e2e/screen.js")
+  assert.equal(screen.SHEET_HERO, SHEET_HERO)
+  assert.equal(screen.SPRITE_HEIGHT, spriteHeight)
+  // Same rounding as heroTexel: heroSilhouettes predicts what snapHeroCard draws.
+  const camera = screen.hd2dCamera()
+  const eye = new THREE.Vector3(camera.eye.x, camera.eye.y, camera.eye.z)
+  const look = new THREE.Vector3(camera.look.x, camera.look.y, camera.look.z)
+  const depth = new THREE.Vector3(120, 0, 0).sub(eye).dot(look.clone().sub(eye).normalize())
+  const worldPerPixel = (2 * depth * Math.tan(camera.fov / 2)) / 800
+  assert.ok(Math.abs(screen.sheetHeroHeight(120, 0, 800) - SHEET_HERO * heroTexel(worldPerPixel)) < 1e-9)
 })
 
 test("grade refuses a live room before the strip resolves", () => {

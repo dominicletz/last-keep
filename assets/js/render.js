@@ -733,11 +733,11 @@ export function createView(stage, picture) {
         if (!key.startsWith("hero:") || !mesh.userData.hero) continue
         const card = mesh.userData.card
         const picture = mesh.userData.picture
-        const sheet = card && card.isMesh && picture && SHEET_HEROES.includes(mesh.userData.hd)
+        const sheet = card && card.isMesh && picture && mesh.userData.bounds && SHEET_HEROES.includes(mesh.userData.hd)
         const px =
           card && picture && (card.isSprite || sheet)
             ? projectBoxPixels(
-                spriteCardBox(mesh, camera, sheet ? sheetHeroSize(card, picture) : picture),
+                spriteCardBox(mesh, camera, sheet ? sheetHeroSize(card, mesh.userData.bounds) : picture),
                 camera,
                 viewFrame.bufferHeight
               )
@@ -745,6 +745,7 @@ export function createView(stage, picture) {
         figures.push({
           id: key.slice(5),
           hero: mesh.userData.hero,
+          hd: mesh.userData.hd || null,
           box: heroScreenBox(mesh),
           parts: mesh.userData.parts,
           marks: mesh.userData.marks,
