@@ -15,6 +15,14 @@ export const spriteFrames = spriteWalk + spriteAttack + spriteDeath
 // The full crop's atlas is about 46MB and stalls the page.
 export const cardSourceHeight = 160
 
+// Heroes drawn from a video walk sheet (docs/concepts/SPRITE-PIPELINE.md)
+// instead of the voxel atlas, in lighting priority order.
+export const SHEET_HEROES = ["warrior", "mage"]
+
+export function walkSheetUrl(hero, normal = false) {
+  return `images/hd2d/${hero}-walk${normal ? "-normal" : ""}.png`
+}
+
 export function scaleFront(image, height) {
   const h = Math.max(1, height)
   const w = Math.max(1, Math.round((image.w * h) / image.h))
