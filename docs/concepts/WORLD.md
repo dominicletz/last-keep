@@ -2,15 +2,43 @@
 
 The keep stays in the middle. Heroes still defend it together, and nights still come from every side. The land around that keep is no longer one circle.
 
-`Rules.map_radius/0` is 7200. Heroes clamp to that disc. Wave 1 still drops two goblins about 620 to 659 from the origin, and later nights use a farther ring. Seventy bare trunks sit in three rings and have no wood.
+`Rules.map_radius/0` is 7200. A hero stops on the first cell outside that disc, and `Rules.walk_backstop/0` is 9600. Wave 1 still drops two goblins about 620 to 659 from the origin. From wave 2, each monster steps 40 units toward the origin from a living portal. Seventy bare trunks sit in three rings and have no wood.
 
 The chest and the portal already follow this page. The rest of it is the contract for the slices that have not landed. Edges in [`../GAME-INTERACTIONS.md`](../GAME-INTERACTIONS.md) that name that remaining land are `planned` in [`../interactions.json`](../interactions.json).
+
+## How a bounded land reads as endless
+
+The frame the player sees ends on the yard plane. `GROUND_SPAN` in `assets/js/ground.js` is 760, so the plane runs from -380 to 380. Past that quad the clear color shows. That is the hard rectangle. The seeded land already continues to radius 7200. The picture does not.
+
+Three games keep a finite play space and still fill the frame. The notes below are what this slice copies. Each one names the page it came from.
+
+Kingdom Two Crowns walks a strip and stops. The Kingdom wiki page Plain says every land ends in two cliffs, or in one cliff and a beach. The Cliff portal page puts a portal on that cliff face. It opens at night and sends the Greed. Destroying it stops that side until the portal rebuilds. The picture past the cliff is still a picture. A Steam thread on the Two Crowns water describes distant mountains that barely scroll, nearer cliffs and trees that scroll a little, and water that scrolls fastest. A player on the New Lands forum, recalling a developer stream, says those layers sit at real depth in a 3D scene. The walk ends on rock or water. The sky and the far layers do not end with it.
+
+Octopath Traveler keeps each place on a small board. Digital Foundry's 2018 article says the bokeh depth of field uses the 3D depth under the pixels, holds a shallow range in focus, and reads as a tilt-shift miniature. The far edge of the board goes soft. Last Keep already has that camera and that fog. Soft blur on an empty clear color is still an edge. The ground has to continue under the blur.
+
+Don't Starve Together generates one finite tile map from a seed. The wiki page Map says a new world is black on the map except the ground around the character, and walking fills the map in. The tiles were generated before anyone walked there. The tile-definition notes split land, ocean, and impassable. Ocean is a tile. The character does not walk it. The guide All About Night treats the dark as the unlit part of that same ground. A light falls off. It does not delete tiles. Shipwrecked's Ocean Fog page puts mist at the charted edge. Entering it wraps the character. The edge reads as fog over a place.
+
+This slice copies those three stops.
+
+Undiscovered chunks are drawn from the same seed as land under mist. Points of interest stay out of the snapshot until the chunk is discovered. Past radius 7200 the picture keeps pine, cliff, hill, and mountain. That mesh fades to the clear color before the far plane, so no camera shows a clear-color ground edge. The walk stops on the first cell outside the disc. That edge follows the 36-unit grid, so it is jagged. `Rules.walk_backstop/0` is 9600 and only catches a hero a gap would send past the skirt. From wave 2 on, each monster appears 40 units toward the origin from a living portal, within 80 of that door. Breaking that portal drops its share. Night 1 stays two goblins on the yard ring. No march multiplier. `five heroes reach the wave 2 pack before the keep falls` still clears on seed 1.
+
+Sources, read before this slice was built:
+
+- [Plain](https://kingdomthegame.fandom.com/wiki/Plain), Kingdom wiki.
+- [Cliff portal](https://kingdomthegame.fandom.com/wiki/Cliff_portal), Kingdom wiki.
+- [Two Crowns parallax thread](https://steamcommunity.com/app/701160/discussions/0/3001047413716382185/).
+- [New Lands parallax thread](https://steamcommunity.com/app/496300/discussions/1/5064850575742403848/). The 3D-layer sentence there is a player's memory of a stream.
+- [Octopath Traveler, Digital Foundry, 2018](https://www.digitalfoundry.net/articles/digitalfoundry-2018-octopath-traveler-a-hybrid-game-for-a-hybrid-console).
+- [Map](https://dontstarve.wiki.gg/wiki/Map/DST), Don't Starve wiki.
+- [Tile definitions](https://vietnd69.github.io/dst-api-webdocs/docs/game-scripts/tiledefs), Don't Starve Together API notes.
+- [All About Night](https://dontstarve.wiki.gg/wiki/Guides/All_About_Night), Don't Starve wiki.
+- [Ocean Fog](https://dontstarve.fandom.com/wiki/Ocean_Fog), Don't Starve wiki.
 
 ## The land
 
 `World.generate/1` takes the room seed and returns one world. The same seed returns the same biomes, the same blocked cells, and the same points of interest. Visit order does not matter. `World.chunk/3` is the same bytes as the matching slice of `World.generate/1`.
 
-The bound is a radius of 7200, the same disc as the walk clamp. The shape inside that bound is not a circle and not a mirror. Biomes are pine forest, meadow, ruins, river, ford, and cliff. Rivers and cliffs block walking. A ford is the walkable cell in a river. Clearings and paths are meadow cells that the generator connects, not rings drawn with a compass.
+The bound is a radius of 7200. `World.open?/2` is true only for a cell inside that disc. The stop follows the cell grid, so the edge is jagged. The shape inside the disc is not a mirror. Biomes there are pine forest, meadow, ruins, river, ford, and cliff. A hero walks a river cell and a cliff cell inside the disc. The flood fill that places points of interest still treats those cells as blocked. A ford is the walkable cell in a river. The skirt past the disc is pine, cliff, hill, or mountain, and every skirt cell is closed. Hill and mountain are picture biomes. `World.biome/3` still returns void outside the disc. Clearings and paths are meadow cells that the generator connects.
 
 The keep disc of radius 400 is always meadow. It holds no pine, river, cliff, or point of interest. Rank 4 dirt ends near 310, so the town, the houses, and the spawn ring at radius 120 stay inside that disc. Night 1 spawn distance stays on the old ring. The bearing is a living portal.
 
@@ -56,7 +84,7 @@ Night still enrages living monsters when the wave timer reaches zero. Ambient mo
 
 Wave 1 stays two goblins, slower and softer, at `Rules.spawn_distance/2` for wave 1. Their bearings are the two nearest living portals. If fewer than two portals live, the missing bearings come from the old single angle in `Waves.plan/2`. The count stays 2. The yard test that wants them between 600 and 680 still passes.
 
-From wave 2 on, the plan's monsters are split across living portals. The total count stays the count `Waves.plan/2` would have built for that wave. Destroying a portal removes that portal's share from the next plan. Bearings that belonged to it do not return. If no portal lives, the plan is empty, the timer still runs, and an empty field clears the night. The horizon does not invent a replacement portal.
+From wave 2 on, each monster is placed 40 units toward the origin from a living portal, round-robin over the nearest portals. The first position is within 80 of that door. The total count stays the count `Waves.plan/2` would have built for that wave. A portal at 0 hp is already gone from `state.world.portals`, so the next wave places nothing within 80 of it. If no portal lives, the spawn list is empty, the timer still runs, and an empty field clears the night. The picture does not invent a replacement portal.
 
 Fog is one map for the room. A chunk starts hidden, except the chunks that touch the keep disc. A hero reveals the chunk under their feet and the eight neighbors. A living scout also reveals the ring at Chebyshev distance 2. Hidden points of interest are not in that player's snapshot.
 
@@ -82,13 +110,13 @@ Elixir owns this. The channel parses input and calls `Sim`. It does not decide b
 
 ## What the client draws
 
-The camera still follows the hero. The walk clamp is 7200.
+The camera follows the hero. A test may set `window.__lastKeepLook` to `{x, z}`, and the seat uses that point until the hook is cleared. The start screen has no snapshot. It paints seed 1 and attempt 0.
 
-The client draws chunks that arrived in the snapshot and culls with the same frustum check monsters already use. It does not build a mesh for a hidden chunk.
+`Snapshot.render/1` carries `seed` and `attempt`. The client paints the horizon from `pictureCell`, and those biome names match `World.picture/3`. The texture is a 6144-unit window around the camera, 256 texels, repainted when the camera chunk changes. A flat plane stays 48000 so the far clip still lands on land. A second mesh, 3200 on a side and 20 segments, follows the ground under the camera and lifts cliff, hill, and mountain from the same cells. The segment count stays inside the 9800-triangle wave ceiling. Both meshes exist from the first frame. The yard keeps the scene fog. Its outer edge stipples into that window. The horizon fades on its own, from 1.15 spans to 2.2 spans. The yard plane stays `GROUND_SPAN` 760. Cells whose chunk is missing from the snapshot darken toward the fog color on that same texture. A hidden chest, portal, or camp is not drawn. Far pines are one instanced mesh, at most 180, rebuilt when the camera chunk changes. A living portal is one instanced gate, two posts and a glowing opening. Breaking the portal removes that instance. There is no point light on the door.
 
-Way-finding stays in the world. There is no corner map and no new glass button. The glass count stays 10. A map table stands at x 0 and y 160, inside the keep disc. A hero within 80 of it sees revealed chunks as a cloth on that table. Off screen, the nearest living portal and the nearest unopened chest in revealed land use the same edge beacon as the next-wave hint.
+Way-finding stays in the world. There is no corner map and no new glass button. The glass count stays 10. A map table stands at x 0 and y 160, inside the keep disc. A hero within 80 of it sees revealed chunks as a cloth on that table. Off screen, the nearest living portal and the nearest unopened chest in revealed land use the same edge beacon as the next-wave hint. That beacon stays up during a wave.
 
-Terrain and these points of interest will be drawn by the pixel-art lane in that lane's style. This lane owns the ids and the positions. That lane owns the meshes. Until a mesh exists, a chest uses the gold-sack colors, a portal uses the brazier, a quarry uses stone blocks, a camp uses a cottage, and a shrine uses the keep banner. Replacing a mesh does not rename the id.
+Terrain and these points of interest will be drawn by the pixel-art lane in that lane's style. This lane owns the ids and the positions. That lane owns the meshes. Until a mesh exists, a chest uses the gold-sack colors, a quarry uses stone blocks, a camp uses a cottage, and a shrine uses the keep banner. A portal is the gate. Replacing a mesh does not rename the id.
 
 ## What stays the same
 
@@ -96,7 +124,7 @@ Night 1 is two goblins. The keep is the loss. Food still heals the keep from bes
 
 ## How a slice proves itself
 
-The concept page is this document. Generation, exploration, and the resource slice have landed. The walk clamp is 7200, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. A quarry pays stone, pine refuses a sow, and a stone wall costs 8 stone and 4 wood. A pine cell pays 12 wood, and a yard tree in reach takes the chop. A camp wakes one vagrant for 8 gold. A shrine grants one relic the party does not hold. The hermit and the merchant stay planned. The performance slice has landed. The coverage floor is 77.
+The concept page is this document. Generation, exploration, and the resource slice have landed. Heroes stop on the skirt, `Rules.walk_backstop/0` is 9600, a chest pays 24 gold once, and a broken portal leaves that bearing out of the night. A quarry pays stone, pine refuses a sow, and a stone wall costs 8 stone and 4 wood. A pine cell pays 12 wood, and a yard tree in reach takes the chop. A camp wakes one vagrant for 8 gold. A shrine grants one relic the party does not hold. The hermit and the merchant stay planned. The performance slice has landed. The coverage floor is 77.
 
 The generation slice adds `World.generate/1`. One test builds two worlds from seed 3 and requires equal biomes, blockers, and points of interest. One test requires the keep disc clear. One test flood-fills from the origin and requires every point of interest on the fill. One test requires each symmetry disagreement fraction to be at least 0.35.
 
@@ -116,11 +144,15 @@ The camp slice wakes one vagrant for 8 gold. `a camp spends 8 gold once and the 
 
 The shrine slice grants one relic the party does not hold. `a shrine grants one relic once` stands on a shrine, reads one relic, and leaves one shrine. A second tick leaves both lengths unchanged. `a shrine with every relic already held is still once` removes the shrine and leaves the five relics. `takeTheShrine` walks to the seed-5 shrine at (4140, 0) and reads one relic. The walk stays 120 seconds. The hermit and the merchant stay planned. The coverage floor stays 77.
 
+The horizon slice paints past the disc and brings later nights out of the doors. `the same seed paints the same picture` and `the picture fixture is the client contract` lock `World.picture/3`. `pictureCell matches the committed fixture` reads that file, including a skirt point and the seed-1 cells at (0, 0), (432, 0), (800, 0), and (2000, 0). `a hero stops on the skirt and still crosses a river` reaches the closed cell and still crosses a river. `wave 2 does not spawn in the yard` requires each monster within 80 of a living portal. `a broken portal sends no monster on the next wave` breaks the nearest door. Night 1 stays two goblins. `the fog edge is not a flat fill` reads the start screen, the keep, and a bound camera. The coverage floor stays 77.
+
 ## Locked numbers
 
 | Name | Value |
 | --- | --- |
 | World radius | 7200 |
+| Walk backstop | 9600, `Rules.walk_backstop/0` |
+| Door step | 40 toward the origin, within 80 |
 | Chunk size | 512 |
 | Keep-clear radius | 400 |
 | Walk cell | 36 |

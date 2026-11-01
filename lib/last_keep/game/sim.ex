@@ -378,7 +378,7 @@ defmodule LastKeep.Game.Sim do
         dx = mx * speed * 0.05
         dy = my * speed * 0.05
         {x, y} = slide(state, hero.x, hero.y, dx, dy, hero.r, %{ignore: hero.id})
-        {x, y} = clamp_map(x, y, Rules.map_radius())
+        {x, y} = clamp_map(x, y, Rules.walk_backstop())
         facing = facing_of(hero, player.input, x, y)
         put_entity(state, %{hero | x: x, y: y, facing: facing})
       else
@@ -1693,51 +1693,68 @@ defmodule LastKeep.Game.Sim do
 
   defp spawn_group(state, group, wave) do
     group
-    |> wave_one_bearings(state, wave)
+    |> spawn_sources(state, wave)
     |> Enum.with_index(1)
-    |> Enum.reduce(state, fn {angle, i}, state ->
-      dist = spawn_ring(wave, i)
+    |> Enum.reduce(state, fn {source, i}, state ->
+      {x, y} = place_spawn(source, wave, i)
 
       spawn_monster(state, %{
         kind: group.kind,
-        x: :math.cos(angle) * dist,
-        y: :math.sin(angle) * dist,
+        x: x,
+        y: y,
         elite: group.elite,
         wave: wave
       })
     end)
   end
 
-  defp wave_one_bearings(group, state, wave) do
+  defp spawn_sources(group, state, 1), do: wave_one_bearings(group, state)
+
+  defp spawn_sources(group, state, _wave) do
     portals = nearest_portals(state)
+    n = length(portals)
 
-    cond do
-      wave == 1 ->
-        taken = Enum.take(portals, group.count)
-        live = Enum.map(taken, &poi_angle/1)
-        start = length(live) + 1
-
-        fillers =
-          if start > group.count do
-            []
-          else
-            for i <- start..group.count do
-              group.angle + (i - group.count / 2) * 0.45
-            end
-          end
-
-        live ++ fillers
-
-      portals == [] ->
-        []
-
-      true ->
-        n = length(portals)
-
-        for i <- 0..(group.count - 1) do
-          poi_angle(Enum.at(portals, rem(i, n)))
-        end
+    if n == 0 do
+      []
+    else
+      for i <- 0..(group.count - 1), do: {:portal, Enum.at(portals, rem(i, n))}
     end
+  end
+
+  defp place_spawn(angle, 1, i) when is_number(angle) do
+    dist = spawn_ring(1, i)
+    {:math.cos(angle) * dist, :math.sin(angle) * dist}
+  end
+
+  defp place_spawn({:portal, poi}, _wave, _i), do: step_toward_origin(poi.x, poi.y, 40)
+
+  defp step_toward_origin(x, y, dist) do
+    radius = :math.sqrt(x * x + y * y)
+
+    if radius <= dist do
+      {x * 1.0, y * 1.0}
+    else
+      scale = (radius - dist) / radius
+      {x * scale, y * scale}
+    end
+  end
+
+  defp wave_one_bearings(group, state) do
+    portals = nearest_portals(state)
+    taken = Enum.take(portals, group.count)
+    live = Enum.map(taken, &poi_angle/1)
+    start = length(live) + 1
+
+    fillers =
+      if start > group.count do
+        []
+      else
+        for i <- start..group.count do
+          group.angle + (i - group.count / 2) * 0.45
+        end
+      end
+
+    live ++ fillers
   end
 
   defp nearest_portals(state) do
@@ -1953,13 +1970,13 @@ defmodule LastKeep.Game.Sim do
     ny = y + dy
 
     cond do
-      not body_blocked?(state, nx, ny, radius, opts) ->
+      World.open?(nx, ny) and not body_blocked?(state, nx, ny, radius, opts) ->
         {nx, ny}
 
-      not body_blocked?(state, nx, y, radius, opts) and abs(dx) > 0.2 ->
+      World.open?(nx, y) and not body_blocked?(state, nx, y, radius, opts) and abs(dx) > 0.2 ->
         {nx, y}
 
-      not body_blocked?(state, x, ny, radius, opts) and abs(dy) > 0.2 ->
+      World.open?(x, ny) and not body_blocked?(state, x, ny, radius, opts) and abs(dy) > 0.2 ->
         {x, ny}
 
       true ->
@@ -1998,7 +2015,7 @@ defmodule LastKeep.Game.Sim do
         slide(state, x, y, dx / steps, dy / steps, hero.r, opts)
       end)
 
-    {x, y} = clamp_map(x, y, Rules.map_radius())
+    {x, y} = clamp_map(x, y, Rules.walk_backstop())
 
     if pass_monsters do
       nudge_clear(state, hero, x, y, dx, dy)
@@ -2016,7 +2033,7 @@ defmodule LastKeep.Game.Sim do
       {ux, uy} = norm(dx, dy)
 
       Enum.reduce_while(1..16, {x, y}, fn i, acc ->
-        {nx, ny} = clamp_map(x + ux * i * 10, y + uy * i * 10, Rules.map_radius())
+        {nx, ny} = clamp_map(x + ux * i * 10, y + uy * i * 10, Rules.walk_backstop())
 
         if body_blocked?(state, nx, ny, hero.r, opts) do
           {:cont, acc}

@@ -50,6 +50,8 @@ defmodule LastKeep.Game.Snapshot do
       projectiles: projectiles(state),
       buildings: Enum.map(of_type(state, :building), &building/1),
       trees: Enum.map(of_type(state, :tree), &tree/1),
+      seed: state.world.seed,
+      attempt: World.generate(state.world.seed).attempt,
       chests: Enum.map(state.world.chests, &chest_view/1),
       portals: Enum.map(state.world.portals, &portal_view/1),
       events: Enum.map(Enum.reverse(state.events), &event/1)

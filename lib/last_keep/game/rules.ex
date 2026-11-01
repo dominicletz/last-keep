@@ -16,6 +16,7 @@ defmodule LastKeep.Game.Rules do
   def build_ticks(cleared_wave), do: max(500, 700 - cleared_wave * 15)
 
   def map_radius, do: 7200
+  def walk_backstop, do: 9600
   def chest_gold, do: 24
   def vagrant_cost, do: 8
   def chest_reach, do: 36

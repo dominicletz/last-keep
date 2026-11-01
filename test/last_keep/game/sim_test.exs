@@ -365,10 +365,79 @@ defmodule LastKeep.Game.SimTest do
     assert state.wave == 2
     assert Sim.monsters(state) != []
 
+    portals = state.world.portals
+
     for monster <- Sim.monsters(state) do
       dist = :math.sqrt(monster.x * monster.x + monster.y * monster.y)
       assert dist > 740
-      assert dist < 900
+
+      assert Enum.any?(portals, fn portal ->
+               :math.sqrt((monster.x - portal.x) ** 2 + (monster.y - portal.y) ** 2) <= 80
+             end)
+    end
+  end
+
+  test "a broken portal sends no monster on the next wave" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 400, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+
+    portal =
+      Enum.min_by(state.world.portals, fn poi ->
+        {poi.x * poi.x + poi.y * poi.y, poi.id}
+      end)
+
+    ada = hero(state, "ada")
+
+    state =
+      state
+      |> put_hero(%{ada | x: portal.x * 1.0, y: portal.y * 1.0})
+      |> Sim.input("ada", %{"attack" => true, "ax" => portal.x, "ay" => portal.y})
+
+    state = Enum.reduce(1..40, state, fn _, state -> Sim.tick(state) end)
+    refute Enum.any?(state.world.portals, &(&1.id == portal.id))
+
+    state =
+      Enum.reduce_while(1..500, state, fn _, state ->
+        state = Sim.tick(state)
+
+        if state.wave == 1 and match?({:wave, _}, state.phase) do
+          {:halt, state}
+        else
+          {:cont, state}
+        end
+      end)
+
+    assert state.wave == 1
+    assert length(Sim.monsters(state)) == 2
+
+    state = %{
+      state
+      | entities: Map.reject(state.entities, fn {_id, entity} -> entity.type == :monster end)
+    }
+
+    state =
+      Enum.reduce_while(1..900, state, fn _, state ->
+        state = Sim.tick(state)
+
+        if state.wave == 2 and match?({:wave, _}, state.phase) do
+          {:halt, state}
+        else
+          {:cont, state}
+        end
+      end)
+
+    assert state.wave == 2
+    monsters = Sim.monsters(state)
+    assert monsters != []
+
+    refute Enum.any?(monsters, fn monster ->
+             :math.sqrt((monster.x - portal.x) ** 2 + (monster.y - portal.y) ** 2) <= 80
+           end)
+
+    for monster <- monsters do
+      assert Enum.any?(state.world.portals, fn live ->
+               :math.sqrt((monster.x - live.x) ** 2 + (monster.y - live.y) ** 2) <= 80
+             end)
     end
   end
 
