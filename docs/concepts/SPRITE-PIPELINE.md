@@ -14,7 +14,7 @@ The mesh is a hand-built Blender model. No TRELLIS, no PixelLab, and no paid ser
 
 `figure()` is the rig. One walk of 8 frames (two contacts, two passes) and one idle of 4 frames move the same boxes. Feet and the sword hand are the joints. There is no second skeleton.
 
-Blender 4.2.9 writes `assets/models/warrior.blend` and `assets/models/warrior.glb` when that script runs under `blender --background --python`. The pixels do not come from Cycles. A z-buffer in the same file paints flat bands, so `python3 script/warrior_sheet.py --check` matches the committed sheet byte for byte on a CI runner that has no Blender and no GPU.
+Blender 4.2.9 writes `assets/models/warrior.blend` and `assets/models/warrior.glb` when that script runs under `blender --background --python`. The pixels do not come from Cycles. The same z-buffer paints the flat bands whether the process is Blender or `python3`. CI runs `python3 script/warrior_sheet.py --check` and does not download Blender. The 4.2.9 linux tarball is 339MB, and `download.blender.org` answers 403 to this runner, so a fetch would spend the 10 minute job before a pixel was drawn. A local Blender 4.2.9 run of that file (`a10f621e649a`, `blender --background --python script/warrior_sheet.py -- --check`) rewrites the sheet through the same z-buffer and leaves the PNG bytes unchanged. Albedo `93a24b27a14a5c01fa430aa2d16a4a4f85d44da6303696ebf8f0b5b04e437a18`. Normal `59191ad6cfccfe4a70431078f3c10e5d227aae3130e8f869d98d0d4034dff94a`. Those hashes are what `python3` locks. Cycles does not paint a frame.
 
 ## Render and pixelize
 
@@ -26,14 +26,14 @@ The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 512×768. The warrior p
 
 ## Acceptance
 
-`validate()` in the script, and `the committed walk sheet is the rasterizer rebuild` in `assets/js/hd2d/strip.test.js`, require all of the following.
+`validate()` in the script, `the committed walk sheet is the rasterizer rebuild`, and `no direction equals another or its mirror, and the walk stays on the palette` in `assets/js/hd2d/strip.test.js` require all of the following. The node test reads the committed PNG, so deleting a line from `validate()` does not hide a bad sheet.
 
-- No direction equals the front or its horizontal mirror.
-- Columns 3, 4, and 5 (NW, N, NE) have cape pixels and no skin. A grazing face texel on those columns is recoloured to the helmet mid band before the fill.
-- On the south contact, the shield's mean x is right of the cell centre, and the front has skin.
-- The lower half of walk frame 0 differs from frame 2. The lowest boot pixels lead with the left foot on frame 0 and the right foot on frame 4.
-- Every cell is 40 px tall and shares one foot row.
-- Every opaque pixel is in the three-band palette or the outline. The normal alpha matches.
+- No direction's twelve frames equal another direction or that direction's horizontal mirror.
+- Columns 3, 4, and 5 (NW, N, NE) have cape pixels and no skin on every row. A grazing face texel on those columns is recoloured to the helmet mid band before the fill.
+- The shield stays on the hero's left in every cell. Hero left is +X. Screen x grows toward the viewer's right, so the shield is right of the body on columns 0, 1, 2, and 7, and left of the body on columns 3, 4, 5, and 6. The gap is at least 2 px. The south contact still has skin.
+- The lower half changes by at least 8 px between consecutive walk frames, in every direction. Contact frames 0 and 4 differ by that much too. On the south view the lowest boot pixels lead with the left foot on frame 0 and the right foot on frame 4.
+- Every cell's height is within 1 px of 40, and every foot row is within 1 px of the first cell's foot row. The script still requires the exact height 40 and one shared foot row, which sits inside that band.
+- Every opaque pixel is in the three-band palette or the outline. The normal alpha matches the albedo alpha.
 
 The concept, the turnaround, and the walk reference stay under `assets/reference/warrior`. They are not the frames. `warrior reference plates stay committed` locks their sizes.
 
