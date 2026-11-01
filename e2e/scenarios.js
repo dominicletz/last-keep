@@ -6,6 +6,7 @@ const { settledHolds } = require("./settled")
 const { noteNorth, noteProgress, settleFields, stoppedTick } = require("./steer")
 const fs = require("fs")
 const path = require("path")
+const { inflateSync } = require("node:zlib")
 const proofDir = path.join("tmp", "verify-artifacts")
 
 function prepareProof() {
@@ -14,6 +15,123 @@ function prepareProof() {
 
 function shot(name) {
   return path.join(proofDir, name)
+}
+
+function paeth(a, b, c) {
+  const p = a + b - c
+  const pa = Math.abs(p - a)
+  const pb = Math.abs(p - b)
+  const pc = Math.abs(p - c)
+  if (pa <= pb && pa <= pc) return a
+  if (pb <= pc) return b
+  return c
+}
+
+function decodeShot(buffer) {
+  const bytes = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+  if (bytes[0] !== 137 || bytes.toString("ascii", 1, 4) !== "PNG") throw new Error("not a png")
+  let offset = 8
+  let width = 0
+  let height = 0
+  let colorType = 2
+  const idat = []
+  while (offset < bytes.length) {
+    const length = bytes.readUInt32BE(offset)
+    const type = bytes.toString("ascii", offset + 4, offset + 8)
+    const data = bytes.subarray(offset + 8, offset + 8 + length)
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0)
+      height = data.readUInt32BE(4)
+      colorType = data[9]
+      if (data[12] !== 0) throw new Error("png interlaced")
+    } else if (type === "IDAT") idat.push(data)
+    else if (type === "IEND") break
+    offset += 12 + length
+  }
+  const channels = colorType === 6 ? 4 : 3
+  if (channels !== 3 && channels !== 4) throw new Error(`png color ${colorType}`)
+  const raw = inflateSync(Buffer.concat(idat))
+  const stride = width * channels
+  const pixels = Buffer.alloc(height * stride)
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)]
+    const row = y * (stride + 1) + 1
+    for (let i = 0; i < stride; i++) {
+      const left = i >= channels ? pixels[y * stride + i - channels] : 0
+      const up = y > 0 ? pixels[(y - 1) * stride + i] : 0
+      const ul = y > 0 && i >= channels ? pixels[(y - 1) * stride + i - channels] : 0
+      let value = raw[row + i]
+      if (filter === 1) value += left
+      else if (filter === 2) value += up
+      else if (filter === 3) value += (left + up) >> 1
+      else if (filter === 4) value += paeth(left, up, ul)
+      else if (filter !== 0) throw new Error(`png filter ${filter}`)
+      pixels[y * stride + i] = value & 255
+    }
+  }
+  return { pixels, width, height, channels }
+}
+
+function clearRgb(light) {
+  return light === "night" ? [0x32, 0x2c, 0x3c] : [0x4e, 0x46, 0x51]
+}
+
+function nearClear(pixels, offset, _channels, clear) {
+  const dr = pixels[offset] - clear[0]
+  const dg = pixels[offset + 1] - clear[1]
+  const db = pixels[offset + 2] - clear[2]
+  // Channel-wise 18 matches fogged stone that is still ground. The clear fill
+  // is the straight-line distance in the three channels.
+  return dr * dr + dg * dg + db * db <= 18 * 18
+}
+
+async function assertLandMeetsSky(page, label) {
+  const light = await page.evaluate(() => (window.__lastKeep && window.__lastKeep.light) || "day")
+  // The start card and the glass sit over the canvas, so the shot hides them.
+  // Fogged stone already sits within 18 of the clear color and then the row
+  // returns to ground. The flat fill is the row leaving through that color.
+  await page.evaluate(() => {
+    window.__lastKeepChrome = []
+    for (const id of ["#start-screen", "#hud", "#overlay"]) {
+      const node = document.querySelector(id)
+      if (!node) continue
+      window.__lastKeepChrome.push([id, node.style.visibility])
+      node.style.visibility = "hidden"
+    }
+  })
+  let png
+  try {
+    png = await page.locator("#stage canvas").screenshot()
+  } finally {
+    await page.evaluate(() => {
+      for (const [id, visibility] of window.__lastKeepChrome || []) {
+        const node = document.querySelector(id)
+        if (node) node.style.visibility = visibility
+      }
+    })
+  }
+  const image = decodeShot(png)
+  const clear = clearRgb(light)
+  const y0 = Math.floor(image.height * 0.55)
+  let colored = 0
+  for (let y = y0; y < image.height; y++) {
+    let ground = 0
+    let clearRun = 0
+    for (let x = 0; x < image.width; x++) {
+      const offset = (y * image.width + x) * image.channels
+      if (!nearClear(image.pixels, offset, image.channels, clear)) {
+        ground += 1
+        colored += 1
+        clearRun = 0
+      } else {
+        clearRun += 1
+      }
+    }
+    if (ground >= 64 && clearRun >= 8) {
+      throw new Error(`${label} fog edge at ${image.width - clearRun},${y} after ${ground} ground pixels (${light})`)
+    }
+  }
+  if (colored < 64) throw new Error(`${label} lower frame has no ground (${light})`)
 }
 
 function gameUrl(path) {
@@ -2763,6 +2881,38 @@ async function portraitHero(browser) {
   expect(errors, errors.join("\n")).toEqual([])
 }
 
+async function theFogEdgeIsNotAFlatFill(browser) {
+  const errors = []
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
+  const page = await context.newPage()
+  watch(page, "edge", errors)
+  await page.goto(gameUrl("/"))
+  await page.locator("#start-button").waitFor()
+  await page.waitForFunction(() => {
+    const fig = window.__lastKeep && window.__lastKeep.figures && window.__lastKeep.figures[0]
+    return fig && fig.box
+  })
+  await assertLandMeetsSky(page, "start")
+
+  await page.locator("#player-name").fill("Ada")
+  await pickClass(page, "warrior")
+  await page.locator("#start-button").click()
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await page.waitForFunction(
+    () => window.__lastKeep && window.__lastKeep.self && window.__lastKeep.tick > 0 && window.__lastKeep.renders > 0 && !window.__lastKeepArrive
+  )
+  await assertLandMeetsSky(page, "keep")
+
+  await page.evaluate(async () => {
+    window.__lastKeepLook = { x: 2400, z: -600 }
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    window.__lastKeepTest.repaint()
+  })
+  await assertLandMeetsSky(page, "bound")
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
 async function classSelect(browser) {
   const errors = []
   const desktop = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
@@ -2899,6 +3049,7 @@ module.exports = {
   joinFromForm,
   classSelect,
   portraitHero,
+  theFogEdgeIsNotAFlatFill,
   oneSeat,
   squarePixels,
   scoreList,

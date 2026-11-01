@@ -31,8 +31,10 @@ export function geometryCensus(root) {
         }
         cursor = cursor.parent
       }
-      byRole[role] = (byRole[role] || 0) + 1
-      if (!flightRoles.has(role)) settled += 1
+      const copies = node.isInstancedMesh && role === "portal" ? node.count || 0 : 1
+      if (copies === 0) return
+      byRole[role] = (byRole[role] || 0) + copies
+      if (!flightRoles.has(role)) settled += copies
     })
   }
   let orphans = 0

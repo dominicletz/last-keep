@@ -8,6 +8,7 @@ import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { mountPicture } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
 import { stoneRepeat, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
@@ -142,6 +143,7 @@ export function createView(stage, picture) {
   )
   ground.rotation.x = -Math.PI / 2
   ground.receiveShadow = false
+  ground.visible = false
   scene.add(ground)
   const mapTable = new THREE.Mesh(
     trackGeometry(new THREE.BoxGeometry(36, 8, 22)),
@@ -180,6 +182,7 @@ export function createView(stage, picture) {
   yard.position.y = 0.08
   yard.receiveShadow = false
   scene.add(yard)
+  const land = mountPicture(scene)
   const plazaBytes = plazaPixels("day")
   const plazaMap = new THREE.DataTexture(plazaBytes, PLAZA_TEX, PLAZA_TEX)
   plazaMap.colorSpace = THREE.SRGBColorSpace
@@ -529,7 +532,7 @@ export function createView(stage, picture) {
       viewApi.draw(pending.snap, pending.selfId)
       drawnTick = pending.snap.tick
     }
-    if (window.__lastKeepArrive && pending) placeCamera(pending.snap, pending.selfId)
+    if (pending && (window.__lastKeepArrive || boundLook())) placeCamera(pending.snap, pending.selfId)
     for (const [, mesh] of meshes) stepFacing(mesh)
     for (const [key, mesh] of meshes) placeMesh(key, mesh)
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
@@ -676,13 +679,6 @@ export function createView(stage, picture) {
         const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(16, 12, 16)), mat(0xf0c14a, 0xc9a227))
         mesh.userData.lift = 8
         mesh.userData.role = "chest"
-        return mesh
-      })
-
-      sync("portal", snap.portals || [], () => {
-        const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(18, 22, 18)), mat(0xff7a2a, 0xc45c24))
-        mesh.userData.lift = 11
-        mesh.userData.role = "portal"
         return mesh
       })
 
@@ -934,12 +930,19 @@ export function createView(stage, picture) {
     return t
   }
 
+  function boundLook() {
+    const look = window.__lastKeepLook
+    if (!look || !Number.isFinite(look.x) || !Number.isFinite(look.z)) return null
+    return { x: look.x, z: look.z }
+  }
+
   function seatCamera(snap, me) {
     const portrait = !!snap.portrait
     const hero = portrait
       ? { x: PORTRAIT_STAND.x, z: PORTRAIT_STAND.z }
       : { x: me?.x || 0, z: me?.y || 0 }
-    const anchor = portrait ? hero : cameraFocus(me?.x, me?.y)
+    const bound = portrait ? null : boundLook()
+    const anchor = portrait ? hero : bound || cameraFocus(me?.x, me?.y)
     const step = worldStep()
     focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
     const dist = zoomFor(snap).camera
@@ -949,6 +952,7 @@ export function createView(stage, picture) {
       cssW: viewFrame.bufferWidth,
       cssH: viewFrame.bufferHeight
     })
+    land.sync(snap, camera, viewFrame.halfH)
   }
 
   function placeCamera(snap, selfId) {
@@ -1103,6 +1107,8 @@ export function createView(stage, picture) {
     scene.traverse((object) => {
       if (!object.isMesh && !object.isSprite) return
       if (!drawnObject(object) || shadowOnly(object)) return
+      const role = object.userData && object.userData.role
+      if (role === "horizon" || role === "far-pine" || role === "portal") return
       objectBounds(object, sampleBox)
       if (sampleBox.isEmpty()) return
       sampleBox.expandByScalar(1.5)
