@@ -923,6 +923,8 @@ async function squarePixels(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "warrior")
   watch(host.page, "host", errors)
+  // The start screen glides into the yard camera. A square sampled mid-glide
+  // is a different pitch, so the three windows would not agree.
   await host.page.waitForFunction(() => window.__lastKeepArrive === 0)
   const ratios = []
   for (const size of [
