@@ -14,6 +14,6 @@ python3 script/check_sprite_sheet.py mage --out /tmp/approval
 - `dirs/SW.png` is turntable frame 46 (1.92 s) and `dirs/SE.png` is frame 156 (6.50 s), both 0-based. They were picked by hand because the frames at 1 s and 7 s still looked straight-on, not diagonal.
 - `walk-<DIR>.mp4` and `idle-<DIR>.mp4` are 2 s clips at 24 fps, 720×720, with first frame = last frame = `dirs/<DIR>.png`.
 
-## Open issue
+## idle-E regeneration
 
-`idle-E.mp4` fails `idle E subtle`. From about frame 19 to frame 31 (0.8–1.3 s) the staff crystal glows. Its light-cyan halo is not background, so the silhouette top rises by 10 source px (rows 121 → 111). That moves the per-frame fit, and idle frame 24 differs from its neighbours by 1336 silhouette px, against a ceiling of 0.6 × 733. Regenerate the clip with the crystal steady and no glow.
+The first `idle-E.mp4` failed `idle E subtle`: from about 0.8 s to 1.3 s the staff crystal glowed, its light-cyan halo counted as silhouette, and idle steps reached 1336 px against a ceiling of 0.6 × 733. It was regenerated with a steady crystal and no glow. The new clip steps 2, 0, 1, and 3 px, and every check passes.
