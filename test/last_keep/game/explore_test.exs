@@ -18,6 +18,56 @@ defmodule LastKeep.Game.ExploreTest do
     refute Enum.any?(state.world.chests, &(&1.id == chest.id))
   end
 
+  test "a hero stops on the skirt and still crosses a river" do
+    state = fresh() |> stand(7000, 0)
+
+    state =
+      Enum.reduce(1..80, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => 1, "my" => 0})
+        |> Sim.tick()
+      end)
+
+    ada = hero(state)
+    assert ada.x > 7100
+    assert ada.x < Rules.walk_backstop()
+    assert World.open?(ada.x, ada.y)
+    refute World.open?(ada.x + 40, ada.y)
+
+    {rx, ry} =
+      Enum.find_value(-50..50, fn i ->
+        Enum.find_value(-50..50, fn j ->
+          x = i * 36
+          y = j * 36
+
+          distance = :math.sqrt(x * x + y * y)
+
+          if World.biome(1, x, y) == :river and distance > 500 and distance < 3000 do
+            {x, y}
+          end
+        end)
+      end)
+
+    state = fresh() |> stand(rx - 40, ry)
+
+    state =
+      Enum.reduce(1..16, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => 1, "my" => 0})
+        |> Sim.tick()
+      end)
+
+    assert hero(state).x > rx + 8
+
+    state = fresh() |> stand(20_000, 0)
+    state = state |> Sim.input("ada", %{"mx" => 0, "my" => 0}) |> Sim.tick()
+    parked = hero(state)
+
+    assert_in_delta :math.sqrt(parked.x * parked.x + parked.y * parked.y),
+                    Rules.walk_backstop(),
+                    1
+  end
+
   test "a hero keeps walking past the old map edge" do
     state = stand(fresh(), 2400, 0)
     state = Sim.tick(state)
