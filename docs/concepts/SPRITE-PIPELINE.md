@@ -1,6 +1,6 @@
 # Hero sprite pipeline (HD-2D)
 
-How a hero becomes an 8-direction pixel sheet with a walk and an idle. Since 2026-11-01 the frames come from Grok Imagine stills and Grok video clips, cut down by one script. The hand-built Blender path is superseded (see the end of this page).
+How a hero becomes an 8-direction pixel sheet with a walk and an idle. Since 2026-11-01 the frames come from Grok Imagine stills and Grok video clips. `script/hero_sprites.py` runs every step except the generation calls. The hand-built Blender path is superseded (see the end of this page).
 
 ## Why video
 
@@ -8,58 +8,101 @@ Every pro pipeline keeps all frames on one source, because separate drawings dri
 
 ## Screen convention
 
-S faces the camera. E faces screen-right. N is the back. W faces screen-left. The sword is in the warrior's right hand and the blue kite shield with the gold cross is on his left arm. No view is a mirror of another. Never flip a frame to make a missing direction, because that moves the shield to the other arm.
+S faces the camera. E faces screen-right. N is the back. W faces screen-left. The sword is in the warrior's right hand and the blue kite shield with the gold cross is on his left arm. The mage holds the staff in their right hand. The scout holds the bow in their right hand, with the spyglass at the left hip. No view is a mirror of another. Never flip a frame to make a missing direction, because that moves the shield to the other arm.
 
 Sheet columns follow `pictureColumn`: S, SW, W, NW, N, NE, E, SE. Column 0 is the hero facing the camera: walking toward screen-bottom in game, and on the start screen. Column 2 faces screen-left and column 6 faces screen-right. `heroes.test.js` locks this with the camera that `seat` places and the headings of the movement keys.
 
-## Steps
+## Procedure for a new hero
 
-### (a) Four views on white
+Only the GenerateImage and GenerateVideo calls are manual. Everything else is `script/hero_sprites.py`, driven by the hero's config `assets/reference/HERO/hero.json`. Each step writes the same bytes when re-run. A PNG whose pixels already match is left alone, so re-running a step never dirties git.
 
-Generate the views with the image model, on plain white, with references attached: the concept `assets/reference/warrior/concept.png` and, once it exists, the front still. Make the front (S) first, then the back (N) and the left profile (W) with both references, then the right profile (E).
+| # | Step | Who | Command or call | Writes |
+|---|---|---|---|---|
+| 1 | Config | by hand | edit `assets/reference/HERO/hero.json` | |
+| 2 | Concept crop and prompts | script | `python3 script/hero_sprites.py HERO prep` | `concept.png`, `prompts.json`, `prompts.md` |
+| 3 | Four views | **manual** | GenerateImage calls `view-S`, `view-N`, `view-W`, `view-E` from `prompts.md` | `video/views/v-<DIR>.png` |
+| 4 | Normalize views | script | `python3 script/hero_sprites.py HERO views` | `video/views/k-<DIR>.png` |
+| 5 | Turntable | **manual** | GenerateVideo call `turntable` | `video/turntable.mp4` |
+| 6 | Start poses | script | `python3 script/hero_sprites.py HERO dirs` | `video/dirs/<DIR>.png`, `video/diagonals.json` |
+| 7 | Walk and idle clips | **manual** | 16 GenerateVideo calls `walk-<DIR>`, `idle-<DIR>` | `video/walk-<DIR>.mp4`, `video/idle-<DIR>.mp4` |
+| 8 | Precheck | script | `python3 script/hero_sprites.py HERO precheck` | prints the clips to regenerate |
+| 9 | Build and check | script | `python3 script/hero_sprites.py HERO build` | `priv/static/images/hd2d/HERO-walk.png`, `-normal.png`, approval files |
+| 10 | Approval | **Dominic** | contact sheet and GIFs in `/workspace/lk/approval/HERO/` | |
+| 11 | Client | by hand | add HERO to `SHEET_HEROES`, `HERO_MARKS` in `strip.test.js`, picture tests | |
 
-Make each profile its own single image. Say in the prompt which hand faces the camera. For W (facing screen-left), his left arm with the shield is toward the camera and the sword hand is away. For E (facing screen-right), his right sword hand is toward the camera and the shield is on the far arm. Do not ask for four views in one image: the one attempt that did duplicated a profile, so two views showed the same side.
+All of it needs python3 with numpy, scipy and Pillow, plus ffmpeg and ffprobe on PATH.
 
-Reject a still that moves the shield to the right arm, crops the feet, or adds a floor. `sprite_from_video.py` normalizes every pose to the same height and foot line, so the stills do not need to match in size. The poses go in `assets/reference/warrior/video/dirs/<DIR>.png`.
+### 1. The config
 
-### (b) Turntable for the diagonals
+`hero.json` holds:
 
-One clip, 8 s, 1:1, 720p, started from the front still, with first frame = last frame = front. The keyframes are left at 2 s, back at 4 s, and right at 6 s. Check them against the stills from (a). The prompt:
+- `noun` and `possessive`: "the armored knight" and "his", or "the mage" and "their".
+- `concept`: `{"file": ...}` for a concept kept as it is, or `{"source": "docs/concept/heroes.jpg", "box": [x0, y0, x1, y1]}` for a crop of the shared concept sheet (1280×720). The boxes are mage 294,112,538,575, scout 512,150,775,588, farmer 738,88,1025,588, and engineer 962,150,1262,594.
+- `design`: the look in one phrase, without the held items.
+- `items`: `name`, `at` (`right hand`, `left arm`, `left hip`, `back`, `right shoulder back`, or `body`), `walk` (how it moves in the walk), `still` (what must not move in the idle), `idle` (an allowed idle motion), `glows` (a light that must stay steady), and `sides` (the image side per direction, when the default is wrong).
+- `turntable`: 8 s at 24 fps, keyframes W 2, N 4, E 6.
+- `diagonals`: turntable frames pinned by eye (0-based). They override the picker.
+- `check`: the check profile (see step 9). A hero without one can run every step except `build`.
 
-> Game character turnaround reference. The armored knight stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show his left side, then his back, then his right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: [design details]. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.
+The prompts name the hand that holds each item and the side of the image it shows on. The script turns the item's body position to each facing. An item in the right hand is image-left from the front, image-right from behind, and partly hidden behind the body in the left profile (W). A `sides` entry overrides that. The mage's staff stays image-left for S, SW, W and NW, and image-right for N, NE, E and SE, because the clips hold it out to the side.
 
-For the warrior, [design details] is the concept: open helmet, beard, plate armour, red cape, sword in his right hand, blue kite shield with a gold cross on his left arm.
+### 2. `prep`
 
-Each diagonal is the sharpest frame (Laplacian variance) within ±5 frames of its 45° point: SW at 1 s, NW at 3 s, NE at 5 s, SE at 7 s. Save them as `dirs/SW.png`, `dirs/NW.png`, `dirs/NE.png`, and `dirs/SE.png`. The clip is `assets/reference/warrior/video/turntable.mp4`.
+Crops the concept (a PIL crop of the box, saved with the PIL defaults) and writes `prompts.json` and `prompts.md`: every generation call in order, with the tool, its exact arguments (`description` or `prompt`, `reference_image_paths`, `image_path`, `last_frame_path`, `keyframes`, `duration`, `aspect_ratio`, `resolution`), the file to save the result as, and the step to run next. Paths are relative to the repository root. `hero_sprites.py HERO prompts --abs` prints them absolute. `prep` also normalizes any views that exist already.
 
-### (c) Walk and idle clips
+### 3. The four views (manual)
 
-For each of the 8 directions, make two 2 s clips started from `dirs/<DIR>.png`, with first frame = last frame = that pose.
+Run `view-S` first, with the concept as its reference. Then run `view-N`, `view-W` and `view-E` with the concept and the front still. Each profile is its own image. Save each as `video/views/v-<DIR>.png` (a `.jpg` works too). Reject a still that moves an item to the other hand, crops the feet, or adds a floor.
 
-`walk-<DIR>.mp4`:
+### 4. `views`
 
-> Game sprite walk cycle. The [hero] walks in place on a treadmill, keeping exactly the facing direction of the first frame ([direction description]). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, cape swaying, [weapon details]. He stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.
+Turns each `v-<DIR>` into `k-<DIR>.png`. The figure is min(RGB) < 225. A fragment under 2% of the figure that reaches outside the figure's box is blanked, so a speck cannot change the scale. The figure is cropped to its box, scaled with Lanczos to 520 px tall, and centred on a 720×720 white canvas with its last row at y = 639. These are the turntable keyframes and the four cardinal start poses.
 
-`idle-<DIR>.mp4`:
+### 5. The turntable (manual)
 
-> Nearly static game sprite idle loop. The [hero] holds exactly the pose, angle and facing of the first frame for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cape edge moves very slightly. Sword and shield stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. Locked camera, no zoom, plain flat white background, crisp frames.
+The `turntable` call: 8 s, 1:1, 720p, first frame = last frame = `k-S.png`, keyframes `k-W.png` at 2 s, `k-N.png` at 4 s, and `k-E.png` at 6 s.
 
-[direction description] names the view, for example "facing the camera" (S), "facing screen-left, shield toward the camera" (W), or "seen from behind and to the right" (NE). [weapon details] keeps the props where the pose has them, for example "sword held low in his right hand, shield steady on his left arm".
+### 6. `dirs`
 
-Grok clips are not perfectly camera-locked, so the script scales and anchors every frame on its own. Keep a regenerated clip only when it does better on `check_sprite_sheet.py`.
+Copies `k-S`, `k-W`, `k-N` and `k-E` to `dirs/`. A hero without view sources keeps its committed cardinals. Each diagonal is a turntable frame strictly between its two cardinals' keyframes (SW between S at 0 and W at 2 s, SE between E at 6 s and the last frame). For each candidate frame, dA and dB are the silhouette pixels (min(RGB) < 225) that differ from each cardinal. The balance is min(dA, dB) / max(dA, dB). Among the frames within 90% of the best balance, the sharpest (Laplacian variance on the figure) wins. A frame pinned in `diagonals` wins over the picker. `video/diagonals.json` records the picker's choice and the frame used.
 
-### (d) Build and check
+Look at the four diagonals before the clips. A diagonal near the front can look frontal; then pin a frame further round. The picker against the eye picks, 0-based:
+
+| Hero | Picker SW / NW / NE / SE | Pinned SW / NW / NE / SE |
+|---|---|---|
+| warrior | 28 / 78 / 118 / 174 | 20 / 74 / 122 / 166 |
+| mage | 45 / 78 / 134 / 162 | 46 / 67 / 122 / 156 |
+| scout | 28 / 79 / 123 / 165 | 32 / 72 / 120 / 164 |
+
+### 7. Walk and idle clips (manual)
+
+Sixteen 2 s clips, 1:1, 720p, each with first frame = last frame = `dirs/<DIR>.png`. The walk prompt keeps the facing, says "torso does not twist", and keeps each item on its side. The idle prompt holds the pose, lists what stays still, and asks for steady light.
+
+### 8. `precheck`
+
+Before the build, `precheck` names every clip to regenerate and why. It exits 1 if any clip fails. It checks the raw clips:
+
+- format: square, 24 fps, 49 frames (2 s with the last frame = the first);
+- the loop closes: the last frame's silhouette differs from the first by at most 0.5 (walk) or 0.6 (idle) of the walk median step;
+- the clip starts on its pose: the first frame differs from `dirs/<DIR>.png` by at most 0.2 of the walk median;
+- an idle stays put: no frame differs from its first by more than 0.8 of the walk median. The approved idles reach at most 0.64; walks reach at least 1.04.
+
+Then it builds the sheet in memory and runs every check from step 9. Each failure names the clips whose frames failed it. Height, foot line, speckles, prop side and the back and front views blame the clip of the failing row. Walk legs blame the walk, idle subtle blames the idle, and a palette anchor blames the poses. The prop side and the view checks catch a walk that turns. Facing is not judged from the clip's silhouette, because that misread approved clips.
+
+Regenerate the named clips with the same call from `prompts.md` and run `precheck` again. Do not loosen a check.
+
+### 9. `build`
+
+Runs `sprite_from_video.py HERO`, then `check_sprite_sheet.py HERO`, and writes `contact.png`, `walk.gif`, `idle.gif` and `check.txt` to `$HERO_APPROVAL_ROOT/HERO` (default `/workspace/lk/approval/HERO`; `--approval DIR` overrides). It exits 1 if a check fails. The two scripts still run on their own:
 
 ```
 python3 script/sprite_from_video.py HERO --report /tmp/report.json
 python3 script/check_sprite_sheet.py HERO --out /tmp/approval
 ```
 
-`HERO` is `warrior` or `mage`. The builder reads `assets/reference/HERO/video` and writes `priv/static/images/hd2d/HERO-walk.png` and `HERO-walk-normal.png`. The checker reads that sheet, the poses in `video/dirs`, and `assets/reference/HERO/concept.png`. `--clips`, `--out`, `--sheet`, `--poses`, and `--concept` override the paths.
+The builder reads `assets/reference/HERO/video` and writes `priv/static/images/hd2d/HERO-walk.png` and `HERO-walk-normal.png`. The checker reads that sheet, the poses in `video/dirs`, and `assets/reference/HERO/concept.png`. `--clips`, `--out`, `--sheet`, `--poses`, and `--concept` override the paths. The same inputs give the same bytes.
 
-Both need python3 with numpy, scipy, and Pillow, and ffmpeg/ffprobe on PATH. The same inputs give the same bytes.
-
-`sprite_from_video.py`:
+How `sprite_from_video.py` works:
 
 1. Decodes each clip with ffmpeg and cuts out the white background (border-connected near-white, plus enclosed pure-white holes of 24 px or more), then keeps blobs of at least 2% of the largest.
 2. Walk: the cycle ends at the frame most like frame 0 after 55% of the clip. The 8 walk frames sit at k·cycle/8, each the sharpest frame within ±1. Idle: 4 frames evenly over the clip, each the sharpest within ±1.
@@ -68,7 +111,7 @@ Both need python3 with numpy, scipy, and Pillow, and ffmpeg/ffprobe on PATH. The
 
 The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536. The client loads it from `priv/static/images/hd2d/HERO-walk.png`.
 
-`check_sprite_sheet.py` checks the same things for every hero. The colours it reads come from the hero's profile in `HEROES`:
+`check_sprite_sheet.py` checks the same things for every hero. The colours it reads come from the `check` profile in the hero's `hero.json`: roles (hue range, chroma and lightness bounds), concept anchors, the prop colour, and floors and ceilings for the back and front views. `hero_sprites.py HERO colours` lists the concept's main colours with hue, lightness and chroma to start a new profile from.
 
 | | warrior | mage |
 |---|---|---|
@@ -88,11 +131,34 @@ The mage face counts only the head columns 54–74, so the staff head beside the
 - The walk lower half changes by at least 16 px per step, and contact frames 0 and 4 differ.
 - The idle is subtle: its largest silhouette change is at most 0.6 of the walk's median.
 
-With `--out` it writes `contact.png` (concept, 1x and 2x rows, all walk rows at 2x), `walk.gif`, and `idle.gif`. It exits 1 if any check fails. `assets/js/hd2d/strip.test.js` re-checks the committed PNG in node (size, alpha, palette, outline, height, foot line, prop side, back and front views, distinct directions, walk motion) for every hero in `SHEET_HEROES`, so a bad sheet cannot land when nobody runs the Python check. `python3 script/test_sprite_from_video.py` tests the palette step and the hero profiles. CI does not run ffmpeg or the Python scripts.
+With `--out` it writes `contact.png` (concept, 1x and 2x rows, all walk rows at 2x), `walk.gif`, and `idle.gif`. It exits 1 if any check fails. `assets/js/hd2d/strip.test.js` re-checks the committed PNG in node (size, alpha, palette, outline, height, foot line, prop side, back and front views, distinct directions, walk motion) for every hero in `SHEET_HEROES`, so a bad sheet cannot land when nobody runs the Python check. CI does not run ffmpeg or the Python scripts.
 
-### (e) Approval
+### 10. Approval
 
-Dominic approves the warrior from the contact sheet and the GIFs before any other hero goes through this pipeline. Regenerate a clip that fails a check, rather than relaxing the check.
+Dominic approves each hero from `/workspace/lk/approval/HERO/`: `contact.png`, `walk.gif`, `idle.gif` and `check.txt`. A hero goes into the client only after `build` passes, and its PR stays a draft until he approves it. If he rejects a clip, regenerate it, run `precheck` and `build` again, and refresh the approval files. Regenerate a clip that fails a check rather than relaxing the check.
+
+### 11. Client
+
+Add the hero to `SHEET_HEROES` in `assets/js/pictures.js`, give it a `HERO_MARKS` entry in `assets/js/hd2d/strip.test.js` (its prop and back and front colours), and extend the picture tests. Then run `cd assets && npm test` and `npm run check`.
+
+### Local tests
+
+```
+python3 script/test_sprite_from_video.py   # palette step, hero profiles
+python3 script/test_hero_sprites.py        # configs, crop, views, picker, pins, prompts, idempotency, precheck (about 2 min)
+```
+
+`test_hero_sprites.py` requires the mage `k-*.png` to come out of the view step byte for byte, the pinned frames to reproduce every committed diagonal byte for byte, `prep`, `views` and `dirs` to write nothing on a committed hero, the committed prompt files to match the configs, and `precheck` to name a walk cut short and an idle that walks.
+
+## Lessons learned
+
+- Make each profile its own image and say which hand holds each item. The one prompt that asked for four views in one image duplicated a profile, so two views showed the same side.
+- The idle prompt must be strict: hold the pose, angle and facing of the first frame, list what stays still, and say arms, body, feet and head do not move. Looser idles swayed and failed the idle check (warrior S, SW, NW, SE).
+- Say "torso does not twist" in the walk prompt. Before it, the first warrior NE walk drifted off its pose: the upper half moved up to 207 px from the pose and the sword lifted. The regenerated clip stays within 88 px.
+- No flashing lights in the idle. The mage's first E idle pulsed the crystal, and the glow changed the silhouette by 1334 px per step. The idle prompt now names every glowing part and asks for the same brightness in every frame.
+- A diagonal near the front can look frontal. Check the four diagonals by eye after `dirs` and pin a frame further round when one does.
+- Never mirror a frame for a missing direction: it moves the held item to the other hand.
+- Grok clips are not perfectly camera-locked, so the build scales and anchors each frame on its own.
 
 ## In the client
 

@@ -1,0 +1,40 @@
+{
+ "_note": "Stub. Fill check after the first build.",
+ "noun": "engineer",
+ "possessive": "his",
+ "concept": {
+  "source": "docs/concept/heroes.jpg",
+  "box": [
+   962,
+   150,
+   1262,
+   594
+  ]
+ },
+ "design": "brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots",
+ "items": [
+  {
+   "name": "iron hammer",
+   "at": "right hand",
+   "walk": "hammer held low in his right hand",
+   "still": "hammer"
+  },
+  {
+   "name": "bundle of wooden planks",
+   "at": "back",
+   "walk": "planks steady on his back",
+   "still": "planks"
+  }
+ ],
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  }
+ },
+ "diagonals": {},
+ "check": null
+}

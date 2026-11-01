@@ -1,0 +1,40 @@
+{
+ "_note": "Stub. Fill check after the first build.",
+ "noun": "farmer",
+ "possessive": "his",
+ "concept": {
+  "source": "docs/concept/heroes.jpg",
+  "box": [
+   738,
+   88,
+   1025,
+   588
+  ]
+ },
+ "design": "wide straw hat, short brown beard, blue denim overalls over a cream shirt with rolled sleeves, brown belt, brown boots",
+ "items": [
+  {
+   "name": "wooden pitchfork with iron tines",
+   "at": "right hand",
+   "walk": "pitchfork held upright in his right hand",
+   "still": "pitchfork"
+  },
+  {
+   "name": "burlap grain sack",
+   "at": "back",
+   "walk": "grain sack steady on his back",
+   "still": "grain sack"
+  }
+ ],
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  }
+ },
+ "diagonals": {},
+ "check": null
+}

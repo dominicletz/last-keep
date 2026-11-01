@@ -327,22 +327,15 @@ def palette_samples(dirs):
     return np.concatenate(samples).astype(np.float64)
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("hero", help="hero name, e.g. warrior or mage")
-    ap.add_argument("--clips", help="default assets/reference/<hero>/video")
-    ap.add_argument("--out", help="default priv/static/images/hd2d/<hero>-walk.png")
-    ap.add_argument("--report", help="write picks and scales as JSON here")
-    args = ap.parse_args(argv)
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    args.clips = args.clips or os.path.join(root, "assets/reference", args.hero, "video")
-    args.out = args.out or os.path.join(root, "priv/static/images/hd2d", f"{args.hero}-walk.png")
-
+def build(clips, inspect=None):
+    """The albedo sheet, its palette and the per-clip plan, in memory.
+    inspect(dir, kind, frames, picks, scale), when given, sees every clip
+    while its frames are loaded (hero_sprites.py precheck uses it)."""
     plan = {}
     raw = {}
     for d in COLUMNS:
-        walk = load_clip(os.path.join(args.clips, f"walk-{d}.mp4"))
-        idle = load_clip(os.path.join(args.clips, f"idle-{d}.mp4"))
+        walk = load_clip(os.path.join(clips, f"walk-{d}.mp4"))
+        idle = load_clip(os.path.join(clips, f"idle-{d}.mp4"))
         cycle, wp = walk_picks(walk)
         ip = idle_picks(idle)
         ws = clip_geometry(walk, wp)
@@ -359,12 +352,15 @@ def main(argv=None):
                 # was tried and moved the feet by 3 px without less sway.
                 own = min(max(FILL / (foot - top + 1), scale * 0.95), scale * 1.05)
                 cells.append(place(f, own, head_centre(f["mask"]), foot))
+        if inspect:
+            inspect(d, "walk", walk, wp, ws)
+            inspect(d, "idle", idle, ip, iscale)
         raw[d] = cells
         plan[d] = {"walk_frames": len(walk), "cycle": cycle, "walk": wp, "idle": ip,
                    "walk_scale": round(ws, 4), "idle_scale": round(iscale, 4)}
         print(f"{d}: cycle {cycle}/{len(walk)} walk {wp} idle {ip} scale {ws:.3f}/{iscale:.3f}", file=sys.stderr)
 
-    pal = build_palette(palette_samples(os.path.join(args.clips, "dirs")))
+    pal = build_palette(palette_samples(os.path.join(clips, "dirs")))
     pal_lab = srgb_to_lab(np.array(pal, np.float64))
 
     sheet = np.zeros((CELL * (WALK + IDLE), CELL * len(COLUMNS), 4), np.uint8)
@@ -372,6 +368,21 @@ def main(argv=None):
         for r, (rgb, alpha) in enumerate(raw[d]):
             cell = outline(quantize(rgb, alpha, pal_lab, pal))
             sheet[r * CELL:(r + 1) * CELL, c * CELL:(c + 1) * CELL] = cell
+    return sheet, pal, plan
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("hero", help="hero name, e.g. warrior or mage")
+    ap.add_argument("--clips", help="default assets/reference/<hero>/video")
+    ap.add_argument("--out", help="default priv/static/images/hd2d/<hero>-walk.png")
+    ap.add_argument("--report", help="write picks and scales as JSON here")
+    args = ap.parse_args(argv)
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    args.clips = args.clips or os.path.join(root, "assets/reference", args.hero, "video")
+    args.out = args.out or os.path.join(root, "priv/static/images/hd2d", f"{args.hero}-walk.png")
+
+    sheet, pal, plan = build(args.clips)
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     write_png(args.out, sheet)
     write_png(args.out.replace(".png", "-normal.png"), normals(sheet))

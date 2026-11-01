@@ -83,7 +83,7 @@ class HeroProfileTest(unittest.TestCase):
         cell[24:30, 60:66] = (181, 130, 77, 255)     # face, 36 px
         cell[20:30, 40:46] = (181, 130, 77, 255)     # staff head, 60 px
         self.assertEqual(cs.measure(cell, table, ("head", "warm")), 96)
-        self.assertEqual(cs.measure(cell, table, ("head", "warm", cs.HEAD)), 36)
+        self.assertEqual(cs.measure(cell, table, ("head", "warm", (54, 74))), 36)
 
     def test_checker_refuses_a_hero_without_a_profile(self):
         with open(os.devnull, "w") as quiet:

@@ -1,0 +1,52 @@
+{
+ "_note": "Stub. Fill check after the first build: sample anchors with `hero_sprites.py scout colours`, then set floors and ceilings from the approved poses.",
+ "noun": "scout",
+ "possessive": "their",
+ "concept": {
+  "source": "docs/concept/heroes.jpg",
+  "box": [
+   512,
+   150,
+   775,
+   588
+  ]
+ },
+ "design": "green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots",
+ "items": [
+  {
+   "name": "wooden longbow",
+   "at": "right hand",
+   "walk": "bow held low in their right hand",
+   "still": "bow"
+  },
+  {
+   "name": "brass and blue spyglass",
+   "at": "left hip",
+   "walk": "spyglass steady at their left hip",
+   "still": "spyglass"
+  },
+  {
+   "name": "quiver of arrows",
+   "at": "right shoulder back",
+   "walk": "quiver steady over their right shoulder",
+   "still": "quiver"
+  },
+  {
+   "name": "green cloak",
+   "at": "back",
+   "walk": "cloak swaying",
+   "idle": "cloak edge moves very slightly"
+  }
+ ],
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  }
+ },
+ "diagonals": {},
+ "check": null
+}
