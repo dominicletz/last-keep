@@ -10,30 +10,43 @@ Every pro pipeline keeps all frames on one source, because separate drawings dri
 
 S faces the camera. E faces screen-right. N is the back. W faces screen-left. The sword is in the warrior's right hand and the blue kite shield with the gold cross is on his left arm. No view is a mirror of another. Never flip a frame to make a missing direction, because that moves the shield to the other arm.
 
-Sheet columns follow `pictureColumn`: S, SW, W, NW, N, NE, E, SE.
+Sheet columns follow `pictureColumn`: S, SW, W, NW, N, NE, E, SE. Column 0 is the hero facing the camera: walking toward screen-bottom in game, and on the start screen. Column 2 faces screen-left and column 6 faces screen-right. `heroes.test.js` locks this with the camera that `seat` places and the headings of the movement keys.
 
 ## Steps
 
 ### (a) Four views on white
 
-Generate front (S), left (W), back (N), and right (E) stills with the image model, one per prompt, from the concept `assets/reference/warrior/concept.png`. Template:
+Generate the views with the image model, on plain white, with references attached: the concept `assets/reference/warrior/concept.png` and, once it exists, the front still. Make the front (S) first, then the back (N) and the left profile (W) with both references, then the right profile (E).
 
-> The same warrior as the reference, full body, standing, feet flat, seen from <front / his left side, facing screen-left / behind / his right side, facing screen-right>. Camera at the game's 3/4 view, about 30° above eye level. Sword in his right hand, blue kite shield with a gold cross on his left arm, red cape. Plain pure white background, no shadow, no floor, nothing cropped.
+Make each profile its own single image. Say in the prompt which hand faces the camera. For W (facing screen-left), his left arm with the shield is toward the camera and the sword hand is away. For E (facing screen-right), his right sword hand is toward the camera and the shield is on the far arm. Do not ask for four views in one image: the one attempt that did duplicated a profile, so two views showed the same side.
 
 Reject a still that moves the shield to the right arm, crops the feet, or adds a floor. `sprite_from_video.py` normalizes every pose to the same height and foot line, so the stills do not need to match in size. The poses go in `assets/reference/warrior/video/dirs/<DIR>.png`.
 
 ### (b) Turntable for the diagonals
 
-Make one 8 s clip from the S still: the camera orbits the standing warrior once at constant speed, at the same 3/4 elevation, white background. The keyframes are S at 0 s, W at 2 s, N at 4 s, and E at 6 s; check them against the stills from (a). Each diagonal is the sharpest frame (Laplacian variance) within ±5 frames of its 45° point: SW at 1 s, NW at 3 s, NE at 5 s, SE at 7 s. Save them as `dirs/SW.png`, `dirs/NW.png`, `dirs/NE.png`, `dirs/SE.png`. The clip is `assets/reference/warrior/video/turntable.mp4`.
+One clip, 8 s, 1:1, 720p, started from the front still, with first frame = last frame = front. The keyframes are left at 2 s, back at 4 s, and right at 6 s. Check them against the stills from (a). The prompt:
+
+> Game character turnaround reference. The armored knight stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show his left side, then his back, then his right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: [design details]. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.
+
+For the warrior, [design details] is the concept: open helmet, beard, plate armour, red cape, sword in his right hand, blue kite shield with a gold cross on his left arm.
+
+Each diagonal is the sharpest frame (Laplacian variance) within ±5 frames of its 45° point: SW at 1 s, NW at 3 s, NE at 5 s, SE at 7 s. Save them as `dirs/SW.png`, `dirs/NW.png`, `dirs/NE.png`, and `dirs/SE.png`. The clip is `assets/reference/warrior/video/turntable.mp4`.
 
 ### (c) Walk and idle clips
 
-For each of the 8 directions, make two 2 s clips started from `dirs/<DIR>.png`, with first frame = last frame = that pose:
+For each of the 8 directions, make two 2 s clips started from `dirs/<DIR>.png`, with first frame = last frame = that pose.
 
-- `walk-<DIR>.mp4`: > walks in place facing the same way, one full stride cycle that loops, camera locked, no turning, white background.
-- `idle-<DIR>.mp4`: > stands still and only breathes; sword, shield, and cape stay still; camera locked, white background.
+`walk-<DIR>.mp4`:
 
-Grok clips are not perfectly camera-locked, so the script scales and anchors every frame on its own.
+> Game sprite walk cycle. The [hero] walks in place on a treadmill, keeping exactly the facing direction of the first frame ([direction description]). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, cape swaying, [weapon details]. He stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.
+
+`idle-<DIR>.mp4`:
+
+> Nearly static game sprite idle loop. The [hero] holds exactly the pose, angle and facing of the first frame for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels, cape edge moves very slightly. Sword and shield stay completely still, arms do not move, body does not turn, feet do not move, head does not turn. Locked camera, no zoom, plain flat white background, crisp frames.
+
+[direction description] names the view, for example "facing the camera" (S), "facing screen-left, shield toward the camera" (W), or "seen from behind and to the right" (NE). [weapon details] keeps the props where the pose has them, for example "sword held low in his right hand, shield steady on his left arm".
+
+Grok clips are not perfectly camera-locked, so the script scales and anchors every frame on its own. Keep a regenerated clip only when it does better on `check_sprite_sheet.py`.
 
 ### (d) Build and check
 
