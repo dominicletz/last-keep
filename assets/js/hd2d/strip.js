@@ -15,7 +15,20 @@ export const WALK_COLUMNS = [
   "open-side",
   "front-right"
 ]
-export const WALK_ROWS = ["contact", "left-lead", "pass", "right-lead"]
+export const WALK_ROWS = [
+  "contact",
+  "left-down",
+  "left-pass",
+  "left-up",
+  "contact-right",
+  "right-down",
+  "right-pass",
+  "right-up",
+  "idle-0",
+  "idle-1",
+  "idle-2",
+  "idle-3"
+]
 export const WALK_SHEET = "images/hd2d/warrior-walk.png"
 export const WALK_NORMAL = "images/hd2d/warrior-walk-normal.png"
 

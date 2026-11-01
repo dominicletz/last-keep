@@ -580,11 +580,12 @@ function createHdPicture(env) {
       map.minFilter = THREE.NearestFilter
     }
     if (warrior) {
-      map.repeat.set(1 / 8, 1 / 4)
+      map.repeat.set(1 / 8, 1 / 12)
       group.userData.picture = {
         directions: 8,
-        frames: 4,
-        walk: 4,
+        frames: 12,
+        walk: 8,
+        idle: 4,
         attack: 0,
         death: 0,
         w: source.w,
