@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { cameraLift, frameFor } from "../frame.js"
 import { mixPose, PORTRAIT_FOV, portraitPose } from "../portrait.js"
+import { spriteHeight } from "../pictures.js"
 import { masonryBytes } from "../tiles.js"
 import { tierExtras, tierFor } from "./tier.js"
 
@@ -20,6 +21,47 @@ const LOOK = {
   litHeroes: 2,
   shadowMap: 512,
   shadowBias: -0.0008
+}
+
+// The warrior sheet is 8 x 12 cells of 128 px. The hero is 88 px tall with
+// the outline, and the lowest outline row is 117 (docs/concepts/SPRITE-PIPELINE.md).
+export const WARRIOR_CELL = 128
+export const WARRIOR_HERO = 88
+export const WARRIOR_FOOT_ROW = 117
+// World units per sheet texel when the hero stands spriteHeight tall.
+export const WARRIOR_TEXEL = spriteHeight / WARRIOR_HERO
+
+// Integer scaling. A texel covers a whole number of screen pixels at the
+// card's depth, so nearest sampling never doubles one column and not the next.
+// Under half a pixel per texel the card keeps its nominal size and minifies.
+export function heroTexel(worldPerPixel, nominal = WARRIOR_TEXEL) {
+  if (!(worldPerPixel > 0)) return nominal
+  const k = Math.round(nominal / worldPerPixel)
+  return k >= 1 ? k * worldPerPixel : nominal
+}
+
+export function warriorCardGeometry() {
+  const size = WARRIOR_CELL * WARRIOR_TEXEL
+  const geometry = new THREE.PlaneGeometry(size, size)
+  // The cell bottom sits under the ground so the boot soles touch y = 0.
+  geometry.translate(0, size / 2 - (WARRIOR_CELL - 1 - WARRIOR_FOOT_ROW) * WARRIOR_TEXEL, 0)
+  return geometry
+}
+
+const snapPos = new THREE.Vector3()
+const snapDir = new THREE.Vector3()
+
+// Scale a warrior card so one texel is a whole number of pixels for this camera.
+export function snapHeroCard(plane, camera, bufferHeight) {
+  if (!plane || !camera || !camera.isPerspectiveCamera || !(bufferHeight > 0)) return 1
+  plane.getWorldPosition(snapPos)
+  camera.getWorldDirection(snapDir)
+  const depth = snapPos.sub(camera.position).dot(snapDir)
+  if (!(depth > 0)) return 1
+  const worldPerPixel = (2 * depth * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2)) / (bufferHeight * (camera.zoom || 1))
+  const scale = heroTexel(worldPerPixel) / WARRIOR_TEXEL
+  plane.scale.setScalar(scale)
+  return scale
 }
 
 // Distance carries the mist. Height only deepens it on the ground, and the ramp starts past the focal plane so the keep and the heroes stay clear.
@@ -436,6 +478,7 @@ function createHdPicture(env) {
   let live = false
   let strip = null
   let stripNormal = null
+  const warriorCards = new Set()
   let spot = null
   let torchFill = null
   let masonry = null
@@ -594,8 +637,13 @@ function createHdPicture(env) {
         h: source.h
       }
     }
-    const geometry = new THREE.PlaneGeometry(source.w, source.h)
-    geometry.translate(0, source.h / 2, 0)
+    let geometry
+    if (warrior) {
+      geometry = warriorCardGeometry()
+    } else {
+      geometry = new THREE.PlaneGeometry(source.w, source.h)
+      geometry.translate(0, source.h / 2, 0)
+    }
     const plane = new THREE.Mesh(
       geometry,
       new THREE.MeshLambertMaterial({
@@ -612,6 +660,7 @@ function createHdPicture(env) {
     group.add(plane)
     group.userData.card = plane
     group.userData.hd = warrior ? "warrior" : "lit"
+    if (warrior) warriorCards.add(plane)
     for (const child of group.children) {
       if (child.userData.contact) child.visible = false
       if (goldPlate(child)) child.visible = false
@@ -921,6 +970,13 @@ function createHdPicture(env) {
       for (const hero of heroes.slice(0, LOOK.litHeroes)) litHero(hero)
     },
     present(renderer, scene, camera) {
+      if (warriorCards.size && renderer.getDrawingBufferSize) {
+        renderer.getDrawingBufferSize(drawSize)
+        for (const plane of warriorCards) {
+          if (!plane.parent) warriorCards.delete(plane)
+          else snapHeroCard(plane, camera, drawSize.y)
+        }
+      }
       if (!driverNoted) {
         driverNoted = true
         const kind = rendererKind(renderer)

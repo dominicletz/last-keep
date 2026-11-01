@@ -4,7 +4,20 @@ import * as THREE from "three"
 import { pixelStep } from "../art_score.js"
 import { cameraLift } from "../frame.js"
 import { masonryBytes } from "../tiles.js"
-import { circleOfConfusion, createPicture, diskOffsets, fogMix } from "./picture.js"
+import {
+  circleOfConfusion,
+  createPicture,
+  diskOffsets,
+  fogMix,
+  heroTexel,
+  snapHeroCard,
+  WARRIOR_CELL,
+  WARRIOR_FOOT_ROW,
+  WARRIOR_HERO,
+  WARRIOR_TEXEL,
+  warriorCardGeometry
+} from "./picture.js"
+import { spriteHeight } from "../pictures.js"
 
 const CALLS = ["open", "fit", "seat", "light", "dress", "present"]
 
@@ -358,6 +371,53 @@ test("dress paints the warrior from the walk strip and hides the gold plate", ()
   const quad = warrior.group.children.find((child) => child.isMesh && child.position.y === 0.62)
   assert.ok(quad.material.map)
   assert.equal(quad.castShadow, false)
+})
+
+test("the warrior card is a square 128 px cell with the boots on the ground", () => {
+  const geometry = warriorCardGeometry()
+  geometry.computeBoundingBox()
+  const box = geometry.boundingBox
+  const size = WARRIOR_CELL * WARRIOR_TEXEL
+  // Geometry positions are float32.
+  assert.ok(Math.abs(box.max.x - box.min.x - size) < 1e-4)
+  assert.ok(Math.abs(box.max.y - box.min.y - size) < 1e-4)
+  assert.ok(Math.abs(WARRIOR_HERO * WARRIOR_TEXEL - spriteHeight) < 1e-9)
+  // The lowest outline row ends exactly at y = 0.
+  const soles = box.max.y - (WARRIOR_FOOT_ROW + 1) * WARRIOR_TEXEL
+  assert.ok(Math.abs(soles) < 1e-4, `soles at ${soles}`)
+})
+
+test("hero texels land on a whole number of screen pixels", () => {
+  for (const worldPerPixel of [0.05, 0.1, 0.19, 0.25, 0.3, 0.42, 0.6]) {
+    const texel = heroTexel(worldPerPixel)
+    const pixels = texel / worldPerPixel
+    assert.ok(Math.abs(pixels - Math.round(pixels)) < 1e-9, `${pixels} px per texel`)
+    assert.ok(Math.round(pixels) >= 1)
+    assert.ok(Math.abs(texel - WARRIOR_TEXEL) <= worldPerPixel / 2 + 1e-9)
+  }
+  // Under half a pixel per texel the card minifies at its nominal size.
+  assert.equal(heroTexel(WARRIOR_TEXEL * 3), WARRIOR_TEXEL)
+  assert.equal(heroTexel(0), WARRIOR_TEXEL)
+  assert.equal(heroTexel(Number.NaN), WARRIOR_TEXEL)
+})
+
+test("snapHeroCard scales the card to integer pixels for the camera that draws it", () => {
+  const camera = new THREE.PerspectiveCamera(15, 1.6, 1, 4000)
+  camera.position.set(0, 0, 900)
+  camera.lookAt(0, 0, 0)
+  camera.updateMatrixWorld()
+  const plane = new THREE.Mesh(warriorCardGeometry(), new THREE.MeshBasicMaterial())
+  plane.updateMatrixWorld()
+  const height = 800
+  const scale = snapHeroCard(plane, camera, height)
+  const worldPerPixel = (2 * 900 * Math.tan(THREE.MathUtils.degToRad(7.5))) / height
+  const pixels = (WARRIOR_TEXEL * scale) / worldPerPixel
+  assert.ok(Math.abs(pixels - Math.round(pixels)) < 1e-9, `${pixels} px per texel`)
+  assert.equal(plane.scale.x, scale)
+  assert.equal(plane.scale.y, scale)
+  const ortho = new THREE.OrthographicCamera()
+  assert.equal(snapHeroCard(plane, ortho, height), 1)
+  assert.equal(snapHeroCard(plane, camera, 0), 1)
 })
 
 test("grade refuses a live room before the strip resolves", () => {
