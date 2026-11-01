@@ -923,6 +923,7 @@ async function squarePixels(browser) {
   const errors = []
   const host = await createHost(browser, "Ada", "warrior")
   watch(host.page, "host", errors)
+  await host.page.waitForFunction(() => window.__lastKeepArrive === 0)
   const ratios = []
   for (const size of [
     { width: 1600, height: 600 },
@@ -2904,7 +2905,7 @@ async function theFogEdgeIsNotAFlatFill(browser) {
   await assertLandMeetsSky(page, "keep")
 
   await page.evaluate(async () => {
-    window.__lastKeepLook = { x: 2400, z: -600 }
+    window.__lastKeepLook = { x: 6800, z: 400 }
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
     window.__lastKeepTest.repaint()
   })

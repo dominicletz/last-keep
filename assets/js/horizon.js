@@ -11,6 +11,7 @@ const HCONST_9 = 0x8ff34781
 const SHADE = 0x2c3416
 const HORIZON_SPAN = 48000
 const HORIZON_TEX = 256
+const WINDOW = 6144
 const TREE_CAP = 180
 const YARD = 380
 const MIST = 0.28
@@ -126,14 +127,30 @@ function biomeRgb(name) {
   return rgb(groundColor)
 }
 
-function paintBytes(seed, attempt) {
+function biomeLift(name) {
+  if (name === "mountain") return 120
+  if (name === "hill") return 56
+  if (name === "cliff") return 16
+  if (name === "ruins") return 8
+  return 0
+}
+
+function landHeight(seed, attempt, x, z) {
+  let h = 0
+  for (const dx of [0, 72, -72]) {
+    for (const dz of [0, 72, -72]) h += biomeLift(pictureCell(seed, attempt, x + dx, z + dz))
+  }
+  return h / 9
+}
+
+function paintWindow(seed, attempt, originX, originZ) {
   const rgba = new Uint8Array(HORIZON_TEX * HORIZON_TEX * 4)
   for (let iy = 0; iy < HORIZON_TEX; iy++) {
     for (let ix = 0; ix < HORIZON_TEX; ix++) {
       const u = (ix + 0.5) / HORIZON_TEX
       const v = (iy + 0.5) / HORIZON_TEX
-      const worldX = (u - 0.5) * HORIZON_SPAN
-      const worldZ = -((v - 0.5) * HORIZON_SPAN)
+      const worldX = originX + (u - 0.5) * WINDOW
+      const worldZ = originZ - (v - 0.5) * WINDOW
       const [r, g, b] = biomeRgb(pictureCell(seed, attempt, worldX, worldZ))
       const o = (iy * HORIZON_TEX + ix) * 4
       rgba[o] = r
@@ -171,8 +188,6 @@ function pineGeometry() {
 function gateGeometry() {
   const positions = []
   const colors = []
-  const stone = rgb(ringColor).map((channel) => channel / 255)
-  const glow = [1, 1, 1]
   const box = (w, h, d, x, y, z, color) => {
     const source = new THREE.BoxGeometry(w, h, d)
     const pos = source.getAttribute("position")
@@ -184,10 +199,12 @@ function gateGeometry() {
     }
     source.dispose()
   }
-  box(8, 32, 8, -14, 16, 0, stone)
-  box(8, 32, 8, 14, 16, 0, stone)
-  box(36, 8, 8, 0, 32, 0, stone)
-  box(16, 20, 4, 0, 16, -2, glow)
+  const stoneDark = [0.18, 0.12, 0.1]
+  const glow = [1, 0.28, 0.04]
+  box(12, 56, 12, -22, 28, 0, stoneDark)
+  box(12, 56, 12, 22, 28, 0, stoneDark)
+  box(56, 12, 12, 0, 56, 0, stoneDark)
+  box(28, 36, 6, 0, 26, -4, glow)
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3))
@@ -202,11 +219,11 @@ function cellRange(origin, reach) {
 }
 
 export function mountPicture(scene) {
-  const bytes = paintBytes(1, 0)
+  const bytes = paintWindow(1, 0, 0, 0)
   const map = new THREE.DataTexture(bytes, HORIZON_TEX, HORIZON_TEX)
   map.colorSpace = THREE.SRGBColorSpace
-  map.magFilter = THREE.NearestFilter
-  map.minFilter = THREE.NearestFilter
+  map.magFilter = THREE.LinearFilter
+  map.minFilter = THREE.LinearFilter
   map.flipY = false
   map.needsUpdate = true
 
@@ -223,9 +240,10 @@ export function mountPicture(scene) {
 
   const mistStrength = { value: 0 }
   const mistColor = { value: new THREE.Color(0x4e4651) }
-  // The lower 45% of the gameplay frame hits this plane inside about 1.05 spans.
-  // Scene fog at 0.9/span pulls misted stone inside the clear color there.
-  // This fade starts past that and is the clear color before the far plane.
+  const windowOrigin = { value: new THREE.Vector2(0, 0) }
+  const windowSpan = { value: WINDOW }
+  // Scene fog at 0.9/span pulls a stone texel inside the clear color on the
+  // ground the lower 45% of the frame still shows. This fade starts past that.
   const horizonFogNear = { value: 1470 }
   const horizonFogFar = { value: 2800 }
   const material = new THREE.MeshBasicMaterial({ map, color: 0xffffff, fog: false })
@@ -234,10 +252,15 @@ export function mountPicture(scene) {
     shader.uniforms.mistMask = { value: mask }
     shader.uniforms.mistStrength = mistStrength
     shader.uniforms.mistColor = mistColor
+    shader.uniforms.windowOrigin = windowOrigin
+    shader.uniforms.windowSpan = windowSpan
     shader.uniforms.horizonFogNear = horizonFogNear
     shader.uniforms.horizonFogFar = horizonFogFar
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nvarying vec3 vHorizonWorld;")
+      .replace(
+        "#include <common>",
+        "#include <common>\nuniform vec2 windowOrigin;\nuniform float windowSpan;\nvarying vec3 vHorizonWorld;"
+      )
       .replace(
         "#include <project_vertex>",
         "vHorizonWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\n\t#include <project_vertex>"
@@ -245,20 +268,39 @@ export function mountPicture(scene) {
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform sampler2D mistMask;\nuniform float mistStrength;\nuniform vec3 mistColor;\nuniform float horizonFogNear;\nuniform float horizonFogFar;\nvarying vec3 vHorizonWorld;"
+        "#include <common>\nuniform sampler2D mistMask;\nuniform float mistStrength;\nuniform vec3 mistColor;\nuniform vec2 windowOrigin;\nuniform float windowSpan;\nuniform float horizonFogNear;\nuniform float horizonFogFar;\nvarying vec3 vHorizonWorld;"
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, mistColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
+        "#include <color_fragment>\n\tvec2 landUv = vec2((vHorizonWorld.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (vHorizonWorld.z - windowOrigin.y) / windowSpan);\n\tdiffuseColor.rgb = texture2D(map, clamp(landUv, 0.001, 0.999)).rgb;\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, mistColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
       )
   }
 
-  const horizon = new THREE.Mesh(trackGeometry(new THREE.PlaneGeometry(HORIZON_SPAN, HORIZON_SPAN)), material)
+  const horizon = new THREE.Mesh(
+    trackGeometry(new THREE.PlaneGeometry(HORIZON_SPAN, HORIZON_SPAN)),
+    material
+  )
   horizon.rotation.x = -Math.PI / 2
   horizon.position.y = 0.04
   horizon.userData.role = "horizon"
   horizon.frustumCulled = false
   scene.add(horizon)
+
+  const RIDGE = 3200
+  const RIDGE_SEG = 20
+  const ridgeGeo = trackGeometry(new THREE.PlaneGeometry(RIDGE, RIDGE, RIDGE_SEG, RIDGE_SEG))
+  const ridgePos = ridgeGeo.getAttribute("position")
+  const ridgeXY = new Float32Array(ridgePos.count * 2)
+  for (let i = 0; i < ridgePos.count; i++) {
+    ridgeXY[i * 2] = ridgePos.getX(i)
+    ridgeXY[i * 2 + 1] = ridgePos.getY(i)
+  }
+  const ridge = new THREE.Mesh(ridgeGeo, material)
+  ridge.rotation.x = -Math.PI / 2
+  ridge.position.y = 0.07
+  ridge.userData.role = "horizon"
+  ridge.frustumCulled = false
+  scene.add(ridge)
 
   const trees = new THREE.InstancedMesh(
     pineGeometry(),
@@ -270,18 +312,11 @@ export function mountPicture(scene) {
   trees.userData.role = "far-pine"
   scene.add(trees)
 
-  const gateMaterial = new THREE.MeshLambertMaterial({
+  const gateMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     vertexColors: true,
-    emissive: 0xff7a2a
+    fog: false
   })
-  gateMaterial.customProgramCacheKey = () => "hell-gate"
-  gateMaterial.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      "#include <emissivemap_fragment>",
-      "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance *= vColor.rgb;"
-    )
-  }
   const gate = new THREE.InstancedMesh(gateGeometry(), gateMaterial, 8)
   gate.count = 0
   gate.frustumCulled = false
@@ -291,16 +326,35 @@ export function mountPicture(scene) {
   scene.add(gate)
 
   const dummy = new THREE.Object3D()
-  let painted = ""
+  const ahead = new THREE.Vector3()
+  let windowKey = ""
   let mistKey = ""
   let treeKey = ""
 
-  function paint(seed, attempt) {
-    const key = `${seed}:${attempt}`
-    if (key === painted) return
-    painted = key
-    map.image.data.set(paintBytes(seed, attempt))
+  function paint(seed, attempt, camera) {
+    let lookX = 0
+    let lookZ = 0
+    if (camera) {
+      camera.getWorldDirection(ahead)
+      const drop = ahead.y < -0.05 ? -camera.position.y / ahead.y : 0
+      lookX = camera.position.x + ahead.x * drop
+      lookZ = camera.position.z + ahead.z * drop
+    }
+    const ox = Math.round(lookX / CHUNK) * CHUNK
+    const oz = Math.round(lookZ / CHUNK) * CHUNK
+    const key = `${seed}:${attempt}:${ox}:${oz}`
+    if (key === windowKey) return
+    windowKey = key
+    windowOrigin.value.set(ox, oz)
+    map.image.data.set(paintWindow(seed, attempt, ox, oz))
     map.needsUpdate = true
+    ridge.position.set(ox, 0.07, oz)
+    for (let i = 0; i < ridgePos.count; i++) {
+      const x = ox + ridgeXY[i * 2]
+      const z = oz - ridgeXY[i * 2 + 1]
+      ridgePos.setZ(i, landHeight(seed, attempt, x, z))
+    }
+    ridgePos.needsUpdate = true
   }
 
   function mist(snap, seeded) {
@@ -350,7 +404,7 @@ export function mountPicture(scene) {
     for (let n = 0; n < picks.length; n++) {
       dummy.position.set(picks[n].x, 0, picks[n].z)
       dummy.rotation.set(0, 0, 0)
-      dummy.scale.set(1, 1, 1)
+      dummy.scale.set(1.8, 2.6, 1.8)
       dummy.updateMatrix()
       trees.setMatrixAt(n, dummy.matrix)
     }
@@ -363,7 +417,7 @@ export function mountPicture(scene) {
     for (let n = 0; n < rows.length; n++) {
       const row = rows[n]
       dummy.position.set(row.x, 0, row.y)
-      dummy.rotation.set(0, Math.atan2(row.x, row.y), 0)
+      dummy.lookAt(0, 0, 0)
       dummy.scale.set(1, 1, 1)
       dummy.updateMatrix()
       gate.setMatrixAt(n, dummy.matrix)
@@ -376,7 +430,7 @@ export function mountPicture(scene) {
       const seeded = Number.isInteger(snap && snap.seed)
       const seed = seeded ? snap.seed : 1
       const attempt = seeded ? snap.attempt || 0 : 0
-      paint(seed, attempt)
+      paint(seed, attempt, camera)
       mist(snap || {}, seeded)
       const span = (halfH || 168) / Math.tan(THREE.MathUtils.degToRad(7.5))
       horizonFogNear.value = span * 1.15

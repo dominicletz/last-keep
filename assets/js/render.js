@@ -497,7 +497,9 @@ export function createView(stage, picture) {
         if (!flat) flat = stats
         continue
       }
-      if (!best || stats.variance < best.variance) best = stats
+      // The horizon quilt is smoother than the clearing and brighter, so the
+      // lowest variance now lands on that skirt. The clearing is the dark patch.
+      if (!best || stats.luma < best.luma) best = stats
     }
     const picked = best || flat
     return picked ? { ...picked, light: liveLight } : null
@@ -664,6 +666,7 @@ export function createView(stage, picture) {
 
       const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
       picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes })
+      dissolveYardEdge(yard)
       picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
 
       liveMonsters = snap.monsters || []
@@ -928,6 +931,20 @@ export function createView(stage, picture) {
       return 1
     }
     return t
+  }
+
+  function dissolveYardEdge(mesh) {
+    const material = mesh.material
+    if (!material || material.userData.yardEdge) return
+    material.userData.yardEdge = true
+    material.customProgramCacheKey = () => "yard-edge"
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <dithering_fragment>",
+        "float yardMargin = 0.5 - max(abs(vMapUv.x - 0.5), abs(vMapUv.y - 0.5));\n\tfloat yardBand = 1.0 - smoothstep(0.0, 0.1, yardMargin);\n\tfloat yardDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n\tif (yardDither < yardBand) discard;\n\t#include <dithering_fragment>"
+      )
+    }
+    material.needsUpdate = true
   }
 
   function boundLook() {
