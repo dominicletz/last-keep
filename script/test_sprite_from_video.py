@@ -54,7 +54,7 @@ class PaletteTest(unittest.TestCase):
 
 class HeroProfileTest(unittest.TestCase):
     def test_every_profile_names_its_checks(self):
-        self.assertEqual(sorted(cs.HEROES), ["farmer", "mage", "scout", "warrior"])
+        self.assertEqual(sorted(cs.HEROES), ["engineer", "farmer", "mage", "scout", "warrior"])
         for name, hero in cs.HEROES.items():
             roles = {r for r, _ in hero["roles"]}
             self.assertIn(hero["prop"][1], roles, name)

@@ -9,7 +9,7 @@ Save as `assets/reference/engineer/video/views/v-S.png`.
 
 ```json
 {
- "description": "Full-body game character reference of the engineer from the reference image, front view, facing the camera. Same design exactly: brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots. Iron hammer in his right hand (on the image-left side); bundle of wooden planks on his back (partly hidden behind the body). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+ "description": "Full-body game character reference of the engineer from the reference image, front view, facing the camera. Same design exactly: brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots. Iron hammer in his right hand (on the image-left side); bundle of wooden planks on his back (on the image-right side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
  "reference_image_paths": [
   "assets/reference/engineer/concept.png"
  ],
@@ -24,7 +24,7 @@ Save as `assets/reference/engineer/video/views/v-N.png`.
 
 ```json
 {
- "description": "Full-body game character reference of the engineer from the reference image, back view, seen from directly behind, back to the camera. Same design exactly: brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots. Iron hammer in his right hand (on the image-right side); bundle of wooden planks on his back (toward the camera). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+ "description": "Full-body game character reference of the engineer from the reference image, back view, seen from directly behind, back to the camera. Same design exactly: brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots. Iron hammer in his right hand (on the image-right side); bundle of wooden planks on his back (toward the camera, on the image-left side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
  "reference_image_paths": [
   "assets/reference/engineer/concept.png",
   "assets/reference/engineer/video/views/v-S.png"
@@ -40,7 +40,7 @@ Save as `assets/reference/engineer/video/views/v-W.png`.
 
 ```json
 {
- "description": "Full-body game character reference of the engineer from the reference image, left profile view, facing screen-left, his left side toward the camera. Same design exactly: brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots. Iron hammer in his right hand (partly hidden behind the body); bundle of wooden planks on his back (on the image-right side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+ "description": "Full-body game character reference of the engineer from the reference image, left profile view, facing screen-left, his left side toward the camera. Same design exactly: brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots. Iron hammer in his right hand (low in front of the legs, on the image-left side); bundle of wooden planks on his back (on the image-right side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
  "reference_image_paths": [
   "assets/reference/engineer/concept.png",
   "assets/reference/engineer/video/views/v-S.png"
@@ -72,7 +72,7 @@ Save as `assets/reference/engineer/video/turntable.mp4`. Then run `hero_sprites.
 
 ```json
 {
- "prompt": "Game character turnaround reference. The engineer stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show his left side, then his back, then his right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.",
+ "prompt": "Game character turnaround reference. The engineer stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show his left side, then his back, then his right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots, iron hammer held low in his right hand, bundle of wooden planks on his back. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.",
  "image_path": "assets/reference/engineer/video/views/k-S.png",
  "last_frame_path": "assets/reference/engineer/video/views/k-S.png",
  "keyframes": [
@@ -102,7 +102,7 @@ Save as `assets/reference/engineer/video/walk-S.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-left side); bundle of wooden planks on his back (partly hidden behind the body). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-left side); bundle of wooden planks on his back (on the image-right side). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/engineer/video/dirs/S.png",
  "last_frame_path": "assets/reference/engineer/video/dirs/S.png",
  "duration": 2,
@@ -134,7 +134,7 @@ Save as `assets/reference/engineer/video/walk-SW.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-left side, partly hidden behind the body); bundle of wooden planks on his back (on the image-right side, partly hidden behind the body). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-left side); bundle of wooden planks on his back (on the image-right side). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/engineer/video/dirs/SW.png",
  "last_frame_path": "assets/reference/engineer/video/dirs/SW.png",
  "duration": 2,
@@ -166,7 +166,7 @@ Save as `assets/reference/engineer/video/walk-W.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-left, his left side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (partly hidden behind the body); bundle of wooden planks on his back (on the image-right side). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-left, his left side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (low in front of the legs, on the image-left side); bundle of wooden planks on his back (on the image-right side). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/engineer/video/dirs/W.png",
  "last_frame_path": "assets/reference/engineer/video/dirs/W.png",
  "duration": 2,
@@ -198,7 +198,7 @@ Save as `assets/reference/engineer/video/walk-NW.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-right side, partly hidden behind the body); bundle of wooden planks on his back (on the image-right side, toward the camera). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (partly hidden behind the body); bundle of wooden planks on his back (toward the camera). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/engineer/video/dirs/NW.png",
  "last_frame_path": "assets/reference/engineer/video/dirs/NW.png",
  "duration": 2,
@@ -230,7 +230,7 @@ Save as `assets/reference/engineer/video/walk-N.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from directly behind, back to the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-right side); bundle of wooden planks on his back (toward the camera). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from directly behind, back to the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-right side); bundle of wooden planks on his back (toward the camera, on the image-left side). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/engineer/video/dirs/N.png",
  "last_frame_path": "assets/reference/engineer/video/dirs/N.png",
  "duration": 2,
@@ -262,7 +262,7 @@ Save as `assets/reference/engineer/video/walk-NE.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-right side, toward the camera); bundle of wooden planks on his back (on the image-left side, toward the camera). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-right side); bundle of wooden planks on his back (on the image-left side). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/engineer/video/dirs/NE.png",
  "last_frame_path": "assets/reference/engineer/video/dirs/NE.png",
  "duration": 2,
@@ -326,7 +326,7 @@ Save as `assets/reference/engineer/video/walk-SE.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-left side, toward the camera); bundle of wooden planks on his back (on the image-left side, partly hidden behind the body). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The engineer walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady marching walk: legs alternating clearly, slight body bob, hammer held low in his right hand, planks steady on his back. Props stay where the first frame has them: iron hammer in his right hand (on the image-left side); bundle of wooden planks on his back (on the image-left side, partly hidden behind the body). The engineer stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/engineer/video/dirs/SE.png",
  "last_frame_path": "assets/reference/engineer/video/dirs/SE.png",
  "duration": 2,

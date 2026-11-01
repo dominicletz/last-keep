@@ -23,7 +23,8 @@ HEROES = ["engineer", "farmer", "mage", "scout", "warrior"]
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
             "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
             "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164},
-            "farmer": {"SW": 42, "NW": 82, "NE": 117, "SE": 158}}
+            "farmer": {"SW": 42, "NW": 82, "NE": 117, "SE": 158},
+            "engineer": {"SW": 30, "NW": 70, "NE": 118, "SE": 154}}
 
 
 def png_bytes(arr):
@@ -94,11 +95,13 @@ class DirsTest(unittest.TestCase):
 
     def test_picker_lands_near_the_hand_picked_diagonals(self):
         # mage SW 46 is the approved pick; SE 156 was picked by eye over a
-        # clean front-right 3/4 at 162. Warrior picks came from an older eye pass; scout and farmer picks are Dominic's.
+        # clean front-right 3/4 at 162. Warrior picks came from an older eye pass; scout, farmer and engineer picks are Dominic's.
+        # The engineer SE pick is 16 frames before the picker's 170, where the planks vanish and the view is too frontal.
         slack = {"mage": {"SW": 2, "NW": 12, "NE": 12, "SE": 8},
                  "warrior": {"SW": 10, "NW": 6, "NE": 6, "SE": 10},
                  "scout": {"SW": 6, "NW": 8, "NE": 6, "SE": 6},
-                 "farmer": {"SW": 8, "NW": 4, "NE": 4, "SE": 10}}
+                 "farmer": {"SW": 8, "NW": 4, "NE": 4, "SE": 10},
+                 "engineer": {"SW": 0, "NW": 0, "NE": 0, "SE": 16}}
         for h in APPROVED:
             cfg = hs.load_config(h)
             picked = hs.pick_diagonals(self.frames[h], self.cards(h), hs.key_frames(cfg, len(self.frames[h])))
@@ -145,6 +148,25 @@ class PromptsTest(unittest.TestCase):
                       c["walk-W"]["args"]["prompt"])
         self.assertIn("pitchfork with iron tines in his right hand (on the image-right side)", c["walk-SE"]["args"]["prompt"])
         self.assertIn("pitchfork with iron tines in his right hand (on the image-right side)", c["walk-E"]["args"]["prompt"])
+
+    def test_engineer_hammer_and_plank_sides_match_the_clips(self):
+        c = self.calls("engineer")
+        self.assertIn("iron hammer in his right hand (low in front of the legs, on the image-left side)",
+                      c["walk-W"]["args"]["prompt"])
+        self.assertIn("iron hammer in his right hand (partly hidden behind the body)", c["walk-NW"]["args"]["prompt"])
+        self.assertIn("iron hammer in his right hand (toward the camera)", c["walk-E"]["args"]["prompt"])
+        self.assertIn("bundle of wooden planks on his back (toward the camera, on the image-left side)",
+                      c["walk-N"]["args"]["prompt"])
+        self.assertIn("bundle of wooden planks on his back (on the image-left side, partly hidden behind the body)",
+                      c["walk-SE"]["args"]["prompt"])
+
+    def test_turntable_design_can_name_the_held_items(self):
+        turn = self.calls("engineer")["turntable"]["args"]["prompt"]
+        self.assertIn("brown boots, iron hammer held low in his right hand, bundle of wooden planks on his back.", turn)
+        view = self.calls("engineer")["view-S"]["args"]["description"]
+        self.assertNotIn("hammer held low", view)
+        scout = hs.load_config("scout")["design"]
+        self.assertIn(scout, self.calls("scout")["turntable"]["args"]["prompt"])
 
     def test_walk_and_idle_prompts_carry_the_lessons(self):
         for h in HEROES:

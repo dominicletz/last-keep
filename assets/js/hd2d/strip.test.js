@@ -91,7 +91,7 @@ function sheetTest(hero, name) {
 }
 
 test("every sheet hero loads its own walk sheet and normal map", () => {
-  assert.deepEqual(SHEET_HEROES, ["warrior", "mage", "scout", "farmer"])
+  assert.deepEqual(SHEET_HEROES, ["warrior", "mage", "scout", "farmer", "engineer"])
   for (const hero of SHEET_HEROES) {
     assert.equal(walkSheetUrl(hero), `images/hd2d/${hero}-walk.png`)
     assert.equal(walkSheetUrl(hero, true), `images/hd2d/${hero}-walk-normal.png`)
@@ -107,6 +107,8 @@ test("every sheet hero loads its own walk sheet and normal map", () => {
   assert.notEqual(changedPixels(warrior.rgba, scout.rgba), 0)
   const farmer = readWalkSheet(walkSheetPath(root, "farmer"))
   for (const other of [warrior, mage, scout]) assert.notEqual(changedPixels(other.rgba, farmer.rgba), 0)
+  const engineer = readWalkSheet(walkSheetPath(root, "engineer"))
+  for (const other of [warrior, mage, scout, farmer]) assert.notEqual(changedPixels(other.rgba, engineer.rgba), 0)
 })
 
 for (const hero of SHEET_HEROES) {
@@ -229,6 +231,22 @@ function isFarmerSkin(cell, i) {
   return c.chroma > 0.4 && c.h >= 24 && c.h <= 30 && c.light > 0.55
 }
 
+// The engineer is all browns of hue 20-34, told apart by chroma and lightness,
+// first match wins as in his hero.json roles.
+function engineerRole(cell, i) {
+  const c = hue(cell[i], cell[i + 1], cell[i + 2])
+  if (c.chroma < 0.12) return c.light > 0.3 ? "iron" : "neutral"
+  if (c.h < 20 || c.h > 34) return "other"
+  if (c.chroma > 0.4 && c.light > 0.55) return "skin"
+  if (c.light > 0.55) return "shirt"
+  if (c.chroma > 0.3 && c.light > 0.35) return "wood"
+  return "leather"
+}
+
+const isEngineerSkin = (cell, i) => engineerRole(cell, i) === "skin"
+const isShirt = (cell, i) => engineerRole(cell, i) === "shirt"
+const isPlank = (cell, i) => engineerRole(cell, i) === "wood"
+
 function count(cell, keep) {
   let n = 0
   for (let i = 0; i < cell.length; i += 4) if (cell[i + 3] && keep(cell, i)) n += 1
@@ -335,6 +353,22 @@ const HERO_MARKS = {
       assert.ok(count(front, isStraw) >= 58, `hat missing on the front view row ${row}`)
       assert.ok(count(front, isIron) >= 68, `pitchfork tines missing on the front view row ${row}`)
       assert.ok(headCount(front, isFarmerSkin, HEAD) >= 8, `face missing on the front view row ${row}`)
+    }
+  },
+  // The hammer's grey iron head hangs low in the right hand: screen-left in S,
+  // SW and W, screen-right in N, NE and E. NW hides it behind the body and in
+  // SE it swings across the body midline, so those have no side to hold.
+  engineer: {
+    propName: "hammer head",
+    prop: isIron,
+    side: { S: -1, SW: -1, W: -1, N: 1, NE: 1, E: 1 },
+    views(back, front, row) {
+      assert.ok(headCount(back, isEngineerSkin, HEAD) <= 6, `face on the back view row ${row}`)
+      assert.ok(count(back, isPlank) >= 82, `planks missing on the back view row ${row}`)
+      assert.ok(count(front, isShirt) >= 94, `shirt missing on the front view row ${row}`)
+      assert.ok(count(front, isPlank) >= 77, `planks missing on the front view row ${row}`)
+      assert.ok(count(front, isIron) >= 47, `hammer missing on the front view row ${row}`)
+      assert.ok(headCount(front, isEngineerSkin, HEAD) >= 8, `face missing on the front view row ${row}`)
     }
   }
 }

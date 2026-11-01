@@ -387,7 +387,7 @@ def build_prompts(cfg):
             f"invisible turntable and rotates a full 360 degrees at a constant speed, turning to show {poss} left "
             f"side, then {poss} back, then {poss} right side, then front again. Locked-off camera, slightly "
             "elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white "
-            f"background, even soft lighting. The design stays exactly identical: {design}. "
+            f"background, even soft lighting. The design stays exactly identical: {t.get('design', design)}. "
             f"{steady_light(cfg)} Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, "
             "no text.")
     calls.append({"id": "turntable", "step": "dirs", "tool": "GenerateVideo",

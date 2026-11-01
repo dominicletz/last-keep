@@ -1,5 +1,5 @@
 {
- "_note": "Stub. Fill check after the first build.",
+ "_note": "Diagonals are Dominic's hand picks (0-based turntable frames); the picker's SE 170 lost the planks and was too frontal. Hammer and plank sides follow the clips. Check profile: anchors are concept colours (hero_sprites.py engineer colours); floors are about 60% of the start poses' counts. Every colour is a brown of hue 20-34, so roles split it by chroma and lightness. The prop is the grey iron of the hammer head (neutral role). NW hides the hammer behind the body, and in SE it hangs in front of the legs and crosses the body midline from row to row, so prop_dirs leaves NW and SE out.",
  "noun": "engineer",
  "possessive": "his",
  "concept": {
@@ -17,13 +17,33 @@
    "name": "iron hammer",
    "at": "right hand",
    "walk": "hammer held low in his right hand",
-   "still": "hammer"
+   "still": "hammer",
+   "sides": {
+    "S": "image-left",
+    "SW": "image-left",
+    "SE": "image-left",
+    "W": "low in front of the legs, on the image-left side",
+    "NW": "partly hidden behind the body",
+    "N": "image-right",
+    "NE": "image-right",
+    "E": "toward the camera"
+   }
   },
   {
    "name": "bundle of wooden planks",
    "at": "back",
    "walk": "planks steady on his back",
-   "still": "planks"
+   "still": "planks",
+   "sides": {
+    "S": "image-right",
+    "SW": "image-right",
+    "W": "image-right",
+    "NW": "toward the camera",
+    "N": "toward the camera, on the image-left side",
+    "NE": "image-left",
+    "E": "image-left",
+    "SE": "on the image-left side, partly hidden behind the body"
+   }
   }
  ],
  "turntable": {
@@ -33,8 +53,166 @@
    "W": 2,
    "N": 4,
    "E": 6
-  }
+  },
+  "design": "brown leather cap, short brown beard, brown leather apron over a cream shirt, tool belt with tools, brown boots, iron hammer held low in his right hand, bundle of wooden planks on his back"
  },
- "diagonals": {},
- "check": null
+ "diagonals": {
+  "SW": 30,
+  "NW": 70,
+  "NE": 118,
+  "SE": 154
+ },
+ "check": {
+  "anchors": {
+   "leather brown": [
+    74,
+    45,
+    23
+   ],
+   "cream shirt": [
+    212,
+    182,
+    148
+   ],
+   "skin": [
+    211,
+    151,
+    98
+   ],
+   "iron grey": [
+    100,
+    93,
+    87
+   ],
+   "plank wood": [
+    164,
+    113,
+    65
+   ]
+  },
+  "roles": [
+   {
+    "name": "iron",
+    "neutral": true,
+    "light_gt": 0.3
+   },
+   {
+    "name": "skin",
+    "hue": [
+     20,
+     34
+    ],
+    "chroma_gt": 0.4,
+    "light_gt": 0.55
+   },
+   {
+    "name": "shirt",
+    "hue": [
+     20,
+     34
+    ],
+    "light_gt": 0.55
+   },
+   {
+    "name": "wood",
+    "hue": [
+     20,
+     34
+    ],
+    "chroma_gt": 0.3,
+    "light_gt": 0.35
+   },
+   {
+    "name": "leather",
+    "hue": [
+     20,
+     34
+    ]
+   }
+  ],
+  "prop": [
+   "hammer head",
+   "iron"
+  ],
+  "prop_dirs": [
+   "S",
+   "SW",
+   "W",
+   "N",
+   "NE",
+   "E"
+  ],
+  "back": {
+   "title": "back view N shows the planks, no face",
+   "bounds": [
+    [
+     "face",
+     [
+      "head",
+      "skin",
+      [
+       54,
+       74
+      ]
+     ],
+     null,
+     6
+    ],
+    [
+     "planks",
+     [
+      "count",
+      "wood"
+     ],
+     82,
+     null
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view keeps shirt, planks, hammer, face",
+   "bounds": [
+    [
+     "shirt",
+     [
+      "count",
+      "shirt"
+     ],
+     94,
+     null
+    ],
+    [
+     "planks",
+     [
+      "count",
+      "wood"
+     ],
+     77,
+     null
+    ],
+    [
+     "iron",
+     [
+      "count",
+      "iron"
+     ],
+     47,
+     null
+    ],
+    [
+     "face",
+     [
+      "head",
+      "skin",
+      [
+       54,
+       74
+      ]
+     ],
+     8,
+     null
+    ]
+   ]
+  }
+ }
 }
