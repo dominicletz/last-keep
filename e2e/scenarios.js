@@ -2727,6 +2727,42 @@ async function hd2dFlag(browser) {
   await host.context.close()
 }
 
+async function portraitHero(browser) {
+  const errors = []
+  for (const size of [
+    { width: 1280, height: 800 },
+    { width: 844, height: 390, hasTouch: true, isMobile: true }
+  ]) {
+    const context = await lowContext(browser, { viewport: { width: size.width, height: size.height }, hasTouch: !!size.hasTouch, isMobile: !!size.isMobile })
+    const page = await context.newPage()
+    watch(page, "portrait", errors)
+    await page.goto(gameUrl("/"))
+    await page.locator("#start-button").waitFor()
+    await page.waitForFunction(() => {
+      const fig = window.__lastKeep && window.__lastKeep.figures && window.__lastKeep.figures[0]
+      return fig && fig.box && fig.hero === document.querySelector("#start-screen").dataset.hero
+    })
+    const read = await page.evaluate(() => {
+      const fig = window.__lastKeep.figures[0]
+      const card = document.querySelector(".start-card").getBoundingClientRect()
+      return { box: fig.box, vw: window.innerWidth, vh: window.innerHeight, card: { x: card.x, y: card.y, w: card.width, h: card.height } }
+    })
+    expect(read.box.h / read.vh).toBeGreaterThanOrEqual(0.3)
+    expect(read.box.x).toBeGreaterThanOrEqual(-1)
+    expect(read.box.y).toBeGreaterThanOrEqual(-1)
+    expect(read.box.x + read.box.w).toBeLessThanOrEqual(read.vw + 1)
+    expect(read.box.y + read.box.h).toBeLessThanOrEqual(read.vh + 1)
+    if (size.height <= 500) {
+      const center = (read.box.x + read.box.w / 2) / read.vw
+      expect(center).toBeLessThan(0.48)
+      const overlaps = !(read.box.x + read.box.w < read.card.x || read.card.x + read.card.w < read.box.x || read.box.y + read.box.h < read.card.y || read.card.y + read.card.h < read.box.y)
+      expect(overlaps).toBe(false)
+    }
+    await context.close()
+  }
+  expect(errors, errors.join("\n")).toEqual([])
+}
+
 async function classSelect(browser) {
   const errors = []
   const desktop = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
@@ -2862,6 +2898,7 @@ module.exports = {
   twoPlayerNight,
   joinFromForm,
   classSelect,
+  portraitHero,
   oneSeat,
   squarePixels,
   scoreList,

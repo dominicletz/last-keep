@@ -1,5 +1,6 @@
 import * as THREE from "three"
 import { cameraLift, frameFor } from "../frame.js"
+import { mixPose, PORTRAIT_FOV, portraitPose } from "../portrait.js"
 import { masonryBytes } from "../tiles.js"
 import { tierExtras, tierFor } from "./tier.js"
 
@@ -424,6 +425,7 @@ function createHdPicture(env) {
   let driverNoted = false
   const lowFog = new THREE.FogExp2(0x4e4651, 0.0008)
   let slowPaints = 0
+  let arriving = false
   let resolveReady = () => {}
   let readySettled = false
   const ready = new Promise((resolve) => {
@@ -848,13 +850,31 @@ function createHdPicture(env) {
         bottom: world.bottom
       }
     },
-    seat(camera, focus, dist, snap) {
+    seat(camera, focus, dist, snap, view) {
       if (!snap || !snap.hd2dStill) live = true
       const rise = 0.9 * dist - cameraLift
       const dir = new THREE.Vector3(dist, rise, dist).normalize()
       const look = new THREE.Vector3(focus.x, cameraLift, focus.z)
-      camera.position.copy(look).addScaledVector(dir, span)
-      camera.lookAt(look)
+      const home = look.clone().addScaledVector(dir, span)
+      const blend = snap && snap.portrait ? 0 : view && Number.isFinite(view.blend) ? Math.min(1, Math.max(0, view.blend)) : 1
+      arriving = blend < 1
+      if (blend < 1) {
+        const hero = (view && view.hero) || { x: focus.x, z: focus.z }
+        const portrait = portraitPose(hero, (view && view.cssW) || 1280, (view && view.cssH) || 800)
+        const from = { position: portrait.position, look: portrait.look }
+        const to = { position: { x: home.x, y: home.y, z: home.z }, look: { x: look.x, y: look.y, z: look.z } }
+        const pose = blend <= 0 ? from : mixPose(from, to, blend)
+        const step = Math.min(1, Math.max(0, blend))
+        const glide = step * step * (3 - 2 * step)
+        camera.fov = PORTRAIT_FOV + (LOOK.fov - PORTRAIT_FOV) * glide
+        camera.near = 1
+        camera.position.set(pose.position.x, pose.position.y, pose.position.z)
+        camera.lookAt(pose.look.x, pose.look.y, pose.look.z)
+        camera.updateProjectionMatrix()
+      } else {
+        camera.position.copy(home)
+        camera.lookAt(look)
+      }
       camera.updateMatrixWorld()
       const bottom = bottomRay(camera)
       const groundDistance = bottom.y < 0 ? -camera.position.y / bottom.y : Infinity
@@ -966,7 +986,7 @@ function createHdPicture(env) {
           drawPass(chain.graded, chain.bloomUp)
         }
         const sharp = extras.bloom ? chain.graded.texture : chain.fogged.texture
-        if (extras.dof) {
+        if (extras.dof && !arriving) {
           chain.dof.uniforms.tColor.value = sharp
           chain.restore.uniforms.tSharp.value = sharp
           drawPass(chain.blurred, chain.dof)
