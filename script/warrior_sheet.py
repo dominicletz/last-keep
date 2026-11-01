@@ -471,6 +471,39 @@ def lower_diff(a, b):
     return changed
 
 
+def mirror_cell(cell):
+    mirrored = bytearray(CELL * CELL * 4)
+    for y in range(CELL):
+        for x in range(CELL):
+            src = (y * CELL + x) * 4
+            dst = (y * CELL + (CELL - 1 - x)) * 4
+            mirrored[dst : dst + 4] = cell[src : src + 4]
+    return mirrored
+
+
+def mean_x(cell, colors=None):
+    xs = [
+        (i // 4) % CELL
+        for i in range(0, len(cell), 4)
+        if cell[i + 3] and (colors is None or tuple(cell[i : i + 3]) in colors)
+    ]
+    if not xs:
+        raise SystemExit("no pixels for the mean")
+    return sum(xs) / len(xs)
+
+
+def hero_left_on_viewer_right(column):
+    """Screen x grows to the viewer's right. Hero left is +X, so the sign flips
+    as the camera orbits."""
+    eye, right, _up, _forward = camera(column)
+
+    def screen(point):
+        rel = (point[0] - eye[0], point[1] - eye[1], point[2] - eye[2])
+        return -dot(rel, right)
+
+    return screen((0.56, 0.7, 0.2)) > screen((0.0, 0.8, 0.0))
+
+
 def validate(albedo, normal):
     colors = palette()
     skin = set(BANDS["skin"])
@@ -495,20 +528,34 @@ def validate(albedo, normal):
                     raise SystemExit(f"face on a back view column {column}")
                 if not any(tuple(pix[i : i + 3]) in cape for i in range(0, len(pix), 4) if pix[i + 3]):
                     raise SystemExit(f"cape missing on column {column}")
+            side = mean_x(pix, shield) - mean_x(pix)
+            if hero_left_on_viewer_right(column):
+                if side < 2:
+                    raise SystemExit(f"shield is not on the hero's left, column {column} row {row}")
+            elif side > -2:
+                raise SystemExit(f"shield is not on the hero's left, column {column} row {row}")
             if column == 0 and row == 0:
-                xs = [
-                    i // 4 % CELL
-                    for i in range(0, len(pix), 4)
-                    if pix[i + 3] and tuple(pix[i : i + 3]) in shield
-                ]
-                if not xs or sum(xs) / len(xs) <= CELL / 2:
-                    raise SystemExit("shield is not on the viewer's right")
                 if not any(tuple(pix[i : i + 3]) in skin for i in range(0, len(pix), 4) if pix[i + 3]):
                     raise SystemExit("front has no face")
     if heights != {FILL + 2}:
         raise SystemExit(f"height {heights}, want {FILL + 2}")
     if len(feet) != 1:
         raise SystemExit(f"feet {feet}")
+    columns = []
+    for column in range(DIRS):
+        frames = [cell_of(albedo, column, row) for row in range(ROWS)]
+        blob = b"".join(bytes(frame) for frame in frames)
+        mirrored = b"".join(bytes(mirror_cell(frame)) for frame in frames)
+        for other, other_mirror in columns:
+            if blob == other or blob == other_mirror:
+                raise SystemExit(f"direction {column} equals another or its mirror")
+        columns.append((blob, mirrored))
+        for row in range(WALK):
+            moved = lower_diff(frames[row], frames[(row + 1) % WALK])
+            if moved < 8:
+                raise SystemExit(f"walk legs moved {moved} px on column {column}")
+        if lower_diff(frames[0], frames[4]) < 8:
+            raise SystemExit(f"contacts match on column {column}")
     front = cell_of(albedo, 0, 0)
     passed = cell_of(albedo, 0, 2)
     if front == passed:
@@ -521,18 +568,6 @@ def validate(albedo, normal):
     low = lower_diff(front, passed)
     if low < 8:
         raise SystemExit(f"walk legs moved {low} px")
-    for column in range(1, DIRS):
-        other = cell_of(albedo, column, 0)
-        if other == front:
-            raise SystemExit("direction matches the front")
-        mirrored = bytearray(CELL * CELL * 4)
-        for y in range(CELL):
-            for x in range(CELL):
-                mirrored[(y * CELL + (CELL - 1 - x)) * 4 : (y * CELL + (CELL - 1 - x)) * 4 + 4] = other[
-                    (y * CELL + x) * 4 : (y * CELL + x) * 4 + 4
-                ]
-        if mirrored == front:
-            raise SystemExit("direction is the front mirrored")
 
 
 def write_outputs():
