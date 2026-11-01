@@ -262,6 +262,7 @@ export function sheetRow(picture, pose, now) {
     return walk + index
   }
   if (pose.moving) return Math.floor(now / 160) % walk
+  if (picture.idle) return walk + attack + death + (Math.floor(now / 320) % picture.idle)
   return 0
 }
 
