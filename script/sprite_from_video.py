@@ -182,8 +182,11 @@ def build_palette(samples, k=COLOURS, seed=7):
     centres = [lab[int(np.argmax(weight))]]
     for _ in range(1, k):
         d = np.min([((lab - c) ** 2).sum(1) for c in centres], 0) * weight
+        if d.sum() <= 0:
+            break  # fewer distinct colours than k: every one is a centre
         centres.append(lab[int(rng.choice(len(lab), p=d / d.sum()))])
     centres = np.array(centres)
+    k = len(centres)
     for _ in range(40):
         d = ((lab[:, None, :] - centres[None]) ** 2).sum(2)
         idx = d.argmin(1)
@@ -305,6 +308,22 @@ def clip_geometry(frames, picks):
     return scale
 
 
+def palette_samples(dirs):
+    """Palette samples from the eight start poses only. They are the
+    concept-matched stills every clip starts from, so they carry every
+    material. Sampling the clip frames too made the palette depend on every
+    clip: swapping one idle clip reshuffled the k-means draw and moved the
+    front-view shield blue off its hue."""
+    samples = []
+    for d in COLUMNS:
+        pose = np.asarray(Image.open(os.path.join(dirs, f"{d}.png")).convert("RGB"))
+        m = cut_out(pose)
+        top, foot = span(m)
+        rgb, alpha = place({"rgb": pose, "mask": m}, FILL / (foot - top + 1), head_centre(m), foot)
+        samples.append(rgb[alpha])
+    return np.concatenate(samples).astype(np.float64)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("clips")
@@ -338,21 +357,7 @@ def main(argv=None):
                    "walk_scale": round(ws, 4), "idle_scale": round(iscale, 4)}
         print(f"{d}: cycle {cycle}/{len(walk)} walk {wp} idle {ip} scale {ws:.3f}/{iscale:.3f}", file=sys.stderr)
 
-    # Palette from the concept-matched start poses (S and N carry every
-    # material) plus every placed frame.
-    samples = []
-    for d in ("S", "N", "W", "E"):
-        pose = np.asarray(Image.open(os.path.join(args.clips, "dirs", f"{d}.png")).convert("RGB"))
-        m = cut_out(pose)
-        top, foot = span(m)
-        s = FILL / (foot - top + 1)
-        rgb, alpha = place({"rgb": pose, "mask": m}, s, head_centre(m), foot)
-        samples.append(rgb[alpha])
-    for cells in raw.values():
-        for rgb, alpha in cells:
-            samples.append(rgb[alpha][::3])
-    samples = np.concatenate(samples).astype(np.float64)
-    pal = build_palette(samples)
+    pal = build_palette(palette_samples(os.path.join(args.clips, "dirs")))
     pal_lab = srgb_to_lab(np.array(pal, np.float64))
 
     sheet = np.zeros((CELL * (WALK + IDLE), CELL * len(COLUMNS), 4), np.uint8)
