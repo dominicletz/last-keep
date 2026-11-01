@@ -15,7 +15,8 @@ import {
   SHEET_FOOT_ROW,
   SHEET_HERO,
   SHEET_TEXEL,
-  sheetCardGeometry
+  sheetCardGeometry,
+  sheetHeroSize
 } from "./picture.js"
 import { spriteHeight } from "../pictures.js"
 
@@ -472,6 +473,22 @@ test("snapHeroCard scales the card to integer pixels for the camera that draws i
   const ortho = new THREE.OrthographicCamera()
   assert.equal(snapHeroCard(plane, ortho, height), 1)
   assert.equal(snapHeroCard(plane, camera, 0), 1)
+})
+
+test("a sheet hero measures the drawn hero, not the 128 px cell", () => {
+  const plane = new THREE.Mesh(sheetCardGeometry(), new THREE.MeshBasicMaterial())
+  const picture = { w: 15.4, h: spriteHeight }
+  const nominal = sheetHeroSize(plane, picture)
+  assert.ok(Math.abs(nominal.h - spriteHeight) < 1e-9)
+  assert.equal(nominal.w, picture.w)
+  plane.geometry.computeBoundingBox()
+  const cell = plane.geometry.boundingBox.max.y - plane.geometry.boundingBox.min.y
+  assert.ok(cell > nominal.h * 1.4, `cell ${cell} vs hero ${nominal.h}`)
+  // After snapHeroCard the drawn hero grows with the card.
+  plane.scale.setScalar(1.25)
+  const snapped = sheetHeroSize(plane, picture)
+  assert.ok(Math.abs(snapped.h - SHEET_HERO * SHEET_TEXEL * 1.25) < 1e-9)
+  assert.ok(Math.abs(snapped.w - picture.w * 1.25) < 1e-9)
 })
 
 test("grade refuses a live room before the strip resolves", () => {

@@ -16,7 +16,8 @@ import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
-import { cellOffset, pictureColumn, sheetRow } from "./pictures.js"
+import { SHEET_HEROES, cellOffset, pictureColumn, sheetRow } from "./pictures.js"
+import { sheetHeroSize } from "./hd2d/picture.js"
 import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
 import { keepParts, modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
@@ -59,10 +60,10 @@ function figurePixels(mesh, camera, bufferHeight) {
 
 // A sprite's center is (0.5, 0), so the feet sit on the group and the card
 // faces the camera. Box3 centers that sprite on its position and drops the
-// feet by half the height. The drawn quad is the camera-facing card.
-function spriteCardBox(group, camera) {
-  const picture = group.userData.picture
-  const halfW = picture.w / 2
+// feet by half the height. The drawn quad is the camera-facing card. A lit
+// sheet card passes the drawn hero's size, since its cell is wider and taller.
+function spriteCardBox(group, camera, size = group.userData.picture) {
+  const halfW = size.w / 2
   const yaw = Math.atan2(camera.position.x - group.position.x, camera.position.z - group.position.z)
   const hx = Math.abs(Math.cos(yaw) * halfW)
   const hz = Math.abs(Math.sin(yaw) * halfW)
@@ -71,7 +72,7 @@ function spriteCardBox(group, camera) {
   const z = group.position.z
   return {
     min: { x: x - hx, y, z: z - hz },
-    max: { x: x + hx, y: y + picture.h, z: z + hz }
+    max: { x: x + hx, y: y + size.h, z: z + hz }
   }
 }
 
@@ -731,9 +732,15 @@ export function createView(stage, picture) {
       for (const [key, mesh] of meshes) {
         if (!key.startsWith("hero:") || !mesh.userData.hero) continue
         const card = mesh.userData.card
+        const picture = mesh.userData.picture
+        const sheet = card && card.isMesh && picture && SHEET_HEROES.includes(mesh.userData.hd)
         const px =
-          card && card.isSprite && mesh.userData.picture
-            ? projectBoxPixels(spriteCardBox(mesh, camera), camera, viewFrame.bufferHeight)
+          card && picture && (card.isSprite || sheet)
+            ? projectBoxPixels(
+                spriteCardBox(mesh, camera, sheet ? sheetHeroSize(card, picture) : picture),
+                camera,
+                viewFrame.bufferHeight
+              )
             : figurePixels(card || mesh, camera, viewFrame.bufferHeight)
         figures.push({
           id: key.slice(5),
