@@ -44,5 +44,7 @@ runs:
       shell: bash
     - run: npm ci
       shell: bash
+    - run: bash script/apt_bound.sh
+      shell: bash
     - run: npx playwright install chromium --with-deps
       shell: bash
