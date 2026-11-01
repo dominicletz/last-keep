@@ -10,6 +10,10 @@
 \*
 \* The phone stick and the keys are the same walk. The phone Raise and the
 \* bar Raise are the same press. A press from the ring is refused.
+\*
+\* The door is the dusk yard. Left and right change the class, and Create
+\* and Join are that same screen. A stored seat sits without showing it.
+\* The model still calls that sit.
 
 EXTENDS Naturals
 

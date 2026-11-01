@@ -177,7 +177,7 @@ The night has its own sound. Day and building play one loop, the wave plays anot
 
 ## Session
 
-Sitting down, the host starting the night, the horn, a frenzy, a cleared night, a raise, a downed hero, a fallen keep, and a friend joining or leaving are [concepts/statechart/chart.mmd](concepts/statechart/chart.mmd). The model is [concepts/statechart/LastKeep.tla](concepts/statechart/LastKeep.tla). TLC's report is [concepts/statechart/report.md](concepts/statechart/report.md).
+The door is the yard at dusk. The hero stands in it, and left and right change the class. Create and Join are that same screen, described in [concepts/START-SCREEN.md](concepts/START-SCREEN.md). A stored seat sits down without showing it, and a lost seat uses the saved name and class again. Sitting down, the host starting the night, the horn, a frenzy, a cleared night, a raise, a downed hero, a fallen keep, and a friend joining or leaving are [concepts/statechart/chart.mmd](concepts/statechart/chart.mmd). The model is [concepts/statechart/LastKeep.tla](concepts/statechart/LastKeep.tla). TLC's report is [concepts/statechart/report.md](concepts/statechart/report.md). The chart still calls that first sit `you sit down`.
 
 ## Empty roles
 

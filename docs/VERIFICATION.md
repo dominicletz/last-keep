@@ -557,3 +557,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-10-31 a quiet build waits until the bodies are gone
 
 - Main CI on the merge of #145 failed `sixSeatMatch` once and passed on retry. `failOnFlakyTests` failed the job. The later empty build had settled 74 against 72. The snapshot listed zero monsters, and the census still had two monster meshes. The quiet build now waits until those meshes are gone, the same way it waits for a painted bolt. `settledHolds` is unchanged. `a quiet build waits until the painted bodies are gone` guards the wait. The floors stay. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-11-01 one name and one class
+
+- Creating a game asked for the name and the class on the home page, then showed the join form again while the room scene booted. Submitting that form minted a second token. The room page now keeps the start screen hidden until it knows there is no stored seat, and it decides that before the picture. A stored seat connects with the same token. A lost seat enlists that token again. The screen is the dusk yard, shared by Create and Join. `arrow keys and a swipe each pass every class` and `a creator names one hero and a lost seat sits back down` guard it. A seat that has not connected keeps the lobby wait, not the four-second close. The coverage floor stays 77.

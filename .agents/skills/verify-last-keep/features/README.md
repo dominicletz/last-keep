@@ -4,7 +4,7 @@ The executable checks are `e2e/scenarios.js`. `npx playwright test` runs them th
 
 ## Baseline preconditions
 
-- The page at `http://127.0.0.1:4000/` contains `Create game`, or `BASE_URL` points at a deploy of the commit under test.
+- The page at `http://127.0.0.1:4000/` contains `start-button`, or `BASE_URL` points at a deploy of the commit under test.
 - Playwright chromium is installed.
 - Do not reuse a room code from a previous run.
 - Viewport is 1280 by 800, set by the spec.

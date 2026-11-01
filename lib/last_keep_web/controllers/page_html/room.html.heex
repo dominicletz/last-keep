@@ -20,22 +20,5 @@
   </div>
 </div>
 <div id="hud" hidden></div>
-<form id="join-game" class="panel join-panel">
-  <h1>Join the keep</h1>
-  <label>
-    Name <input id="player-name" name="name" maxlength="16" autocomplete="nickname" required />
-  </label>
-  <fieldset>
-    <legend>Hero</legend>
-    <div class="hero-picks">
-      <label><input type="radio" name="hero" value="warrior" checked /> Warrior</label>
-      <label><input type="radio" name="hero" value="mage" /> Mage</label>
-      <label><input type="radio" name="hero" value="scout" /> Scout</label>
-      <label><input type="radio" name="hero" value="farmer" /> Farmer</label>
-      <label><input type="radio" name="hero" value="engineer" /> Engineer</label>
-    </div>
-  </fieldset>
-  <button type="submit">Enter</button>
-  <p id="join-error" class="error" hidden></p>
-</form>
+<.start_screen mode="join" hidden />
 <div id="overlay" class="overlay" hidden></div>

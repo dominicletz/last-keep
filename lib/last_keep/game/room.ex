@@ -49,6 +49,8 @@ defmodule LastKeep.Game.Room do
 
   def parade(code), do: GenServer.cast(via(code), :parade)
 
+  def forget(code, id), do: GenServer.call(via(code), {:forget, id})
+
   def via(code), do: {:via, Registry, {LastKeep.Game.Registry, code}}
 
   @impl true
@@ -115,6 +117,10 @@ defmodule LastKeep.Game.Room do
 
   def handle_call(:snapshot, _from, state) do
     {:reply, Snapshot.render(state.sim), state}
+  end
+
+  def handle_call({:forget, id}, _from, state) do
+    {:reply, :ok, %{state | sim: Sim.forget(state.sim, id)}}
   end
 
   def handle_call({:spawn_monster, attrs}, _from, state) do

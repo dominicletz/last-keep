@@ -7,7 +7,8 @@ export function present(snap) {
       y: row.y,
       facing: row.facing,
       hp: row.hp,
-      max: row.max
+      max: row.max,
+      preview: row.preview === true
     })),
     monsters: list(snap?.monsters, (row) => ({
       id: row.id,
