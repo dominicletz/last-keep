@@ -4,7 +4,11 @@ import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import jpeg from "jpeg-js"
-import { GROUND_SPAN, GROUND_TEX, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { pixelStep } from "./art_score.js"
+import { GROUND_SPAN, GROUND_TEX, HERO_TEXEL, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { stoneRepeat, yardCards } from "./yard_cards.js"
+import { propCrops, masonryCrop } from "../models/tiles.js"
+import { keepParts } from "../models/registry.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -86,6 +90,51 @@ test("the concept ground is worn and today's yard frames are a flat wash", () =>
     const problems = groundProblems(live.ground)
     assert.ok(problems.length > 0, `${phase} spread ${live.ground.spread}`)
   }
+})
+
+test("the pine, the cottage, and the keep stone are at least as fine as the hero", () => {
+  const hero = pixelStep(168, 400)
+  for (const name of ["tree", "house"]) {
+    const card = yardCards[name]
+    const crop = propCrops[name]
+    const texelW = card.w / crop.w
+    const texelH = card.h / crop.h
+    assert.ok(texelW <= hero * 1.02, `${name} width texel ${texelW}`)
+    assert.ok(texelH <= hero * 1.02, `${name} height texel ${texelH}`)
+  }
+  let faceW = 0
+  let faceH = 0
+  for (const part of keepParts(0)) {
+    if (part.name !== "tower" && part.name !== "course") continue
+    faceW = Math.max(faceW, part.w, part.d)
+    faceH = Math.max(faceH, part.h)
+  }
+  const across = masonryCrop.w * stoneRepeat.x
+  const down = masonryCrop.h * stoneRepeat.y
+  assert.ok(faceW / across <= hero * 1.02, `keep width texel ${faceW / across}`)
+  assert.ok(faceH / down <= hero * 1.02, `keep height texel ${faceH / down}`)
+})
+
+test("the yard texel is the hero texel and the grass tile does not stamp", () => {
+  const hero = pixelStep(168, 400)
+  assert.equal(HERO_TEXEL, hero)
+  assert.ok(Math.abs(GROUND_SPAN / GROUND_TEX - hero) / hero < 0.01)
+  assert.ok(Math.abs(PLAZA_SPAN / PLAZA_TEX - hero) / hero < 0.01)
+  const pixels = groundPixels("day")
+  const period = 48
+  let same = 0
+  let n = 0
+  for (let y = 80; y < 144; y++) {
+    for (let x = 80; x < 144; x++) {
+      const o = (y * GROUND_TEX + x) * 4
+      const p = ((y + period) * GROUND_TEX + (x + period)) * 4
+      n += 1
+      if (pixels[o] === pixels[p] && pixels[o + 1] === pixels[p + 1] && pixels[o + 2] === pixels[p + 2]) same += 1
+    }
+  }
+  assert.ok(same / n < 0.85, `grass period ${same}/${n}`)
+  const again = groundPixels("day")
+  assert.ok(Buffer.from(again).equals(Buffer.from(pixels)))
 })
 
 test("dusk sunset flecks stay off the pine wall", () => {

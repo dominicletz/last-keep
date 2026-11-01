@@ -526,8 +526,8 @@ function createHdPicture(env) {
       const normals = masonryNormals(bytes.rgba, bytes.w, bytes.h)
       const normalMap = new THREE.DataTexture(normals, bytes.w, bytes.h)
       normalMap.colorSpace = THREE.NoColorSpace
-      normalMap.magFilter = THREE.LinearFilter
-      normalMap.minFilter = THREE.LinearFilter
+      normalMap.magFilter = THREE.NearestFilter
+      normalMap.minFilter = THREE.NearestFilter
       normalMap.wrapS = THREE.RepeatWrapping
       normalMap.wrapT = THREE.RepeatWrapping
       normalMap.repeat.set(stoneMat.map.repeat.x, stoneMat.map.repeat.y)

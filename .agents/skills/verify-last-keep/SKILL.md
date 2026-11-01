@@ -87,4 +87,6 @@ Stop the `mix phx.server` process you started. Do not kill every `beam` on the m
 
 ## Helpers
 
+The yard texel is `pixelStep(168, 400)`, 0.84. `the yard texel is the hero texel and the grass tile does not stamp` locks that step, and `the pine, the cottage, and the keep stone are at least as fine as the hero` locks the sample. The keep normal is nearest. The contact shadow stays a linear falloff.
+
 `npx playwright test` is the harness. `npm test --prefix assets` checks the modules under `assets/js` that the scenarios depend on: invite parsing, snapshot drawing, the wave label, the focus click, placement reasons, relic copy, interpolation, the frame aspect, elite looks, the audio cue map, hero signatures, monster spread, the build ring, edge-call placement, and the joystick vector. `npm run check --prefix assets` typechecks those modules. `mix test --cover` is the coverage floor in `docs/VERIFICATION.md`. The feature map is `features/README.md`. It names the same functions and does not repeat their steps.
