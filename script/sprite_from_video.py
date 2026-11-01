@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Build a hero's 8-direction walk + idle sheet from Grok Imagine clips.
 
-    python3 script/sprite_from_video.py assets/reference/warrior/video \
-        priv/static/images/hd2d/warrior-walk.png
+    python3 script/sprite_from_video.py mage --report /tmp/report.json
+
+HERO names the folders: clips from assets/reference/<hero>/video, sheet to
+priv/static/images/hd2d/<hero>-walk.png. --clips and --out override them.
 
 Input folder: dirs/<DIR>.png start poses on white, walk-<DIR>.mp4 (2 s
 walk-in-place loop), idle-<DIR>.mp4 (2 s breathing loop) for DIR in
@@ -172,9 +174,10 @@ def srgb_to_lab(rgb):
 
 
 def build_palette(samples, k=COLOURS, seed=7):
-    """k-means in Lab. Saturated pixels weigh more so the small blue shield,
-    gold cross, red cape and skin each keep their own entries instead of being
-    averaged into the grey armour."""
+    """k-means in Lab. Saturated pixels weigh more so small saturated parts
+    (the warrior's blue shield, gold cross and red cape, the mage's crystal and
+    gold trim, skin) each keep their own entries instead of being averaged
+    into the large armour or robe."""
     rng = np.random.default_rng(seed)
     lab = srgb_to_lab(samples)
     chroma = np.hypot(lab[:, 1], lab[:, 2])
@@ -312,7 +315,7 @@ def palette_samples(dirs):
     """Palette samples from the eight start poses only. They are the
     concept-matched stills every clip starts from, so they carry every
     material. Sampling the clip frames too made the palette depend on every
-    clip: swapping one idle clip reshuffled the k-means draw and moved the
+    clip: swapping one warrior idle clip reshuffled the k-means draw and moved the
     front-view shield blue off its hue."""
     samples = []
     for d in COLUMNS:
@@ -326,10 +329,14 @@ def palette_samples(dirs):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("clips")
-    ap.add_argument("out")
+    ap.add_argument("hero", help="hero name, e.g. warrior or mage")
+    ap.add_argument("--clips", help="default assets/reference/<hero>/video")
+    ap.add_argument("--out", help="default priv/static/images/hd2d/<hero>-walk.png")
     ap.add_argument("--report", help="write picks and scales as JSON here")
     args = ap.parse_args(argv)
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    args.clips = args.clips or os.path.join(root, "assets/reference", args.hero, "video")
+    args.out = args.out or os.path.join(root, "priv/static/images/hd2d", f"{args.hero}-walk.png")
 
     plan = {}
     raw = {}

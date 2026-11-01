@@ -51,12 +51,11 @@ Grok clips are not perfectly camera-locked, so the script scales and anchors eve
 ### (d) Build and check
 
 ```
-python3 script/sprite_from_video.py assets/reference/warrior/video \
-    priv/static/images/hd2d/warrior-walk.png --report /tmp/report.json
-python3 script/check_sprite_sheet.py priv/static/images/hd2d/warrior-walk.png \
-    --poses assets/reference/warrior/video/dirs \
-    --concept assets/reference/warrior/concept.png --out /tmp/approval
+python3 script/sprite_from_video.py HERO --report /tmp/report.json
+python3 script/check_sprite_sheet.py HERO --out /tmp/approval
 ```
+
+`HERO` is `warrior` or `mage`. The builder reads `assets/reference/HERO/video` and writes `priv/static/images/hd2d/HERO-walk.png` and `HERO-walk-normal.png`. The checker reads that sheet, the poses in `video/dirs`, and `assets/reference/HERO/concept.png`. `--clips`, `--out`, `--sheet`, `--poses`, and `--concept` override the paths.
 
 Both need python3 with numpy, scipy, and Pillow, and ffmpeg/ffprobe on PATH. The same inputs give the same bytes.
 
@@ -67,20 +66,29 @@ Both need python3 with numpy, scipy, and Pillow, and ffmpeg/ffprobe on PATH. The
 3. Places each frame in a 128 px cell with a box filter. The fill is 86 px and the 1 px outline makes the hero 88 px tall. The boots sit on row 116 and the outline on row 117. The head centre sits on x = 64. The scale is per frame, clamped to the clip's median ±5%.
 4. Builds one palette of at most 28 colours plus the outline RGB 24 (Lab k-means, weighted toward saturated pixels so the shield blue, the gold cross, and the cape survive). The palette samples only the eight start poses in `dirs/`, so swapping a clip cannot move it. When it also sampled the clip frames, swapping the NE idle clip moved the front-view shield blue off its hue. It quantizes every frame, removes lone speckles, draws the outline, and writes the albedo and `-normal.png` (a port of `normalsFromAlbedo`). The normal alpha is the albedo alpha.
 
-The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536. The client loads it from `priv/static/images/hd2d/warrior-walk.png`.
+The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536. The client loads it from `priv/static/images/hd2d/HERO-walk.png`.
 
-`check_sprite_sheet.py` checks:
+`check_sprite_sheet.py` checks the same things for every hero. The colours it reads come from the hero's profile in `HEROES`:
+
+| | warrior | mage |
+|---|---|---|
+| Concept anchors (ΔE 15) | shield blue, gold cross, skin, red cape | staff crystal cyan, skin, robe blue, gold trim, staff brown |
+| Prop side | shield (blue) | staff crystal (cyan, hue 180–200°) |
+| Back view N | face ≤ 6 px, cape red ≥ 201 | hood: face in head columns ≤ 10, robe blue ≥ 1001 |
+| Front view S | blue ≥ 60, cross ≥ 8, face ≥ 8 | robe blue ≥ 600, gold trim ≥ 150, crystal ≥ 40, face ≥ 30 |
+
+The mage face counts only the head columns 54–74, so the staff head beside the hood is not counted as a face.
 
 - Sheet size, alpha only 0 or 255, at most 32 colours.
-- The palette keeps the concept's shield blue, gold cross, skin, and red cape within ΔE 15.
+- The palette keeps the profile's concept anchors within ΔE 15.
 - Every silhouette edge is outline, height 88 ±2, one foot line ±1, no lone speckles.
-- The shield side for each direction is the side the start pose shows. A pose with less than 2 px of offset or no visible blue has no side to hold.
-- The back view shows the cape and no face. The front view shows the shield blue, the cross, and the face.
+- The prop side for each direction is the side the start pose shows. A pose with less than 2 px of offset or no visible prop colour has no side to hold.
+- The back view and the front view hold the profile floors and ceilings above.
 - The 8 directions differ from each other and from each other's mirror by at least 300 px.
 - The walk lower half changes by at least 16 px per step, and contact frames 0 and 4 differ.
 - The idle is subtle: its largest silhouette change is at most 0.6 of the walk's median.
 
-With `--out` it writes `contact.png` (concept, 1x and 2x rows, all walk rows at 2x), `walk.gif`, and `idle.gif`. It exits 1 if any check fails. `assets/js/hd2d/strip.test.js` re-checks the committed PNG in node (size, alpha, palette, outline, height, foot line, shield side, back and front views, distinct directions, walk motion), so a bad sheet cannot land when nobody runs the Python check. `python3 script/test_sprite_from_video.py` tests the palette step. CI does not run ffmpeg or the Python scripts.
+With `--out` it writes `contact.png` (concept, 1x and 2x rows, all walk rows at 2x), `walk.gif`, and `idle.gif`. It exits 1 if any check fails. `assets/js/hd2d/strip.test.js` re-checks the committed PNG in node (size, alpha, palette, outline, height, foot line, prop side, back and front views, distinct directions, walk motion) for every hero in `SHEET_HEROES`, so a bad sheet cannot land when nobody runs the Python check. `python3 script/test_sprite_from_video.py` tests the palette step and the hero profiles. CI does not run ffmpeg or the Python scripts.
 
 ### (e) Approval
 
@@ -88,7 +96,7 @@ Dominic approves the warrior from the contact sheet and the GIFs before any othe
 
 ## In the client
 
-`litHero` in `assets/js/hd2d/picture.js` draws the warrior on a square card of 128 sheet texels. The nominal texel is 32/88 world units, so the hero stays `spriteHeight` (32) tall and his boots stand on y = 0. Every frame `present` calls `snapHeroCard`, which scales the card so one texel covers a whole number of screen pixels at its depth for the drawing camera. That covers the start screen too. Under half a pixel per texel the card keeps its nominal size. Other heroes stay on the 4-frame voxel atlas.
+`SHEET_HEROES` in `assets/js/pictures.js` lists the heroes with a walk sheet: `warrior` and `mage`. `walkSheetUrl(hero)` gives each sheet's URL. `litHero` in `assets/js/hd2d/picture.js` draws each of them from its own sheet on a square card of 128 sheet texels. The nominal texel is 32/88 world units, so the hero stays `spriteHeight` (32) tall and his boots stand on y = 0. Every frame `present` calls `snapHeroCard`, which scales the card so one texel covers a whole number of screen pixels at its depth for the drawing camera. That covers the start screen too. Under half a pixel per texel the card keeps its nominal size. The lit-hero cap (`LOOK.litHeroes`, 2) goes to sheet heroes first. A sheet hero whose sheet has not loaded stays a sprite and does not borrow another hero's sheet. Other heroes stay on the 4-frame voxel atlas.
 
 ## Superseded: the Blender box mesh
 
