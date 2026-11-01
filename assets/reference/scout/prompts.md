@@ -27,7 +27,7 @@ Save as `assets/reference/scout/video/views/v-N.png`.
  "description": "Full-body game character reference of the scout from the reference image, back view, seen from directly behind, back to the camera. Same design exactly: green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots. Wooden longbow in their right hand (on the image-right side); brass and blue spyglass at their left hip (on the image-left side); quiver of arrows over their right shoulder (on the image-right side, toward the camera); green cloak on their back (toward the camera). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
  "reference_image_paths": [
   "assets/reference/scout/concept.png",
-  "assets/reference/scout/video/views/v-S.png"
+  "assets/reference/scout/video/views/v-S.jpg"
  ],
  "aspect_ratio": "1:1",
  "filename": "scout-v-N.png"
@@ -43,7 +43,7 @@ Save as `assets/reference/scout/video/views/v-W.png`.
  "description": "Full-body game character reference of the scout from the reference image, left profile view, facing screen-left, their left side toward the camera. Same design exactly: green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots. Wooden longbow in their right hand (partly hidden behind the body); brass and blue spyglass at their left hip (toward the camera); quiver of arrows over their right shoulder (on the image-right side, partly hidden behind the body); green cloak on their back (on the image-right side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
  "reference_image_paths": [
   "assets/reference/scout/concept.png",
-  "assets/reference/scout/video/views/v-S.png"
+  "assets/reference/scout/video/views/v-S.jpg"
  ],
  "aspect_ratio": "1:1",
  "filename": "scout-v-W.png"
@@ -59,7 +59,7 @@ Save as `assets/reference/scout/video/views/v-E.png`. Then run `hero_sprites.py 
  "description": "Full-body game character reference of the scout from the reference image, right profile view, facing screen-right, their right side toward the camera. Same design exactly: green hood and cloak, green tunic, two crossed brown leather chest straps, brown belt, brown leather bracers and boots. Wooden longbow in their right hand (toward the camera); brass and blue spyglass at their left hip (partly hidden behind the body); quiver of arrows over their right shoulder (on the image-left side, toward the camera); green cloak on their back (on the image-left side). Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
  "reference_image_paths": [
   "assets/reference/scout/concept.png",
-  "assets/reference/scout/video/views/v-S.png"
+  "assets/reference/scout/video/views/v-S.jpg"
  ],
  "aspect_ratio": "1:1",
  "filename": "scout-v-E.png"

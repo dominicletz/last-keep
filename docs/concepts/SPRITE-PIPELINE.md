@@ -113,14 +113,14 @@ The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536. The client 
 
 `check_sprite_sheet.py` checks the same things for every hero. The colours it reads come from the `check` profile in the hero's `hero.json`: roles (hue range, chroma and lightness bounds), concept anchors, the prop colour, and floors and ceilings for the back and front views. `hero_sprites.py HERO colours` lists the concept's main colours with hue, lightness and chroma to start a new profile from.
 
-| | warrior | mage |
-|---|---|---|
-| Concept anchors (ΔE 15) | shield blue, gold cross, skin, red cape | staff crystal cyan, skin, robe blue, gold trim, staff brown |
-| Prop side | shield (blue) | staff crystal (cyan, hue 180–200°) |
-| Back view N | face ≤ 6 px, cape red ≥ 201 | hood: face in head columns ≤ 10, robe blue ≥ 1001 |
-| Front view S | blue ≥ 60, cross ≥ 8, face ≥ 8 | robe blue ≥ 600, gold trim ≥ 150, crystal ≥ 40, face ≥ 30 |
+| | warrior | mage | scout |
+|---|---|---|---|
+| Concept anchors (ΔE 15) | shield blue, gold cross, skin, red cape | staff crystal cyan, skin, robe blue, gold trim, staff brown | cloak green, skin, leather brown, brass, spyglass blue |
+| Prop side | shield (blue) | staff crystal (cyan, hue 180–200°) | spyglass (blue, hue 195–240°), not in W and E |
+| Back view N | face ≤ 6 px, cape red ≥ 201 | hood: face in head columns ≤ 10, robe blue ≥ 1001 | face in head columns ≤ 6, green ≥ 630 |
+| Front view S | blue ≥ 60, cross ≥ 8, face ≥ 8 | robe blue ≥ 600, gold trim ≥ 150, crystal ≥ 40, face ≥ 30 | green ≥ 260, leather ≥ 570, spyglass ≥ 12, face in head columns ≥ 24 |
 
-The mage face counts only the head columns 54–74, so the staff head beside the hood is not counted as a face.
+The mage and scout faces count only the head columns 54–74, so the staff head or the quiver beside the head is not counted as a face. The scout's spyglass hangs at the left hip, so in W it faces the camera and in E it hides behind the body. Both put it on the body midline, so `prop_dirs` leaves those two out. The scout floors are about 60% of the start poses' counts.
 
 - Sheet size, alpha only 0 or 255, at most 32 colours.
 - The palette keeps the profile's concept anchors within ΔE 15.
@@ -162,7 +162,7 @@ python3 script/test_hero_sprites.py        # configs, crop, views, picker, pins,
 
 ## In the client
 
-`SHEET_HEROES` in `assets/js/pictures.js` lists the heroes with a walk sheet: `warrior` and `mage`. `walkSheetUrl(hero)` gives each sheet's URL. `litHero` in `assets/js/hd2d/picture.js` draws each of them from its own sheet on a square card of 128 sheet texels. The nominal texel is 32/88 world units, so the hero stays `spriteHeight` (32) tall and his boots stand on y = 0. Every frame `present` calls `snapHeroCard`, which scales the card so one texel covers a whole number of screen pixels at its depth for the drawing camera. That covers the start screen too. Under half a pixel per texel the card keeps its nominal size. The lit-hero cap (`LOOK.litHeroes`, 2) goes to sheet heroes first. A sheet hero whose sheet has not loaded stays a sprite and does not borrow another hero's sheet. Other heroes stay on the 4-frame voxel atlas.
+`SHEET_HEROES` in `assets/js/pictures.js` lists the heroes with a walk sheet: `warrior`, `mage` and `scout`. `walkSheetUrl(hero)` gives each sheet's URL. `litHero` in `assets/js/hd2d/picture.js` draws each of them from its own sheet on a square card of 128 sheet texels. The nominal texel is 32/88 world units, so the hero stays `spriteHeight` (32) tall and his boots stand on y = 0. Every frame `present` calls `snapHeroCard`, which scales the card so one texel covers a whole number of screen pixels at its depth for the drawing camera. That covers the start screen too. Under half a pixel per texel the card keeps its nominal size. The lit-hero cap (`LOOK.litHeroes`, 2) goes to sheet heroes first. A sheet hero whose sheet has not loaded stays a sprite and does not borrow another hero's sheet. Other heroes stay on the 4-frame voxel atlas.
 
 ## Superseded: the Blender box mesh
 

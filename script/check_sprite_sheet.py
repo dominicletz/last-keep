@@ -53,6 +53,7 @@ def profile(check):
         "anchors": {k: tuple(v) for k, v in check["anchors"].items()},
         "roles": tuple((r["name"], _role_test(r)) for r in check["roles"]),
         "prop": tuple(check["prop"]),
+        "prop_dirs": tuple(check.get("prop_dirs", COLUMNS)),
         "back": (check["back"]["title"], tuple((n, _measure(m), lo, hi) for n, m, lo, hi in check["back"]["bounds"])),
         "front": (check["front"]["title"], tuple((n, _measure(m), lo, hi) for n, m, lo, hi in check["front"]["bounds"])),
     }
@@ -64,7 +65,8 @@ def load_heroes(reference=os.path.join(ROOT, "assets/reference")):
     the first match names a colour, chroma under 0.12 is neutral. anchors:
     concept colours the palette keeps within dE 15. prop: the role whose side
     of the body each start pose fixes. back and front: per-frame floors and
-    ceilings on the N and S columns. A measure is ["count", role],
+    ceilings on the N and S columns. prop_dirs (default all): the directions
+    where the prop sits off the body midline; elsewhere it has no side. A measure is ["count", role],
     ["head", role, [x0, x1]?] for the top 30% of the body, or
     ["inside", role, box_role] for role pixels inside box_role's bounding box."""
     out = {}
@@ -303,6 +305,9 @@ def run_checks(hero, sheet, poses_dir, quiet=False):
     prop_name, prop_role = hero["prop"]
     poses = pose_cells(poses_dir)
     for c, d in enumerate(COLUMNS):
+        if d not in hero["prop_dirs"]:
+            rep.check(True, f"{prop_name} {d}", "on the body midline in this view: no side to hold")
+            continue
         want, n = prop_offset(poses[d], table, prop_role)
         got = [prop_offset(grid[c][r], table, prop_role) for r in range(WALK + IDLE)]
         if want is None or abs(want) < 2:

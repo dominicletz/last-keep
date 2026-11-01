@@ -85,13 +85,13 @@ const FOOT = 117
 const OUTLINE = "24,24,24"
 const COLUMN = { S: 0, SW: 1, W: 2, NW: 3, N: 4, NE: 5, E: 6, SE: 7 }
 
-// Warrior test names predate the mage sheet and stay as they were.
+// Warrior test names predate the other sheets and stay as they were.
 function sheetTest(hero, name) {
   return hero === "warrior" ? name : `${name} (${hero})`
 }
 
 test("every sheet hero loads its own walk sheet and normal map", () => {
-  assert.deepEqual(SHEET_HEROES, ["warrior", "mage"])
+  assert.deepEqual(SHEET_HEROES, ["warrior", "mage", "scout"])
   for (const hero of SHEET_HEROES) {
     assert.equal(walkSheetUrl(hero), `images/hd2d/${hero}-walk.png`)
     assert.equal(walkSheetUrl(hero, true), `images/hd2d/${hero}-walk-normal.png`)
@@ -101,7 +101,10 @@ test("every sheet hero loads its own walk sheet and normal map", () => {
   assert.equal(walkSheetPath(root), walkSheetPath(root, "warrior"))
   const warrior = readWalkSheet(walkSheetPath(root, "warrior"))
   const mage = readWalkSheet(walkSheetPath(root, "mage"))
+  const scout = readWalkSheet(walkSheetPath(root, "scout"))
   assert.notEqual(changedPixels(warrior.rgba, mage.rgba), 0)
+  assert.notEqual(changedPixels(mage.rgba, scout.rgba), 0)
+  assert.notEqual(changedPixels(warrior.rgba, scout.rgba), 0)
 })
 
 for (const hero of SHEET_HEROES) {
@@ -189,6 +192,21 @@ function isCrystal(cell, i) {
   return c.chroma > 0.5 && c.h >= 180 && c.h <= 200
 }
 
+function isGreen(cell, i) {
+  const c = hue(cell[i], cell[i + 1], cell[i + 2])
+  return c.chroma >= 0.12 && c.h >= 70 && c.h <= 140
+}
+
+function isSpyglass(cell, i) {
+  const c = hue(cell[i], cell[i + 1], cell[i + 2])
+  return c.chroma >= 0.12 && c.h >= 195 && c.h <= 240
+}
+
+function isSkin(cell, i) {
+  const c = hue(cell[i], cell[i + 1], cell[i + 2])
+  return c.chroma > 0.3 && c.h >= 20 && c.h <= 34 && c.light > 0.5
+}
+
 function count(cell, keep) {
   let n = 0
   for (let i = 0; i < cell.length; i += 4) if (cell[i + 3] && keep(cell, i)) n += 1
@@ -264,6 +282,21 @@ const HERO_MARKS = {
       assert.ok(headCount(front, isWarm, HEAD) >= 30, `face missing on the front view row ${row}`)
       assert.ok(count(front, isCrystal) >= 40, `crystal missing on the front view row ${row}`)
       assert.ok(count(front, isRobe) >= 600, `robe missing on the front view row ${row}`)
+    }
+  },
+  // The spyglass hangs at the left hip: screen-right facing the camera,
+  // screen-left from behind. In W and E it sits on the body midline, and SW,
+  // N and NE barely show it, so those have no side to hold.
+  scout: {
+    propName: "spyglass",
+    prop: isSpyglass,
+    side: { S: 1, NW: -1, SE: 1 },
+    views(back, front, row) {
+      assert.ok(headCount(back, isSkin, HEAD) <= 6, `face on the back view row ${row}`)
+      assert.ok(count(back, isGreen) >= 630, `hood and cloak missing on the back view row ${row}`)
+      assert.ok(count(front, isGreen) >= 260, `green missing on the front view row ${row}`)
+      assert.ok(count(front, isSpyglass) >= 12, `spyglass missing on the front view row ${row}`)
+      assert.ok(headCount(front, isSkin, HEAD) >= 24, `face missing on the front view row ${row}`)
     }
   }
 }

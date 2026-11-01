@@ -21,7 +21,8 @@ import hero_sprites as hs  # noqa: E402
 
 HEROES = ["engineer", "farmer", "mage", "scout", "warrior"]
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
-            "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166}}
+            "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
+            "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164}}
 
 
 def png_bytes(arr):
@@ -92,9 +93,10 @@ class DirsTest(unittest.TestCase):
 
     def test_picker_lands_near_the_hand_picked_diagonals(self):
         # mage SW 46 is the approved pick; SE 156 was picked by eye over a
-        # clean front-right 3/4 at 162. Warrior picks came from an older eye pass.
+        # clean front-right 3/4 at 162. Warrior picks came from an older eye pass; scout picks are Dominic's.
         slack = {"mage": {"SW": 2, "NW": 12, "NE": 12, "SE": 8},
-                 "warrior": {"SW": 10, "NW": 6, "NE": 6, "SE": 10}}
+                 "warrior": {"SW": 10, "NW": 6, "NE": 6, "SE": 10},
+                 "scout": {"SW": 6, "NW": 8, "NE": 6, "SE": 6}}
         for h in APPROVED:
             cfg = hs.load_config(h)
             picked = hs.pick_diagonals(self.frames[h], self.cards(h), hs.key_frames(cfg, len(self.frames[h])))

@@ -1,5 +1,5 @@
 {
- "_note": "Stub. Fill check after the first build: sample anchors with `hero_sprites.py scout colours`, then set floors and ceilings from the approved poses.",
+ "_note": "Diagonals are Dominic's hand picks (0-based turntable frames). Check profile: anchors are concept colours (hero_sprites.py scout colours); floors are about 60% of the start poses' counts. The prop is the spyglass at the left hip; in W and E it faces the camera or hides on the body midline, so it has no side there.",
  "noun": "scout",
  "possessive": "their",
  "concept": {
@@ -47,6 +47,163 @@
    "E": 6
   }
  },
- "diagonals": {},
- "check": null
+ "diagonals": {
+  "SW": 32,
+  "NW": 72,
+  "NE": 120,
+  "SE": 164
+ },
+ "check": {
+  "anchors": {
+   "cloak green": [
+    71,
+    95,
+    49
+   ],
+   "skin": [
+    215,
+    155,
+    100
+   ],
+   "leather brown": [
+    110,
+    72,
+    38
+   ],
+   "brass": [
+    177,
+    133,
+    54
+   ],
+   "spyglass blue": [
+    44,
+    59,
+    74
+   ]
+  },
+  "roles": [
+   {
+    "name": "blue",
+    "hue": [
+     195,
+     240
+    ]
+   },
+   {
+    "name": "green",
+    "hue": [
+     70,
+     140
+    ]
+   },
+   {
+    "name": "skin",
+    "hue": [
+     20,
+     34
+    ],
+    "chroma_gt": 0.3,
+    "light_gt": 0.5
+   },
+   {
+    "name": "brass",
+    "hue": [
+     35,
+     45
+    ],
+    "chroma_gt": 0.35
+   },
+   {
+    "name": "leather",
+    "hue": [
+     14,
+     40
+    ]
+   }
+  ],
+  "prop": [
+   "spyglass",
+   "blue"
+  ],
+  "prop_dirs": [
+   "S",
+   "SW",
+   "NW",
+   "N",
+   "NE",
+   "SE"
+  ],
+  "back": {
+   "title": "back view N shows hood and cloak, no face",
+   "bounds": [
+    [
+     "face",
+     [
+      "head",
+      "skin",
+      [
+       54,
+       74
+      ]
+     ],
+     null,
+     6
+    ],
+    [
+     "cloak",
+     [
+      "count",
+      "green"
+     ],
+     630,
+     null
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view keeps green, leather, spyglass, face",
+   "bounds": [
+    [
+     "green",
+     [
+      "count",
+      "green"
+     ],
+     260,
+     null
+    ],
+    [
+     "leather",
+     [
+      "count",
+      "leather"
+     ],
+     570,
+     null
+    ],
+    [
+     "spyglass",
+     [
+      "count",
+      "blue"
+     ],
+     12,
+     null
+    ],
+    [
+     "face",
+     [
+      "head",
+      "skin",
+      [
+       54,
+       74
+      ]
+     ],
+     24,
+     null
+    ]
+   ]
+  }
+ }
 }
