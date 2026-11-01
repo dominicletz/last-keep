@@ -37,6 +37,8 @@ The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 512×768. The warrior p
 
 The concept, the turnaround, and the walk reference stay under `assets/reference/warrior`. They are not the frames. `warrior reference plates stay committed` locks their sizes.
 
+The yard around that hero is `docs/concepts/ENVIRONMENT-ART.md`. The same texel step, `pixelStep(168, 400)` = 0.84, sizes the ground.
+
 ## Sources
 
 1. https://business.4gamer.net/article/1810/18101801/

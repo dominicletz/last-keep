@@ -9,6 +9,7 @@ import { nextTrack, poseAt, stepYaw } from "./motion"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { masonryBytes, propBytes } from "./tiles.js"
+import { stoneRepeat, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -117,7 +118,7 @@ export function createView(stage, picture) {
   stoneMap.minFilter = THREE.NearestFilter
   stoneMap.wrapS = THREE.RepeatWrapping
   stoneMap.wrapT = THREE.RepeatWrapping
-  stoneMap.repeat.set(2, 4)
+  stoneMap.repeat.set(stoneRepeat.x, stoneRepeat.y)
   stoneMap.needsUpdate = true
   const stoneMat = new THREE.MeshBasicMaterial({ map: stoneMap, color: 0xffffff })
   const stoneColors = new Set([0x4b3c33, 0x654e41, 0x2c2a2a])
@@ -209,17 +210,7 @@ export function createView(stage, picture) {
   ring.position.y = 0.28
   ring.receiveShadow = false
   scene.add(plaza, ring)
-  const sheetKinds = {
-    house: { w: 56, h: 64, stand: true },
-    field: { w: 46, h: 26, stand: false },
-    wall: { w: 30, h: 40, stand: true },
-    forge: { w: 48, h: 36, stand: true },
-    trap: { w: 22, h: 20, stand: true },
-    tower: { w: 28, h: 48, stand: true },
-    mage_tower: { w: 26, h: 36, stand: true },
-    tree: { w: 48, h: 40, stand: true, cut: true },
-    scenery: { w: 18, h: 30, stand: true, cut: true }
-  }
+  const sheetKinds = yardCards
   const sheetMaps = {}
   const sheetMats = {}
   for (const [name, spec] of Object.entries(sheetKinds)) {
