@@ -528,3 +528,23 @@ export function bonusCopy(snap) {
     relics: (snap?.relics || []).map((name) => RELIC[name] || name)
   }
 }
+
+// A per-paint memo for layout reads. get(key, read) calls read once per key
+// until clear(). reads counts the calls that reached the DOM.
+export function rectMemo() {
+  const seen = new Map()
+  const memo = {
+    reads: 0,
+    get(key, read) {
+      if (seen.has(key)) return seen.get(key)
+      memo.reads += 1
+      const value = read()
+      seen.set(key, value)
+      return value
+    },
+    clear() {
+      seen.clear()
+    }
+  }
+  return memo
+}

@@ -82,6 +82,7 @@ defmodule LastKeepWeb do
       # Core UI components
       import LastKeepWeb.CoreComponents
       import LastKeepWeb.StartScreen
+      import LastKeepWeb.RoomLayers
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

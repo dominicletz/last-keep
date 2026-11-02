@@ -72,3 +72,83 @@ export function cameraFocus(x, y) {
   const hy = Number(y) || 0
   return { x: hx * cameraFollow, z: hy * cameraFollow }
 }
+
+// Test hooks are the window.__lastKeep record, the per-frame geometry census,
+// and the drawDue pacing above. A real player gets none of them: the record
+// was rebuilt on every draw and the census walked the scene every frame.
+// ?hooks=1 or ?hooks=0 wins. Otherwise a WebDriver session (Playwright) gets
+// the hooks and a person does not.
+export function hooksWanted(search, nav) {
+  const match = /[?&]hooks=([01])(?:&|$)/.exec(search || "")
+  if (match) return match[1] === "1"
+  return !!(nav && nav.webdriver)
+}
+
+export const testHooks =
+  typeof window !== "undefined" && typeof navigator !== "undefined" ? hooksWanted(window.location.search, navigator) : false
+
+// Without hooks the page paints whenever the picture changed, at the display
+// rate, and not at all while nothing moves. A texture that finishes loading
+// changes nothing the signature sees, so an idle page still repaints once a
+// second.
+export const keepAliveMs = 1000
+
+export function snapshotDue(hooks, now, lastRender, lastInput) {
+  return hooks ? drawDue(now, lastRender, lastInput) : true
+}
+
+export function paintDue(hooks, now, lastRender, lastInput, changed) {
+  if (hooks) return drawDue(now, lastRender, lastInput)
+  return !!changed || now - lastRender >= keepAliveMs
+}
+
+// One number for everything a paint would show: the camera and each actor's
+// place, facing, visibility, sheet cell, and fade. Two equal signatures paint
+// the same frame.
+export function frameSignature(camera, meshes) {
+  let hash = 17
+  const mix = (value) => {
+    hash = (Math.imul(hash, 31) + Math.round((Number(value) || 0) * 64)) | 0
+  }
+  if (camera) {
+    mix(camera.position.x)
+    mix(camera.position.y)
+    mix(camera.position.z)
+    mix(camera.quaternion.x * 1000)
+    mix(camera.quaternion.y * 1000)
+    mix(camera.quaternion.z * 1000)
+    mix(camera.quaternion.w * 1000)
+    mix(camera.fov * 100)
+    mix(camera.near * 100)
+  }
+  let count = 0
+  for (const mesh of meshes) {
+    count += 1
+    mix(mesh.position.x)
+    mix(mesh.position.y)
+    mix(mesh.position.z)
+    mix(mesh.rotation.y * 1000)
+    mix(mesh.scale.x * 100)
+    mix(mesh.scale.y * 100)
+    mix(mesh.visible ? 1 : 2)
+    const card = mesh.userData && mesh.userData.card
+    if (card && card.material) {
+      if (card.material.map) {
+        mix(card.material.map.offset.x * 1000)
+        mix(card.material.map.offset.y * 1000)
+      }
+      mix(card.material.opacity * 100)
+    }
+    const rim = mesh.userData && mesh.userData.rim
+    if (rim) {
+      mix(rim.position.x)
+      mix(rim.position.y)
+      mix(rim.position.z)
+      mix(rim.visible ? 1 : 2)
+    }
+    const hp = mesh.userData && mesh.userData.hp
+    if (hp) mix(hp.scale.x * 100)
+  }
+  mix(count)
+  return hash
+}

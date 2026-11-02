@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, rectMemo, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -371,4 +371,21 @@ test("the wave line seats clear of the sacks", () => {
   assert.ok(rect.bottom <= view.height - 72)
   const clearSpot = { left: 960, top: 140 }
   assert.deepEqual(seatPin(clearSpot, view, { width: 180, height: 22 }, obstacles), visiblePin(clearSpot, view, { width: 180, height: 22 }))
+})
+
+test("a HUD paint reads each layout box once until the memo is cleared", () => {
+  const memo = rectMemo()
+  let dom = 0
+  const read = () => {
+    dom += 1
+    return { left: dom, top: 0, width: 10, height: 10 }
+  }
+  const first = memo.get("hud", read)
+  for (let i = 0; i < 20; i += 1) assert.equal(memo.get("hud", read), first)
+  memo.get("canvas", read)
+  assert.equal(dom, 2)
+  assert.equal(memo.reads, 2)
+  memo.clear()
+  assert.notEqual(memo.get("hud", read), first)
+  assert.equal(dom, 3)
 })

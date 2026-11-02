@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as THREE from "three"
-import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, idleDrawMs, inputWindowMs, paintGap, pixelSize, slowPaintGapMs } from "./frame.js"
+import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, frameSignature, hooksWanted, idleDrawMs, inputWindowMs, keepAliveMs, paintDue, paintGap, pixelSize, slowPaintGapMs, snapshotDue } from "./frame.js"
 import { heroSignature } from "./heroes.js"
 import { viewScale } from "./town.js"
 
@@ -187,4 +187,69 @@ test("a higher town rank widens the same window", () => {
   const raised = frameFor(1280, 800, 2)
   assert.ok(raised.halfH > base.halfH)
   assert.ok(Math.abs(raised.halfH / base.halfH - viewScale(2)) < 0.0001)
+})
+
+test("test hooks follow ?hooks, then WebDriver", () => {
+  assert.equal(hooksWanted("", { webdriver: true }), true)
+  assert.equal(hooksWanted("", { webdriver: false }), false)
+  assert.equal(hooksWanted("", {}), false)
+  assert.equal(hooksWanted("?hooks=0", { webdriver: true }), false)
+  assert.equal(hooksWanted("?seat=1&hooks=1", { webdriver: false }), true)
+  assert.equal(hooksWanted("?hooks=10", { webdriver: false }), false)
+})
+
+test("with test hooks the old drawDue pacing still holds", () => {
+  assert.equal(snapshotDue(true, 1000, 980, 900), false)
+  assert.equal(paintDue(true, 1000, 980, 900, true), false)
+  assert.equal(paintDue(true, 1000, 940, 900, false), true)
+})
+
+test("a player's page takes every snapshot and paints only on change", () => {
+  assert.equal(snapshotDue(false, 1000, 999, -Infinity), true)
+  // A changed frame paints at once, even 4ms after the last paint.
+  assert.equal(paintDue(false, 1004, 1000, -Infinity, true), true)
+  // A still frame does not paint until the keep-alive.
+  assert.equal(paintDue(false, 1004, 1000, -Infinity, false), false)
+  assert.equal(paintDue(false, 1000 + keepAliveMs - 1, 1000, -Infinity, false), false)
+  assert.equal(paintDue(false, 1000 + keepAliveMs, 1000, -Infinity, false), true)
+  assert.ok(keepAliveMs >= 4 * idleDrawMs)
+})
+
+function actor(x, z) {
+  const mesh = new THREE.Group()
+  mesh.position.set(x, 0, z)
+  const map = new THREE.Texture()
+  const card = new THREE.Sprite(new THREE.SpriteMaterial({ map }))
+  mesh.add(card)
+  mesh.userData.card = card
+  return mesh
+}
+
+test("the frame signature moves with anything a paint would show and nothing else", () => {
+  const camera = new THREE.PerspectiveCamera(30, 1, 1, 4000)
+  camera.position.set(100, 90, 100)
+  camera.lookAt(0, 0, 0)
+  const a = actor(10, 20)
+  const b = actor(-30, 5)
+  const base = frameSignature(camera, [a, b])
+  assert.equal(frameSignature(camera, [a, b]), base)
+  a.userData.junk = 7
+  assert.equal(frameSignature(camera, [a, b]), base)
+  const changes = [
+    () => (a.position.x += 1),
+    () => (b.rotation.y += 0.3),
+    () => (b.visible = false),
+    () => a.userData.card.material.map.offset.set(0.25, 0),
+    () => (a.userData.card.material.opacity = 0.5),
+    () => camera.position.set(101, 90, 100),
+    () => (camera.fov = 22)
+  ]
+  let previous = base
+  for (const change of changes) {
+    change()
+    const next = frameSignature(camera, [a, b])
+    assert.notEqual(next, previous, change.toString())
+    previous = next
+  }
+  assert.notEqual(frameSignature(camera, [a]), frameSignature(camera, [a, b]))
 })

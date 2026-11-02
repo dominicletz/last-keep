@@ -8,6 +8,7 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   const kinds = heroKinds()
   let index = Math.max(0, kinds.indexOf(hero || storedHero() || "warrior"))
   let view = null
+  let picture = null
   let tick = 1
   let alive = true
   let pads = [false, false]
@@ -69,11 +70,13 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   requestAnimationFrame(poll)
   requestAnimationFrame(() => {
     if (!alive) return
-    const picture = createPicture(menuEnv(deviceEnv()))
+    picture = createPicture(menuEnv(deviceEnv()))
     view = createView(stage, picture)
-    window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade(), tier: picture.tier }
+    const shown = picture
+    window.__lastKeepPicture = { ready: shown.ready, grade: () => view.grade(), tier: shown.tier }
+    if (view.markFirstPaint) view.markFirstPaint("lastkeep:firstMenuFrame")
     paint()
-    if (picture.ready && picture.ready.then) picture.ready.then(() => { if (alive) paint() })
+    if (shown.ready && shown.ready.then) shown.ready.then(() => { if (alive) paint() })
   })
   window.addEventListener("resize", paint)
 
@@ -112,15 +115,28 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
     pads = [left, right]
   }
 
+  function detach() {
+    alive = false
+    window.removeEventListener("keydown", onKey)
+    window.removeEventListener("pointerdown", onPointerDown)
+    window.removeEventListener("pointerup", onPointerUp)
+    window.removeEventListener("resize", paint)
+  }
+
   return {
     stop() {
-      alive = false
-      window.removeEventListener("keydown", onKey)
-      window.removeEventListener("pointerdown", onPointerDown)
-      window.removeEventListener("pointerup", onPointerUp)
-      window.removeEventListener("resize", paint)
+      detach()
       if (view && view.stop) view.stop()
       view = null
+    },
+    // Stops the menu but hands its view and picture on, still running. Both
+    // are null when the menu never got its first frame.
+    release() {
+      detach()
+      const kept = { view, picture }
+      view = null
+      picture = null
+      return kept
     }
   }
 }
