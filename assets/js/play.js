@@ -8,7 +8,7 @@ import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint"
-import { RELIC_SIGN, hudLayoutKey, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, SEAT_CONTROLS, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 import { mountStart } from "./start"
 
@@ -867,8 +867,11 @@ function start(code, seat, ui) {
       .join("")
     // A new roster node each snapshot made the next box read lay out again.
     if (roster.innerHTML !== rosterHtml) roster.innerHTML = rosterHtml
+    drawFx(ui, snap, fx, seen)
+    syncContext(snap, me)
     // The captions are seated again only when something they are seated from
-    // moved. Standing still, a snapshot reads no layout.
+    // moved. Standing still, a snapshot reads no layout. It runs after every
+    // control for this snapshot is written, so it seats around what shows.
     const layoutKey = hudLayoutKey({
       scene: sceneKey(snap),
       keepPoint: ui.view.project ? ui.view.project(0, 0) : null,
@@ -877,7 +880,8 @@ function start(code, seat, ui) {
       height: window.innerHeight,
       armed,
       look: `${document.documentElement.className} ${reasonNode.hidden ? "" : "reason"} ${document.fonts ? document.fonts.status : ""}`,
-      text: ui.hud.querySelector("[data-world]")?.textContent
+      text: ui.hud.querySelector("[data-world]")?.textContent,
+      controls: controlsLook(ui.hud.querySelectorAll(SEAT_CONTROLS))
     })
     if (layoutKey !== ui.layoutKey) {
       ui.layoutKey = layoutKey
@@ -894,9 +898,15 @@ function start(code, seat, ui) {
       settleHeroTags(ui)
       ui.memo = null
       ui.styles = null
+      // One pass seats each caption around where the others sat before it, so
+      // the old every-snapshot loop settled over a few passes. The key is
+      // kept only once a pass leaves every caption where it found it.
+      const seated = seatedLook(ui.hud.querySelectorAll("[style], [hidden]"))
+      if (seated !== ui.seated) {
+        ui.seated = seated
+        ui.layoutKey = null
+      }
     }
-    drawFx(ui, snap, fx, seen)
-    syncContext(snap, me)
     audio.hear(snap)
     if (window.__lastKeep) {
       window.__lastKeep.log = seen.log
