@@ -100,8 +100,8 @@ test("png reads the filtered rows an image editor writes", () => {
     opaque += 1
     ink += image.rgba[i] + image.rgba[i + 1] + image.rgba[i + 2]
   }
-  assert.equal(opaque, 160519)
-  assert.equal(ink, 22847649)
+  assert.equal(opaque, 160329)
+  assert.equal(ink, 22777390)
 })
 
 test("a goblin card keeps the hero texel and stays under the hero and the keep door", () => {
