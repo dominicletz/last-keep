@@ -863,9 +863,11 @@ function start(code, seat, ui) {
         return `<div class="who ${mine} ${player.connected ? "" : "off"}"><span>${escapeHtml(player.name)}</span><span>${escapeHtml(heroLabel(player.hero))}</span><div class="meter"><span style="width:${width}%"></span></div></div>`
       })
       .join("")
-    // One HUD paint reads the HUD box, the canvas box, and the fixed controls
-    // once. Each read after a pin() write forced another layout.
+    // One HUD paint reads each node's box and style once, and again only
+    // after this paint moved it. Each read after a pin() write used to force
+    // another layout, about 50 reads a paint.
     ui.memo = rectMemo()
+    ui.styles = rectMemo()
     drawYou(ui, snap, selfId)
     drawWorld(ui, snap, selfId)
     seatWave(ui, snap, selfId)
@@ -873,6 +875,7 @@ function start(code, seat, ui) {
     settleCalls(ui)
     settleHeroTags(ui)
     ui.memo = null
+    ui.styles = null
     drawFx(ui, snap, fx, seen)
     syncContext(snap, me)
     audio.hear(snap)
@@ -988,14 +991,6 @@ function canvasRect(ui) {
   return ui.memo ? ui.memo.get("canvas", read) : read()
 }
 
-// The controls in the bar and the top band are laid out by the grid. The
-// pinned captions are absolute, so pinning one never moves a control.
-const PINNED = [".sack", ".heart", "[data-you]", "[data-roster]", "[data-bonuses]", ".chip", ".hint-arrow", "[data-world]"]
-
-function fixedSelector(selector) {
-  return !selector.split(",").some((part) => PINNED.includes(part.trim()))
-}
-
 function screenPoint(ui, worldX, worldY) {
   const point = ui.view.project ? ui.view.project(worldX, worldY) : null
   if (!point || point.behind || !ui.view.canvas) return null
@@ -1007,8 +1002,9 @@ function screenPoint(ui, worldX, worldY) {
   }
 }
 
-function pin(node, spot, dy = 0) {
+function pin(ui, node, spot, dy = 0) {
   if (!node) return
+  moved(ui, node)
   if (!spot) {
     node.hidden = true
     return
@@ -1016,6 +1012,26 @@ function pin(node, spot, dy = 0) {
   node.hidden = false
   node.style.left = `${spot.left}px`
   node.style.top = `${spot.top + dy}px`
+}
+
+// The pinned captions are absolute, so one moving never moves another node.
+// Only the moved node's memo entries go.
+function moved(ui, node) {
+  if (!node) return
+  if (ui.memo) ui.memo.drop(node)
+  if (ui.styles) ui.styles.drop(node)
+}
+
+function boxOf(ui, node) {
+  return ui.memo ? ui.memo.get(node, () => node.getBoundingClientRect()) : node.getBoundingClientRect()
+}
+
+function styleShown(ui, node) {
+  const read = () => {
+    const style = getComputedStyle(node)
+    return style.display !== "none" && style.visibility !== "hidden"
+  }
+  return ui.styles ? ui.styles.get(node, read) : read()
 }
 
 function drawWorld(ui, snap, selfId) {
@@ -1030,11 +1046,11 @@ function drawWorld(ui, snap, selfId) {
     ? { left: keepSpot.left - 42, top: keepSpot.top - 88, right: keepSpot.left + 42, bottom: keepSpot.top + 10 }
     : null
   const me = (snap.players || []).find((player) => player.id === selfId)
-  pin(ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
+  pin(ui, ui.hud.querySelector(".heart"), me ? screenPoint(ui, me.x, me.y) : null, 16)
   const controls = shownRects(ui, ".hud-top, .builds, .skills, [data-touch-pad], [data-volume], [data-raise], [data-copy], [data-mute], [data-start], .stick", 4)
   const heroBits = shownRects(ui, ".heart, [data-you]", 2)
   const seated = seatSacks(spots, { width: hudBox.width, height: hudBox.height }, boxes, keep, [...controls, ...heroBits])
-  seated.forEach((spot, i) => pin(nodes[i], spot))
+  seated.forEach((spot, i) => pin(ui, nodes[i], spot))
   const sackRects = seated.map((spot, i) => (spot ? pinRect(spot, boxes[i], "sack") : null)).filter(Boolean)
   const rosterNode = ui.hud.querySelector("[data-roster]")
   const bonusNode = ui.hud.querySelector("[data-bonuses]")
@@ -1055,8 +1071,8 @@ function drawWorld(ui, snap, selfId) {
     belowBar,
     [...controls, ...heroBits, ...sackRects, keep].filter(Boolean)
   )
-  pin(rosterNode, captions.roster)
-  pin(bonusNode, captions.relic)
+  pin(ui, rosterNode, captions.roster)
+  pin(ui, bonusNode, captions.relic)
   const parkedControls = shownRects(
     ui,
     ".hud-top, .builds, .skills, [data-touch-pad], [data-volume], [data-raise], [data-copy], [data-mute], [data-start], .stick, .sack, .heart, [data-you]",
@@ -1067,18 +1083,12 @@ function drawWorld(ui, snap, selfId) {
 }
 
 function shownRects(ui, selector, pad) {
-  if (ui.memo && fixedSelector(selector)) return ui.memo.get(`shown:${pad}:${selector}`, () => readShownRects(ui, selector, pad))
-  return readShownRects(ui, selector, pad)
-}
-
-function readShownRects(ui, selector, pad) {
   const hudBox = hudRect(ui)
   const rects = []
   for (const node of ui.hud.querySelectorAll(selector)) {
     if (node.hidden) continue
-    const style = getComputedStyle(node)
-    if (style.display === "none" || style.visibility === "hidden") continue
-    const box = node.getBoundingClientRect()
+    if (!styleShown(ui, node)) continue
+    const box = boxOf(ui, node)
     if (box.width <= 0 || box.height <= 0) continue
     rects.push({
       left: box.left - hudBox.left - pad,
@@ -1109,7 +1119,7 @@ function settleCalls(ui) {
     4
   )
   for (const node of ui.hud.querySelectorAll(".hint-arrow")) {
-    const box = node.getBoundingClientRect()
+    const box = boxOf(ui, node)
     if (box.width <= 0 || box.height <= 0) continue
     const rect = {
       left: box.left - hudBox.left,
@@ -1122,6 +1132,7 @@ function settleCalls(ui) {
     const dx = next.left - rect.left
     const dy = next.top - rect.top
     if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+      moved(ui, node)
       node.style.left = `${(parseFloat(node.style.left) || 0) + dx}px`
       node.style.top = `${(parseFloat(node.style.top) || 0) + dy}px`
     }
@@ -1143,7 +1154,7 @@ function settleHeroTags(ui) {
 function settleNode(ui, node, obstacles) {
   if (!node || node.hidden) return
   const hudBox = hudRect(ui)
-  const box = node.getBoundingClientRect()
+  const box = boxOf(ui, node)
   if (box.width <= 0 || box.height <= 0) return
   const rect = {
     left: box.left - hudBox.left,
@@ -1160,20 +1171,17 @@ function settleNode(ui, node, obstacles) {
   const dx = next.left - rect.left
   const dy = next.top - rect.top
   if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+    moved(ui, node)
     node.style.left = `${(parseFloat(node.style.left) || 0) + dx}px`
     node.style.top = `${(parseFloat(node.style.top) || 0) + dy}px`
   }
 }
 
 function controlLimit(ui, hudBox) {
-  return ui.memo ? ui.memo.get("limit", () => readControlLimit(ui, hudBox)) : readControlLimit(ui, hudBox)
-}
-
-function readControlLimit(ui, hudBox) {
   let limit = hudBox.height - 8
   for (const node of ui.hud.querySelectorAll(".builds, .skills")) {
     if (node.hidden) continue
-    const box = node.getBoundingClientRect()
+    const box = boxOf(ui, node)
     if (box.width <= 0 || box.height <= 0) continue
     limit = Math.min(limit, box.top - hudBox.top - 8)
   }
@@ -1181,16 +1189,11 @@ function readControlLimit(ui, hudBox) {
 }
 
 function bandTop(ui, hudBox) {
-  return ui.memo ? ui.memo.get("band", () => readBandTop(ui, hudBox)) : readBandTop(ui, hudBox)
-}
-
-function readBandTop(ui, hudBox) {
   let top = 8
   for (const node of ui.hud.querySelectorAll(".hud-top, [data-volume], [data-raise], [data-copy], [data-mute], [data-start]")) {
     if (node.hidden) continue
-    const style = getComputedStyle(node)
-    if (style.display === "none" || style.visibility === "hidden") continue
-    const box = node.getBoundingClientRect()
+    if (!styleShown(ui, node)) continue
+    const box = boxOf(ui, node)
     if (box.width <= 0 || box.height <= 0) continue
     top = Math.max(top, box.bottom - hudBox.top + 6)
   }
@@ -1203,7 +1206,7 @@ function seatWave(ui, snap, selfId) {
   const anchor = waveAnchor(me)
   const waveSpot = screenPoint(ui, anchor.x, anchor.y)
   if (!sign || !waveSpot) {
-    pin(sign, null)
+    pin(ui, sign, null)
     return
   }
   const hudBox = hudRect(ui)
@@ -1211,6 +1214,7 @@ function seatWave(ui, snap, selfId) {
   const floor = bandTop(ui, hudBox)
   const limit = controlLimit(ui, hudBox)
   pin(
+    ui,
     sign,
     seatPin(
       waveSpot,
@@ -1230,7 +1234,7 @@ function obstacleRects(ui, hudBox) {
     ".sack, [data-bonuses], [data-roster], .heart, [data-you], .hint-arrow, .actions, .skills, .builds, .hud-top, [data-volume], [data-raise], [data-copy], [data-mute], [data-start], [data-touch-pad], [data-touch], .stick"
   )) {
     if (node.hidden) continue
-    const box = node.getBoundingClientRect()
+    const box = boxOf(ui, node)
     if (box.width <= 0 || box.height <= 0) continue
     const pad = 8
     rects.push({
@@ -1247,6 +1251,7 @@ function drawYou(ui, snap, selfId) {
   const label = ui.hud.querySelector("[data-you]")
   const me = (snap.players || []).find((player) => player.id === selfId)
   const spot = me ? screenPoint(ui, me.x, me.y) : null
+  moved(ui, label)
   if (!label || !spot) {
     if (label) label.hidden = true
     return
@@ -1287,6 +1292,8 @@ function drawHints(ui, snap) {
   next.textContent = nextLine(snap.phase, hints)
   const keep = ui.hud.querySelector("[data-keep]")
   if (keep) keep.textContent = `${snap.keep.hp}/${snap.keep.max}`
+  // Both lines sit in the wave sign, so its box can change size.
+  moved(ui, next.closest("[data-world]"))
 }
 
 let nextFx = 1

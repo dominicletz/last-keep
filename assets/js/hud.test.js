@@ -389,3 +389,20 @@ test("a HUD paint reads each layout box once until the memo is cleared", () => {
   assert.notEqual(memo.get("hud", read), first)
   assert.equal(dom, 3)
 })
+
+test("a node that moved reads fresh while the others stay memoized", () => {
+  const memo = rectMemo()
+  const reads = { sack: 0, bar: 0 }
+  const sack = {}
+  const bar = {}
+  const box = (key) => () => {
+    reads[key] += 1
+    return { left: reads[key], top: 0, width: 10, height: 10 }
+  }
+  memo.get(sack, box("sack"))
+  memo.get(bar, box("bar"))
+  memo.drop(sack)
+  assert.equal(memo.get(sack, box("sack")).left, 2)
+  assert.equal(memo.get(bar, box("bar")).left, 1)
+  assert.deepEqual(reads, { sack: 2, bar: 1 })
+})

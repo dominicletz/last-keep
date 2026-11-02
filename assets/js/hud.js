@@ -530,7 +530,7 @@ export function bonusCopy(snap) {
 }
 
 // A per-paint memo for layout reads. get(key, read) calls read once per key
-// until clear(). reads counts the calls that reached the DOM.
+// until drop(key) or clear(). reads counts the calls that reached the DOM.
 export function rectMemo() {
   const seen = new Map()
   const memo = {
@@ -541,6 +541,10 @@ export function rectMemo() {
       const value = read()
       seen.set(key, value)
       return value
+    },
+    // A node that moved or changed text reads fresh next time.
+    drop(key) {
+      seen.delete(key)
     },
     clear() {
       seen.clear()
