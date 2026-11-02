@@ -1,0 +1,45 @@
+{
+ "_note": "First non-hero asset (docs/ART-REDO.md). The concept crop is the goblin group in monsters.jpg (the registry crop 16,328,236,246); the views draw one goblin with a single spear (no torch, no axe). The style reference is the approved engineer front view, so the goblin shares the hero render. The spear stays low so the figure's height is the body, not the spear tip. World height 18 is monsterHeights.goblin; at the hero texel (32/88) that is 50 px. Precheck and build wait for the sheet builder to take the sheet block.",
+ "type": "monster",
+ "noun": "goblin",
+ "possessive": "his",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [16, 328, 252, 574]
+ },
+ "source_note": "the reference shows three goblins; draw only one goblin with their look, holding one spear and nothing else",
+ "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+ "design": "small hunched goblin with mossy green skin, long pointed ears, glowing orange eyes, two small lower tusks, ragged dark brown leather tunic with a wide belt and a leather strap across the chest, bare green arms, brown cloth wraps on the shins and feet",
+ "feet": "feet",
+ "gait": "Quick hunched goblin walk: knees bent, legs alternating clearly, slight body bob",
+ "items": [
+  {
+   "name": "short wooden spear with a grey iron spearhead",
+   "at": "right hand",
+   "walk": "spear held low and angled forward in his right hand, tip no higher than his ears",
+   "still": "spear"
+  }
+ ],
+ "attack": "leans forward and jabs the spear straight ahead in the facing direction and pulls it back",
+ "death": "staggers backwards, drops the spear and falls flat on the ground",
+ "clips": {
+  "walk": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
+  "attack": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
+  "death": ["S", "W", "N", "E"]
+ },
+ "sheet": {
+  "world_height": 18,
+  "height": 50,
+  "cell": 80
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "small hunched goblin with mossy green skin, long pointed ears, glowing orange eyes, two small lower tusks, ragged dark brown leather tunic with a wide belt and a leather strap across the chest, bare green arms, brown cloth wraps on the shins and feet, short wooden spear with a grey iron spearhead held low in his right hand"
+ }
+}

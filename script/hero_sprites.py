@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One entry point for a hero's 8-direction sprite sheet.
+"""One entry point for a hero's (or another figure's) 8-direction sprite sheet.
 
     python3 script/hero_sprites.py HERO prep       # concept crop, prompts, views
     python3 script/hero_sprites.py HERO views      # normalize views/v-*.* to k-*.png
@@ -9,7 +9,10 @@
     python3 script/hero_sprites.py HERO colours    # concept colours, for the check profile
     python3 script/hero_sprites.py HERO prompts --abs   # prompts with absolute paths
 
-Everything is driven by assets/reference/HERO/hero.json. Only the
+Everything is driven by assets/reference/HERO/hero.json, or by
+assets/reference/ASSET/asset.json for a non-hero figure ("type": "monster"; see
+docs/ART-REDO.md). A non-hero asset runs prep, views, dirs and prompts; its
+precheck and build wait for the sheet builder to take its "sheet" block. Only the
 GenerateImage and GenerateVideo calls are manual; prep writes them, with every
 input path, to assets/reference/HERO/prompts.json and prompts.md. Every step
 is deterministic: re-running it writes the same bytes, and a PNG whose pixels
@@ -57,15 +60,58 @@ IDLE_DRIFT = 0.8     # any idle frame vs its first frame, times the walk median
 
 # ---------------------------------------------------------------- config
 
+# Clip kinds and their default directions. A hero has a walk and an idle in all
+# eight. An asset.json lists its own in "clips", e.g. {"walk": [...8],
+# "attack": [...8], "death": ["S", "W", "N", "E"]}.
+CLIP_KINDS = ("walk", "idle", "attack", "death")
+HERO_CLIPS = {"walk": COLUMNS, "idle": COLUMNS}
+TYPES = ("hero", "monster")
+# One sheet texel in world units: the hero's 32-unit body over its 88 px.
+TEXEL = 32 / 88
+
+
+def sheet_height(world_height):
+    """Sheet height in px (outline included) of a figure world_height units
+    tall at the hero texel, so every figure shares the hero's pixel size."""
+    return int(round(world_height / TEXEL))
+
+
 def load_config(hero, reference=REFERENCE):
     path = os.path.join(reference, hero, "hero.json")
     if not os.path.exists(path):
-        raise SystemExit(f"no {os.path.relpath(path, ROOT)}: write the hero config first")
+        path = os.path.join(reference, hero, "asset.json")
+    if not os.path.exists(path):
+        raise SystemExit(f"no {os.path.relpath(os.path.join(reference, hero, 'hero.json'), ROOT)} "
+                         f"or asset.json: write the config first")
     with open(path) as fh:
         cfg = json.load(fh)
+    name = os.path.basename(path)
     for key in ("noun", "possessive", "concept", "design", "items", "turntable"):
         if key not in cfg:
-            raise SystemExit(f"{hero}/hero.json is missing {key!r}")
+            raise SystemExit(f"{hero}/{name} is missing {key!r}")
+    kind = cfg.get("type", "hero")
+    if kind not in TYPES:
+        raise SystemExit(f"{hero}/{name}: type {kind!r} is not one of {TYPES}")
+    if (kind == "hero") != (name == "hero.json"):
+        raise SystemExit(f"{hero}/{name}: a hero config is hero.json, any other type is asset.json")
+    clips = cfg.get("clips", HERO_CLIPS)
+    for k, dirs in clips.items():
+        if k not in CLIP_KINDS or not dirs or any(d not in COLUMNS for d in dirs):
+            raise SystemExit(f"{hero}/{name}: clips {k!r} {dirs!r} (kinds {CLIP_KINDS}, directions {COLUMNS})")
+        if k in ("attack", "death") and not cfg.get(k):
+            raise SystemExit(f"{hero}/{name}: clips has {k!r} but no {k!r} motion text")
+    if kind != "hero":
+        sheet = cfg.get("sheet") or {}
+        for key in ("world_height", "height", "cell"):
+            if not isinstance(sheet.get(key), (int, float)):
+                raise SystemExit(f"{hero}/{name}: sheet needs {key!r}")
+        if sheet["height"] != sheet_height(sheet["world_height"]):
+            raise SystemExit(f"{hero}/{name}: sheet height {sheet['height']} is not world_height "
+                             f"{sheet['world_height']} at the hero texel ({sheet_height(sheet['world_height'])})")
+        if sheet["cell"] % 8 or sheet["cell"] < sheet["height"] + 16:
+            raise SystemExit(f"{hero}/{name}: cell {sheet['cell']} must be a multiple of 8 with 16 px over the figure")
+    cfg["type"] = kind
+    cfg["clips"] = {k: list(v) for k, v in clips.items()}
     cfg["hero"] = hero
     cfg["dir"] = os.path.join(reference, hero)
     cfg["video"] = os.path.join(reference, hero, "video")
@@ -369,11 +415,16 @@ def build_prompts(cfg):
         items = "; ".join(x for x in items if x)
         front = view_source(cfg, "S")
         front = f"{vid}/views/{os.path.basename(front) if front else 'v-S.png'}"
-        refs = [f"{base}/concept.png"] + ([] if d == "S" else [front])
+        refs = [f"{base}/concept.png"] + (list(cfg.get("style_refs", [])) if d == "S" else [front])
+        source = cfg.get("source_note", "")
+        style = (" Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art "
+                 "look, block size, outline-free shading and soft lighting, but not its design."
+                 if d == "S" and cfg.get("style_refs") else "")
         text = (f"Full-body game character reference of the {noun} from the reference image, "
-                f"{VIEW[d].format(poss=poss)}. Same design exactly: {design}. "
-                f"{sentence(items)} "
-                "Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, "
+                f"{VIEW[d].format(poss=poss)}.{(' ' + sentence(source)) if source else ''} Same design exactly: {design}. "
+                f"{sentence(items)}{style} "
+                f"Whole figure from the top of the head to the {cfg.get('feet', 'boots')}, standing in a neutral idle "
+                "pose, arms relaxed, "
                 "feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, "
                 "no other figures. One single view only, not a sheet of several views.")
         calls.append({"id": f"view-{d}", "step": "views", "tool": "GenerateImage",
@@ -399,12 +450,15 @@ def build_prompts(cfg):
     walk_bits = [i["walk"] for i in cfg["items"] if i.get("walk")]
     idle_bits = [i["idle"] for i in cfg["items"] if i.get("idle")]
     stills = [i["still"] for i in cfg["items"] if i.get("still")]
+    gait = cfg.get("gait", "Steady marching walk: legs alternating clearly, slight body bob")
+    clips = cfg["clips"] if "clips" in cfg else HERO_CLIPS
+    order = [(k, d) for d in COLUMNS for k in CLIP_KINDS if d in clips.get(k, ())]
     for d in COLUMNS:
         face = DIRECTION[d].format(poss=poss)
         props = "; ".join(x for x in (item_line(i, d, poss) for i in cfg["items"]) if x)
         walk = (f"Game sprite walk cycle. The {noun} walks in place on a treadmill, keeping exactly the facing "
                 f"direction of the first frame ({face}). Holding exactly the body angle of the first frame: torso "
-                "does not twist. Steady marching walk: legs alternating clearly, slight body bob"
+                "does not twist. " + gait
                 + "".join(f", {b}" for b in walk_bits) + ". "
                 + (f"Props stay where the first frame has them: {props}. " if props else "")
                 + f"The {noun} stays exactly centered, does not turn, move or change size. Locked-off camera, no "
@@ -417,17 +471,38 @@ def build_prompts(cfg):
                 + "rms do not move, body does not turn, feet do not move, head does not turn. "
                 + f"{steady_light(cfg)} Locked camera, no zoom, plain flat white background, even lighting, "
                 "crisp frames.")
-        for kind, text in (("walk", walk), ("idle", idle)):
+        attack = (f"Game sprite attack. The {noun} keeps exactly the facing direction of the first frame ({face}) "
+                  f"and the body angle of the first frame: torso does not twist away. In one quick motion it "
+                  f"{cfg.get('attack', '')}, then returns exactly to the starting pose and holds it for the last "
+                  "frames. "
+                  + (f"Props stay where the first frame has them: {props}. " if props else "")
+                  + f"The {noun} stays exactly centered, feet stay planted, no turning, no change of size. "
+                  f"{steady_light(cfg)} Locked-off camera, no zoom, plain flat white background, even lighting, "
+                  "crisp frames, no motion blur, no speed lines, no effects.")
+        death = (f"Game sprite death. The {noun} starts exactly in the pose and facing of the first frame ({face}). "
+                 f"It is struck down: it {cfg.get('death', '')}. It lies still on the ground for the last half "
+                 f"second. The body stays centered on the same spot and does not slide out of frame. "
+                 f"{steady_light(cfg)} No blood, no gore, no fading, no particles, no effects. Locked-off camera, "
+                 "no zoom, plain flat white background, even lighting, crisp frames, no motion blur.")
+        for kind, text in (("walk", walk), ("idle", idle), ("attack", attack), ("death", death)):
+            if d not in clips.get(kind, ()):
+                continue
+            args = {"prompt": text, "image_path": f"{vid}/dirs/{d}.png",
+                    "last_frame_path": f"{vid}/dirs/{d}.png", "duration": 2,
+                    "aspect_ratio": "1:1", "resolution": "720p", "filename": f"{h}-{kind}-{d}.mp4"}
+            if kind == "death":
+                del args["last_frame_path"]  # a fall ends on the ground, not on the start pose
             calls.append({"id": f"{kind}-{d}", "step": "precheck", "tool": "GenerateVideo",
-                          "args": {"prompt": text, "image_path": f"{vid}/dirs/{d}.png",
-                                   "last_frame_path": f"{vid}/dirs/{d}.png", "duration": 2,
-                                   "aspect_ratio": "1:1", "resolution": "720p", "filename": f"{h}-{kind}-{d}.mp4"},
+                          "args": args,
                           "save_as": f"{vid}/{kind}-{d}.mp4",
-                          "then": "hero_sprites.py precheck" if (kind, d) == ("idle", "SE") else None})
+                          "then": "hero_sprites.py precheck" if (kind, d) == order[-1] else None})
     for c in calls:
         if c["then"] is None:
             del c["then"]
-    return {"hero": h, "paths": "relative to the repository root", "calls": calls}
+    out = {"hero": h, "paths": "relative to the repository root", "calls": calls}
+    if cfg.get("type", "hero") != "hero":
+        out["type"] = cfg["type"]  # a hero's prompts.json carries no type key
+    return out
 
 
 def absolute(prompts, root=ROOT):
@@ -446,7 +521,7 @@ def absolute(prompts, root=ROOT):
 
 def prompts_markdown(p):
     lines = [f"# {p['hero']} generation calls", "",
-             "Generated by `python3 script/hero_sprites.py " + p["hero"] + " prep` from `hero.json`; do not edit.",
+             "Generated by `python3 script/hero_sprites.py " + p["hero"] + " prep` from `" + ("asset.json" if "type" in p else "hero.json") + "`; do not edit.",
              "Paths are relative to the repository root (`hero_sprites.py " + p["hero"] + " prompts --abs` prints "
              "them absolute). Save each result at `save_as`, then run the step named in `then`.", ""]
     for c in p["calls"]:
@@ -465,6 +540,15 @@ def write_prompts(cfg, log=print):
 
 
 # ---------------------------------------------------------------- 5 precheck
+
+def not_yet(cfg, step):
+    """The sheet builder and checker still assume a hero: 128 px cell, 88 px
+    figure, 8 walk + 4 idle rows. A non-hero asset stops here with the reason
+    instead of building a hero-sized sheet. docs/ART-REDO.md has the design."""
+    if cfg.get("type", "hero") != "hero":
+        raise SystemExit(f"{cfg['hero']}: {step} for type {cfg['type']!r} needs the sheet builder to take the "
+                         f"asset's sheet block ({cfg.get('sheet')}) and clip kinds {sorted(cfg['clips'])}; "
+                         "see docs/ART-REDO.md, 'Generalizing the pipeline'")
 
 CROSS = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], bool)
 
@@ -500,6 +584,7 @@ def precheck(cfg, log=print):
     24 fps, 49 frames), loop closes (last frame vs first), starts on its pose,
     an idle never strays far from its first frame, then every sheet check on an in-memory build, each failure blamed on the
     clips whose frames failed it."""
+    not_yet(cfg, "precheck")
     vid = cfg["video"]
     problems = {}
 
@@ -571,6 +656,7 @@ def approval_dir(hero, override=None):
 def build(cfg, approval=None, log=print):
     """Sheet and normal map, every check, and the approval files: contact.png,
     walk.gif, idle.gif and check.txt. Returns the number of failing checks."""
+    not_yet(cfg, "build")
     import check_sprite_sheet as cs
     h = cfg["hero"]
     if h not in cs.HEROES:

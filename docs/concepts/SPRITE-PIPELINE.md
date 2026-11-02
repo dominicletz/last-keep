@@ -14,6 +14,10 @@ Sheet columns follow `pictureColumn`: S, SW, W, NW, N, NE, E, SE. Column 0 is th
 
 ## Procedure for a new hero
 
+Monsters, NPCs and props use the same script with an `asset.json` instead
+of `hero.json`; [`../ART-REDO.md`](../ART-REDO.md) lists every asset, its
+variant and what the script still needs.
+
 Only the GenerateImage and GenerateVideo calls are manual. Everything else is `script/hero_sprites.py`, driven by the hero's config `assets/reference/HERO/hero.json`. Each step writes the same bytes when re-run. A PNG whose pixels already match is left alone, so re-running a step never dirties git.
 
 | # | Step | Who | Command or call | Writes |

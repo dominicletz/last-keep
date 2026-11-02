@@ -7,6 +7,7 @@ mage sheet in memory twice, so the whole file takes about two minutes."""
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -20,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hero_sprites as hs  # noqa: E402
 
 HEROES = ["engineer", "farmer", "mage", "scout", "warrior"]
+ASSETS = ["goblin"]  # non-hero figures with an asset.json (docs/ART-REDO.md)
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
             "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
             "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164},
@@ -191,11 +193,111 @@ class PromptsTest(unittest.TestCase):
         self.assertEqual((a["duration"], a["resolution"]), (8, "720p"))
 
     def test_committed_prompt_files_are_current(self):
-        for h in HEROES:
+        for h in HEROES + ASSETS:
             cfg = hs.load_config(h)
             p = hs.build_prompts(cfg)
             self.assertEqual(read(os.path.join(cfg["dir"], "prompts.json")).decode(), json.dumps(p, indent=1) + "\n", h)
             self.assertEqual(read(os.path.join(cfg["dir"], "prompts.md")).decode(), hs.prompts_markdown(p), h)
+
+
+class AssetTest(unittest.TestCase):
+    """Non-hero figures: the goblin is the first (docs/ART-REDO.md)."""
+
+    def calls(self, a):
+        return {c["id"]: c for c in hs.build_prompts(hs.load_config(a))["calls"]}
+
+    def test_goblin_config_is_a_monster_with_its_clip_kinds(self):
+        cfg = hs.load_config("goblin")
+        self.assertEqual(cfg["type"], "monster")
+        self.assertEqual(cfg["clips"], {"walk": hs.COLUMNS, "attack": hs.COLUMNS, "death": hs.CARDINALS})
+        for h in HEROES:
+            self.assertEqual(hs.load_config(h)["type"], "hero", h)
+            self.assertEqual(hs.load_config(h)["clips"], {"walk": hs.COLUMNS, "idle": hs.COLUMNS}, h)
+
+    def test_goblin_sheet_keeps_the_hero_texel(self):
+        # monsters.js draws the goblin 18 world units tall; at 32/88 units per
+        # texel that is 50 px, so the goblin's pixels are the hero's size.
+        with open(os.path.join(hs.ROOT, "assets/js/monsters.js")) as fh:
+            world = float(re.search(r"goblin: (\d+)", fh.read()).group(1))
+        sheet = hs.load_config("goblin")["sheet"]
+        self.assertEqual(sheet["world_height"], world)
+        self.assertEqual(sheet["height"], hs.sheet_height(world))
+        self.assertEqual(hs.sheet_height(32), 88)
+
+    def test_goblin_calls_are_views_turntable_then_walk_attack_death(self):
+        ids = list(self.calls("goblin"))
+        self.assertEqual(ids[:5], ["view-S", "view-N", "view-W", "view-E", "turntable"])
+        want = [f"{k}-{d}" for d in hs.COLUMNS for k in ("walk", "attack", "death")
+                if k != "death" or d in hs.CARDINALS]
+        self.assertEqual(ids[5:], want)
+        self.assertNotIn("idle-S", ids)
+
+    def test_goblin_front_view_takes_the_hero_style_reference(self):
+        c = self.calls("goblin")
+        s = c["view-S"]["args"]
+        self.assertEqual(s["reference_image_paths"], ["assets/reference/goblin/concept.png",
+                                                      "assets/reference/engineer/video/views/v-S.png"])
+        for ref in s["reference_image_paths"]:
+            self.assertTrue(os.path.exists(os.path.join(hs.ROOT, ref)), ref)
+        self.assertIn("draw only one goblin", s["description"])
+        self.assertIn("Match the rendering style of the second reference image", s["description"])
+        self.assertIn("to the feet,", s["description"])
+        w = c["view-W"]["args"]
+        self.assertEqual(w["reference_image_paths"], ["assets/reference/goblin/concept.png",
+                                                      "assets/reference/goblin/video/views/v-S.png"])
+        self.assertNotIn("rendering style", w["description"])
+
+    def test_goblin_attack_and_death_prompts(self):
+        c = self.calls("goblin")
+        attack, death = c["attack-E"]["args"], c["death-N"]["args"]
+        self.assertIn("jabs the spear straight ahead", attack["prompt"])
+        self.assertIn("returns exactly to the starting pose", attack["prompt"])
+        self.assertIn("torso does not twist", attack["prompt"])
+        self.assertEqual(attack["image_path"], attack["last_frame_path"])
+        self.assertEqual(death["image_path"], "assets/reference/goblin/video/dirs/N.png")
+        self.assertNotIn("last_frame_path", death)
+        self.assertIn("lies still on the ground", death["prompt"])
+        self.assertIn("Quick hunched goblin walk", c["walk-S"]["args"]["prompt"])
+        self.assertEqual(c["attack-SE"].get("then"), "hero_sprites.py precheck")
+        self.assertEqual([k for k, v in c.items() if v.get("then") == "hero_sprites.py precheck"], ["attack-SE"])
+
+    def test_precheck_and_build_refuse_a_monster_until_the_builder_takes_it(self):
+        cfg = hs.load_config("goblin")
+        for step in (hs.precheck, hs.build):
+            with self.assertRaises(SystemExit) as e:
+                step(cfg)
+            self.assertIn("ART-REDO.md", str(e.exception))
+
+    def test_a_bad_asset_config_is_refused(self):
+        base = json.loads(read(os.path.join(hs.REFERENCE, "goblin", "asset.json")))
+        bad = [("type", "dragon"), ("clips", {"walk": ["S", "UP"]}), ("clips", {"attack": ["S"], "walk": ["S"]}),
+               ("sheet", {"world_height": 18, "height": 60, "cell": 80}),
+               ("sheet", {"world_height": 18, "height": 50, "cell": 60})]
+        for key, value in bad:
+            cfg = dict(base, **{key: value})
+            if key == "clips" and "attack" in value:
+                cfg.pop("attack")
+            with tempfile.TemporaryDirectory() as tmp:
+                os.makedirs(os.path.join(tmp, "g"))
+                with open(os.path.join(tmp, "g", "asset.json"), "w") as fh:
+                    json.dump(cfg, fh)
+                with self.assertRaises(SystemExit, msg=(key, value)):
+                    hs.load_config("g", reference=tmp)
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "g"))
+            with open(os.path.join(tmp, "g", "hero.json"), "w") as fh:
+                json.dump(base, fh)
+            with self.assertRaises(SystemExit):
+                hs.load_config("g", reference=tmp)
+
+    def test_prep_rewrites_nothing_on_the_committed_goblin(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(os.path.join(hs.REFERENCE, "goblin"), os.path.join(tmp, "goblin"))
+            cfg = hs.load_config("goblin", reference=tmp)
+            log = []
+            self.assertFalse(hs.crop_concept(cfg))
+            hs.write_prompts(cfg, log=log.append)
+            self.assertTrue(log and all(line.startswith("same ") for line in log), log)
 
 
 class IdempotencyTest(unittest.TestCase):
