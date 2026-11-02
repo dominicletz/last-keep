@@ -47,6 +47,18 @@ function gateGaps(jobs) {
 // completed_at minus started_at. A job still running has no completed_at.
 // The limit is 10 minutes. A successful job cannot outlive timeout-minutes,
 // and this rejects a run whose slowest completed job went past it.
+// The deploy has one job, so it times itself: DEPLOY_STARTED is written by
+// its first step in epoch seconds. 8 minutes leaves the 10 minute job
+// timeout as the backstop, not the check.
+const DEPLOY_LIMIT_MS = 8 * 60 * 1000
+
+function deployOver(startedSec, nowMs, limitMs = DEPLOY_LIMIT_MS) {
+  const started = Number(startedSec)
+  if (!Number.isFinite(started) || started <= 0) return { ms: null, over: true, reason: "DEPLOY_STARTED is missing" }
+  const ms = nowMs - started * 1000
+  return { ms, over: ms > limitMs, reason: ms > limitMs ? `deploy ran ${Math.round(ms / 1000)}s` : null }
+}
+
 function overBudget(runs, limitMs = 10 * 60 * 1000) {
   let slowest = null
   for (const job of runs) {
@@ -58,4 +70,4 @@ function overBudget(runs, limitMs = 10 * 60 * 1000) {
   return slowest
 }
 
-module.exports = { jobsIn, missingTimeout, gateGaps, overBudget }
+module.exports = { DEPLOY_LIMIT_MS, deployOver, jobsIn, missingTimeout, gateGaps, overBudget }

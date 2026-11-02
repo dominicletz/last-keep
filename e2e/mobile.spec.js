@@ -8,7 +8,7 @@ test.use({
   isMobile: true
 })
 
-test("a phone joins, walks with the stick, casts, and builds", async ({ browser }) => {
+test("a phone joins, walks with the stick, casts, and builds", { tag: "@smoke" }, async ({ browser }) => {
   await mobileTouch(browser)
 })
 

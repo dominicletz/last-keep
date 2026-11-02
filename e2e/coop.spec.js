@@ -11,7 +11,7 @@ test("two players start the night, place a wall, and clear wave 1", async ({ bro
   await twoPlayerNight(browser)
 })
 
-test("the join form on a bare invite enters the same room", async ({ browser }) => {
+test("the join form on a bare invite enters the same room", { tag: "@smoke" }, async ({ browser }) => {
   await joinFromForm(browser)
 })
 
@@ -23,7 +23,7 @@ test("a creator names one hero and a lost seat sits back down", async ({ browser
   await oneSeat(browser)
 })
 
-test("the high score list hides scoreless runs", async ({ request }) => {
+test("the high score list hides scoreless runs", { tag: "@smoke" }, async ({ request }) => {
   await scoreList(request)
 })
 

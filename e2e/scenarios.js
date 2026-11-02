@@ -3,7 +3,7 @@ const { lowContext } = require("./low_tier")
 const { joinTogether, rosterReady } = require("./roster")
 const { SPRITE_HEIGHT, cardSpan, projectBox, sheetHeroHeight } = require("./screen")
 const { settledHolds } = require("./settled")
-const { noteNorth, noteProgress, settleFields, stoppedTick } = require("./steer")
+const { noteNorth, noteProgress, settleFields, stoppedTick, walkLoop } = require("./steer")
 const fs = require("fs")
 const path = require("path")
 const { inflateSync } = require("node:zlib")
@@ -1676,35 +1676,44 @@ async function assertPhoneClear(page) {
   }
 }
 
-// Holds whatever `step` sets. The first sample inside the goal still has
-// those keys down, and the hero keeps that step until the key-up reaches
-// the server. Arrival is two later snapshots that share a position, with
-// the keys already up, and that sample still has to satisfy `done`. The
-// wait stays inside `timeout`. A timeout throws the last position, unless
-// `soft` is set for a leg that has another plan.
+// Holds whatever `step` sets until the client sees the goal, then settles
+// on two later snapshots that share a position with the keys up. A settle
+// outside the goal means the key-up arrived late, so the rest of the walk is
+// taps that last two observed ticks (walkLoop in steer.js). The wait stays
+// inside `timeout`. A timeout throws the last position, unless `soft` is set
+// for a leg that has another plan.
 async function walkUntil(page, { timeout, label, poll = 100, step, done, soft = false }) {
   const deadline = Date.now() + timeout
-  let last = null
+  let result = { ok: false, last: null }
   try {
-    while (Date.now() < deadline) {
-      last = await step(page)
-      if (last && done(last)) {
-        const settled = await stoppedSample(page, last, deadline)
-        if (settled && done(settled)) return settled
-        last = settled || last
-        continue
+    result = await walkLoop({
+      done,
+      expired: () => Date.now() >= deadline,
+      step: () => step(page),
+      pause: () => page.waitForTimeout(poll),
+      settle: (last) => stoppedSample(page, last, deadline),
+      tap: async () => {
+        const mark = await page.evaluate(() => window.__lastKeep.tick)
+        await page
+          .waitForFunction((tick) => window.__lastKeep.tick >= tick + 2, mark, {
+            timeout: Math.max(1, deadline - Date.now())
+          })
+          .catch(() => {})
       }
-      await page.waitForTimeout(poll)
-    }
+    })
   } finally {
     await releaseCodes(page)
   }
-  if (soft) return last
-  throw new Error(`${label} timed out at ${JSON.stringify(last)}`)
+  if (result.ok) return result.last
+  if (soft) return result.last
+  throw new Error(`${label} timed out at ${JSON.stringify(result.last)}`)
 }
 
 async function stoppedSample(page, last, deadline) {
   await releaseCodes(page)
+  // Two equal snapshots before the key-up reached the room can be a hero
+  // that has not started a short tap yet. Read the stop after the reply.
+  await page.evaluate(() => window.__lastKeepTest.ack())
   let previous = null
   while (Date.now() < deadline) {
     const fresh = await page.evaluate(() => {
@@ -3049,7 +3058,66 @@ async function oneSeat(browser) {
   await context.close()
 }
 
+// The deploy smoke. Two seats share one room, the host's hero walks on the
+// server, and the night opens wave 1 with goblins on both clients. Every
+// wait is on a published value, so a slow link waits longer, not wrong.
+async function liveSmoke(browser) {
+  const errors = []
+  const host = await createHost(browser, "Bob", "warrior")
+  const page = host.page
+  watch(page, "host", errors)
+  const code = await page.evaluate(() => document.body.dataset.code)
+  const guest = await joinQuery(browser, code, "LLL", "mage")
+  const friend = guest.page
+  watch(friend, "guest", errors)
+  await expect(page.locator("[data-roster]")).toContainText("LLL")
+  await expect(friend.locator("[data-roster]")).toContainText("Bob")
+  await expect(page.locator("[data-start]")).toHaveText("Start the night")
+  await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
+
+  await page.bringToFront()
+  const from = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
+  await holdCodes(page, ["KeyW"])
+  try {
+    await page.waitForFunction(
+      (start) => {
+        const me = window.__lastKeep.self
+        return me && Math.hypot(me.x - start.x, me.y - start.y) > 40
+      },
+      from,
+      { timeout: 10_000 }
+    )
+  } finally {
+    await releaseCodes(page)
+  }
+  // The guest sees the same hero move on its own socket.
+  await friend.waitForFunction(
+    (start) => {
+      const host = (window.__lastKeep.party || []).find((player) => player.host)
+      return host && Math.hypot(host.x - start.x, host.y - start.y) > 40
+    },
+    from,
+    { timeout: 10_000 }
+  )
+
+  await page.locator("[data-start]").click()
+  for (const seat of [page, friend]) {
+    await seat.waitForFunction(
+      () => {
+        const game = window.__lastKeep
+        return game && game.phase === "wave" && (game.monsters || []).length >= 2
+      },
+      undefined,
+      { timeout: 30_000, polling: 100 }
+    )
+  }
+  await expect(page.locator("[data-wave]")).toHaveText("Wave 1")
+  expect(errors).toEqual([])
+  await Promise.all([host.context.close(), guest.context.close()])
+}
+
 module.exports = {
+  liveSmoke,
   prepareProof,
   proofDir,
   gameUrl,
