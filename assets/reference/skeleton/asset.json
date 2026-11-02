@@ -1,0 +1,218 @@
+{
+ "_note": "Second monster (docs/ART-REDO.md). The concept crop is the skeleton group in monsters.jpg (the registry crop 260,328,260,246); the views draw one skeleton with one sword (no shield, no second skeleton). MARKS ribs and blade: the open ribcage and a long straight sword. The concept's two shoulder plates become one, on the sword arm, so the iron in every pose sits on the sword side and the prop check keeps a side. The sword hangs low at his side, so the 60 px figure height is skull top to feet. World height 22 is monsterHeights.skeleton; at the hero texel (32/88) that is 60 px. The cell is 88, not 80: the side slash and the collapse are wider than the goblin's jab and fall. The sword item is visible: true, the goblin lesson (its first view-E lost the spear), so every view and clip prompt asks for the sword in full view.",
+ "type": "monster",
+ "noun": "skeleton",
+ "possessive": "his",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [
+   260,
+   328,
+   520,
+   574
+  ]
+ },
+ "source_note": "the reference shows three skeletons; draw only one skeleton with their look, holding one sword and nothing else, no shield",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets and a grim toothy jaw, an open ribcage with clear separate ribs, a bony spine and pelvis, thin bony arms and legs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt holding a frayed dark purple-brown cloth loincloth",
+ "feet": "bony feet",
+ "gait": "Stiff jerky skeleton march: knees bent, legs alternating clearly, bony arms swinging a little, slight body bob",
+ "items": [
+  {
+   "name": "long straight iron sword with a notched grey blade",
+   "at": "right hand",
+   "visible": true,
+   "walk": "sword held low and angled forward in his right hand, blade below his shoulders",
+   "still": "sword"
+  }
+ ],
+ "attack": "raises the sword to his shoulder and slashes it across in front of him toward the facing direction",
+ "death": "rattles, drops the sword and collapses straight down into a loose heap of bones on the ground",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "check": {
+  "_note": "anchors: concept colours (hero_sprites.py skeleton colours) the palette keeps within dE 15: the concept is warm grey throughout, so bone, its shade and the dark sockets. roles: bone is the warm pale grey (hue 20-60 with a little chroma, or pale and warmer); iron the cool or colourless light grey of the blade and shoulder plate; shadow the dark greys and the dark warm greys (sockets, rib gaps), so a warm bone shade never counts as iron; leather the belt; cloth the purple-brown loincloth. prop: the sword and the shoulder plate share the iron role and both sit on the sword arm, so the start pose keeps one side. prop_dirs: all eight, the sword is held clear of the body in every view (visible: true). The bounds are first values at 60 px (the goblin's, scaled by area); tune them on the dirs poses before the build, never below what the approved poses show.",
+  "anchors": {
+   "bone": [
+    143,
+    135,
+    126
+   ],
+   "bone shade": [
+    123,
+    115,
+    106
+   ],
+   "socket dark": [
+    48,
+    44,
+    42
+   ]
+  },
+  "roles": [
+   {
+    "name": "bone",
+    "neutral": true,
+    "hue": [
+     20,
+     60
+    ],
+    "chroma_gt": 0.04,
+    "light_gt": 0.4
+   },
+   {
+    "name": "shadow",
+    "neutral": true,
+    "hue": [
+     20,
+     60
+    ],
+    "chroma_gt": 0.04
+   },
+   {
+    "name": "iron",
+    "neutral": true,
+    "light_gt": 0.28
+   },
+   {
+    "name": "shadow",
+    "neutral": true
+   },
+   {
+    "name": "bone",
+    "hue": [
+     25,
+     60
+    ],
+    "light_gt": 0.5
+   },
+   {
+    "name": "leather",
+    "hue": [
+     10,
+     45
+    ]
+   },
+   {
+    "name": "cloth",
+    "hue": [
+     260,
+     10
+    ]
+   }
+  ],
+  "prop": [
+   "sword",
+   "iron"
+  ],
+  "prop_dirs": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "back": {
+   "title": "back view N: no eye sockets, the loincloth back",
+   "bounds": [
+    [
+     "sockets",
+     [
+      "head",
+      "shadow"
+     ],
+     null,
+     40
+    ],
+    [
+     "loincloth",
+     [
+      "count",
+      "cloth"
+     ],
+     120,
+     null
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps the skull, the ribs and the blade",
+   "bounds": [
+    [
+     "skull",
+     [
+      "head",
+      "bone"
+     ],
+     140,
+     null
+    ],
+    [
+     "ribs",
+     [
+      "inside",
+      "shadow",
+      "bone"
+     ],
+     60,
+     null
+    ],
+    [
+     "blade",
+     [
+      "count",
+      "iron"
+     ],
+     34,
+     null
+    ]
+   ]
+  }
+ },
+ "sheet": {
+  "world_height": 22,
+  "height": 60,
+  "cell": 88
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets, an open ribcage with clear separate ribs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt with a frayed dark purple-brown cloth loincloth, long straight iron sword with a notched grey blade held low in his right hand, always fully visible"
+ }
+}

@@ -11,8 +11,8 @@
 
 Everything is driven by assets/reference/HERO/hero.json, or by
 assets/reference/ASSET/asset.json for a non-hero figure ("type": "monster"; see
-docs/ART-REDO.md). A non-hero asset runs prep, views, dirs and prompts; its
-precheck and build wait for the sheet builder to take its "sheet" block. Only the
+docs/ART-REDO.md). A non-hero asset runs prep, views, dirs and prompts; it runs
+every step, with the sheet layout from its "sheet" block. Only the
 GenerateImage and GenerateVideo calls are manual; prep writes them, with every
 input path, to assets/reference/HERO/prompts.json and prompts.md. Every step
 is deterministic: re-running it writes the same bytes, and a PNG whose pixels
@@ -101,6 +101,9 @@ def load_config(hero, reference=REFERENCE):
             raise SystemExit(f"{hero}/{name}: clips {k!r} {dirs!r} (kinds {CLIP_KINDS}, directions {COLUMNS})")
         if k in ("attack", "death") and not cfg.get(k):
             raise SystemExit(f"{hero}/{name}: clips has {k!r} but no {k!r} motion text")
+    for item in cfg["items"]:
+        if "visible" in item and (item["visible"] is not True or item.get("at") in (None, "", "body")):
+            raise SystemExit(f"{hero}/{name}: item {item.get('name')!r}: visible is true on a held item, or absent")
     notes = cfg.get("view_notes", {})
     if not isinstance(notes, dict) or any(d not in ("S", "N", "W", "E") or not isinstance(t, str) or not t.strip()
                                           for d, t in notes.items()):
@@ -385,7 +388,18 @@ def item_line(item, d, poss):
     if item.get("at") == "body":
         return ""
     p = placement(item, d)
+    if item.get("visible"):
+        # A weapon the figure must show in every view (the goblin's first
+        # view-E lost its spear): never "partly hidden behind the body".
+        p = ", ".join([x for x in p.split(", ") if x and x != "partly hidden behind the body"]
+                      + ["in full view"])
     return f"{item['name']} {where(item, poss)}" + (f" ({p})" if p else "")
+
+
+def visible_line(item, poss):
+    """The sentence a view adds for an item with "visible": true."""
+    return (f"The {item['name']} stays clearly visible in full in this view, held out clear of "
+            f"{poss} body: not hidden behind the body, not dropped, not cut off.")
 
 
 def sentence(text):
@@ -425,6 +439,7 @@ def build_prompts(cfg):
         # A per-view sentence for a take that lost a prop (asset.json "view_notes").
         note = cfg.get("view_notes", {}).get(d, "")
         note = f" {sentence(note)}" if note else ""
+        note += "".join(f" {visible_line(i, poss)}" for i in cfg["items"] if i.get("visible"))
         style = (" Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art "
                  "look, block size, outline-free shading and soft lighting, but not its design."
                  if d == "S" and cfg.get("style_refs") else "")

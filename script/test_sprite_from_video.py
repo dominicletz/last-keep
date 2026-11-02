@@ -221,7 +221,7 @@ class MonsterCheckTest(unittest.TestCase):
 
 class AssetProfileTest(unittest.TestCase):
     def test_goblin_roles(self):
-        self.assertEqual(sorted(cs.ASSETS), ["goblin"])
+        self.assertEqual(sorted(cs.ASSETS), ["goblin", "skeleton"])
         table = cs.ASSETS["goblin"]["profile"]["roles"]
         self.assertEqual(cs.role((142, 136, 134), table), "iron")
         self.assertEqual(cs.role((56, 39, 27), table), "leather")
@@ -230,6 +230,24 @@ class AssetProfileTest(unittest.TestCase):
         self.assertEqual(cs.role((84, 61, 43), table), "leather")
         self.assertEqual(cs.ASSETS["goblin"]["profile"]["prop_dirs"], tuple(cs.COLUMNS))
 
+
+    def test_skeleton_roles_keep_bone_and_iron_apart(self):
+        # The concept is warm grey throughout: warm greys are bone (pale) or
+        # shadow (dark), and only colourless or cool greys are the sword's iron.
+        prof = cs.ASSETS["skeleton"]["profile"]
+        table = prof["roles"]
+        self.assertEqual(cs.role((143, 135, 126), table), "bone")
+        self.assertEqual(cs.role((168, 161, 152), table), "bone")
+        self.assertEqual(cs.role((82, 75, 67), table), "shadow")
+        self.assertEqual(cs.role((48, 44, 42), table), "shadow")
+        self.assertEqual(cs.role((140, 142, 146), table), "iron")
+        self.assertEqual(cs.role((110, 110, 112), table), "iron")
+        self.assertEqual(cs.role((90, 60, 40), table), "leather")
+        self.assertEqual(cs.role((110, 60, 90), table), "cloth")
+        self.assertEqual(prof["prop"], ("sword", "iron"))
+        self.assertEqual(prof["prop_dirs"], tuple(cs.COLUMNS))
+        spec = cs.ASSETS["skeleton"]["spec"]
+        self.assertEqual((spec.cell, spec.height), (88, 60))
 
 class SheetBuildTest(unittest.TestCase):
     """The same inputs give the same bytes: a rebuild matches what is committed.

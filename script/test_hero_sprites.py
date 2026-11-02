@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hero_sprites as hs  # noqa: E402
 
 HEROES = ["engineer", "farmer", "mage", "scout", "warrior"]
-ASSETS = ["goblin"]  # non-hero figures with an asset.json (docs/ART-REDO.md)
+ASSETS = ["goblin", "skeleton"]  # non-hero figures with an asset.json (docs/ART-REDO.md)
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
             "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
             "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164},
@@ -275,13 +275,63 @@ class AssetTest(unittest.TestCase):
         for h in HEROES:
             self.assertNotIn("view_notes", hs.load_config(h), h)
 
+    def test_skeleton_sheet_keeps_the_hero_texel_in_a_wider_cell(self):
+        # monsters.js draws the skeleton 22 world units tall: 60 px at the hero
+        # texel (docs/ART-REDO.md). The 88 px cell leaves room for the slash.
+        with open(os.path.join(hs.ROOT, "assets/js/monsters.js")) as fh:
+            world = float(re.search(r"skeleton: (\d+)", fh.read()).group(1))
+        cfg = hs.load_config("skeleton")
+        self.assertEqual(cfg["type"], "monster")
+        self.assertEqual(cfg["sheet"], {"world_height": world, "height": 60, "cell": 88})
+        self.assertEqual(cfg["clips"], {"walk": hs.COLUMNS, "attack": hs.COLUMNS, "death": hs.CARDINALS})
+
+    def test_skeleton_concept_is_the_registry_crop(self):
+        cfg = hs.load_config("skeleton")
+        with open(os.path.join(hs.ROOT, "assets/models/registry.js")) as fh:
+            x, y, w, h = map(int, re.search(r'monster\("skeleton", \d+, \d+, crop\((\d+), (\d+), (\d+), (\d+)\)\)',
+                                            fh.read()).groups())
+        self.assertEqual(cfg["concept"]["box"], [x, y, x + w, y + h])
+        crop = np.asarray(Image.open(os.path.join(hs.ROOT, cfg["concept"]["source"])).convert("RGB").crop((x, y, x + w, y + h)))
+        self.assertEqual(png_bytes(crop), read(os.path.join(cfg["dir"], "concept.png")))
+
+    def test_a_visible_weapon_is_asked_for_in_every_view_and_never_hidden(self):
+        # The goblin's first view-E lost its spear: an item with "visible": true
+        # gets its own sentence in all four views, and no prompt places it
+        # "partly hidden behind the body" (the W view would, by its hand).
+        cfg = hs.load_config("skeleton")
+        sword = cfg["items"][0]
+        self.assertIs(sword["visible"], True)
+        line = hs.visible_line(sword, "his")
+        c = self.calls("skeleton")
+        for d in ("S", "N", "W", "E"):
+            self.assertIn(line, c[f"view-{d}"]["args"]["description"], d)
+            self.assertIn("in full view)", c[f"view-{d}"]["args"]["description"], d)
+        for k, v in c.items():
+            self.assertNotIn("partly hidden", json.dumps(v), k)
+        self.assertIn("(in full view)", c["view-W"]["args"]["description"])
+        self.assertIn("slashes it across", c["attack-W"]["args"]["prompt"])
+        self.assertIn("heap of bones", c["death-E"]["args"]["prompt"])
+        self.assertIn("no shield", c["view-S"]["args"]["description"])
+        # Without the flag the W view still says where the hand hides it.
+        plain = dict(sword)
+        del plain["visible"]
+        self.assertIn("partly hidden behind the body", hs.item_line(plain, "W", "his"))
+
+    def test_visible_leaves_every_other_prompt_file_alone(self):
+        for h in HEROES + ["goblin"]:
+            cfg = hs.load_config(h)
+            self.assertFalse(any("visible" in i for i in cfg["items"]), h)
+            self.assertNotIn("stays clearly visible in full", read(os.path.join(cfg["dir"], "prompts.json")).decode(), h)
+
     def test_a_bad_asset_config_is_refused(self):
         base = json.loads(read(os.path.join(hs.REFERENCE, "goblin", "asset.json")))
         bad = [("type", "dragon"), ("clips", {"walk": ["S", "UP"]}), ("clips", {"attack": ["S"], "walk": ["S"]}),
                ("sheet", {"world_height": 18, "height": 60, "cell": 80}),
                ("sheet", {"world_height": 18, "height": 50, "cell": 60}),
                ("view_notes", {"SE": "a diagonal view is not generated"}), ("view_notes", {"E": " "}),
-               ("view_notes", ["E"])]
+               ("view_notes", ["E"]),
+               ("items", [{"name": "sword", "at": "right hand", "visible": "yes"}]),
+               ("items", [{"name": "cloak", "at": "body", "visible": True}])]
         for key, value in bad:
             cfg = dict(base, **{key: value})
             if key == "clips" and "attack" in value:

@@ -48,7 +48,11 @@ below waits on this choice.
 
 The table is in priority order. Status values: `todo`, `prompts` (the
 prompts.json is committed and the media is not generated yet), `media`,
-`sheet`, `live`, `keep` (variant d, no work), and `blocked`.
+`sheet`, `live`, `keep` (variant d, no work), `blocked`, and `planned` (a
+proposed asset the game does not draw yet).
+
+Terrain, buildings, flora and fauna are all remade on the new pipeline
+(sections 3, 6, 9 and 10).
 
 ### 1. Monsters (variant a)
 
@@ -63,7 +67,7 @@ HP bar.
 | Asset | Files | Current | Var | Clips / views | Notes | Status |
 |---|---|---|---|---|---|---|
 | goblin | `assets/reference/goblin/` | card, crop 16,328,236,246 | a | walk ×8, attack ×8 (spear jab), death S/W/N/E | Most common enemy and the smallest figure, so it tests the scale rule first. Sheet 50 px in an 80 px cell. The spear is held upright, so the 50 px includes it. MARKS: ears, spear | **sheet built, in the client; walk-N to regenerate** |
-| skeleton | `monsters.js`, `monster-data.js` | card | a | walk ×8, attack ×8 (blade swing), death ×4 (collapses into bones) | 60 px. MARKS: ribs, blade. Must read pale against the night yard | todo |
+| skeleton | `assets/reference/skeleton/` | card, crop 260,328,260,246 | a | walk ×8, attack ×8 (sword slash), death S/W/N/E (collapses into bones) | 60 px in an 88 px cell (room for the slash and the heap). MARKS: ribs, blade. One sword in the right hand, no shield; one iron shoulder plate on the sword arm. The sword is `visible: true`, so every prompt asks for it in full view. Must read pale against the night yard | prompts |
 | wolf | same | card | a | run ×8 (quadruped gait), attack ×8 (lunge bite), death ×4 | 50 px tall but wide, so the cell may need to be wider than tall. The turntable is side-on. MARKS: muzzle, tail | todo |
 | bat | same | card | a | fly ×8 (flap loop replaces walk), attack ×8 (dive), death ×4 (falls) | 44 px, drawn at `lift` 22, needs a shadow disc. The e2e test needs the wings to read above the night yard | todo |
 | troll (ogre) | same | card | a | walk ×8, attack ×8 (club slam, ties to the `slam` event), death ×4 | 94 px, under 1.75 keep doors. MARKS: tusks, club | todo |
@@ -80,6 +84,9 @@ HP bar.
 
 ### 3. Yard buildings and props (variant b unless noted)
 
+Every building in `rules.ex` (`building/1`: wall, stone_wall, tower, trap,
+field, forge, mage_tower, house) has a row below, plus the keep.
+
 These are concept-crop cards today. `assets/js/yard_cards.js` sets their
 world sizes, and `propCrops` in `assets/models/tiles.js` sets the crops,
 baked into `tile-data.js` (2.2 MB) per phase: day, dusk and night.
@@ -95,7 +102,7 @@ baked into `tile-data.js` (2.2 MB) per phase: day, dusk and night.
 | trap | 22×20 | card | b | S, armed and sprung | | todo |
 | field | 46×26, flat | card | c | top-down, plus a sown and a ripe stage | Ties to the sow and harvest actions | todo |
 | stone_wall | none (r 16 in `rules.ex`) | **no art** | b | S | `buildingMesh` falls to `modelParts("stone_wall")`, which throws "no model": **latent render crash**. Needs a card or a fallback now | blocked (bug) |
-| tree | 48×40, cut | card | b | S, plus a felled stump | Also used for the forest wall, the yard trees and the outer ring (`scenery.js`), so this one drawing fills most of the screen | todo |
+| tree | 48×40, cut | card | b | S, plus a felled stump | Today this one card is also the forest wall, the yard trees and the outer ring (`scenery.js`), so it fills most of the screen; section 9 splits it into variants | todo |
 | felled wood (scenery) | 18×30 | card | b | S | | todo |
 | chest | gold box 16×12×16 | mesh | b | S, closed and open | | todo |
 | portal / hell door | `horizon.js gateGeometry`, at most 8 instanced | two posts and a glowing plane | b | S, plus a glow layer (variant d) | Planned in the docs as hell doors | todo |
@@ -135,7 +142,17 @@ These are in the snapshot but `render.js` never draws them. `WORLD.md` says:
 | plaza disc and ring | `propCrops.path`, RingGeometry 154–164 | crop | c | todo |
 | paths NS/EW | `propCrops.path` | crop | c | todo |
 | yard edge | `dissolveYardEdge` | shader | d | keep |
-| horizon biome window | `horizon.js paintWindow` (256 texel over 6144) | painted | d (re-palette only) | keep |
+| horizon biome window | `horizon.js paintWindow` (256 texel over 6144) | painted from `biomeRgb` flat colours | c (re-bake from the new biome tiles below) | todo |
+| meadow ground | `world.ex` cell biome `:meadow` (the keep disc and open land), `horizon.js pictureCell` | yard grass / `biomeRgb` | c (seamless tile) | todo |
+| pine ground (forest floor) | biome `:pine` | `SHADE` flat colour | c (seamless tile, needles and moss) | todo |
+| ruins ground | biome `:ruins` | `ringColor` flat colour | c (seamless tile, broken flagstones) plus ruin props in section 9 | todo |
+| river water | biome `:river` (blocked) | `SHADE` flat colour | c (seamless tile, 2–4 frame ripple) | todo |
+| ford | biome `:ford` (a walkable river cell) | as river | c (shallow water over stones tile) | todo |
+| cliff | biome `:cliff` (blocked), skirt `:cliff`, `biomeLift` 16 | `ringColor` plus lift | c (top tile) plus b (cliff face, section 9) | todo |
+| hill | skirt `:hill`, `biomeLift` 56 | `sunsetColor` plus lift | c (seamless tile) | todo |
+| mountain | skirt `:mountain`, `biomeLift` 120 | `horizonColor` plus lift | c (seamless tile, rock and snow) | todo |
+| dirt | `ground.js` `STONE` flecks (`n2 < 0.07`), worn plaza and paths | noise flecks | c (seamless tile, trodden dirt and pebbles) | todo |
+| void (outside the world) | `world.ex` `:void` | none (fog) | d | keep |
 
 ### 7. UI
 
@@ -154,8 +171,48 @@ These are in the snapshot but `render.js` never draws them. `WORLD.md` says:
 (instanced cones, at most 180), the mist shader (0.28, 0x4e4651 by day,
 0x322c3c at night), the hemisphere light, bloom, depth of field and the
 height and distance fog in `hd2d/picture.js`. All of these stay procedural.
-The far pines could take the new tree sprite as a billboard (variant b)
-once the tree is done. Status: **keep**.
+Everything above stays procedural (status **keep**) except the far pines:
+
+| Asset | Files | Current | Var | Notes | Status |
+|---|---|---|---|---|---|
+| far pines | `horizon.js pineGeometry`, `placeTrees` on `pine` cells, role `far-pine` | instanced cones, at most 180 | b | The new pine sprite (section 9) as instanced billboards, at most 180, snapped to the texel | todo |
+
+### 9. Flora and natural barriers
+
+Today all trees are one card (`tree`, section 3) or cones (far pines). The
+forest wall is two rings of 54 and 62 trees (`scenery.js forestWall`, pine
+0x353e27) with gaps at the four cardinals, the outer scenery is three rings
+of 24, 24 and 22 (`sceneryForest`, parts stump and log), and the horizon
+draws pines on `pine` cells. Rocks, bushes, grass tufts and flowers do not
+exist yet; the ground only has noise flecks.
+
+| Asset | Used by | Current | Var | Notes | Status |
+|---|---|---|---|---|---|
+| pine | forest wall, `pine` biome, far pines (section 8) | `tree` card / cones | b | S view plus 1–2 size or shape variants; the far pines reuse it as instanced billboards | todo |
+| broadleaf tree | yard trees, `meadow` edges | `tree` card | b | S view plus a second shape | todo |
+| dead or burnt tree | `ruins` biome, night or after a fire | none | b | S view | todo |
+| dense forest barrier | `forestWall` rings | 116 single tree cards | b | A wide strip of interlocking pines (2–3 tileable segments), so the wall reads as one barrier and draws as few quads | todo |
+| stump and log | `sceneryForest` parts, felled trees | parts on the tree card | b | Shares the tree palette; ties to the felled-wood card in section 3 | todo |
+| bushes | yard edge, `meadow` | none | b | 2–3 variants | todo |
+| rocks and boulders | `ruins`, `hill`, `cliff` edges; a source look for the quarry | none | b | 3 sizes; the large boulder can block like a cliff cell | todo |
+| cliff face | `cliff` cells and the cliff skirt (`biomeLift` 16) | flat colour plus lift | b | Front face strip, tileable; the natural barrier the walk blocking already uses | todo |
+| ruin stones | `ruins` biome | flat colour plus lift 8 | b | Broken walls and columns, 2–3 variants | todo |
+| grass tufts | yard and `meadow` ground | ground noise | c | 3–4 small decals scattered by seed | todo |
+| flowers | `meadow` ground | none | c | 2–3 small decals | todo |
+| reeds | `river` and `ford` banks | none | c | 2 small decals | todo |
+
+### 10. Fauna
+
+The game has no ambient animals today: nothing in `assets/js` or `lib`
+draws or simulates wildlife (the wolf and the bat are enemies, section 1).
+These are proposed, all purely client-side decoration with no gameplay.
+
+| Asset | Where | Var | Clips / views | Notes | Status |
+|---|---|---|---|---|---|
+| birds (crows) | over the forest wall and fields by day | a (small) | fly ×8 or ×4, take-off and land | Scatter when a hero walks close; gone at night | planned |
+| deer | `meadow` and `pine` edges outside the yard | a | walk ×8, idle ×4, flee ×8 | Flees from heroes and monsters | planned |
+| rabbits | yard edge and fields | a (small) | hop ×8, idle ×4 | Ties to the field (sow and harvest) | planned |
+| fish or ripples | `river` and `ford` | c | 2–4 frame jump | Optional | planned |
 
 ## Why the goblin is first
 
