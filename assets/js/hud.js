@@ -552,3 +552,13 @@ export function rectMemo() {
   }
   return memo
 }
+
+// Everything the pinned captions are seated from: the scene, where the camera
+// puts the keep and the hero, the window, and the text that sizes the pins.
+// Two paints with equal keys seat every caption in the same spot, so the
+// second one reads no layout at all. The countdown and cooldowns tick every
+// snapshot but only change text inside fixed boxes.
+export function hudLayoutKey({ scene, keepPoint, heroPoint, width, height, armed, look, text }) {
+  const point = (p) => (p ? `${Math.round(p.x * 4096)},${Math.round(p.y * 4096)},${p.behind ? 1 : 0}` : "-")
+  return [scene, point(keepPoint), point(heroPoint), width, height, armed || "", look || "", text || ""].join("|")
+}

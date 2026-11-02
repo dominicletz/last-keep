@@ -152,3 +152,22 @@ export function frameSignature(camera, meshes) {
   mix(count)
   return hash
 }
+
+// Snapshot fields that change every tick without changing the canvas: the
+// tick, the phase countdown, cooldowns, and the score line are HUD text, and
+// events become bursts the frame signature already sees.
+const TICKING = new Set(["tick", "phase_ms", "cds", "events", "score", "kills", "waves_survived"])
+
+// A draw repaints only when this key moved. Two snapshots with equal keys
+// differ in nothing the scene shows; actors that move change the signature.
+export function sceneKey(snap) {
+  return JSON.stringify(snap, (key, value) => (TICKING.has(key) ? undefined : value))
+}
+
+// The build ghost and the range ring as one string: equal strings paint the
+// same ghost.
+export function ghostLook(kind, x, z, ok, bearer) {
+  if (!kind) return "none"
+  const b = bearer || {}
+  return [kind, x, z, ok ? 1 : 0, b.x, b.z, b.range].join(",")
+}

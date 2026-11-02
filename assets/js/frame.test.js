@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as THREE from "three"
-import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, frameSignature, hooksWanted, idleDrawMs, inputWindowMs, keepAliveMs, paintDue, paintGap, pixelSize, slowPaintGapMs, snapshotDue } from "./frame.js"
+import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, frameSignature, ghostLook, hooksWanted, idleDrawMs, inputWindowMs, keepAliveMs, paintDue, paintGap, pixelSize, sceneKey, slowPaintGapMs, snapshotDue } from "./frame.js"
 import { heroSignature } from "./heroes.js"
 import { viewScale } from "./town.js"
 
@@ -252,4 +252,22 @@ test("the frame signature moves with anything a paint would show and nothing els
     previous = next
   }
   assert.notEqual(frameSignature(camera, [a]), frameSignature(camera, [a, b]))
+})
+
+test("a snapshot that only ticks the clock keeps the scene key, and a moved actor changes it", () => {
+  const snap = { tick: 10, phase: "build", phase_ms: 9000, score: 3, events: [], players: [{ id: "p1", x: 1, y: 2, cds: { attack: 200 } }], keep: { hp: 50 } }
+  const next = { ...snap, tick: 11, phase_ms: 8950, score: 4, events: [{ type: "boom" }], players: [{ id: "p1", x: 1, y: 2, cds: { attack: 150 } }] }
+  assert.equal(sceneKey(next), sceneKey(snap))
+  assert.notEqual(sceneKey({ ...snap, players: [{ id: "p1", x: 1.5, y: 2 }] }), sceneKey(snap))
+  assert.notEqual(sceneKey({ ...snap, keep: { hp: 49 } }), sceneKey(snap))
+  assert.notEqual(sceneKey({ ...snap, phase: "night" }), sceneKey(snap))
+})
+
+test("the build ghost asks for a paint only when it or its ring changes", () => {
+  const bearer = { x: 0, z: 0, range: 160 }
+  assert.equal(ghostLook(null, 5, 5, true, bearer), ghostLook(null, 9, 9, false, { x: 3, z: 3, range: 1 }))
+  assert.equal(ghostLook("wall", 5, 5, true, bearer), ghostLook("wall", 5, 5, true, { ...bearer }))
+  assert.notEqual(ghostLook("wall", 5, 5, true, bearer), ghostLook("wall", 6, 5, true, bearer))
+  assert.notEqual(ghostLook("wall", 5, 5, true, bearer), ghostLook("wall", 5, 5, false, bearer))
+  assert.notEqual(ghostLook("wall", 5, 5, true, bearer), ghostLook("wall", 5, 5, true, { ...bearer, x: 1 }))
 })

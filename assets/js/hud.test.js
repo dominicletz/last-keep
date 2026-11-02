@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, rectMemo, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, hudLayoutKey, rectMemo, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -405,4 +405,22 @@ test("a node that moved reads fresh while the others stay memoized", () => {
   assert.equal(memo.get(sack, box("sack")).left, 2)
   assert.equal(memo.get(bar, box("bar")).left, 1)
   assert.deepEqual(reads, { sack: 2, bar: 1 })
+})
+
+test("the HUD seats its captions again only when the scene, camera, window, or pin text moved", () => {
+  const base = { scene: "s1", keepPoint: { x: 0.1, y: -0.2, behind: false }, heroPoint: { x: 0.3, y: 0.1, behind: false }, width: 1280, height: 800, armed: null, look: "", text: "Wave 1" }
+  const key = hudLayoutKey(base)
+  assert.equal(hudLayoutKey({ ...base, keepPoint: { ...base.keepPoint } }), key)
+  for (const change of [
+    { scene: "s2" },
+    { keepPoint: { x: 0.1005, y: -0.2, behind: false } },
+    { heroPoint: null },
+    { width: 390 },
+    { height: 844 },
+    { armed: "wall" },
+    { look: "touch-play" },
+    { text: "Wave 2" }
+  ]) {
+    assert.notEqual(hudLayoutKey({ ...base, ...change }), key, JSON.stringify(change))
+  }
 })

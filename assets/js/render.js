@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { cameraFocus, frameFor, frameSignature, paintDue, paintGap, snapshotDue, testHooks } from "./frame"
+import { cameraFocus, frameFor, frameSignature, ghostLook, paintDue, paintGap, sceneKey, snapshotDue, testHooks } from "./frame"
 import { clockScore } from "./hd2d/score.js"
 import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
 import { pixelStep, snapWorld } from "./art_score.js"
@@ -455,6 +455,10 @@ export function createView(stage, picture) {
   // something outside the signature (a draw, a resize, the ghost) set this.
   let dirty = true
   let lastSignature = null
+  // The last drawn snapshot's sceneKey. A snapshot at 20 Hz that changes only
+  // the countdown leaves the picture as it was.
+  let lastSceneKey = null
+  let lastGhost = null
   let firstPaint = null
   const rimAtlases = new WeakMap()
   let sampleTarget = null
@@ -660,7 +664,9 @@ export function createView(stage, picture) {
     },
     draw(snap, selfId) {
       drawnTick = snap.tick
-      dirty = true
+      const key = testHooks ? null : sceneKey(snap)
+      if (testHooks || key !== lastSceneKey) dirty = true
+      lastSceneKey = key
       const name = lightName(snap)
       liveLight = name
       townRank = snap.town || 0
@@ -909,7 +915,11 @@ export function createView(stage, picture) {
       })
     },
     ghost(kind, x, z, ok) {
-      dirty = true
+      // play.js calls this on every snapshot. Only a ghost or ring that
+      // changed asks for a paint.
+      const look = ghostLook(kind, x, z, ok, bearer)
+      if (look !== lastGhost) dirty = true
+      lastGhost = look
       ghost.visible = !!kind
       const ring = rangeRingState(!!kind, bearer.range)
       rangeRing.visible = ring.on

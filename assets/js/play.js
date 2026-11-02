@@ -2,12 +2,13 @@ import { Socket } from "phoenix"
 import { createPicture } from "./hd2d/picture"
 import { perfRequested, perfText } from "./hd2d/perf"
 import { createView } from "./render"
+import { sceneKey } from "./frame"
 import { bakeMonster, loadMonsterSheets, monsterKinds, monsterParts, monsterSource } from "./monsters.js"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint"
-import { RELIC_SIGN, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, hudLayoutKey, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 import { mountStart } from "./start"
 
@@ -833,7 +834,8 @@ function start(code, seat, ui) {
       const kind = button.dataset.build
       const cost = me?.costs?.[kind]
       const face = buildFace(kind, cost, document.documentElement.classList.contains("touch-play"))
-      button.innerHTML = `${escapeHtml(face.title)}<small>${escapeHtml(face.price)}</small>`
+      const faceHtml = `${escapeHtml(face.title)}<small>${escapeHtml(face.price)}</small>`
+      if (button.innerHTML !== faceHtml) button.innerHTML = faceHtml
       button.classList.toggle("on", kind === armed)
     })
     const cost = armed && me?.costs ? me.costs[armed] : null
@@ -856,26 +858,43 @@ function start(code, seat, ui) {
       ? copy.relics.join(" ")
       : "A boss drops one relic."
     const roster = ui.hud.querySelector("[data-roster]")
-    roster.innerHTML = (snap.players || [])
+    const rosterHtml = (snap.players || [])
       .map((player) => {
         const width = Math.max(0, (player.hp / player.max) * 100)
         const mine = player.id === selfId ? "me" : ""
         return `<div class="who ${mine} ${player.connected ? "" : "off"}"><span>${escapeHtml(player.name)}</span><span>${escapeHtml(heroLabel(player.hero))}</span><div class="meter"><span style="width:${width}%"></span></div></div>`
       })
       .join("")
-    // One HUD paint reads each node's box and style once, and again only
-    // after this paint moved it. Each read after a pin() write used to force
-    // another layout, about 50 reads a paint.
-    ui.memo = rectMemo()
-    ui.styles = rectMemo()
-    drawYou(ui, snap, selfId)
-    drawWorld(ui, snap, selfId)
-    seatWave(ui, snap, selfId)
-    drawHints(ui, snap)
-    settleCalls(ui)
-    settleHeroTags(ui)
-    ui.memo = null
-    ui.styles = null
+    // A new roster node each snapshot made the next box read lay out again.
+    if (roster.innerHTML !== rosterHtml) roster.innerHTML = rosterHtml
+    // The captions are seated again only when something they are seated from
+    // moved. Standing still, a snapshot reads no layout.
+    const layoutKey = hudLayoutKey({
+      scene: sceneKey(snap),
+      keepPoint: ui.view.project ? ui.view.project(0, 0) : null,
+      heroPoint: me && ui.view.project ? ui.view.project(me.x, me.y) : null,
+      width: window.innerWidth,
+      height: window.innerHeight,
+      armed,
+      look: `${document.documentElement.className} ${reasonNode.hidden ? "" : "reason"} ${document.fonts ? document.fonts.status : ""}`,
+      text: ui.hud.querySelector("[data-world]")?.textContent
+    })
+    if (layoutKey !== ui.layoutKey) {
+      ui.layoutKey = layoutKey
+      // One HUD paint reads each node's box and style once, and again only
+      // after this paint moved it. Each read after a pin() write used to force
+      // another layout, about 50 reads a paint.
+      ui.memo = rectMemo()
+      ui.styles = rectMemo()
+      drawYou(ui, snap, selfId)
+      drawWorld(ui, snap, selfId)
+      seatWave(ui, snap, selfId)
+      drawHints(ui, snap)
+      settleCalls(ui)
+      settleHeroTags(ui)
+      ui.memo = null
+      ui.styles = null
+    }
     drawFx(ui, snap, fx, seen)
     syncContext(snap, me)
     audio.hear(snap)
