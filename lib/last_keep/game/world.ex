@@ -7,6 +7,11 @@ defmodule LastKeep.Game.World do
   @keep 400
   @min_chunk -14
   @max_chunk 14
+  # Cell indices that can hold a world cell: the radius over the cell, with room.
+  @span 220
+  @side 2 * @span + 1
+  # :erlang.phash2/1 hashes into 0..2^27 - 1.
+  @hash_range 134_217_728
   @kinds [
     portal: 6,
     chest: 8,
@@ -17,14 +22,20 @@ defmodule LastKeep.Game.World do
     hermit: 1
   ]
 
+  # A room used to build every cell of the map and park it in
+  # :persistent_term. That held about 15 MB per seed until the node stopped,
+  # and every put copied the term table. Cells are a pure function of the seed
+  # and the layout attempt, so only the layout is kept: the attempt and the
+  # points of interest. It lives in the calling process, which is the room,
+  # and goes away with it. A chunk's cells are built when a hero reaches it.
   def generate(seed) when is_integer(seed) do
     key = {__MODULE__, seed}
 
-    case :persistent_term.get(key, :miss) do
-      :miss ->
+    case Process.get(key) do
+      nil ->
         world = build(seed)
-        :persistent_term.put(key, world)
-        :persistent_term.put(built_key(seed), built(seed) + 1)
+        Process.put(key, world)
+        Process.put(built_key(seed), built(seed) + 1)
         world
 
       world ->
@@ -32,8 +43,9 @@ defmodule LastKeep.Game.World do
     end
   end
 
+  # Layout builds in this process for the seed. The room counts its own.
   def built(seed) when is_integer(seed) do
-    :persistent_term.get(built_key(seed), 0)
+    Process.get(built_key(seed), 0)
   end
 
   def keep_disc, do: @keep
@@ -49,21 +61,36 @@ defmodule LastKeep.Game.World do
   defp built_key(seed), do: {__MODULE__, :built, seed}
 
   defp build(seed) do
-    {attempt, pois, grid} = layout(seed)
+    {attempt, pois} = layout(seed)
 
     %{
       seed: seed,
       attempt: attempt,
       radius: @radius,
       chunk_size: @chunk,
-      chunks: chunks(grid),
       pois: pois
     }
   end
 
   def chunk(seed, cx, cy) when is_integer(seed) do
-    generate(seed).chunks[{cx, cy}]
+    if chunk_in_bounds?({cx, cy}), do: %{cells: chunk_cells(seed, generate(seed).attempt, cx, cy)}
   end
+
+  # The cells whose centre falls in chunk {cx, cy}, the same split the full
+  # grid used: floor(i * cell / chunk) == cx.
+  defp chunk_cells(seed, attempt, cx, cy) do
+    for i <- cell_span(cx), j <- cell_span(cy), in_world?(i, j), into: %{} do
+      {{i, j}, cell(seed, attempt, i, j)}
+    end
+  end
+
+  defp cell_span(c) do
+    first = div_ceil(c * @chunk, @cell)
+    last = div_ceil((c + 1) * @chunk, @cell) - 1
+    first..last//1
+  end
+
+  defp div_ceil(a, b), do: -Integer.floor_div(-a, b)
 
   def cell_index(x, y) when is_number(x) and is_number(y) do
     {round(x / @cell), round(y / @cell)}
@@ -71,13 +98,7 @@ defmodule LastKeep.Game.World do
 
   def biome(seed, x, y) when is_integer(seed) and is_number(x) and is_number(y) do
     {i, j} = cell_index(x, y)
-    cx = Integer.floor_div(i * @cell, @chunk)
-    cy = Integer.floor_div(j * @cell, @chunk)
-
-    case get_in(generate(seed).chunks, [{cx, cy}, :cells, {i, j}, :biome]) do
-      nil -> :void
-      biome -> biome
-    end
+    if in_world?(i, j), do: cell(seed, generate(seed).attempt, i, j).biome, else: :void
   end
 
   def picture(seed, x, y) when is_integer(seed) and is_number(x) and is_number(y) do
@@ -85,13 +106,8 @@ defmodule LastKeep.Game.World do
     world = generate(seed)
 
     if in_world?(i, j) do
-      cx = Integer.floor_div(i * @cell, @chunk)
-      cy = Integer.floor_div(j * @cell, @chunk)
-
-      case get_in(world.chunks, [{cx, cy}, :cells, {i, j}]) do
-        nil -> %{biome: :void, blocked: true}
-        cell -> %{biome: cell.biome, blocked: cell.blocked}
-      end
+      cell = cell(seed, world.attempt, i, j)
+      %{biome: cell.biome, blocked: cell.blocked}
     else
       %{biome: skirt_biome(seed, i, j, world.attempt), blocked: true}
     end
@@ -115,23 +131,14 @@ defmodule LastKeep.Game.World do
 
   defp layout(seed) do
     Enum.find_value(0..7, fn attempt ->
-      grid = grid(seed, attempt)
-
-      case place(seed, attempt, grid) do
-        {:ok, pois} -> {attempt, pois, grid}
+      case place(seed, attempt, reachable(seed, attempt)) do
+        {:ok, pois} -> {attempt, pois}
         :short -> nil
       end
     end) || raise ArgumentError, "seed #{seed} has no reachable world"
   end
 
-  defp grid(seed, attempt) do
-    for i <- -220..220, j <- -220..220, in_world?(i, j), into: %{} do
-      {{i, j}, cell(seed, attempt, i, j)}
-    end
-  end
-
-  defp place(seed, attempt, grid) do
-    reached = reachable(grid)
+  defp place(seed, attempt, reached) do
     {pois, status} = Enum.reduce(@kinds, {[], :ok}, &take_kind(&1, &2, seed, attempt, reached))
 
     case status do
@@ -152,25 +159,48 @@ defmodule LastKeep.Game.World do
     end
   end
 
+  # Sites are tried in hash order, ties in the order of the reached set. Only
+  # the head of that order is ever used, so the sort covers the sites under a
+  # hash bound and widens the bound when the head runs out before `count`.
+  # Any prefix of the full order comes out the same.
   defp take(seed, attempt, kind, count, reached, placed) do
-    reached
-    |> Enum.filter(fn {i, j} -> site?(kind, i, j) end)
-    |> Enum.sort_by(fn {i, j} -> :erlang.phash2({seed, attempt, kind, i, j}) end)
-    |> Enum.reduce_while({[], placed}, fn {i, j}, {taken, placed} ->
-      cond do
-        length(taken) == count ->
-          {:halt, {taken, placed}}
+    bound = max(div(@hash_range * 64, max(MapSet.size(reached), 1)), 1)
+    take_under(seed, attempt, kind, count, reached, placed, bound)
+  end
 
-        apart?(i, j, placed) ->
-          poi = %{id: 0, kind: kind, x: i * @cell, y: j * @cell, i: i, j: j}
-          {:cont, {[poi | taken], [poi | placed]}}
+  defp take_under(seed, attempt, kind, count, reached, placed, bound) do
+    {_at, keyed} =
+      Enum.reduce(reached, {0, []}, fn {i, j}, {at, keyed} ->
+        if site?(kind, i, j) do
+          hash = :erlang.phash2({seed, attempt, kind, i, j})
+          {at + 1, if(hash < bound, do: [{hash, at, i, j} | keyed], else: keyed)}
+        else
+          {at, keyed}
+        end
+      end)
 
-        true ->
-          {:cont, {taken, placed}}
-      end
-    end)
-    |> elem(0)
-    |> Enum.reverse()
+    {taken, _placed} =
+      keyed
+      |> Enum.sort()
+      |> Enum.reduce_while({[], placed}, fn {_hash, _at, i, j}, {taken, placed} ->
+        cond do
+          length(taken) == count ->
+            {:halt, {taken, placed}}
+
+          apart?(i, j, placed) ->
+            poi = %{id: 0, kind: kind, x: i * @cell, y: j * @cell, i: i, j: j}
+            {:cont, {[poi | taken], [poi | placed]}}
+
+          true ->
+            {:cont, {taken, placed}}
+        end
+      end)
+
+    if length(taken) == count or bound >= @hash_range do
+      Enum.reverse(taken)
+    else
+      take_under(seed, attempt, kind, count, reached, placed, min(bound * 4, @hash_range))
+    end
   end
 
   defp number(pois) do
@@ -194,47 +224,47 @@ defmodule LastKeep.Game.World do
     end)
   end
 
-  defp reachable(grid) do
-    walkable =
-      for {{i, j}, cell} <- grid, not cell.blocked, into: MapSet.new(), do: {i, j}
-
-    fill(:queue.from_list([{0, 0}]), MapSet.new([{0, 0}]), walkable)
-  end
-
-  defp fill(queue, seen, walkable) do
-    case :queue.out(queue) do
-      {:empty, _} ->
-        seen
-
-      {{:value, {i, j}}, queue} ->
-        {queue, seen} =
-          Enum.reduce([{1, 0}, {-1, 0}, {0, 1}, {0, -1}], {queue, seen}, fn {di, dj},
-                                                                            {queue, seen} ->
-            next = {i + di, j + dj}
-
-            if MapSet.member?(seen, next) or not MapSet.member?(walkable, next) do
-              {queue, seen}
-            else
-              {:queue.in(next, queue), MapSet.put(seen, next)}
-            end
-          end)
-
-        fill(queue, seen, walkable)
+  # The open cells as one byte each, row i, column j, over -@span..@span.
+  defp walkable(seed, attempt) do
+    for i <- -@span..@span, j <- -@span..@span, into: <<>> do
+      if in_world?(i, j) and not cell(seed, attempt, i, j).blocked, do: <<1>>, else: <<0>>
     end
   end
 
-  defp chunks(grid) do
-    grouped =
-      Enum.reduce(grid, %{}, fn {{i, j}, cell}, acc ->
-        cx = Integer.floor_div(i * @cell, @chunk)
-        cy = Integer.floor_div(j * @cell, @chunk)
-        Map.update(acc, {cx, cy}, %{{i, j} => cell}, &Map.put(&1, {i, j}, cell))
-      end)
+  # Flood fill from the keep over the open cells. Same set as a MapSet walk
+  # over the full cell map, without building that map.
+  defp reachable(seed, attempt) do
+    open = walkable(seed, attempt)
+    seen = :atomics.new(@side * @side, signed: false)
+    :atomics.put(seen, slot(0, 0), 1)
+    fill([{0, 0}], open, seen, [{0, 0}]) |> MapSet.new()
+  end
 
-    for cx <- @min_chunk..@max_chunk, cy <- @min_chunk..@max_chunk, into: %{} do
-      {{cx, cy}, %{cells: Map.get(grouped, {cx, cy}, %{})}}
+  defp fill([], _open, _seen, acc), do: acc
+
+  defp fill([{i, j} | rest], open, seen, acc) do
+    {stack, acc} = visit(i + 1, j, open, seen, {rest, acc})
+    {stack, acc} = visit(i - 1, j, open, seen, {stack, acc})
+    {stack, acc} = visit(i, j + 1, open, seen, {stack, acc})
+    {stack, acc} = visit(i, j - 1, open, seen, {stack, acc})
+    fill(stack, open, seen, acc)
+  end
+
+  defp visit(i, j, open, seen, {stack, acc}) do
+    if abs(i) > @span or abs(j) > @span do
+      {stack, acc}
+    else
+      at = slot(i, j)
+
+      if :binary.at(open, at - 1) == 1 and :atomics.compare_exchange(seen, at, 0, 1) == :ok do
+        {[{i, j} | stack], [{i, j} | acc]}
+      else
+        {stack, acc}
+      end
     end
   end
+
+  defp slot(i, j), do: (i + @span) * @side + (j + @span) + 1
 
   defp in_world?(i, j) do
     x = i * @cell

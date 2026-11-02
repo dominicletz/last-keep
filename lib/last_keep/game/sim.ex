@@ -470,11 +470,13 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp lay_world(seed) do
-    grouped = seed |> World.generate() |> Map.fetch!(:pois) |> Enum.group_by(& &1.kind)
+    world = World.generate(seed)
+    grouped = Enum.group_by(world.pois, & &1.kind)
     hp = Rules.portal_hp()
 
     %{
       seed: seed,
+      attempt: world.attempt,
       chunks: %{},
       discovered: keep_chunks(),
       claimed: MapSet.new(),
