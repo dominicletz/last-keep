@@ -82,6 +82,8 @@ export function createView(stage, picture) {
   }
 
   const opened = picture.open(stage)
+  // Pictures without monster sheets (test doubles) keep every monster on its voxel card.
+  const dressMonster = (mesh) => typeof picture.dressMonster === "function" && picture.dressMonster(mesh)
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
   const renderer = opened.renderer
   const camera = opened.camera
@@ -666,7 +668,8 @@ export function createView(stage, picture) {
       sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
 
       const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
-      picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes })
+      const monsterCards = [...meshes.values()].filter((mesh) => mesh.userData.role === "monster")
+      picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes, monsters: monsterCards })
       dissolveYardEdge(yard)
       picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
 
@@ -1510,7 +1513,11 @@ export function createView(stage, picture) {
       mesh.userData.pose = pose
     }
     const picture = mesh.userData.picture
-    const span = Math.max(picture?.death || 4, 1) * 160
+    // A sheet without death rows lets the monster go at once instead of
+    // holding a standing frame.
+    const frames = picture ? picture.death : 4
+    if (!frames) return false
+    const span = frames * 160
     if (now - pose.deadAt >= span) return false
     placeMesh(key, mesh)
     return true
@@ -1837,6 +1844,8 @@ export function createView(stage, picture) {
     const spread = monsterSpread(row.id)
     mesh.userData.spread = spread
     mesh.userData.role = "monster"
+    mesh.userData.kind = row.kind
+    dressMonster(mesh)
     if (spread.bar && mesh.userData.hp && mesh.userData.bar) {
       mesh.userData.hp.position.y += spread.bar
       mesh.userData.bar.position.y += spread.bar

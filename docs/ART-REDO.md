@@ -62,7 +62,7 @@ HP bar.
 
 | Asset | Files | Current | Var | Clips / views | Notes | Status |
 |---|---|---|---|---|---|---|
-| goblin | `assets/reference/goblin/` | card, crop 16,328,236,246 | a | walk ×8, attack ×8 (spear jab), death S/W/N/E | Most common enemy and the smallest figure, so it tests the scale rule first. Sheet 50 px in an 80 px cell. Spear held low so it does not set the height. MARKS: ears, spear | **prompts** |
+| goblin | `assets/reference/goblin/` | card, crop 16,328,236,246 | a | walk ×8, attack ×8 (spear jab), death S/W/N/E | Most common enemy and the smallest figure, so it tests the scale rule first. Sheet 50 px in an 80 px cell. The spear is held upright, so the 50 px includes it. MARKS: ears, spear | **sheet built, in the client; walk-N to regenerate** |
 | skeleton | `monsters.js`, `monster-data.js` | card | a | walk ×8, attack ×8 (blade swing), death ×4 (collapses into bones) | 60 px. MARKS: ribs, blade. Must read pale against the night yard | todo |
 | wolf | same | card | a | run ×8 (quadruped gait), attack ×8 (lunge bite), death ×4 | 50 px tall but wide, so the cell may need to be wider than tall. The turntable is side-on. MARKS: muzzle, tail | todo |
 | bat | same | card | a | fly ×8 (flap loop replaces walk), attack ×8 (dive), death ×4 (falls) | 44 px, drawn at `lift` 22, needs a shadow disc. The e2e test needs the wings to read above the night yard | todo |
@@ -193,32 +193,52 @@ once the tree is done. Status: **keep**.
 - `sheet`: `{world_height, height, cell}`. The loader checks that `height`
   is `world_height` at the hero texel, and that `cell` is a multiple of 8
   with at least 16 px over the figure.
-- `precheck` and `build` stop a non-hero type with a pointer to this
-  section, instead of building a hero-sized sheet.
+- `view_notes`: an extra sentence for one view, after the items sentence.
+  The goblin's view-E was regenerated with one so the spear stays visible;
+  `prompts.json` records what was sent.
 
-**Next, before the goblin media can become a sheet** (the minimal design):
+**Monster sheets (done):**
 
-1. `sprite_from_video.build` takes `cell`, `height`, `fill` and `foot` from
-   the `sheet` block instead of the module constants `CELL=128`, `HERO=88`,
-   `FILL=86` and `FOOT=116`. A hero passes the current values, so its sheet
-   stays the same bytes.
-2. Rows by clip kind: walk 8 frames, idle 4, attack 6 (a strike sampled
-   around its farthest frame), death 6.
-   - A direction with no clip of a kind takes the nearest listed direction
-     (death SW comes from S). Never mirror a frame.
-   - With no idle, the idle row is walk frame 0.
-3. Death anchoring: scale every frame by the first frame's height and keep
-   the foot line. Do not rescale per frame, or the falling body would grow
-   back to full height.
-4. A `check` profile for monsters in `asset.json`. `check_sprite_sheet`
-   loads from `asset.json` too, with the goblin's roles: skin green, tunic
-   brown, eyes orange.
-5. Client: `monsters.js` loads `hd2d/<monster>-walk.png` when it is present
-   and falls back to `buildCard`. That keeps the gallery goldens and e2e
-   green until each sheet lands.
-6. Static props (variant b): a `views` list in `asset.json` (for example
-   `["S"]` or `["S","E"]`) and no `turntable` or `clips`. A `props` step
-   pixelizes each view to the `sheet` height with the same palette path.
+1. `sprite_from_video.Spec` holds `cell`, `height`, `fill`, `foot` and the
+   rows. Heroes use `HERO_SPEC` (the old constants, so their sheets are the
+   same bytes; `SheetBuildTest` rebuilds the mage). A monster's spec comes
+   from its `sheet` block: the goblin is an 80 px cell, a 50 px figure, the
+   foot at row 72 and the outline at row 73.
+2. Rows by clip kind, top to bottom: walk 8, attack 6, death 6. Monster
+   sheets have no idle row and no normal map: they draw unlit, like the
+   voxel card they replace.
+   - Walk picks as for heroes. The anchor is the torso centre, not the head,
+     because the head measure follows the upright spearhead.
+   - Attack: start, two wind-up frames, the farthest frame, one between, and
+     the first frame back near the start. The feet stay on the start feet.
+   - Death: six frames from the start to the first frame at rest.
+   - Every kind takes its scale from frame 0, the shared start pose, so the
+     body is one size in every row.
+   - A direction with no clip of a kind takes the cardinal that keeps its
+     read: death SW and SE come from S, NW and NE from N. Never mirrored.
+3. The goblin's `check` block in `asset.json` holds its anchors and roles:
+   iron, leather, skin, ochre (eyes and inner ears), and the front and back
+   reads. `check_sprite_sheet.py goblin` runs the monster checks: start
+   frames 50 ± 1 px, walk 50 ± 4 px (the spear swings), feet, the spear in
+   every walk and attack frame, a strike that reaches, a death that ends on
+   the ground, and diagonal deaths equal to their cardinal.
+4. Client: `MONSTER_SHEETS` in `pictures.js` names each sheet's layout.
+   `picture.dressMonster` swaps a monster's voxel card for a plane cut from
+   `<kind>-sheet.png` at the hero texel, snapped to whole pixels like the
+   heroes. Without a sheet (Node, a failed load, any other kind) the voxel
+   card stays.
+5. Static props (variant b), still to do: a `views` list in `asset.json`
+   (for example `["S"]` or `["S","E"]`) and no `turntable` or `clips`. A
+   `props` step pixelizes each view to the `sheet` height with the same
+   palette path.
+
+**Known limits:**
+
+- The goblin's orange eyes are about one pixel at 50 px. The check uses
+  them only as a ceiling on the back view, not as a front requirement.
+- `walk-N.mp4` fails precheck: the clip stalls for its last ten frames, so
+  the loop hitches and the first frame is 19 px off the pose (limit 18).
+  Regenerate it; the sheet built from it passes the sheet checks.
 
 ## Goblin: how to run it
 
@@ -235,5 +255,7 @@ To produce the goblin:
 1. Generate `view-S`, then the other three views.
 2. Run `hero_sprites.py goblin views`, then the turntable.
 3. Run `hero_sprites.py goblin dirs`, then the clips.
-
-`precheck` stops until step 1 of "Next" lands.
+4. Run `hero_sprites.py goblin precheck`, then `build`. The build writes
+   `priv/static/images/hd2d/goblin-sheet.png` and the approval images:
+   `sheet.png`, `strip.png`, `contact.png`, and `walk`, `attack` and
+   `death.gif`.

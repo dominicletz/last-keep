@@ -60,6 +60,12 @@ export function releaseGeometries(root) {
       node.material.dispose()
       if (map) map.dispose()
     }
+    // A sheet card owns a clone of the shared sheet texture; dropping the clone
+    // leaves the shared image for the other cards.
+    if (node.isMesh && node.userData.ownsMap && node.material) {
+      if (node.material.map) node.material.map.dispose()
+      node.material.dispose()
+    }
     if (!geometry || seen.has(geometry) || geometry.userData.pooled || node.isSprite) return
     seen.add(geometry)
     geometry.dispose()

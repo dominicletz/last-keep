@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Local checks for a hero sheet built by script/sprite_from_video.py.
+"""Local checks for a hero or monster sheet built by script/sprite_from_video.py.
 
     python3 script/check_sprite_sheet.py mage --out /tmp/approval
+    python3 script/check_sprite_sheet.py goblin --out /tmp/approval
 
-HERO is a hero with a check profile in assets/reference/<hero>/hero.json. The sheet defaults to
+HERO is a hero with a check profile in assets/reference/<hero>/hero.json, or
+an asset with one in assets/reference/<name>/asset.json (a monster: sheet
+<name>-sheet.png, checks run_monster_checks, GIFs walk, attack and death,
+plus sheet.png and strip.png). The hero sheet defaults to
 priv/static/images/hd2d/<hero>-walk.png, the start poses to
 assets/reference/<hero>/video/dirs and the concept to
 assets/reference/<hero>/concept.png; --sheet, --poses and --concept override.
@@ -87,8 +91,27 @@ def load_heroes(reference=os.path.join(ROOT, "assets/reference")):
 HEROES = load_heroes()
 
 
-def cells(sheet):
-    return [[sheet[r * CELL:(r + 1) * CELL, c * CELL:(c + 1) * CELL] for r in range(WALK + IDLE)]
+def load_assets(reference=os.path.join(ROOT, "assets/reference")):
+    """Every non-hero asset whose asset.json has a check profile: name ->
+    {"profile", "spec", "clips"}. The profile has the hero form (see
+    load_heroes); spec is the sheet layout and clips the asset's clip kinds."""
+    out = {}
+    for name in sorted(os.listdir(reference)):
+        path = os.path.join(reference, name, "asset.json")
+        if os.path.exists(path):
+            with open(path) as fh:
+                cfg = json.load(fh)
+            if cfg.get("check"):
+                out[name] = {"profile": profile(cfg["check"]), "spec": sv.sheet_spec(cfg),
+                             "clips": {k: list(v) for k, v in cfg["clips"].items()}}
+    return out
+
+
+ASSETS = load_assets()
+
+
+def cells(sheet, cell=CELL, rows=WALK + IDLE):
+    return [[sheet[r * cell:(r + 1) * cell, c * cell:(c + 1) * cell] for r in range(rows)]
             for c in range(len(COLUMNS))]
 
 
@@ -122,7 +145,7 @@ def body_span(cell):
 
 
 def changed_lower(a, b):
-    h = CELL // 2
+    h = a.shape[0] // 2
     return int((np.any(a[h:] != b[h:], axis=2)).sum())
 
 
@@ -200,7 +223,7 @@ def pose_cells(poses):
     return out
 
 
-def view_check(rep, frames, table, title, bounds, d):
+def view_check(rep, frames, table, title, bounds, d, where=row_clip):
     """Every frame of a view must hold each (label, measure, floor, ceiling)."""
     parts, ok, bad = [], True, set()
     for label_, spec, lo, hi in bounds:
@@ -213,17 +236,19 @@ def view_check(rep, frames, table, title, bounds, d):
             ok &= max(vals) <= hi
             bad |= {r for r, v in enumerate(vals) if v > hi}
             parts.append(f"max {label_} {max(vals)}")
-    rep.check(ok, title, ", ".join(parts) + " px per frame", [row_clip(d, r) for r in bad])
+    rep.check(ok, title, ", ".join(parts) + " px per frame", [where(d, r) for r in bad])
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("hero", choices=sorted(HEROES))
+    ap.add_argument("hero", choices=sorted(HEROES) + sorted(ASSETS))
     ap.add_argument("--sheet")
     ap.add_argument("--poses")
     ap.add_argument("--concept")
     ap.add_argument("--out")
     args = ap.parse_args(argv)
+    if args.hero in ASSETS:
+        return monster_main(args)
     hero = HEROES[args.hero]
     sheet_path = args.sheet or os.path.join(ROOT, "priv/static/images/hd2d", f"{args.hero}-walk.png")
     poses_dir = args.poses or os.path.join(ROOT, "assets/reference", args.hero, "video/dirs")
@@ -360,9 +385,10 @@ def run_checks(hero, sheet, poses_dir, quiet=False):
 
 
 def on_ground(cell, k):
-    im = Image.new("RGBA", (CELL, CELL), GROUND)
+    n = cell.shape[0]
+    im = Image.new("RGBA", (n, n), GROUND)
     im.alpha_composite(Image.fromarray(np.ascontiguousarray(cell), "RGBA"))
-    return im.resize((CELL * k, CELL * k), Image.NEAREST)
+    return im.resize((n * k, n * k), Image.NEAREST)
 
 
 def label(img, text, xy):
@@ -403,15 +429,286 @@ def write_contact(grid, concept, path):
     out.convert("RGB").save(path)
 
 
-def write_gif(grid, rows, path, ms):
+def write_gif(grid, rows, path, ms, k=3):
     frames = []
+    n = grid[0][0].shape[0] * k
     for r in rows:
-        f = Image.new("RGBA", (CELL * 3 * 4, CELL * 3 * 2), GROUND)
+        f = Image.new("RGBA", (n * 4, n * 2), GROUND)
         for c in range(len(COLUMNS)):
-            f.alpha_composite(on_ground(grid[c][r], 3), ((c % 4) * CELL * 3, (c // 4) * CELL * 3))
-            label(f, COLUMNS[c], ((c % 4) * CELL * 3 + 8, (c // 4) * CELL * 3 + 6))
+            f.alpha_composite(on_ground(grid[c][r], k), ((c % 4) * n, (c // 4) * n))
+            label(f, COLUMNS[c], ((c % 4) * n + 8, (c // 4) * n + 6))
         frames.append(f.convert("RGB").quantize(colors=255, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE))
     frames[0].save(path, save_all=True, append_images=frames[1:], duration=ms, loop=0, disposal=1)
+
+
+# ---------------------------------------------------------------- monsters
+
+# Hero thresholds are px counts on an 88 px figure; a monster's scale by area.
+HERO_DISTINCT = 300
+HERO_LEGS = 16
+START_TOLERANCE = 1      # px: frame 0 of every clip is the start pose at the sheet height
+WALK_SWING = 4           # px: the walk height may move this far off it (the spear swings in the height)
+ATTACK_FOOT = 1
+DEATH_FOOT = 3
+DEATH_DOWN = 0.6         # the last death frame is at most this share of the figure height
+
+
+def area_scaled(n, height):
+    return int(np.ceil(n * (height / sv.HERO) ** 2))
+
+
+def monster_where(spec, have):
+    def where(d, r):
+        kind = spec.row_kind(r)
+        return f"{kind}-{sv.clip_for(have, kind, d)}.mp4"
+    return where
+
+
+def run_monster_checks(asset, sheet, poses_dir, quiet=False):
+    """Every sheet check for one monster asset (load_assets entry); returns
+    the Report. Rows follow asset["spec"].rows; failures blame the clip a
+    cell came from."""
+    spec, have, prof = asset["spec"], asset["clips"], asset["profile"]
+    table = prof["roles"]
+    C, n_rows, H = spec.cell, spec.frames, spec.height
+    where = monster_where(spec, have)
+    rep = Report(quiet)
+    rows = {k: range(spec.first_row(k), spec.first_row(k) + n) for k, n in spec.rows}
+
+    rep.check(sheet.shape == (C * n_rows, C * len(COLUMNS), 4), "sheet size",
+              f"{sheet.shape[1]}x{sheet.shape[0]} (want {C * len(COLUMNS)}x{C * n_rows}: "
+              f"{', '.join(f'{n} {k}' for k, n in spec.rows)} rows of {C} px)")
+    if sheet.shape != (C * n_rows, C * len(COLUMNS), 4):
+        return rep
+    alpha = sheet[..., 3]
+    rep.check(set(np.unique(alpha)) <= {0, 255}, "alpha is 0 or 255")
+    opaque = sheet[alpha > 0][:, :3]
+    colours = {tuple(int(v) for v in c) for c in np.unique(opaque, axis=0)}
+    body_colours = colours - {OUTLINE}
+    rep.check(len(body_colours) <= 32, "palette size", f"{len(body_colours)} colours + outline")
+    pal = sorted(body_colours)
+    pal_lab = sv.srgb_to_lab(np.array(pal, np.float64))
+    for name, rgb in prof["anchors"].items():
+        d = np.sqrt(((pal_lab - sv.srgb_to_lab(np.array([rgb], np.float64))) ** 2).sum(1))
+        j = int(d.argmin())
+        rep.check(d[j] <= 15, f"palette keeps {name} {rgb}", f"nearest {pal[j]} dE {d[j]:.1f}",
+                  [f"dirs/{c}.png" for c in COLUMNS])
+    a = alpha > 0
+    p = np.pad(a, 1)
+    edge = a & ~(p[:-2, 1:-1] & p[2:, 1:-1] & p[1:-1, :-2] & p[1:-1, 2:])
+    edge_ok = np.all(sheet[edge][:, :3] == OUTLINE, axis=1)
+    rep.check(edge_ok.all() and OUTLINE in colours, "1 px outline on every silhouette edge",
+              f"{int((~edge_ok).sum())} edge pixels off-outline")
+
+    grid = cells(sheet, C, n_rows)
+    every = [(c, r) for c in range(len(COLUMNS)) for r in range(n_rows)]
+    empty = [(c, r) for c, r in every if not (grid[c][r][..., 3] > 0).any()]
+    rep.check(not empty, "every cell has a figure", f"{len(empty)} empty",
+              [where(COLUMNS[c], r) for c, r in empty])
+    if empty:
+        return rep
+
+    ring = np.ones((C, C), bool)
+    ring[1:-1, 1:-1] = False
+    clipped = [(c, r) for c, r in every if (grid[c][r][..., 3][ring] > 0).any()]
+    rep.check(not clipped, "clear of the cell border (nothing cut off)",
+              f"{len(clipped)} cells touch the edge" + (f": {[f'{COLUMNS[c]} row {r}' for c, r in clipped]}" if clipped else ""),
+              [where(COLUMNS[c], r) for c, r in clipped])
+
+    span = {(c, r): body_span(grid[c][r]) for c, r in every}
+    tall = lambda c, r: span[(c, r)][1] - span[(c, r)][0] + 1
+    target = spec.foot + 1  # the outline row under the lowest body pixel
+    starts = [(c, rows[k][0]) for k in rows for c in range(len(COLUMNS))]
+    bad = [(c, r) for c, r in starts if abs(tall(c, r) - H) > START_TOLERANCE]
+    rep.check(not bad, f"start frames {H} +-{START_TOLERANCE} px",
+              f"{sorted({tall(c, r) for c, r in starts})}", [where(COLUMNS[c], r) for c, r in bad])
+    if "walk" in rows:
+        cs_ = [(c, r) for c in range(len(COLUMNS)) for r in rows["walk"]]
+        hs = [tall(c, r) for c, r in cs_]
+        rep.check(all(abs(h - H) <= WALK_SWING for h in hs), f"walk height {H} +-{WALK_SWING} px",
+                  f"min {min(hs)} max {max(hs)}", [where(COLUMNS[c], r) for (c, r), h in zip(cs_, hs) if abs(h - H) > WALK_SWING])
+        feet = [span[k][1] for k in cs_]
+        rep.check(max(feet) - min(feet) <= 1 and abs(feet[0] - target) <= 1, "walk shares one foot line",
+                  f"rows {min(feet)}..{max(feet)} (target {target})",
+                  [where(COLUMNS[c], r) for (c, r), f in zip(cs_, feet) if abs(f - target) > 1])
+    for kind, tol in (("attack", ATTACK_FOOT), ("death", DEATH_FOOT)):
+        if kind not in rows:
+            continue
+        cs_ = [(c, r) for c in range(len(COLUMNS)) for r in rows[kind]]
+        feet = [span[k][1] for k in cs_]
+        rep.check(all(abs(f - target) <= tol for f in feet), f"{kind} feet on the line +-{tol} px",
+                  f"rows {min(feet)}..{max(feet)} (target {target})",
+                  [where(COLUMNS[c], r) for (c, r), f in zip(cs_, feet) if abs(f - target) > tol])
+
+    lone, speckled = 0, []
+    outline_key = OUTLINE[0] * 65536 + OUTLINE[1] * 256 + OUTLINE[2]
+    for c, r in every:
+        cell = grid[c][r]
+        key = cell[..., 0].astype(np.int32) * 65536 + cell[..., 1].astype(np.int32) * 256 + cell[..., 2]
+        key[cell[..., 3] == 0] = -1
+        key[key == outline_key] = -1
+        q = np.pad(key, 1, constant_values=-1)
+        n4 = [q[:-2, 1:-1], q[2:, 1:-1], q[1:-1, :-2], q[1:-1, 2:]]
+        solid = np.sum([x >= 0 for x in n4], 0)
+        same = np.sum([x == key for x in n4], 0)
+        n = int(((key >= 0) & (solid >= 2) & (same == 0)).sum())
+        lone += n
+        if n:
+            speckled.append(where(COLUMNS[c], r))
+    rep.check(lone == 0, "no lone speckle pixels inside the body", f"{lone}", speckled)
+
+    # The prop: present in every walk and attack frame where the start pose
+    # shows it off the body midline, and on the pose's side while walking.
+    # An attack swings it across the body, so attack frames need it, not its side.
+    prop_name, prop_role = prof["prop"]
+    poses = {}
+    for d in COLUMNS:
+        rgb, al = sv.pose_place(np.asarray(Image.open(os.path.join(poses_dir, f"{d}.png")).convert("RGB")), spec)
+        cell = np.zeros((C, C, 4), np.uint8)
+        cell[al, :3] = np.clip(rgb[al], 0, 255).astype(np.uint8)
+        cell[al, 3] = 255
+        poses[d] = cell
+    held = [r for k in ("walk", "attack") if k in rows for r in rows[k]]
+    for c, d in enumerate(COLUMNS):
+        if d not in prof["prop_dirs"]:
+            rep.check(True, f"{prop_name} {d}", "on the body midline in this view: no side to hold")
+            continue
+        want, n = prop_offset(poses[d], table, prop_role)
+        if want is None or abs(want) < 2:
+            rep.check(False, f"{prop_name} {d}", f"start pose shows {n} {prop_role} px off the midline, but "
+                      f"{d} is in prop_dirs", [f"dirs/{d}.png"])
+            continue
+        got = {r: prop_offset(grid[c][r], table, prop_role) for r in held}
+        gone = [r for r in held if got[r][0] is None]
+        rep.check(not gone, f"{prop_name} {d} in every walk and attack frame",
+                  f"{prop_role} px per frame {[got[r][1] for r in held]}", [where(d, r) for r in gone])
+        side = "right" if want > 0 else "left"
+        walk = rows.get("walk", ())
+        wrong = [r for r in walk if got[r][0] is not None and (got[r][0] * want <= 0 or abs(got[r][0]) < 2)]
+        rep.check(not wrong, f"{prop_name} {d} walks on screen-{side} of the body",
+                  f"pose {want:+.1f}px; bad rows {wrong}", [where(d, r) for r in wrong])
+
+    for col, (title, bounds) in (("N", prof["back"]), ("S", prof["front"])):
+        c = COLUMNS.index(col)
+        view_check(rep, [grid[c][r] for r in held], table, title, bounds, col,
+                   lambda d, i: where(d, held[i]))
+
+    first = [grid[c][0] for c in range(len(COLUMNS))]
+    worst = None
+    for i in range(len(COLUMNS)):
+        for j in range(len(COLUMNS)):
+            if i != j:
+                m = min(changed(first[i], first[j]), changed(first[i], first[j][:, ::-1]))
+                if worst is None or m < worst[0]:
+                    worst = (m, COLUMNS[i], COLUMNS[j])
+    floor = area_scaled(HERO_DISTINCT, H)
+    rep.check(worst[0] >= floor, "8 directions distinct (and not mirrors)",
+              f"closest pair {worst[1]}/{worst[2]} differs by {worst[0]} px (floor {floor} = "
+              f"{HERO_DISTINCT} at the hero's 88 px, by area)",
+              [f"dirs/{worst[1]}.png", f"dirs/{worst[2]}.png", f"walk-{worst[1]}.mp4", f"walk-{worst[2]}.mp4"])
+
+    def shape(x, y):
+        return int(((x[..., 3] > 0) != (y[..., 3] > 0)).sum())
+
+    legs = area_scaled(HERO_LEGS, H)
+    for c, d in enumerate(COLUMNS):
+        if "walk" in rows:
+            w = list(rows["walk"])
+            moves = [changed_lower(grid[c][w[i]], grid[c][w[(i + 1) % len(w)]]) for i in range(len(w))]
+            contact = changed_lower(grid[c][w[0]], grid[c][w[len(w) // 2]])
+            rep.check(min(moves) >= legs and contact >= legs, f"walk {d} legs move",
+                      f"lower-half px per step {moves}, contact 0 vs {len(w) // 2} {contact} (floor {legs})",
+                      [where(d, w[0])])
+            step = float(np.median([shape(grid[c][w[i]], grid[c][w[(i + 1) % len(w)]]) for i in range(len(w))]))
+        if "attack" in rows and "walk" in rows:
+            at = list(rows["attack"])
+            reach = max(shape(grid[c][at[0]], grid[c][r]) for r in at[1:])
+            rep.check(reach >= step, f"attack {d} strikes",
+                      f"largest silhouette change from the start {reach} px (floor: walk step median {step:.0f})",
+                      [where(d, at[0])])
+        if "death" in rows:
+            de = list(rows["death"])
+            low = tall(c, de[-1])
+            rep.check(low <= DEATH_DOWN * H, f"death {d} ends on the ground",
+                      f"last frame {low} px tall (at most {DEATH_DOWN:.0%} of {H})", [where(d, de[-1])])
+
+    if "death" in rows:
+        for d, src in sv.DEATH_FROM.items():
+            if d in have["death"]:
+                continue
+            c, s_ = COLUMNS.index(d), COLUMNS.index(src)
+            same = all(np.array_equal(grid[c][r], grid[s_][r]) for r in rows["death"])
+            rep.check(same, f"death {d} reuses death-{src} unmirrored", "" if same else "cells differ",
+                      [f"death-{src}.mp4"])
+    return rep
+
+
+def monster_main(args):
+    asset = ASSETS[args.hero]
+    spec = asset["spec"]
+    sheet_path = args.sheet or os.path.join(ROOT, "priv/static/images/hd2d", f"{args.hero}-sheet.png")
+    poses_dir = args.poses or os.path.join(ROOT, "assets/reference", args.hero, "video/dirs")
+    concept = args.concept or os.path.join(ROOT, "assets/reference", args.hero, "concept.png")
+    sheet = np.asarray(Image.open(sheet_path).convert("RGBA")).copy()
+    rep = run_monster_checks(asset, sheet, poses_dir)
+    if args.out and sheet.shape == (spec.cell * spec.frames, spec.cell * len(COLUMNS), 4):
+        os.makedirs(args.out, exist_ok=True)
+        write_monster_approval(sheet, spec, concept if os.path.exists(concept) else None, args.out)
+        print(f"wrote {args.out}/sheet.png strip.png contact.png " +
+              " ".join(f"{k}.gif" for k, _ in spec.rows))
+    print(f"{'OK' if not rep.fails else 'FAILED'}: {rep.fails} failing checks")
+    return 1 if rep.fails else 0
+
+
+# Client frame times (assets/js/pictures.js sheetRow): walk and death 160 ms,
+# attack 140 ms; death holds its last frame.
+GIF_MS = {"walk": 160, "attack": 140, "death": 160}
+
+
+def write_monster_approval(sheet, spec, concept, out):
+    C = spec.cell
+    grid = cells(sheet, C, spec.frames)
+    from PIL import ImageDraw
+    # The whole sheet at 2x on the ground colour, kinds labelled.
+    k = 2
+    pad = 70
+    im = Image.new("RGBA", (pad + C * k * 8, 20 + C * k * spec.frames), (30, 32, 40, 255))
+    for c, d in enumerate(COLUMNS):
+        label(im, d, (pad + c * C * k + 6, 4))
+        for r in range(spec.frames):
+            im.alpha_composite(on_ground(grid[c][r], k), (pad + c * C * k, 20 + r * C * k))
+    for kind, n in spec.rows:
+        r0 = spec.first_row(kind)
+        for i in range(n):
+            label(im, f"{kind} {i}", (4, 20 + (r0 + i) * C * k + 4))
+    im.convert("RGB").save(os.path.join(out, "sheet.png"))
+    # The eight start poses, large.
+    k = 6
+    strip = Image.new("RGBA", (C * k * 8, C * k + 24), (30, 32, 40, 255))
+    for c, d in enumerate(COLUMNS):
+        strip.alpha_composite(on_ground(grid[c][0], k), (c * C * k, 24))
+        label(strip, d, (c * C * k + 8, 6))
+    strip.convert("RGB").save(os.path.join(out, "strip.png"))
+    # Contact: concept, then the strip at 3x.
+    k = 3
+    con = Image.open(concept).convert("RGBA") if concept else None
+    if con:
+        con = con.resize((int(con.width * 360 / con.height), 360), Image.LANCZOS)
+    top = 380 if con else 0
+    contact = Image.new("RGBA", (max(C * k * 8, con.width if con else 0), top + C * k + 24), (30, 32, 40, 255))
+    if con:
+        contact.alpha_composite(con, (0, 0))
+        label(contact, "concept", (con.width + 10, 10))
+    for c, d in enumerate(COLUMNS):
+        contact.alpha_composite(on_ground(grid[c][0], k), (c * C * k, top + 24))
+        label(contact, d, (c * C * k + 8, top + 6))
+    contact.convert("RGB").save(os.path.join(out, "contact.png"))
+    for kind, n in spec.rows:
+        r0 = spec.first_row(kind)
+        durations = [GIF_MS[kind]] * n
+        if kind == "death":
+            durations[-1] = 1200
+        write_gif(grid, range(r0, r0 + n), os.path.join(out, f"{kind}.gif"), durations, k=3)
 
 
 if __name__ == "__main__":

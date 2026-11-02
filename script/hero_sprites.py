@@ -56,6 +56,7 @@ WALK_LOOP = 0.5      # last vs first frame, silhouette px, times the walk median
 IDLE_LOOP = 0.6
 START_POSE = 0.2     # first frame vs dirs/<DIR>.png, times the walk median
 IDLE_DRIFT = 0.8     # any idle frame vs its first frame, times the walk median
+ATTACK_LOOP = WALK_LOOP  # a monster attack ends back on its start pose like a walk loop
 
 
 # ---------------------------------------------------------------- config
@@ -100,6 +101,10 @@ def load_config(hero, reference=REFERENCE):
             raise SystemExit(f"{hero}/{name}: clips {k!r} {dirs!r} (kinds {CLIP_KINDS}, directions {COLUMNS})")
         if k in ("attack", "death") and not cfg.get(k):
             raise SystemExit(f"{hero}/{name}: clips has {k!r} but no {k!r} motion text")
+    notes = cfg.get("view_notes", {})
+    if not isinstance(notes, dict) or any(d not in ("S", "N", "W", "E") or not isinstance(t, str) or not t.strip()
+                                          for d, t in notes.items()):
+        raise SystemExit(f"{hero}/{name}: view_notes maps S, N, W or E to one sentence, got {notes!r}")
     if kind != "hero":
         sheet = cfg.get("sheet") or {}
         for key in ("world_height", "height", "cell"):
@@ -417,12 +422,15 @@ def build_prompts(cfg):
         front = f"{vid}/views/{os.path.basename(front) if front else 'v-S.png'}"
         refs = [f"{base}/concept.png"] + (list(cfg.get("style_refs", [])) if d == "S" else [front])
         source = cfg.get("source_note", "")
+        # A per-view sentence for a take that lost a prop (asset.json "view_notes").
+        note = cfg.get("view_notes", {}).get(d, "")
+        note = f" {sentence(note)}" if note else ""
         style = (" Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art "
                  "look, block size, outline-free shading and soft lighting, but not its design."
                  if d == "S" and cfg.get("style_refs") else "")
         text = (f"Full-body game character reference of the {noun} from the reference image, "
                 f"{VIEW[d].format(poss=poss)}.{(' ' + sentence(source)) if source else ''} Same design exactly: {design}. "
-                f"{sentence(items)}{style} "
+                f"{sentence(items)}{note}{style} "
                 f"Whole figure from the top of the head to the {cfg.get('feet', 'boots')}, standing in a neutral idle "
                 "pose, arms relaxed, "
                 "feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, "
@@ -541,15 +549,6 @@ def write_prompts(cfg, log=print):
 
 # ---------------------------------------------------------------- 5 precheck
 
-def not_yet(cfg, step):
-    """The sheet builder and checker still assume a hero: 128 px cell, 88 px
-    figure, 8 walk + 4 idle rows. A non-hero asset stops here with the reason
-    instead of building a hero-sized sheet. docs/ART-REDO.md has the design."""
-    if cfg.get("type", "hero") != "hero":
-        raise SystemExit(f"{cfg['hero']}: {step} for type {cfg['type']!r} needs the sheet builder to take the "
-                         f"asset's sheet block ({cfg.get('sheet')}) and clip kinds {sorted(cfg['clips'])}; "
-                         "see docs/ART-REDO.md, 'Generalizing the pipeline'")
-
 CROSS = np.array([[0, 1, 0], [1, 1, 1], [0, 1, 0]], bool)
 
 
@@ -583,8 +582,9 @@ def precheck(cfg, log=print):
     """Per-clip problems before the build: {clip: [reasons]}. Format (square,
     24 fps, 49 frames), loop closes (last frame vs first), starts on its pose,
     an idle never strays far from its first frame, then every sheet check on an in-memory build, each failure blamed on the
-    clips whose frames failed it."""
-    not_yet(cfg, "precheck")
+    clips whose frames failed it. A monster goes to monster_precheck."""
+    if cfg["type"] != "hero":
+        return monster_precheck(cfg, log)
     vid = cfg["video"]
     problems = {}
 
@@ -645,6 +645,82 @@ def precheck(cfg, log=print):
     return problems
 
 
+def monster_precheck(cfg, log=print):
+    """precheck for a monster asset: every clip in its "clips" has the format;
+    walk and attack loops close (an attack ends on its start pose); every
+    clip starts on its dirs pose; a death has no loop. Silhouettes are the
+    cells build_monster places, measured against the walk of the same
+    direction. Then run_monster_checks on the in-memory sheet."""
+    vid = cfg["video"]
+    spec, have = sv.sheet_spec(cfg), cfg["clips"]
+    problems = {}
+
+    def flag(clip, why):
+        problems.setdefault(clip, []).append(why)
+
+    missing = [f"{k}-{d}.mp4" for k, dirs in have.items() for d in dirs
+               if not os.path.exists(os.path.join(vid, f"{k}-{d}.mp4"))]
+    missing += [f"dirs/{d}.png" for d in COLUMNS if not os.path.exists(os.path.join(vid, "dirs", f"{d}.png"))]
+    for kind, _ in spec.rows:
+        for d in COLUMNS:
+            try:
+                sv.clip_for(have, kind, d)
+            except SystemExit as e:
+                missing.append(f"{kind}-{d}.mp4 ({e})")
+    if missing:
+        for m in missing:
+            flag(m, "missing")
+        return problems
+    poses = {}
+    for d in COLUMNS:
+        _, a = sv.pose_place(np.asarray(Image.open(os.path.join(vid, "dirs", f"{d}.png")).convert("RGB")), spec)
+        poses[d] = ndimage.binary_dilation(a, CROSS)
+    walk_median = {}
+
+    def inspect(d, kind, frames, picks, scale, placer):
+        clip = f"{kind}-{d}.mp4"
+        w, h, fps = clip_format(os.path.join(vid, clip))
+        if w != h or round(fps) != CLIP_FPS or len(frames) != CLIP_FRAMES:
+            flag(clip, f"format {w}x{h} {fps:g} fps {len(frames)} frames (want square, {CLIP_FPS} fps, "
+                       f"{CLIP_FRAMES} frames: 2 s with last frame = first)")
+
+        def alpha(i):
+            return ndimage.binary_dilation(placer(i)[1], CROSS)
+        if kind == "walk":
+            cells = [alpha(i) for i in picks]
+            walk_median[d] = float(np.median([int((cells[r] != cells[(r + 1) % len(cells)]).sum())
+                                              for r in range(len(cells))]))
+        med = walk_median[d]
+        first = alpha(0)
+        loop = None
+        if kind in ("walk", "attack"):
+            loop = int((first != alpha(len(frames) - 1)).sum())
+            k = WALK_LOOP if kind == "walk" else ATTACK_LOOP
+            if loop > k * med:
+                flag(clip, f"loop does not close: last frame differs from the first by {loop} silhouette px "
+                           f"(limit {k * med:.0f} = {k} x walk median {med:.0f})")
+        start = int((first != poses[d]).sum())
+        if start > START_POSE * med:
+            flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                       f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
+        log(f"{clip}: {len(frames)} frames, " + (f"loop {loop} px, " if loop is not None else "no loop (death), ")
+            + f"start {start} px, picks {picks}, walk median {med:.0f}")
+
+    with contextlib.redirect_stderr(io.StringIO()):
+        sheet, pal, plan = sv.build_monster(vid, spec, have, inspect)
+    import check_sprite_sheet as cs
+    asset = cs.ASSETS.get(cfg["hero"])
+    if asset is None:
+        log(f"{cfg['hero']}/asset.json has no check profile: sheet checks skipped (fill \"check\" first)")
+        return problems
+    rep = cs.run_monster_checks(asset, sheet, os.path.join(vid, "dirs"), quiet=True)
+    for ok, name, detail, clips in rep.results:
+        if not ok:
+            for clip in clips or ("sheet",):
+                flag(clip, f"{name}: {detail}")
+    return problems
+
+
 # ---------------------------------------------------------------- 6 build
 
 def approval_dir(hero, override=None):
@@ -655,12 +731,14 @@ def approval_dir(hero, override=None):
 
 def build(cfg, approval=None, log=print):
     """Sheet and normal map, every check, and the approval files: contact.png,
-    walk.gif, idle.gif and check.txt. Returns the number of failing checks."""
-    not_yet(cfg, "build")
+    walk.gif, idle.gif and check.txt (a monster: sheet.png, strip.png,
+    contact.png, one GIF per clip kind and check.txt). Returns the number of
+    failing checks."""
     import check_sprite_sheet as cs
     h = cfg["hero"]
-    if h not in cs.HEROES:
-        raise SystemExit(f"{h}/hero.json has no check profile: fill \"check\" before the build")
+    if h not in (cs.HEROES if cfg["type"] == "hero" else cs.ASSETS):
+        name = "hero.json" if cfg["type"] == "hero" else "asset.json"
+        raise SystemExit(f"{h}/{name} has no check profile: fill \"check\" before the build")
     sv.main([h])
     out = approval_dir(h, approval)
     buf = io.StringIO()

@@ -107,5 +107,155 @@ class HeroProfileTest(unittest.TestCase):
                 sys.stderr = err
 
 
+GOBLIN_SHEET = os.path.join(sv.ROOT if hasattr(sv, "ROOT") else os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))), "priv/static/images/hd2d/goblin-sheet.png")
+GOBLIN = cs.ASSETS.get("goblin")
+
+
+def frames_from(grays):
+    return [{"gray": np.asarray(g, np.float32), "sharp": 1.0} for g in grays]
+
+
+class SpecTest(unittest.TestCase):
+    def test_hero_layout_is_the_constants(self):
+        spec = sv.HERO_SPEC
+        self.assertEqual((spec.cell, spec.height, spec.fill, spec.foot), (sv.CELL, sv.HERO, sv.FILL, sv.FOOT))
+        self.assertEqual(spec.rows, (("walk", 8), ("idle", 4)))
+        self.assertIs(sv.sheet_spec({"noun": "x"}), sv.HERO_SPEC)
+
+    def test_monster_layout_comes_from_the_sheet_block(self):
+        cfg = sv.asset_config("goblin")
+        spec = sv.sheet_spec(cfg)
+        self.assertEqual((spec.cell, spec.height, spec.fill, spec.foot), (80, 50, 48, 72))
+        self.assertEqual(spec.rows, (("walk", 8), ("attack", 6), ("death", 6)))
+        self.assertEqual(spec.frames, 20)
+        self.assertEqual([spec.row_kind(r) for r in (0, 7, 8, 13, 14, 19)],
+                         ["walk", "walk", "attack", "attack", "death", "death"])
+        self.assertEqual((spec.first_row("attack"), spec.first_row("death")), (8, 14))
+        no_death = sv.sheet_spec(dict(cfg, clips={"walk": sv.COLUMNS, "attack": sv.COLUMNS}))
+        self.assertEqual(no_death.rows, (("walk", 8), ("attack", 6)))
+        self.assertIsNone(sv.asset_config("mage"))
+
+    def test_a_diagonal_death_reuses_the_cardinal_that_keeps_its_read(self):
+        have = {"walk": sv.COLUMNS, "death": ["S", "W", "N", "E"]}
+        self.assertEqual([sv.clip_for(have, "death", d) for d in sv.COLUMNS],
+                         ["S", "S", "W", "N", "N", "N", "E", "S"])
+        self.assertEqual(sv.clip_for(have, "walk", "NE"), "NE")
+        with self.assertRaises(SystemExit):
+            sv.clip_for({"walk": ["S"]}, "walk", "SW")
+        with self.assertRaises(SystemExit):
+            sv.clip_for({"death": ["W", "E"]}, "death", "SW")
+
+
+class MonsterGeometryTest(unittest.TestCase):
+    def test_torso_centre_ignores_an_upright_spear(self):
+        mask = np.zeros((300, 200), bool)
+        mask[100:290, 80:140] = True     # body, centre x 109.5
+        mask[20:290, 40:44] = True       # spear shaft beside it, tip far above the head
+        mask[20:40, 36:48] = True        # spearhead
+        h = 270
+        self.assertAlmostEqual(sv.torso_centre(mask, h), 109.5, delta=0.6)
+        self.assertLess(sv.head_centre(mask), 50)  # the hero anchor would centre the spearhead
+
+    def test_attack_picks_wind_up_strike_and_recovery(self):
+        d = [0, 1, 2, 4, 6, 8, 10, 12, 10, 8, 6, 4, 2, 1, 0, 0, 0, 0, 0, 0]
+        frames = frames_from([[[v]] for v in d])
+        peak, back, picks = sv.attack_picks(frames)
+        self.assertEqual(peak, 7)
+        self.assertEqual(back, 12)  # first frame back within 20% of the peak change (2 <= 2.4)
+        self.assertEqual(picks[0], 0)
+        self.assertEqual(picks[3], 7)
+        self.assertEqual(len(picks), 6)
+        self.assertEqual(picks, sorted(picks))
+
+    def test_death_picks_end_when_the_fall_comes_to_rest(self):
+        d = [0, 1, 3, 6, 10, 15, 20, 25, 28, 30, 30, 30, 30, 30, 30, 30]
+        frames = frames_from([[[v]] for v in d])
+        rest, picks = sv.death_picks(frames)
+        self.assertEqual(rest, 8)  # within 10% of the largest change from the last frame
+        self.assertEqual(picks[0], 0)
+        self.assertEqual(picks[-1], 8)
+        self.assertEqual(len(picks), 6)
+
+
+@unittest.skipUnless(GOBLIN and os.path.exists(GOBLIN_SHEET), "goblin sheet not built")
+class MonsterCheckTest(unittest.TestCase):
+    def setUp(self):
+        self.sheet = np.asarray(Image.open(GOBLIN_SHEET).convert("RGBA")).copy()
+        self.poses = os.path.join(os.path.dirname(GOBLIN_SHEET), "../../../../assets/reference/goblin/video/dirs")
+
+    def fails(self, sheet):
+        rep = cs.run_monster_checks(GOBLIN, sheet, self.poses, quiet=True)
+        return {name: clips for ok, name, _, clips in rep.results if not ok}
+
+    def test_the_committed_goblin_sheet_passes(self):
+        self.assertEqual(self.fails(self.sheet), {})
+
+    def test_a_mirrored_diagonal_death_fails(self):
+        sheet = self.sheet.copy()
+        c = sv.COLUMNS.index("SW")
+        for r in range(14, 20):
+            sheet[r * 80:(r + 1) * 80, c * 80:(c + 1) * 80] = sheet[r * 80:(r + 1) * 80, c * 80:(c + 1) * 80][:, ::-1]
+        self.assertEqual(self.fails(sheet).get("death SW reuses death-S unmirrored"), ("death-S.mp4",))
+
+    def test_a_dropped_spear_blames_its_clip(self):
+        sheet = self.sheet.copy()
+        cell = sheet[3 * 80:4 * 80, 0:80]
+        r = cs.roles(cell, GOBLIN["profile"]["roles"])
+        cell[r == "iron"] = (60, 40, 25, 255)  # the spearhead painted over in walk-S frame 3
+        self.assertEqual(self.fails(sheet).get("spear S in every walk and attack frame"), ("walk-S.mp4",))
+
+    def test_a_figure_cut_at_the_cell_edge_fails(self):
+        sheet = self.sheet.copy()
+        c = sv.COLUMNS.index("E")
+        cell = sheet[9 * 80:10 * 80, c * 80:(c + 1) * 80]
+        cell[:] = np.roll(cell, 30, axis=1)
+        self.assertIn("attack-E.mp4", self.fails(sheet).get("clear of the cell border (nothing cut off)", ()))
+
+    def test_a_death_that_stays_standing_fails(self):
+        sheet = self.sheet.copy()
+        c = sv.COLUMNS.index("W")
+        sheet[19 * 80:20 * 80, c * 80:(c + 1) * 80] = sheet[14 * 80:15 * 80, c * 80:(c + 1) * 80]
+        self.assertEqual(self.fails(sheet).get("death W ends on the ground"), ("death-W.mp4",))
+
+
+class AssetProfileTest(unittest.TestCase):
+    def test_goblin_roles(self):
+        self.assertEqual(sorted(cs.ASSETS), ["goblin"])
+        table = cs.ASSETS["goblin"]["profile"]["roles"]
+        self.assertEqual(cs.role((142, 136, 134), table), "iron")
+        self.assertEqual(cs.role((56, 39, 27), table), "leather")
+        self.assertEqual(cs.role((108, 113, 62), table), "skin")
+        self.assertEqual(cs.role((113, 70, 25), table), "ochre")
+        self.assertEqual(cs.role((84, 61, 43), table), "leather")
+        self.assertEqual(cs.ASSETS["goblin"]["profile"]["prop_dirs"], tuple(cs.COLUMNS))
+
+
+class SheetBuildTest(unittest.TestCase):
+    """The same inputs give the same bytes: a rebuild matches what is committed.
+    About a minute each."""
+
+    def rebuild(self, name, files):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, files[0])
+            with open(os.devnull, "w") as quiet:
+                err, sys.stderr = sys.stderr, quiet
+                try:
+                    sv.main([name, "--out", out])
+                finally:
+                    sys.stderr = err
+            self.assertEqual(sorted(os.listdir(tmp)), sorted(files))
+            for f in files:
+                with open(os.path.join(tmp, f), "rb") as a, open(os.path.join(root, "priv/static/images/hd2d", f), "rb") as b:
+                    self.assertEqual(a.read(), b.read(), f)
+
+    def test_the_mage_sheet_rebuilds_byte_for_byte(self):
+        self.rebuild("mage", ["mage-walk.png", "mage-walk-normal.png"])
+
+    def test_the_goblin_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
+        self.rebuild("goblin", ["goblin-sheet.png"])
+
+
 if __name__ == "__main__":
     unittest.main()

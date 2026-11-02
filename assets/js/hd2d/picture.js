@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { cameraLift, frameFor } from "../frame.js"
 import { mixPose, PORTRAIT_FOV, portraitPose } from "../portrait.js"
-import { SHEET_HEROES, spriteHeight, walkSheetUrl } from "../pictures.js"
+import { MONSTER_SHEETS, monsterSheetUrl, SHEET_HEROES, spriteHeight, walkSheetUrl } from "../pictures.js"
 import { masonryBytes } from "../tiles.js"
 import { tierExtras, tierFor } from "./tier.js"
 
@@ -40,12 +40,23 @@ export function heroTexel(worldPerPixel, nominal = SHEET_TEXEL) {
   return k >= 1 ? k * worldPerPixel : nominal
 }
 
-export function sheetCardGeometry() {
-  const size = SHEET_CELL * SHEET_TEXEL
+// A hero cell by default. A monster sheet passes its own cell and foot row;
+// the texel stays the hero's, so every sheet figure shares one pixel size.
+export function sheetCardGeometry(cell = SHEET_CELL, footRow = SHEET_FOOT_ROW) {
+  const size = cell * SHEET_TEXEL
   const geometry = new THREE.PlaneGeometry(size, size)
   // The cell bottom sits under the ground so the boot soles touch y = 0.
-  geometry.translate(0, size / 2 - (SHEET_CELL - 1 - SHEET_FOOT_ROW) * SHEET_TEXEL, 0)
+  geometry.translate(0, size / 2 - (cell - 1 - footRow) * SHEET_TEXEL, 0)
   return geometry
+}
+
+// The frame layout of a monster sheet, in the shape sheetRow and placeMesh read.
+export function monsterSheetPicture(spec) {
+  const walk = spec.rows.walk || 0
+  const attack = spec.rows.attack || 0
+  const death = spec.rows.death || 0
+  if (!walk) throw new Error("a monster sheet needs walk rows")
+  return { directions: 8, frames: walk + attack + death, walk, attack, death, idle: 0 }
 }
 
 // The hero drawn inside a sheet card, not the whole cell: SHEET_HERO texels
@@ -492,6 +503,8 @@ function createHdPicture(env) {
   let live = false
   // hero -> { map, normal } for each loaded SHEET_HEROES walk sheet.
   const sheets = new Map()
+  // kind -> loaded MONSTER_SHEETS texture; each monster card draws a clone.
+  const monsterSheets = new Map()
   const sheetCards = new Set()
   let spot = null
   let torchFill = null
@@ -688,6 +701,48 @@ function createHdPicture(env) {
     }
   }
 
+  // Swap a monster's voxel card for its sheet once the sheet has loaded. The
+  // card stays unlit like the voxel sprite it replaces, and drops the rim: the
+  // sheet draws its own outline. Without a sheet the voxel card stays.
+  function dressMonster(mesh) {
+    if (!mesh || !mesh.userData || mesh.userData.role !== "monster" || mesh.userData.hd) return false
+    const kind = mesh.userData.kind
+    const spec = MONSTER_SHEETS[kind]
+    const source = monsterSheets.get(kind)
+    const sprite = mesh.userData.card
+    if (!spec || !source || !sprite || !sprite.isSprite) return false
+    const layout = monsterSheetPicture(spec)
+    // One clone per monster: each card scrolls its own frame offset over the shared image.
+    const map = source.clone()
+    map.repeat.set(1 / layout.directions, 1 / layout.frames)
+    map.needsUpdate = true
+    const plane = new THREE.Mesh(
+      sheetCardGeometry(spec.cell, spec.footRow),
+      new THREE.MeshBasicMaterial({ map, alphaTest: 0.4, transparent: true })
+    )
+    plane.userData.ownsMap = true
+    plane.castShadow = false
+    plane.receiveShadow = false
+    plane.onBeforeRender = faceCamera
+    for (const old of [sprite, mesh.userData.rim]) {
+      if (!old) continue
+      mesh.remove(old)
+      if (old.material) {
+        if (old.material.map) old.material.map.dispose()
+        old.material.dispose()
+      }
+    }
+    mesh.add(plane)
+    const before = mesh.userData.picture || {}
+    mesh.userData.card = plane
+    mesh.userData.rim = null
+    mesh.userData.picture = { ...layout, w: before.w, h: spec.figure * SHEET_TEXEL, d: before.d, y: before.y }
+    mesh.userData.parts = layout.directions * layout.frames
+    mesh.userData.hd = kind
+    sheetCards.add(plane)
+    return true
+  }
+
   function viewUniforms(depth) {
     return {
       inverseProjection: { value: inverseProjection },
@@ -810,8 +865,9 @@ function createHdPicture(env) {
     })
   }
 
-  // Each sheet is used as soon as it loads. ready waits for all of them, so a
-  // graded still never shows a hero on the voxel card by accident.
+  // Each sheet is used as soon as it loads. ready waits for the hero sheets,
+  // so a graded still never shows a hero on the voxel card by accident. A
+  // monster sheet that fails to load leaves that kind on its voxel card.
   function loadWalk() {
     Promise.all(
       SHEET_HEROES.map((hero) =>
@@ -825,12 +881,22 @@ function createHdPicture(env) {
     ).then(settleReady).catch((err) => {
       console.error(err)
     })
+    for (const kind of Object.keys(MONSTER_SHEETS)) {
+      walkTexture("/" + monsterSheetUrl(kind), THREE.SRGBColorSpace)
+        .then((map) => monsterSheets.set(kind, map))
+        .catch((err) => console.error(err))
+    }
   }
 
   function attachStrip(map, normalMap, hero = "warrior") {
     if (!map || !map.isTexture || !SHEET_HEROES.includes(hero)) throw new Error("strip")
     sheets.set(hero, { map, normal: normalMap && normalMap.isTexture ? normalMap : null })
     settleReady()
+  }
+
+  function attachMonsterSheet(map, kind) {
+    if (!map || !map.isTexture || !MONSTER_SHEETS[kind]) throw new Error("monster sheet")
+    monsterSheets.set(kind, map)
   }
 
   function dropChain() {
@@ -872,6 +938,8 @@ function createHdPicture(env) {
       return live
     },
     attachStrip,
+    attachMonsterSheet,
+    dressMonster,
     grade(paint) {
       if (live) throw new Error("grade refuses a live room")
       if (typeof paint !== "function") throw new Error("grade")
@@ -987,6 +1055,8 @@ function createHdPicture(env) {
         .filter((hero) => hero.userData && hero.userData.role === "hero")
         .sort(heroOrder)
       for (const hero of heroes.slice(0, LOOK.litHeroes)) litHero(hero)
+      // Monsters spawned before their sheet loaded take it now.
+      for (const monster of Array.isArray(kit.monsters) ? kit.monsters : []) dressMonster(monster)
     },
     present(renderer, scene, camera) {
       if (sheetCards.size && renderer.getDrawingBufferSize) {

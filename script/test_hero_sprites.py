@@ -261,18 +261,27 @@ class AssetTest(unittest.TestCase):
         self.assertEqual(c["attack-SE"].get("then"), "hero_sprites.py precheck")
         self.assertEqual([k for k, v in c.items() if v.get("then") == "hero_sprites.py precheck"], ["attack-SE"])
 
-    def test_precheck_and_build_refuse_a_monster_until_the_builder_takes_it(self):
+    def test_view_notes_add_one_sentence_to_one_view(self):
+        # The E view was regenerated with this sentence after the first take
+        # lost the spear; prompts.json must say what was sent.
         cfg = hs.load_config("goblin")
-        for step in (hs.precheck, hs.build):
-            with self.assertRaises(SystemExit) as e:
-                step(cfg)
-            self.assertIn("ART-REDO.md", str(e.exception))
+        note = cfg["view_notes"]["E"]
+        c = self.calls("goblin")
+        e = c["view-E"]["args"]["description"]
+        self.assertIn("(toward the camera). " + note + " Whole figure", e)
+        for d in ("S", "N", "W"):
+            self.assertNotIn(note, c[f"view-{d}"]["args"]["description"], d)
+        self.assertEqual(sum(note in json.dumps(v) for v in c.values()), 1)
+        for h in HEROES:
+            self.assertNotIn("view_notes", hs.load_config(h), h)
 
     def test_a_bad_asset_config_is_refused(self):
         base = json.loads(read(os.path.join(hs.REFERENCE, "goblin", "asset.json")))
         bad = [("type", "dragon"), ("clips", {"walk": ["S", "UP"]}), ("clips", {"attack": ["S"], "walk": ["S"]}),
                ("sheet", {"world_height": 18, "height": 60, "cell": 80}),
-               ("sheet", {"world_height": 18, "height": 50, "cell": 60})]
+               ("sheet", {"world_height": 18, "height": 50, "cell": 60}),
+               ("view_notes", {"SE": "a diagonal view is not generated"}), ("view_notes", {"E": " "}),
+               ("view_notes", ["E"])]
         for key, value in bad:
             cfg = dict(base, **{key: value})
             if key == "clips" and "attack" in value:
@@ -334,6 +343,39 @@ class PrecheckTest(unittest.TestCase):
             self.assertTrue(any(w.startswith("format") for w in problems["walk-S.mp4"]), problems)
             self.assertTrue(any(w.startswith("loop does not close") for w in problems["walk-S.mp4"]), problems)
             self.assertLessEqual(set(problems), {"idle-E.mp4", "walk-S.mp4"}, problems)
+
+
+class MonsterPrecheckTest(unittest.TestCase):
+    def test_monster_precheck_names_the_clips_to_regenerate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(os.path.join(hs.REFERENCE, "goblin"), os.path.join(tmp, "goblin"))
+            vid = os.path.join(tmp, "goblin", "video")
+            cfg = hs.load_config("goblin", reference=tmp)
+            # An attack cut short: wrong format, and it ends mid-jab.
+            src = os.path.join(tmp, "attack-E.mp4")
+            shutil.move(os.path.join(vid, "attack-E.mp4"), src)
+            subprocess.run(["ffmpeg", "-v", "error", "-i", src, "-frames:v", "14", "-an", "-y",
+                            os.path.join(vid, "attack-E.mp4")], check=True)
+            lines = []
+            problems = hs.precheck(cfg, log=lines.append)
+            self.assertIn("attack-E.mp4", problems)
+            self.assertTrue(any(w.startswith("format") for w in problems["attack-E.mp4"]), problems)
+            self.assertTrue(any(w.startswith("loop does not close") for w in problems["attack-E.mp4"]), problems)
+            # Every flag names a clip (never the whole sheet), and only clips that exist.
+            for clip in problems:
+                self.assertTrue(os.path.exists(os.path.join(vid, clip)), (clip, problems))
+            # Death clips are inspected once each, without a loop check;
+            # the diagonals reuse them.
+            deaths = [x for x in lines if x.startswith("death-")]
+            self.assertEqual(sorted(x.split(":")[0] for x in deaths), [f"death-{d}.mp4" for d in "ENSW"])
+            self.assertTrue(all("no loop (death)" in x for x in deaths), deaths)
+
+    def test_monster_precheck_reports_a_missing_cardinal_death(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shutil.copytree(os.path.join(hs.REFERENCE, "goblin"), os.path.join(tmp, "goblin"))
+            os.remove(os.path.join(tmp, "goblin", "video", "death-N.mp4"))
+            problems = hs.precheck(hs.load_config("goblin", reference=tmp), log=lambda *a, **k: None)
+            self.assertEqual(problems, {"death-N.mp4": ["missing"]})
 
 
 if __name__ == "__main__":

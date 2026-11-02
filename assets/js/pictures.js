@@ -23,6 +23,19 @@ export function walkSheetUrl(hero, normal = false) {
   return `images/hd2d/${hero}-walk${normal ? "-normal" : ""}.png`
 }
 
+// Monster sheets from script/sprite_from_video.py and assets/reference/<kind>/asset.json.
+// Eight direction columns. Rows run walk, attack, then death, top to bottom.
+// A square cell of `cell` px, the figure `figure` px tall at the start pose,
+// and its lowest outline row is `footRow`. The texel is the hero's, so the
+// goblin's pixels are the same size as the heroes' (docs/ART-REDO.md).
+export const MONSTER_SHEETS = {
+  goblin: { cell: 80, figure: 50, footRow: 73, rows: { walk: 8, attack: 6, death: 6 } }
+}
+
+export function monsterSheetUrl(kind) {
+  return `images/hd2d/${kind}-sheet.png`
+}
+
 export function scaleFront(image, height) {
   const h = Math.max(1, height)
   const w = Math.max(1, Math.round((image.w * h) / image.h))

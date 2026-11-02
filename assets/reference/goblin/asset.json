@@ -1,5 +1,5 @@
 {
- "_note": "First non-hero asset (docs/ART-REDO.md). The concept crop is the goblin group in monsters.jpg (the registry crop 16,328,236,246); the views draw one goblin with a single spear (no torch, no axe). The style reference is the approved engineer front view, so the goblin shares the hero render. The spear stays low so the figure's height is the body, not the spear tip. World height 18 is monsterHeights.goblin; at the hero texel (32/88) that is 50 px. Precheck and build wait for the sheet builder to take the sheet block.",
+ "_note": "First non-hero asset (docs/ART-REDO.md). The concept crop is the goblin group in monsters.jpg (the registry crop 16,328,236,246); the views draw one goblin with a single spear (no torch, no axe). The style reference is the approved engineer front view, so the goblin shares the hero render. The views hold the spear upright, so the 50 px figure height includes the spear tip, like the old 18-unit card. World height 18 is monsterHeights.goblin; at the hero texel (32/88) that is 50 px. view_notes.E is the stronger wording the E view was regenerated with after the first take lost the spear.",
  "type": "monster",
  "noun": "goblin",
  "possessive": "his",
@@ -20,12 +20,47 @@
    "still": "spear"
   }
  ],
+ "view_notes": {
+  "E": "He clearly holds a short wooden spear with a grey iron spearhead upright in his right hand, the hand nearest the camera: the spear is fully visible in front of his body, spearhead above his head, shaft ending near his feet."
+ },
  "attack": "leans forward and jabs the spear straight ahead in the facing direction and pulls it back",
  "death": "staggers backwards, drops the spear and falls flat on the ground",
  "clips": {
   "walk": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
   "attack": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
   "death": ["S", "W", "N", "E"]
+ },
+ "check": {
+  "_note": "anchors: concept colours (hero_sprites.py goblin colours) the palette keeps within dE 15. roles: iron is the spearhead and buckle; leather the tunic, wraps, spear shaft and shadows (dark browns are under 0.12 chroma, so the neutral role takes them); ochre the eyes and inner ears. The orange eyes are one or two px at 50 px, so ochre is a ceiling on the back, not a floor on the front. prop_dirs: all eight, the spear is off the body midline in every start pose.",
+  "anchors": {
+   "skin green": [107, 109, 56],
+   "dark skin": [77, 79, 37],
+   "leather brown": [59, 36, 22]
+  },
+  "roles": [
+   {"name": "iron", "neutral": true, "light_gt": 0.28},
+   {"name": "leather", "neutral": true},
+   {"name": "skin", "hue": [45, 80]},
+   {"name": "ochre", "hue": [15, 45], "chroma_gt": 0.2},
+   {"name": "leather", "hue": [10, 45]}
+  ],
+  "prop": ["spear", "iron"],
+  "prop_dirs": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
+  "back": {
+   "title": "back view N: no eyes or inner ears, the tunic back",
+   "bounds": [
+    ["eyes", ["head", "ochre"], null, 2],
+    ["tunic", ["count", "leather"], 420, null]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps the face, the tunic and the spearhead",
+   "bounds": [
+    ["face", ["head", "skin"], 100, null],
+    ["tunic", ["count", "leather"], 380, null],
+    ["spearhead", ["count", "iron"], 24, null]
+   ]
+  }
  },
  "sheet": {
   "world_height": 18,
