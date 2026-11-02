@@ -29,6 +29,23 @@ defmodule LastKeep.Game.WorldTest do
            }
   end
 
+  # The fingerprints were taken from the world before it was laid out lazily
+  # per room, so a seed still makes the same map it always made.
+  test "a seed lays out the same map it made before the lazy world" do
+    fingerprints =
+      for seed <- [3, 77, 123_456], into: %{} do
+        world = fresh(fn -> World.generate(seed) end)
+
+        {seed,
+         :erlang.phash2(
+           {world.attempt, world.pois, World.chunk(seed, 0, 0), World.chunk(seed, -2, 4),
+            World.chunk(seed, 9, -11)}
+         )}
+      end
+
+    assert fingerprints == %{3 => 92_055_555, 77 => 3_496_929, 123_456 => 37_097_763}
+  end
+
   test "the keep disc stays clear" do
     world = World.generate(3)
     near = for {coord, cell} <- cells(world), hypot(coord) <= 400, do: cell
