@@ -4,7 +4,7 @@ import { perfRequested, perfText } from "./hd2d/perf"
 import { createView } from "./render"
 import { monsterKinds, monsterParts } from "./monsters.js"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
+import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint"
 import { RELIC_SIGN, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
@@ -237,6 +237,19 @@ function start(code, seat, ui) {
       else keys.delete(code)
       send()
     },
+    // Sends the held keys now and resolves once the server has them. The
+    // room applies a frame before the snapshots that follow its reply, so a
+    // stop read after this is not the hero still walking on an old frame.
+    ack() {
+      const push = send()
+      if (!push) return Promise.resolve(false)
+      return new Promise((resolve) => {
+        push
+          .receive("ok", () => resolve(true))
+          .receive("error", () => resolve(false))
+          .receive("timeout", () => resolve(false))
+      })
+    },
     aim(x, y) {
       aim = { x, y, monster: false }
     },
@@ -259,13 +272,15 @@ function start(code, seat, ui) {
     },
     // The co-op night used to leave the mage standing on the far side of the
     // ring. The goblins killed that mage before they walked into the host's
-    // camera, and Q arrived on a corpse.
+    // camera, and Q arrived on a corpse. A straight line to the host also
+    // pinned the mage on the far keep face, where one goblin of wave 1
+    // stayed out of the mage's frame for most of a minute.
     follow() {
       const game = window.__lastKeep
       const me = game && game.self
       const host = ((game && game.party) || []).find((player) => player.host)
       if (!me || !host) return
-      const want = new Set(keysToward(host.x - me.x, host.y - me.y))
+      const want = new Set(followKeys(me, host))
       for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) {
         if (want.has(code)) keys.add(code)
         else keys.delete(code)
@@ -598,7 +613,7 @@ function start(code, seat, ui) {
     blurHiddenFocus(document)
     const skill =
       pad.q || pad.e || pad.r || pad.f || keys.has("KeyQ") || keys.has("KeyE") || keys.has("KeyR") || keys.has("KeyF")
-    if (!shouldSend({ joined: joined && !!selfId, typing: typing(), skill })) return
+    if (!shouldSend({ joined: joined && !!selfId, typing: typing(), skill })) return null
     const stick = stickId === null ? { x: 0, y: 0 } : stickVector(stickDx, stickDy)
     const move = combineAxes(axes(keys), stick)
     input.mx = move.x
@@ -616,7 +631,7 @@ function start(code, seat, ui) {
     if (pad.place) input.place = true
     if (pad.raise) input.raise = true
     input.build = build
-    channel.push("input", inputFrame(input))
+    return channel.push("input", inputFrame(input))
   }
 
   window.setInterval(send, 50)

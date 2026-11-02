@@ -83,4 +83,42 @@ function settleFields(last, fresh) {
   return settled
 }
 
-module.exports = { axes, keysFor, walkHitsKeep, noteNorth, noteProgress, stoppedTick, settleFields }
+// The walk that lands on a small goal over any round trip. The first leg
+// holds the keys until the client sees the hero inside the goal. The key-up
+// reaches the server a round trip later, so at 300ms the hero coasts about
+// 45 units, past the far edge of an 18 radius, and the next held leg does the
+// same from the other side. After one stop outside the goal, every leg is a
+// tap: hold, wait for two more ticks, release, and settle. Hold and release
+// are both one trip late, so the server holds them about 100ms apart at any
+// latency, which is shorter than the goal is wide.
+//   step()    holds keys toward the goal and returns the client pose
+//   tap()     waits two observed ticks with those keys still down
+//   settle(p) releases and returns the stopped pose, or null
+//   pause()   waits one poll while a held leg walks
+//   expired() is true once the deadline passed
+async function walkLoop({ step, tap, settle, pause, done, expired }) {
+  let last = null
+  let overshot = false
+  while (!expired()) {
+    last = (await step()) || last
+    if (!last) {
+      await pause()
+      continue
+    }
+    const inside = done(last)
+    if (!inside && !overshot) {
+      await pause()
+      continue
+    }
+    if (!inside) await tap()
+    const settled = await settle(last)
+    if (settled && done(settled)) return { ok: true, last: settled }
+    if (settled) {
+      last = settled
+      overshot = true
+    }
+  }
+  return { ok: false, last }
+}
+
+module.exports = { axes, keysFor, walkHitsKeep, noteNorth, noteProgress, stoppedTick, settleFields, walkLoop }

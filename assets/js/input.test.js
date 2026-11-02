@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, blurHiddenFocus, focusedAfterBlur, inputFrame, isTypingTarget, keysAround, keysToward, retainFocus, seatFromQuery, shouldSend, swingFocus } from "./input.js"
+import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, retainFocus, seatFromQuery, shouldSend, swingFocus } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -130,4 +130,39 @@ test("the keep face slides instead of holding due west", () => {
 test("held diagonals stay unit length", () => {
   const move = axes(new Set(["KeyW", "KeyD"]))
   assert.ok(Math.abs(Math.hypot(move.x, move.y) - 1) < 1e-9)
+})
+
+// One tick of a held step at the mage's speed, sliding on the keep disc.
+function slideStep(at, keys, step = 7.4) {
+  const move = axes(new Set(keys))
+  const dx = move.x * step
+  const dy = move.y * step
+  const solid = (x, y) => Math.hypot(x, y) < 68
+  if (!solid(at.x + dx, at.y + dy)) return { x: at.x + dx, y: at.y + dy }
+  if (!solid(at.x + dx, at.y) && Math.abs(dx) > 0.2) return { x: at.x + dx, y: at.y }
+  if (!solid(at.x, at.y + dy) && Math.abs(dy) > 0.2) return { x: at.x, y: at.y + dy }
+  return at
+}
+
+function followFor(start, host, pick, ticks = 200) {
+  let at = start
+  for (let i = 0; i < ticks; i += 1) at = slideStep(at, pick(at, host))
+  return at
+}
+
+// The live probe: the mage held into the keep at (-30, 62) while the host
+// stood at (76, -44), so the keep sat on the line between them.
+test("a guest behind the keep walks around it to the host", () => {
+  const host = { x: 76, y: -44 }
+  const line = followFor({ x: -30, y: 62 }, host, (at, goal) => keysToward(goal.x - at.x, goal.y - at.y))
+  assert.ok(Math.hypot(host.x - line.x, host.y - line.y) > 100, `the straight line reached ${JSON.stringify(line)}`)
+  for (const start of [{ x: -30, y: 62 }, { x: -120, y: 0 }, { x: -80, y: 90 }, { x: 0, y: 200 }]) {
+    const end = followFor(start, host, followKeys)
+    assert.ok(Math.hypot(host.x - end.x, host.y - end.y) <= 42 + 7.4, `from ${JSON.stringify(start)} stopped at ${JSON.stringify(end)}`)
+  }
+})
+
+test("a guest beside the host holds no keys", () => {
+  assert.deepEqual(followKeys({ x: 100, y: 0 }, { x: 120, y: 20 }), [])
+  assert.ok(followKeys({ x: 300, y: 0 }, { x: 120, y: 20 }).length > 0)
 })
