@@ -12,6 +12,7 @@ import { readRgbaPng } from "./png.js"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 const GOBLIN = MONSTER_SHEETS.goblin
+const SHEET_KINDS = ["goblin", "skeleton"]
 
 function sheetImage(kind) {
   return readRgbaPng(fs.readFileSync(path.join(root, "priv/static", monsterSheetUrl(kind))))
@@ -63,32 +64,35 @@ function sheetTexture() {
   return texture
 }
 
-test("the goblin sheet on disk is the layout the client reads", () => {
-  const image = sheetImage("goblin")
-  const layout = monsterSheetPicture(GOBLIN)
-  assert.deepEqual(layout, { directions: 8, frames: 20, walk: 8, attack: 6, death: 6, idle: 0 })
-  assert.equal(image.width, 8 * GOBLIN.cell)
-  assert.equal(image.height, layout.frames * GOBLIN.cell)
-  // The builder's own config says the same.
-  const asset = JSON.parse(fs.readFileSync(path.join(root, "assets/reference/goblin/asset.json"), "utf8"))
-  assert.equal(asset.sheet.cell, GOBLIN.cell)
-  assert.equal(asset.sheet.height, GOBLIN.figure)
-  assert.equal(asset.sheet.world_height, monsterHeights.goblin)
-  assert.deepEqual(Object.keys(asset.clips), Object.keys(GOBLIN.rows))
-  for (let column = 0; column < 8; column++) {
-    // The start pose stands figure px tall on the foot row in every direction.
-    const [top, bottom] = cellRows(image, GOBLIN.cell, column, 0)
-    assert.equal(bottom, GOBLIN.footRow, `column ${column}`)
-    assert.ok(Math.abs(bottom - top + 1 - GOBLIN.figure) <= 1, `column ${column} is ${bottom - top + 1} px`)
-    for (let row = 0; row < layout.frames; row++) {
-      const rows = cellRows(image, GOBLIN.cell, column, row)
-      assert.ok(rows, `cell ${column},${row} is empty`)
-      // Walk feet stay on the line; attack and death never sink past it by more than the checker allows.
-      if (row < layout.walk) assert.equal(rows[1], GOBLIN.footRow, `walk ${column},${row}`)
-      else assert.ok(Math.abs(rows[1] - GOBLIN.footRow) <= 3, `cell ${column},${row} feet at ${rows[1]}`)
+for (const kind of SHEET_KINDS) {
+  test(`the ${kind} sheet on disk is the layout the client reads`, () => {
+    const SPEC = MONSTER_SHEETS[kind]
+    const image = sheetImage(kind)
+    const layout = monsterSheetPicture(SPEC)
+    assert.deepEqual(layout, { directions: 8, frames: 20, walk: 8, attack: 6, death: 6, idle: 0 })
+    assert.equal(image.width, 8 * SPEC.cell)
+    assert.equal(image.height, layout.frames * SPEC.cell)
+    // The builder's own config says the same.
+    const asset = JSON.parse(fs.readFileSync(path.join(root, `assets/reference/${kind}/asset.json`), "utf8"))
+    assert.equal(asset.sheet.cell, SPEC.cell)
+    assert.equal(asset.sheet.height, SPEC.figure)
+    assert.equal(asset.sheet.world_height, monsterHeights[kind])
+    assert.deepEqual(Object.keys(asset.clips), Object.keys(SPEC.rows))
+    for (let column = 0; column < 8; column++) {
+      // The start pose stands figure px tall on the foot row in every direction.
+      const [top, bottom] = cellRows(image, SPEC.cell, column, 0)
+      assert.equal(bottom, SPEC.footRow, `column ${column}`)
+      assert.ok(Math.abs(bottom - top + 1 - SPEC.figure) <= 1, `column ${column} is ${bottom - top + 1} px`)
+      for (let row = 0; row < layout.frames; row++) {
+        const rows = cellRows(image, SPEC.cell, column, row)
+        assert.ok(rows, `cell ${column},${row} is empty`)
+        // Walk feet stay on the line; attack and death never sink past it by more than the checker allows.
+        if (row < layout.walk) assert.equal(rows[1], SPEC.footRow, `walk ${column},${row}`)
+        else assert.ok(Math.abs(rows[1] - SPEC.footRow) <= 3, `cell ${column},${row} feet at ${rows[1]}`)
+      }
     }
-  }
-})
+  })
+}
 
 test("png reads the filtered rows an image editor writes", () => {
   // Pillow writes adaptive filters; these sums come from Pillow's own decode.
@@ -104,22 +108,38 @@ test("png reads the filtered rows an image editor writes", () => {
   assert.equal(ink, 22777390)
 })
 
-test("a goblin card keeps the hero texel and stays under the hero and the keep door", () => {
-  const drawn = GOBLIN.figure * SHEET_TEXEL
-  // Within one texel of the world height the voxel card and the sim use.
-  assert.ok(Math.abs(drawn - monsterHeights.goblin) <= SHEET_TEXEL, `${drawn} vs ${monsterHeights.goblin}`)
-  assert.ok(drawn < spriteHeight)
-  assert.ok(drawn <= 20 * 1.75)
-  const geometry = sheetCardGeometry(GOBLIN.cell, GOBLIN.footRow)
-  geometry.computeBoundingBox()
-  const box = geometry.boundingBox
-  const size = GOBLIN.cell * SHEET_TEXEL
-  assert.ok(Math.abs(box.max.y - box.min.y - size) < 1e-4)
-  assert.ok(Math.abs(box.max.x - box.min.x - size) < 1e-4)
-  // The lowest outline row ends exactly at y = 0, like the heroes' boots.
-  const soles = box.max.y - (GOBLIN.footRow + 1) * SHEET_TEXEL
-  assert.ok(Math.abs(soles) < 1e-4, `soles at ${soles}`)
+test("the skeleton sheet decodes to Pillow's sums", () => {
+  const image = sheetImage("skeleton")
+  let opaque = 0
+  let ink = 0
+  for (let i = 0; i < image.rgba.length; i += 4) {
+    if (!image.rgba[i + 3]) continue
+    opaque += 1
+    ink += image.rgba[i] + image.rgba[i + 1] + image.rgba[i + 2]
+  }
+  assert.equal(opaque, 158153)
+  assert.equal(ink, 33470360)
 })
+
+for (const kind of SHEET_KINDS) {
+  test(`a ${kind} card keeps the hero texel and stays under the hero and the keep door`, () => {
+    const SPEC = MONSTER_SHEETS[kind]
+    const drawn = SPEC.figure * SHEET_TEXEL
+    // Within one texel of the world height the voxel card and the sim use.
+    assert.ok(Math.abs(drawn - monsterHeights[kind]) <= SHEET_TEXEL, `${drawn} vs ${monsterHeights[kind]}`)
+    assert.ok(drawn < spriteHeight)
+    assert.ok(drawn <= 20 * 1.75)
+    const geometry = sheetCardGeometry(SPEC.cell, SPEC.footRow)
+    geometry.computeBoundingBox()
+    const box = geometry.boundingBox
+    const size = SPEC.cell * SHEET_TEXEL
+    assert.ok(Math.abs(box.max.y - box.min.y - size) < 1e-4)
+    assert.ok(Math.abs(box.max.x - box.min.x - size) < 1e-4)
+    // The lowest outline row ends exactly at y = 0, like the heroes' boots.
+    const soles = box.max.y - (SPEC.footRow + 1) * SHEET_TEXEL
+    assert.ok(Math.abs(soles) < 1e-4, `soles at ${soles}`)
+  })
+}
 
 test("a goblin keeps its voxel card until its sheet loads", () => {
   const picture = createPicture()
@@ -183,7 +203,7 @@ test("dressMonster draws each goblin from its own clone of the sheet", () => {
   assert.equal(sheetGone, false)
 })
 
-test("dress gives a sheet to goblins that spawned before it loaded, and leaves other kinds", () => {
+test("dress gives a sheet to goblins and skeletons that spawned before it loaded, and leaves other kinds", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const goblin = monsterGroup("goblin")
@@ -196,6 +216,16 @@ test("dress gives a sheet to goblins that spawned before it loaded, and leaves o
   assert.equal(wolf.group.userData.card, wolf.sprite)
   assert.equal(wolf.group.userData.rim, wolf.rim)
   assert.equal(wolf.group.userData.hd, undefined)
+  // The skeleton waits for its own sheet, then draws from it.
+  const skeleton = monsterGroup("skeleton")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [skeleton.group] })
+  assert.equal(skeleton.group.userData.card.isSprite, true)
+  picture.attachMonsterSheet(sheetTexture(), "skeleton")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [skeleton.group] })
+  assert.equal(skeleton.group.userData.card.isMesh, true)
+  assert.equal(skeleton.group.userData.hd, "skeleton")
+  assert.equal(skeleton.group.userData.picture.h, MONSTER_SHEETS.skeleton.figure * SHEET_TEXEL)
+  assert.equal(skeleton.group.userData.parts, 160)
   // A hero in the monster list is not a monster.
   const hero = monsterGroup("goblin")
   hero.group.userData.role = "hero"

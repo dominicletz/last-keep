@@ -333,9 +333,13 @@ class AssetTest(unittest.TestCase):
         bob = ("slight body bob", "very slight body bob")
         nw = ("blade below his shoulders.", "blade below his shoulders, the blade clearly visible beside his body in "
               "every frame, never hanging straight down or hidden behind him.")
-        e = ("sword held low and angled forward in his right hand, blade below his shoulders.",
-             "sword held low and angled forward in front of his legs in his right hand the whole time, blade below "
-             "his shoulders; the sword never swings back behind his legs.")
+        # walk-E, take 3: the gait carries the sword arm, the item walk text is dropped.
+        e = ("Stiff jerky skeleton march: knees bent, legs alternating clearly, bony arms swinging a little, slight "
+             "body bob, sword held low and angled forward in his right hand, blade below his shoulders.",
+             "Stiff jerky skeleton march: knees bent, legs alternating clearly, slight body bob; his right arm stays "
+             "still, bent at the elbow and held forward, the sword pointing forward and down ahead of his front foot "
+             "like a fixed rod the whole time, blade below his shoulders; only his left arm swings, the sword arm "
+             "never swings back.")
         slash = "raises the sword to his shoulder and slashes it across in front of him toward the facing direction"
         wide = (slash, "raises the sword to his shoulder and swings it in a big, wide, full-arm sweep far out in front "
                 "of him toward the facing direction, the arm fully extended and the blade reaching well beyond his body")
@@ -346,9 +350,18 @@ class AssetTest(unittest.TestCase):
         heap = ("lets the sword drop beside its feet, and collapses straight down in place into a loose heap of bones "
                 "on the exact spot where it stood. It does not leap, lunge, step or fall forward toward the camera; "
                 "the bones pile up where its feet were.")
+        # attack-E and attack-W, take 3: an overhead chop.
+        chop = (slash, "raises the sword high above his head with the arm fully up, then chops it down in a big "
+                "overhead arc far out in front of him toward the facing direction, leaning his torso forward into the "
+                "blow, until the blade points straight out ahead at waist height, the arm fully extended")
+        # death-W, take 3: a compact pile, the sword under his feet.
+        pile = ("rattles, " + fall, "rattles, lets the sword fall straight down so it lies flat right under his feet, "
+                "crosswise to his facing, and crumples down onto his knees and then into a compact pile of bones no "
+                "wider than his standing stride, on the exact spot where he stood. He does not tip, lean or fall "
+                "forward; the bones pile up where his feet were.")
         swaps = {"walk-SW": [gait, bob], "walk-NW": [gait, bob, nw], "walk-E": [e],
-                 "attack-E": [wide], "attack-W": [wide], "attack-NW": [wide], "attack-S": [south],
-                 "death-S": [(fall, heap)], "death-W": [(fall, heap.replace(" toward the camera", ""))]}
+                 "attack-E": [chop], "attack-W": [chop], "attack-NW": [wide], "attack-S": [south],
+                 "death-S": [(fall, heap)], "death-W": [pile]}
         self.assertEqual(set(got), set(base))
         for cid, call in base.items():
             want = json.loads(json.dumps(call))
@@ -362,7 +375,7 @@ class AssetTest(unittest.TestCase):
 
     def test_a_bad_clip_override_is_refused(self):
         base = json.loads(read(os.path.join(hs.REFERENCE, "skeleton", "asset.json")))
-        bad = [{"death-SW": {"death": "falls"}}, {"walk-S": {"attack": "jabs"}}, {"walk-S": {"walk": "low"}},
+        bad = [{"death-SW": {"death": "falls"}}, {"walk-S": {"attack": "jabs"}}, {"walk-S": {"walk": "low"}}, {"walk-S": {"walk": [" "]}},
                {"attack-S": {"attack": " "}}, {"walk-S": {}}, {"idle-S": {"gait": "x"}}, ["walk-S"]]
         for over in bad:
             with tempfile.TemporaryDirectory() as tmp:

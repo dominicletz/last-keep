@@ -27,9 +27,11 @@ export function walkSheetUrl(hero, normal = false) {
 // Eight direction columns. Rows run walk, attack, then death, top to bottom.
 // A square cell of `cell` px, the figure `figure` px tall at the start pose,
 // and its lowest outline row is `footRow`. The texel is the hero's, so the
-// goblin's pixels are the same size as the heroes' (docs/ART-REDO.md).
+// goblin's and the skeleton's pixels are the same size as the heroes'
+// (docs/ART-REDO.md). The skeleton's wider cell holds the slash and the heap.
 export const MONSTER_SHEETS = {
-  goblin: { cell: 80, figure: 50, footRow: 73, rows: { walk: 8, attack: 6, death: 6 } }
+  goblin: { cell: 80, figure: 50, footRow: 73, rows: { walk: 8, attack: 6, death: 6 } },
+  skeleton: { cell: 88, figure: 60, footRow: 81, rows: { walk: 8, attack: 6, death: 6 } }
 }
 
 export function monsterSheetUrl(kind) {

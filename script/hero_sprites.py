@@ -111,7 +111,7 @@ def load_config(hero, reference=REFERENCE):
     # Per-clip prompt overrides: a clip regenerated with different wording
     # (asset.json "clip_overrides", e.g. {"walk-NW": {"gait": ..., "walk": [...]}})
     # so prompts.json keeps saying exactly what was sent. A walk may override
-    # its gait and its item walk texts, an attack its attack, a death its death.
+    # its gait and its item walk texts ([] drops them), an attack its attack, a death its death.
     over = cfg.get("clip_overrides", {})
     allowed = {"walk": ("gait", "walk"), "idle": (), "attack": ("attack",), "death": ("death",)}
     if not isinstance(over, dict):
@@ -124,7 +124,7 @@ def load_config(hero, reference=REFERENCE):
             raise SystemExit(f"{hero}/{name}: clip_overrides {cid!r} is not one of its clips")
         for f, v in fields.items():
             ok = isinstance(v, str) and v.strip() if f != "walk" else (
-                isinstance(v, list) and v and all(isinstance(x, str) and x.strip() for x in v))
+                isinstance(v, list) and all(isinstance(x, str) and x.strip() for x in v))
             if f not in allowed[k] or not ok:
                 raise SystemExit(f"{hero}/{name}: clip_overrides {cid!r} field {f!r} (a {k} takes {allowed[k]})")
     if kind != "hero":
