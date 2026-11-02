@@ -61,6 +61,7 @@ def profile(check):
         "roles": tuple((r["name"], _role_test(r)) for r in check["roles"]),
         "prop": tuple(check["prop"]),
         "prop_dirs": tuple(check.get("prop_dirs", COLUMNS)),
+        "prop_side_below": float(check.get("prop_side_below", 0.0)),
         "back": (check["back"]["title"], tuple((n, _measure(m), lo, hi) for n, m, lo, hi in check["back"]["bounds"])),
         "front": (check["front"]["title"], tuple((n, _measure(m), lo, hi) for n, m, lo, hi in check["front"]["bounds"])),
     }
@@ -74,7 +75,12 @@ def load_heroes(reference=os.path.join(ROOT, "assets/reference")):
     concept colours the palette keeps within dE 15. prop: the role whose side
     of the body each start pose fixes. back and front: per-frame floors and
     ceilings on the N and S columns. prop_dirs (default all): the directions
-    where the prop sits off the body midline; elsewhere it has no side. A measure is ["count", role],
+    where the prop sits off the body midline; elsewhere it has no side.
+    prop_side_below (default 0, read by the monster checks): the prop's side
+    is measured only on prop pixels below this share of the body height from
+    the top, so a same-colour part worn on the body (the skeleton's iron
+    shoulder plate) does not pull the side to the midline; presence still
+    counts every prop pixel. A measure is ["count", role],
     ["head", role, [x0, x1]?] for the top 30% of the body, or
     ["inside", role, box_role] for role pixels inside box_role's bounding box."""
     out = {}
@@ -153,9 +159,14 @@ def changed(a, b):
     return int(np.any(a != b, axis=2).sum())
 
 
-def prop_offset(cell, table, prop):
+def prop_offset(cell, table, prop, below=0.0):
+    """(prop centroid x - body centroid x, prop px), or (None, px) under 6
+    px. below > 0 counts only prop px under that share of the body span."""
     r = roles(cell, table)
     hit = np.argwhere(r == prop)
+    if below:
+        top, foot = body_span(cell)
+        hit = hit[hit[:, 0] >= top + int((foot - top) * below)]
     body = np.argwhere(cell[..., 3] > 0)
     if len(hit) < 6:
         return None, len(hit)
@@ -573,7 +584,8 @@ def run_monster_checks(asset, sheet, poses_dir, quiet=False):
         if d not in prof["prop_dirs"]:
             rep.check(True, f"{prop_name} {d}", "on the body midline in this view: no side to hold")
             continue
-        want, n = prop_offset(poses[d], table, prop_role)
+        below = prof["prop_side_below"]
+        want, n = prop_offset(poses[d], table, prop_role, below)
         if want is None or abs(want) < 2:
             rep.check(False, f"{prop_name} {d}", f"start pose shows {n} {prop_role} px off the midline, but "
                       f"{d} is in prop_dirs", [f"dirs/{d}.png"])
@@ -584,7 +596,8 @@ def run_monster_checks(asset, sheet, poses_dir, quiet=False):
                   f"{prop_role} px per frame {[got[r][1] for r in held]}", [where(d, r) for r in gone])
         side = "right" if want > 0 else "left"
         walk = rows.get("walk", ())
-        wrong = [r for r in walk if got[r][0] is not None and (got[r][0] * want <= 0 or abs(got[r][0]) < 2)]
+        sides = {r: (prop_offset(grid[c][r], table, prop_role, below)[0] if below else got[r][0]) for r in walk}
+        wrong = [r for r in walk if sides[r] is not None and (sides[r] * want <= 0 or abs(sides[r]) < 2)]
         rep.check(not wrong, f"{prop_name} {d} walks on screen-{side} of the body",
                   f"pose {want:+.1f}px; bad rows {wrong}", [where(d, r) for r in wrong])
 

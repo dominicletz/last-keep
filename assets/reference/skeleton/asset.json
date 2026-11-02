@@ -59,7 +59,7 @@
   ]
  },
  "check": {
-  "_note": "anchors: concept colours (hero_sprites.py skeleton colours) the palette keeps within dE 15: the concept is warm grey throughout, so bone, its shade and the dark sockets. roles: bone is the warm pale grey (hue 20-60 with a little chroma, or pale and warmer); iron the cool or colourless light grey of the blade and shoulder plate; shadow the dark greys and the dark warm greys (sockets, rib gaps), so a warm bone shade never counts as iron; leather the belt; cloth the purple-brown loincloth. prop: the sword and the shoulder plate share the iron role and both sit on the sword arm, so the start pose keeps one side. prop_dirs: all eight, the sword is held clear of the body in every view (visible: true). The bounds are first values at 60 px (the goblin's, scaled by area); tune them on the dirs poses before the build, never below what the approved poses show.",
+  "_note": "anchors: concept colours (hero_sprites.py skeleton colours) the palette keeps within dE 15. roles, tuned on the eight start poses as the sheet quantizes them: the clips draw the bone warmer than the concept (hue 33-36, chroma 0.10-0.17), so every warm tan lighter than 0.3 is bone whether or not it is grey, and darker warm greys are shadow; iron is the near-colourless grey (chroma at most 0.045) of the blade and the shoulder plate; leather the dark red-brown belt; cloth the dark purple-brown loincloth (hue 350-15, a grey under 0.25 light). prop: the sword; prop_side_below 0.3 measures its side only below the top 30% of the body, because the iron shoulder plate sits on the torso in the W and E views and pulled the start pose itself to the midline; presence still counts every iron px. prop_dirs: all eight. bounds: each floor is 0.64 x the start pose's value in its sheet cell (0.64 is the goblin's loosest floor-to-pose ratio, its face): N loincloth 91 -> 58; S skull 161 -> 103, ribs 219 -> 140, blade 62 -> 39. No ceiling on the back: at 60 px the sockets are 1-3 px and the head's darkest px count the same front and back (17 on both start poses), so a socket ceiling cannot tell them apart.",
   "anchors": {
    "bone": [
     143,
@@ -79,14 +79,24 @@
   },
   "roles": [
    {
+    "name": "cloth",
+    "neutral": true,
+    "hue": [
+     350,
+     15
+    ],
+    "chroma_gt": 0.03,
+    "light_lt": 0.25
+   },
+   {
     "name": "bone",
     "neutral": true,
     "hue": [
      20,
      60
     ],
-    "chroma_gt": 0.04,
-    "light_gt": 0.4
+    "chroma_gt": 0.045,
+    "light_gt": 0.3
    },
    {
     "name": "shadow",
@@ -95,7 +105,7 @@
      20,
      60
     ],
-    "chroma_gt": 0.04
+    "chroma_gt": 0.045
    },
    {
     "name": "iron",
@@ -112,7 +122,7 @@
      25,
      60
     ],
-    "light_gt": 0.5
+    "light_gt": 0.3
    },
    {
     "name": "leather",
@@ -143,25 +153,17 @@
    "E",
    "SE"
   ],
+  "prop_side_below": 0.3,
   "back": {
-   "title": "back view N: no eye sockets, the loincloth back",
+   "title": "back view N keeps the loincloth back",
    "bounds": [
-    [
-     "sockets",
-     [
-      "head",
-      "shadow"
-     ],
-     null,
-     40
-    ],
     [
      "loincloth",
      [
       "count",
       "cloth"
      ],
-     120,
+     58,
      null
     ]
    ]
@@ -175,7 +177,7 @@
       "head",
       "bone"
      ],
-     140,
+     103,
      null
     ],
     [
@@ -185,7 +187,7 @@
       "shadow",
       "bone"
      ],
-     60,
+     140,
      null
     ],
     [
@@ -194,7 +196,7 @@
       "count",
       "iron"
      ],
-     34,
+     39,
      null
     ]
    ]

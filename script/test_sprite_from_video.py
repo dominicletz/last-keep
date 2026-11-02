@@ -233,7 +233,9 @@ class AssetProfileTest(unittest.TestCase):
 
     def test_skeleton_roles_keep_bone_and_iron_apart(self):
         # The concept is warm grey throughout: warm greys are bone (pale) or
-        # shadow (dark), and only colourless or cool greys are the sword's iron.
+        # shadow (dark), and only near-colourless or cool greys are the
+        # sword's iron. The clips draw the bone warmer than the concept, so
+        # the mid tans of the built palette are bone too, not leather.
         prof = cs.ASSETS["skeleton"]["profile"]
         table = prof["roles"]
         self.assertEqual(cs.role((143, 135, 126), table), "bone")
@@ -244,10 +246,70 @@ class AssetProfileTest(unittest.TestCase):
         self.assertEqual(cs.role((110, 110, 112), table), "iron")
         self.assertEqual(cs.role((90, 60, 40), table), "leather")
         self.assertEqual(cs.role((110, 60, 90), table), "cloth")
+        # Palette colours of the built sheet.
+        for bone in ((112, 98, 78), (135, 120, 98), (164, 147, 123), (97, 86, 71)):
+            self.assertEqual(cs.role(bone, table), "bone", bone)
+        for iron in ((85, 80, 76), (108, 103, 99), (134, 127, 123)):
+            self.assertEqual(cs.role(iron, table), "iron", iron)
+        self.assertEqual(cs.role((53, 43, 42), table), "cloth")  # the loincloth
+        self.assertEqual(cs.role((69, 49, 34), table), "leather")  # the belt
+        self.assertEqual(cs.role((73, 62, 47), table), "shadow")
         self.assertEqual(prof["prop"], ("sword", "iron"))
         self.assertEqual(prof["prop_dirs"], tuple(cs.COLUMNS))
+        self.assertEqual(prof["prop_side_below"], 0.3)
         spec = cs.ASSETS["skeleton"]["spec"]
         self.assertEqual((spec.cell, spec.height), (88, 60))
+
+    def test_skeleton_start_poses_meet_their_own_view_bounds(self):
+        # The bounds are tuned on the start poses: each one must hold them.
+        asset = cs.ASSETS["skeleton"]
+        prof, spec = asset["profile"], asset["spec"]
+        dirs = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "assets/reference/skeleton/video/dirs")
+        if not os.path.exists(os.path.join(dirs, "S.png")):
+            self.skipTest("skeleton start poses not generated")
+        for col, key in (("N", "back"), ("S", "front")):
+            pose = np.asarray(Image.open(os.path.join(dirs, f"{col}.png")).convert("RGB"))
+            rgb, al = sv.pose_place(pose, spec)
+            cell = np.zeros((spec.cell, spec.cell, 4), np.uint8)
+            cell[al, :3] = np.clip(rgb[al], 0, 255).astype(np.uint8)
+            cell[al, 3] = 255
+            for label_, m, lo, hi in prof[key][1]:
+                v = cs.measure(cell, prof["roles"], m)
+                self.assertTrue((lo is None or v >= lo) and (hi is None or v <= hi), (col, label_, v, lo, hi))
+
+    def test_every_other_profile_measures_the_prop_side_on_every_prop_pixel(self):
+        for name, hero in cs.HEROES.items():
+            self.assertEqual(hero["prop_side_below"], 0.0, name)
+        self.assertEqual(cs.ASSETS["goblin"]["profile"]["prop_side_below"], 0.0)
+
+
+class PropSideTest(unittest.TestCase):
+    """prop_side_below: a same-colour part worn on the torso (the skeleton's
+    shoulder plate) must not pull the held prop's side to the midline."""
+
+    def cell(self):
+        table = cs.ASSETS["skeleton"]["profile"]["roles"]
+        c = np.zeros((88, 88, 4), np.uint8)
+        c[21:81, 38:50] = (164, 147, 123, 255)   # bone body, rows 21..80
+        c[24:34, 40:52] = (108, 103, 99, 255)    # iron shoulder plate on the torso top
+        c[60:63, 20:38] = (108, 103, 99, 255)    # sword held low, out to screen-left
+        return c, table
+
+    def test_the_plate_pulls_the_whole_prop_centroid_toward_the_midline(self):
+        c, table = self.cell()
+        whole, n = cs.prop_offset(c, table, "iron")
+        low, m = cs.prop_offset(c, table, "iron", 0.3)
+        self.assertEqual((n, m), (174, 54))
+        self.assertGreater(abs(low), abs(whole) + 5)
+        self.assertLess(low, -10)  # the blade alone is clearly screen-left
+
+    def test_a_prop_only_above_the_cut_has_no_side_but_still_counts(self):
+        c, table = self.cell()
+        c[60:63, 20:38] = 0                      # the sword gone: only the plate is iron
+        self.assertEqual(cs.prop_offset(c, table, "iron", 0.3), (None, 0))
+        self.assertIsNotNone(cs.prop_offset(c, table, "iron")[0])
+
 
 class SheetBuildTest(unittest.TestCase):
     """The same inputs give the same bytes: a rebuild matches what is committed.
