@@ -3,7 +3,7 @@ import { createPicture } from "./hd2d/picture"
 import { perfRequested, perfText } from "./hd2d/perf"
 import { createView } from "./render"
 import { sceneKey } from "./frame"
-import { bakeMonster, loadMonsterSheets, monsterKinds, monsterParts, monsterSource } from "./monsters.js"
+import { bakeMonster, loadMonsterSheets, monsterKinds, monsterParts, monsterSource, releaseMonsterSheets } from "./monsters.js"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
@@ -742,6 +742,8 @@ function start(code, seat, ui) {
       drawnFirst = true
       if (ui.view.markFirstPaint) ui.view.markFirstPaint("lastkeep:firstWorldFrame")
       ui.view.draw(snap, selfId)
+      // Create held the sheet loader. The room is up, so the rest come now.
+      releaseMonsterSheets()
     }
     const me = (snap.players || []).find((player) => player.id === selfId)
     if (window.__lastKeep) {

@@ -97,7 +97,11 @@ export function snapshotDue(hooks, now, lastRender, lastInput) {
   return hooks ? drawDue(now, lastRender, lastInput) : true
 }
 
-export function paintDue(hooks, now, lastRender, lastInput, changed) {
+// A held view paints nothing. The home page holds its menu while Create waits
+// on the server: a software-GL paint costs a few hundred ms of CPU, and on a
+// small machine that CPU is the one laying out the new room's world.
+export function paintDue(hooks, now, lastRender, lastInput, changed, held = false) {
+  if (held) return false
   if (hooks) return drawDue(now, lastRender, lastInput)
   return !!changed || now - lastRender >= keepAliveMs
 }

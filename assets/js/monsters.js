@@ -113,6 +113,27 @@ const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0))
 // more than one decode. A sheet that fails leaves its kind to bakeMonster.
 let loading = null
 
+// A hold parks the loader before its next sheet. Create holds it from the
+// click to the room's first frame: each decode is a main-thread task, and on
+// a small machine it takes CPU from the server laying out the new room.
+let gate = null
+let openGate = null
+
+export function holdMonsterSheets() {
+  if (gate) return
+  gate = new Promise((resolve) => {
+    openGate = resolve
+  })
+}
+
+export function releaseMonsterSheets() {
+  if (!gate) return
+  const open = openGate
+  gate = null
+  openGate = null
+  if (open) open()
+}
+
 export function loadMonsterSheets(options) {
   if (options) return loadSheets(options)
   if (!loading) loading = loadSheets({})
@@ -125,6 +146,8 @@ async function loadSheets(options) {
   let adopted = 0
   for (const kind of KINDS) {
     if (cache.has(kind) || !monsterSheets[kind]) continue
+    while (gate) await gate
+    if (cache.has(kind)) continue
     try {
       const response = await get(monsterSheetUrl(kind))
       if (!response.ok) throw new Error(`${response.status}`)

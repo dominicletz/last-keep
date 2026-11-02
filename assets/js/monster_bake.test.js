@@ -96,3 +96,30 @@ test("loading the monster module bakes nothing", async () => {
   assert.equal(monsters.monsterSource("goblin"), null)
   assert.ok(performance.now() - started < 400, "import should not bake the atlases")
 })
+
+test("a held loader fetches no sheet until it is released", async () => {
+  const monsters = await freshMonsters("held")
+  const net = served(monsters.monsterKinds())
+  monsters.holdMonsterSheets()
+  const loading = monsters.loadMonsterSheets(net)
+  for (let i = 0; i < 5; i++) await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(net.calls, [])
+  monsters.releaseMonsterSheets()
+  assert.equal(await loading, monsters.monsterKinds().length)
+  assert.equal(net.calls.length, monsters.monsterKinds().length)
+  // A release with no hold is a no-op, and a later hold parks a later load.
+  monsters.releaseMonsterSheets()
+})
+
+test("a kind baked while the loader is held is not fetched after release", async () => {
+  const monsters = await freshMonsters("held-bake")
+  const net = served(monsters.monsterKinds())
+  monsters.holdMonsterSheets()
+  const loading = monsters.loadMonsterSheets(net)
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  monsters.monsterParts("goblin")
+  monsters.releaseMonsterSheets()
+  assert.equal(await loading, monsters.monsterKinds().length - 1)
+  assert.ok(!net.calls.includes("/images/hd2d/monsters/goblin.png"))
+  assert.equal(monsters.monsterSource("goblin"), "baked")
+})

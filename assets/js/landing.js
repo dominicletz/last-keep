@@ -15,6 +15,7 @@ export function bootLanding() {
     mode: "create",
     onAccept: async (pick) => {
       error.hidden = true
+      menu.hold()
       token = token || crypto.randomUUID().replaceAll("-", "")
       try {
         const response = await fetch("/api/rooms", {
@@ -27,6 +28,7 @@ export function bootLanding() {
           sessionStorage.removeItem("lastkeep-arrive")
           error.hidden = false
           error.textContent = body.error || "Could not create the game."
+          menu.resume()
           return
         }
         const stored = { token: body.token, name: pick.name, hero: pick.hero }
@@ -41,6 +43,7 @@ export function bootLanding() {
         sessionStorage.removeItem("lastkeep-arrive")
         error.hidden = false
         error.textContent = "The keep did not answer."
+        menu.resume()
       }
     }
   })

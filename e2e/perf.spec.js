@@ -111,3 +111,94 @@ test("a player's page starts fast, paints while it moves, and rests while it sta
   expect(walk.paints / walk.rafs, JSON.stringify(walk)).toBeGreaterThan(0.7)
   await context.close()
 })
+
+// Create used to leave the menu painting while the server laid out the new
+// room. On a one-core runner the software-GL paints took the CPU the server
+// needed, and Create to the first world frame went from 0.5 s to 2.7 s.
+test("the menu holds its paints and the sheet loader while Create waits on the server", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  await context.addInitScript(() => {
+    const S = (window.__budget = { paints: 0 })
+    let drew = false
+    for (const C of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+      if (!C) continue
+      for (const name of ["drawArrays", "drawElements"]) {
+        const f = C.prototype[name]
+        C.prototype[name] = function (...a) {
+          drew = true
+          return f.apply(this, a)
+        }
+      }
+    }
+    const loop = () => {
+      if (drew) S.paints += 1
+      drew = false
+      requestAnimationFrame(loop)
+    }
+    requestAnimationFrame(loop)
+  })
+  const page = await context.newPage()
+  // The loader fetches one sheet at a time. The first is parked until the
+  // click has landed, so every later request is the hold's to time.
+  let clickedAt = 0
+  let landed = false
+  const asked = []
+  page.on("request", (request) => {
+    if (/\/images\/hd2d\/monsters\/\w+\.png$/.test(request.url())) asked.push(Date.now())
+  })
+  await page.route("**/images/hd2d/monsters/*.png", async (route) => {
+    while (!landed) await new Promise((resolve) => setTimeout(resolve, 50))
+    await route.continue()
+  })
+  let answered = 0
+  await page.route("**/api/rooms", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    answered = Date.now()
+    await route.continue()
+  })
+  await page.goto("/?hooks=0")
+  await page.waitForFunction(() => performance.getEntriesByName("lastkeep:firstMenuFrame").length === 1)
+  await page.locator("#player-name").fill("Ada")
+  // A keep-alive paint can already be in flight when the click lands.
+  clickedAt = Date.now()
+  await page.locator("#start-button").click()
+  await page.waitForTimeout(150)
+  landed = true
+  const before = await page.evaluate(() => window.__budget.paints)
+  await page.waitForTimeout(1000)
+  expect(await page.evaluate(() => window.__budget.paints), "menu paints while Create waits").toBe(before)
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await page.waitForFunction(() => performance.getEntriesByName("lastkeep:firstWorldFrame").length === 1)
+  await expect.poll(() => asked.length).toBeGreaterThan(1)
+  expect(asked.filter((at) => at < clickedAt).length, "sheets asked for before the click").toBe(1)
+  expect(answered).toBeGreaterThan(0)
+  const later = asked.filter((at) => at >= clickedAt)
+  expect(Math.min(...later), "next sheet after the server answered").toBeGreaterThanOrEqual(answered)
+  await context.close()
+})
+
+test("a failed Create lets the menu paint again", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } })
+  const page = await context.newPage()
+  await page.route("**/api/rooms", (route) => route.fulfill({ status: 503, contentType: "application/json", body: '{"error":"The keep is busy."}' }))
+  await page.goto("/?hooks=0")
+  await page.waitForFunction(() => performance.getEntriesByName("lastkeep:firstMenuFrame").length === 1)
+  await page.locator("#player-name").fill("Ada")
+  await page.locator("#start-button").click()
+  await expect(page.locator("#start-error")).toHaveText("The keep is busy.")
+  // The menu's view paints again, at least its once-a-second keep-alive.
+  await page.evaluate(() => {
+    window.__drew = 0
+    for (const C of [window.WebGLRenderingContext, window.WebGL2RenderingContext]) {
+      if (!C) continue
+      const f = C.prototype.drawElements
+      C.prototype.drawElements = function (...a) {
+        window.__drew += 1
+        return f.apply(this, a)
+      }
+    }
+  })
+  await expect.poll(() => page.evaluate(() => window.__drew), { timeout: 5000 }).toBeGreaterThan(0)
+  expect(page.url()).not.toMatch(/\/r\//)
+  await context.close()
+})

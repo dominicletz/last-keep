@@ -215,6 +215,14 @@ test("a player's page takes every snapshot and paints only on change", () => {
   assert.ok(keepAliveMs >= 4 * idleDrawMs)
 })
 
+test("a held view paints nothing, changed or due, with or without hooks", () => {
+  assert.equal(paintDue(false, 1004, 1000, -Infinity, true, true), false)
+  assert.equal(paintDue(false, 1000 + keepAliveMs * 5, 1000, -Infinity, false, true), false)
+  assert.equal(paintDue(true, 1000 + idleDrawMs * 5, 1000, -Infinity, true, true), false)
+  // Not held is the default.
+  assert.equal(paintDue(false, 1004, 1000, -Infinity, true, false), true)
+})
+
 function actor(x, z) {
   const mesh = new THREE.Group()
   mesh.position.set(x, 0, z)

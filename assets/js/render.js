@@ -460,6 +460,8 @@ export function createView(stage, picture) {
   let lastSceneKey = null
   let lastGhost = null
   let firstPaint = null
+  // hold() stops paints until the next draw(). See paintDue.
+  let held = false
   const rimAtlases = new WeakMap()
   let sampleTarget = null
   const savedClear = new THREE.Color()
@@ -575,7 +577,7 @@ export function createView(stage, picture) {
     cullActors()
     const signature = testHooks ? null : frameSignature(camera, meshes.values())
     const changed = dirty || bursts.length > 0 || signature !== lastSignature
-    if (paintDue(testHooks, now, lastRender, lastInput, changed)) {
+    if (paintDue(testHooks, now, lastRender, lastInput, changed, held)) {
       const started = performance.now()
       paintFrame()
       publishPerf(performance.now() - started)
@@ -662,7 +664,18 @@ export function createView(stage, picture) {
     markFirstPaint(name) {
       firstPaint = name
     },
+    hold() {
+      held = true
+    },
+    resume() {
+      if (held) dirty = true
+      held = false
+    },
+    get held() {
+      return held
+    },
     draw(snap, selfId) {
+      held = false
       drawnTick = snap.tick
       const key = testHooks ? null : sceneKey(snap)
       if (testHooks || key !== lastSceneKey) dirty = true
