@@ -309,13 +309,68 @@ class AssetTest(unittest.TestCase):
         for k, v in c.items():
             self.assertNotIn("partly hidden", json.dumps(v), k)
         self.assertIn("(in full view)", c["view-W"]["args"]["description"])
-        self.assertIn("slashes it across", c["attack-W"]["args"]["prompt"])
+        self.assertIn("slashes it across", c["attack-SW"]["args"]["prompt"])
         self.assertIn("heap of bones", c["death-E"]["args"]["prompt"])
         self.assertIn("no shield", c["view-S"]["args"]["description"])
         # Without the flag the W view still says where the hand hides it.
         plain = dict(sword)
         del plain["visible"]
         self.assertIn("partly hidden behind the body", hs.item_line(plain, "W", "his"))
+
+    def test_skeleton_clip_overrides_reproduce_the_second_takes_exactly(self):
+        # Nine skeleton clips failed the first precheck and were regenerated
+        # with these phrase changes. prompts.json must be what was sent: each
+        # overridden clip is the plain prompt with exactly these swaps, and
+        # every other call is untouched.
+        cfg = hs.load_config("skeleton")
+        plain = dict(cfg)
+        del plain["clip_overrides"]
+        base = {c["id"]: c for c in hs.build_prompts(plain)["calls"]}
+        got = self.calls("skeleton")
+        gait = ("Stiff jerky skeleton march: knees bent,",
+                "Stiff upright skeleton march at full standing height: knees only slightly bent, never crouching "
+                "or lowering the body,")
+        bob = ("slight body bob", "very slight body bob")
+        nw = ("blade below his shoulders.", "blade below his shoulders, the blade clearly visible beside his body in "
+              "every frame, never hanging straight down or hidden behind him.")
+        e = ("sword held low and angled forward in his right hand, blade below his shoulders.",
+             "sword held low and angled forward in front of his legs in his right hand the whole time, blade below "
+             "his shoulders; the sword never swings back behind his legs.")
+        slash = "raises the sword to his shoulder and slashes it across in front of him toward the facing direction"
+        wide = (slash, "raises the sword to his shoulder and swings it in a big, wide, full-arm sweep far out in front "
+                "of him toward the facing direction, the arm fully extended and the blade reaching well beyond his body")
+        south = (slash, "raises the sword only to his shoulder, never above or in front of his head, so his skull stays "
+                 "fully visible and uncovered the whole time, and slashes it across in front of his chest toward the "
+                 "facing direction")
+        fall = "drops the sword and collapses straight down into a loose heap of bones on the ground."
+        heap = ("lets the sword drop beside its feet, and collapses straight down in place into a loose heap of bones "
+                "on the exact spot where it stood. It does not leap, lunge, step or fall forward toward the camera; "
+                "the bones pile up where its feet were.")
+        swaps = {"walk-SW": [gait, bob], "walk-NW": [gait, bob, nw], "walk-E": [e],
+                 "attack-E": [wide], "attack-W": [wide], "attack-NW": [wide], "attack-S": [south],
+                 "death-S": [(fall, heap)], "death-W": [(fall, heap.replace(" toward the camera", ""))]}
+        self.assertEqual(set(got), set(base))
+        for cid, call in base.items():
+            want = json.loads(json.dumps(call))
+            for old, new in swaps.get(cid, []):
+                self.assertEqual(want["args"]["prompt"].count(old), 1, (cid, old))
+                want["args"]["prompt"] = want["args"]["prompt"].replace(old, new)
+            self.assertEqual(got[cid], want, cid)
+        self.assertEqual(sorted(k for k in cfg["clip_overrides"] if not k.startswith("_")), sorted(swaps))
+        for h in HEROES + ["goblin"]:
+            self.assertNotIn("clip_overrides", hs.load_config(h), h)
+
+    def test_a_bad_clip_override_is_refused(self):
+        base = json.loads(read(os.path.join(hs.REFERENCE, "skeleton", "asset.json")))
+        bad = [{"death-SW": {"death": "falls"}}, {"walk-S": {"attack": "jabs"}}, {"walk-S": {"walk": "low"}},
+               {"attack-S": {"attack": " "}}, {"walk-S": {}}, {"idle-S": {"gait": "x"}}, ["walk-S"]]
+        for over in bad:
+            with tempfile.TemporaryDirectory() as tmp:
+                os.makedirs(os.path.join(tmp, "g"))
+                with open(os.path.join(tmp, "g", "asset.json"), "w") as fh:
+                    json.dump(dict(base, clip_overrides=over), fh)
+                with self.assertRaises(SystemExit, msg=over):
+                    hs.load_config("g", reference=tmp)
 
     def test_visible_leaves_every_other_prompt_file_alone(self):
         for h in HEROES + ["goblin"]:

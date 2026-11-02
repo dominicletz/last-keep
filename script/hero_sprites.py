@@ -108,6 +108,25 @@ def load_config(hero, reference=REFERENCE):
     if not isinstance(notes, dict) or any(d not in ("S", "N", "W", "E") or not isinstance(t, str) or not t.strip()
                                           for d, t in notes.items()):
         raise SystemExit(f"{hero}/{name}: view_notes maps S, N, W or E to one sentence, got {notes!r}")
+    # Per-clip prompt overrides: a clip regenerated with different wording
+    # (asset.json "clip_overrides", e.g. {"walk-NW": {"gait": ..., "walk": [...]}})
+    # so prompts.json keeps saying exactly what was sent. A walk may override
+    # its gait and its item walk texts, an attack its attack, a death its death.
+    over = cfg.get("clip_overrides", {})
+    allowed = {"walk": ("gait", "walk"), "idle": (), "attack": ("attack",), "death": ("death",)}
+    if not isinstance(over, dict):
+        raise SystemExit(f"{hero}/{name}: clip_overrides maps clip ids to fields, got {over!r}")
+    for cid, fields in over.items():
+        if cid.startswith("_"):
+            continue
+        k, _, d = cid.partition("-")
+        if k not in clips or d not in clips[k] or not isinstance(fields, dict) or not fields:
+            raise SystemExit(f"{hero}/{name}: clip_overrides {cid!r} is not one of its clips")
+        for f, v in fields.items():
+            ok = isinstance(v, str) and v.strip() if f != "walk" else (
+                isinstance(v, list) and v and all(isinstance(x, str) and x.strip() for x in v))
+            if f not in allowed[k] or not ok:
+                raise SystemExit(f"{hero}/{name}: clip_overrides {cid!r} field {f!r} (a {k} takes {allowed[k]})")
     if kind != "hero":
         sheet = cfg.get("sheet") or {}
         for key in ("world_height", "height", "cell"):
@@ -476,13 +495,15 @@ def build_prompts(cfg):
     gait = cfg.get("gait", "Steady marching walk: legs alternating clearly, slight body bob")
     clips = cfg["clips"] if "clips" in cfg else HERO_CLIPS
     order = [(k, d) for d in COLUMNS for k in CLIP_KINDS if d in clips.get(k, ())]
+    over = cfg.get("clip_overrides", {})
     for d in COLUMNS:
         face = DIRECTION[d].format(poss=poss)
+        ow, oa, od = (over.get(f"{k}-{d}", {}) for k in ("walk", "attack", "death"))
         props = "; ".join(x for x in (item_line(i, d, poss) for i in cfg["items"]) if x)
         walk = (f"Game sprite walk cycle. The {noun} walks in place on a treadmill, keeping exactly the facing "
                 f"direction of the first frame ({face}). Holding exactly the body angle of the first frame: torso "
-                "does not twist. " + gait
-                + "".join(f", {b}" for b in walk_bits) + ". "
+                "does not twist. " + ow.get("gait", gait)
+                + "".join(f", {b}" for b in ow.get("walk", walk_bits)) + ". "
                 + (f"Props stay where the first frame has them: {props}. " if props else "")
                 + f"The {noun} stays exactly centered, does not turn, move or change size. Locked-off camera, no "
                 "zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, "
@@ -496,14 +517,14 @@ def build_prompts(cfg):
                 "crisp frames.")
         attack = (f"Game sprite attack. The {noun} keeps exactly the facing direction of the first frame ({face}) "
                   f"and the body angle of the first frame: torso does not twist away. In one quick motion it "
-                  f"{cfg.get('attack', '')}, then returns exactly to the starting pose and holds it for the last "
+                  f"{oa.get('attack', cfg.get('attack', ''))}, then returns exactly to the starting pose and holds it for the last "
                   "frames. "
                   + (f"Props stay where the first frame has them: {props}. " if props else "")
                   + f"The {noun} stays exactly centered, feet stay planted, no turning, no change of size. "
                   f"{steady_light(cfg)} Locked-off camera, no zoom, plain flat white background, even lighting, "
                   "crisp frames, no motion blur, no speed lines, no effects.")
         death = (f"Game sprite death. The {noun} starts exactly in the pose and facing of the first frame ({face}). "
-                 f"It is struck down: it {cfg.get('death', '')}. It lies still on the ground for the last half "
+                 f"It is struck down: it {od.get('death', cfg.get('death', ''))}. It lies still on the ground for the last half "
                  f"second. The body stays centered on the same spot and does not slide out of frame. "
                  f"{steady_light(cfg)} No blood, no gore, no fading, no particles, no effects. Locked-off camera, "
                  "no zoom, plain flat white background, even lighting, crisp frames, no motion blur.")

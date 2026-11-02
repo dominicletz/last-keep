@@ -216,5 +216,40 @@
    "E": 6
   },
   "design": "gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets, an open ribcage with clear separate ribs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt with a frayed dark purple-brown cloth loincloth, long straight iron sword with a notched grey blade held low in his right hand, always fully visible"
+ },
+ "clip_overrides": {
+  "_note": "The second takes of the nine clips that failed the first precheck. walk-SW and walk-NW crouched: an upright march at full height. walk-NW hid the blade: it stays beside the body. walk-E swung the sword behind his legs: it stays in front. attack-E, -W, -NW slashed too close to the body to read: a wide full-arm sweep. attack-S raised the sword over the skull: it stops at the shoulder. death-S and death-W lunged toward the camera: the bones pile up where the feet were.",
+  "walk-SW": {
+   "gait": "Stiff upright skeleton march at full standing height: knees only slightly bent, never crouching or lowering the body, legs alternating clearly, bony arms swinging a little, very slight body bob"
+  },
+  "walk-NW": {
+   "gait": "Stiff upright skeleton march at full standing height: knees only slightly bent, never crouching or lowering the body, legs alternating clearly, bony arms swinging a little, very slight body bob",
+   "walk": [
+    "sword held low and angled forward in his right hand, blade below his shoulders, the blade clearly visible beside his body in every frame, never hanging straight down or hidden behind him"
+   ]
+  },
+  "walk-E": {
+   "walk": [
+    "sword held low and angled forward in front of his legs in his right hand the whole time, blade below his shoulders; the sword never swings back behind his legs"
+   ]
+  },
+  "attack-S": {
+   "attack": "raises the sword only to his shoulder, never above or in front of his head, so his skull stays fully visible and uncovered the whole time, and slashes it across in front of his chest toward the facing direction"
+  },
+  "attack-W": {
+   "attack": "raises the sword to his shoulder and swings it in a big, wide, full-arm sweep far out in front of him toward the facing direction, the arm fully extended and the blade reaching well beyond his body"
+  },
+  "attack-NW": {
+   "attack": "raises the sword to his shoulder and swings it in a big, wide, full-arm sweep far out in front of him toward the facing direction, the arm fully extended and the blade reaching well beyond his body"
+  },
+  "attack-E": {
+   "attack": "raises the sword to his shoulder and swings it in a big, wide, full-arm sweep far out in front of him toward the facing direction, the arm fully extended and the blade reaching well beyond his body"
+  },
+  "death-S": {
+   "death": "rattles, lets the sword drop beside its feet, and collapses straight down in place into a loose heap of bones on the exact spot where it stood. It does not leap, lunge, step or fall forward toward the camera; the bones pile up where its feet were"
+  },
+  "death-W": {
+   "death": "rattles, lets the sword drop beside its feet, and collapses straight down in place into a loose heap of bones on the exact spot where it stood. It does not leap, lunge, step or fall forward; the bones pile up where its feet were"
+  }
  }
 }
