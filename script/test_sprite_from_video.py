@@ -190,7 +190,12 @@ class MonsterGeometryTest(unittest.TestCase):
             self.assertFalse(sv.sheet_spec(sv.asset_config(a)).flies, a)
         bat = sv.sheet_spec(sv.asset_config("bat"))
         self.assertTrue(bat.flies)
-        self.assertEqual((bat.cell, bat.height, bat.foot), (128, 44, 120))
+        self.assertEqual((bat.cell, bat.height, bat.foot), (128, 44, 104))
+        # Every figure on its feet keeps the 8 px margin; only a flier hangs higher.
+        for a in ("goblin", "skeleton", "wolf"):
+            s = sv.sheet_spec(sv.asset_config(a))
+            self.assertEqual(s.foot, s.cell - sv.FOOT_MARGIN, a)
+        self.assertEqual(sv.FOOT_MARGIN, 8)
 
     def test_death_picks_end_when_the_fall_comes_to_rest(self):
         d = [0, 1, 3, 6, 10, 15, 20, 25, 28, 30, 30, 30, 30, 30, 30, 30]

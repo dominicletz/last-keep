@@ -675,8 +675,23 @@ def cell_alpha(frame, scale):
     return ndimage.binary_dilation(a, CROSS)
 
 
-def pose_alpha(path):
-    pose = np.asarray(Image.open(path).convert("RGB"))
+def pose_at(path, frame):
+    """A start pose (dirs/<d>.png) as RGB at the clip's frame size. A clip
+    can come back at another size than its 720 px first frame (the wolf's
+    deaths are 960 px): the generator scaled the pose up, so the pose is
+    scaled the same way (Lanczos) before it is cut out and placed. Placing
+    the 720 px pose instead puts the outline on another sub-pixel grid: the
+    wolf death-N frame 0 was the pose itself yet differed by 20 px from it
+    on all three takes, against 1 to 4 px on the resized pose."""
+    img = Image.open(path).convert("RGB")
+    h, w = frame["rgb"].shape[:2]
+    if img.size != (w, h):
+        img = img.resize((w, h), Image.LANCZOS)
+    return np.asarray(img)
+
+
+def pose_alpha(path, frame=None):
+    pose = np.asarray(Image.open(path).convert("RGB")) if frame is None else pose_at(path, frame)
     m = sv.cut_out(pose)
     top, foot = sv.span(m)
     _, a = sv.place({"rgb": pose, "mask": m}, sv.FILL / (foot - top + 1), sv.head_centre(m), foot)
@@ -712,7 +727,6 @@ def precheck(cfg, log=print):
         for m in missing:
             flag(m, "missing")
         return problems
-    poses = {d: pose_alpha(os.path.join(vid, "dirs", f"{d}.png")) for d in COLUMNS}
     walk_median = {}
 
     def inspect(d, kind, frames, picks, scale):
@@ -737,7 +751,7 @@ def precheck(cfg, log=print):
             if drift > IDLE_DRIFT * med:
                 flag(clip, f"idle moves too much: a frame differs from the first by {drift} silhouette px "
                            f"(limit {IDLE_DRIFT * med:.0f} = {IDLE_DRIFT} x walk median {med:.0f})")
-        start = int((first != poses[d]).sum())
+        start = int((first != pose_alpha(os.path.join(vid, "dirs", f"{d}.png"), frames[0])).sum())
         if start > START_POSE * med:
             flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
                        f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
@@ -786,9 +800,14 @@ def monster_precheck(cfg, log=print):
             flag(m, "missing")
         return problems
     poses = {}
-    for d in COLUMNS:
-        _, a = sv.pose_place(np.asarray(Image.open(os.path.join(vid, "dirs", f"{d}.png")).convert("RGB")), spec)
-        poses[d] = ndimage.binary_dilation(a, CROSS)
+
+    def pose(d, frame):
+        """dirs/<d>.png placed as a cell, scaled first to the clip's frame size."""
+        key = (d, frame["rgb"].shape[:2])
+        if key not in poses:
+            _, a = sv.pose_place(pose_at(os.path.join(vid, "dirs", f"{d}.png"), frame), spec)
+            poses[key] = ndimage.binary_dilation(a, CROSS)
+        return poses[key]
     walk_median = {}
 
     def inspect(d, kind, frames, picks, scale, placer):
@@ -813,7 +832,7 @@ def monster_precheck(cfg, log=print):
             if loop > k * med:
                 flag(clip, f"loop does not close: last frame differs from the first by {loop} silhouette px "
                            f"(limit {k * med:.0f} = {k} x walk median {med:.0f})")
-        start = int((first != poses[d]).sum())
+        start = int((first != pose(d, frames[0])).sum())
         if start > START_POSE * med:
             flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
                        f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")

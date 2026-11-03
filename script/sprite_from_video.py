@@ -54,6 +54,9 @@ MONSTER_ROWS = (("walk", WALK), ("attack", 6), ("death", 6))
 # mirror: a mirrored clip swaps the hand that holds the weapon.
 DEATH_FROM = {"SW": "S", "SE": "S", "NW": "N", "NE": "N"}
 FOOT_MARGIN = 8      # monster cells: lowest body pixel this many rows above the cell bottom
+FLIER_FOOT_MARGIN = 24  # a flier's: its walk and attack hold frame 0's foot line and the downstroke
+                        # sweeps the wings below it (the bat's take 2 reached 7 px under it, into
+                        # the cell edge, with 38+ px empty above), so it hangs 16 px higher
 
 
 class Spec(NamedTuple):
@@ -100,8 +103,9 @@ def sheet_spec(cfg):
     s = cfg["sheet"]
     cell = int(s["cell"])
     rows = tuple((k, n) for k, n in MONSTER_ROWS if k in cfg["clips"])
-    return Spec(cell, int(s["height"]), cell - FOOT_MARGIN, rows, int(s.get("colours", COLOURS)),
-                cfg.get("flies") is True)
+    flies = cfg.get("flies") is True
+    return Spec(cell, int(s["height"]), cell - (FLIER_FOOT_MARGIN if flies else FOOT_MARGIN), rows,
+                int(s.get("colours", COLOURS)), flies)
 
 
 def clip_for(clips, kind, d):

@@ -501,7 +501,8 @@ class AssetTest(unittest.TestCase):
             p = c[f"death-{d}"]["args"]["prompt"]
             self.assertIn("sinks straight down onto its belly", p, d)
             self.assertIn("head resting on the ground", p, d)
-            self.assertIn("rears up, rises on its hind legs, leaps or jumps", p, d)
+            self.assertIn("rears up, rises on its hind legs, ", p, d)
+            self.assertIn("leaps or jumps", p, d)
             self.assertNotIn("collapses down onto its side", p, d)
         # Take 3: death-E still sprang off its paws, death-S rose onto its
         # hind legs and death-N started off the pose; death-W passed take 2.
@@ -512,6 +513,14 @@ class AssetTest(unittest.TestCase):
             self.assertIn("never springs", p, d)
         self.assertNotIn("first-frame pose perfectly still", c["death-W"]["args"]["prompt"])
         self.assertIn("does not move away from the camera, up the frame", c["death-N"]["args"]["prompt"])
+        # Take 4: death-N hopped up mid-fall (feet 11 px over the line) and
+        # death-E ended with its head lifted (31 px tall, limit 30).
+        self.assertIn("its hind legs fold first, then its front legs", c["death-N"]["args"]["prompt"])
+        self.assertIn("its back only ever gets lower, frame by frame, never higher", c["death-N"]["args"]["prompt"])
+        self.assertIn("Its head stays down flat on the ground to the end", c["death-E"]["args"]["prompt"])
+        for d in ("S", "W"):
+            self.assertNotIn("Its head stays down flat", c[f"death-{d}"]["args"]["prompt"], d)
+            self.assertNotIn("hind legs fold first", c[f"death-{d}"]["args"]["prompt"], d)
         self.assertIn("one full stride a second", c["walk-SW"]["args"]["prompt"])
         for d in hs.COLUMNS:
             if d != "SW":
@@ -566,6 +575,28 @@ class AssetTest(unittest.TestCase):
             self.assertIn("holds the exact first-frame pose still for a moment", by[f"death-{d}"])
             self.assertIn("His body only ever moves down, never up.", by[f"death-{d}"])
 
+    def test_troll_view_e_puts_the_far_hand_club_and_the_face_on_the_right(self):
+        # view-E faced screen-left twice: "right side toward the camera"
+        # fought "club in his left hand, in full view", the left hand being
+        # the far one in a right profile. view-E now says where the far hand
+        # holds the club and which way the face points; S, N and W, already
+        # generated, keep their text.
+        cfg = hs.load_config("troll")
+        calls = {c["id"]: c["args"].get("description") for c in hs.build_prompts(cfg)["calls"]}
+        e = calls["view-E"]
+        self.assertIn("in his left hand (his far hand, held forward past his belly so the spiked head of the club "
+                      "shows in front of him on the image-right side, in full view)", e)
+        self.assertIn("his face, tusks and nose point to the right edge of the image", e)
+        self.assertIn("each foot joined to its leg", e)
+        self.assertNotIn("image-left", e)
+        self.assertLess(e.index("right profile view, facing screen-right"), e.index("his far hand"))
+        for d in ("S", "N", "W"):
+            self.assertNotIn("far hand", calls[f"view-{d}"], d)
+            self.assertNotIn("right edge of the image", calls[f"view-{d}"], d)
+        self.assertIn("in his left hand (on the image-right side, in full view)", calls["view-S"])
+        self.assertIn("in his left hand (on the image-left side, in full view)", calls["view-N"])
+        self.assertIn("in his left hand (toward the camera, in full view)", calls["view-W"])
+
     def test_bat_take_2_hangs_at_one_height(self):
         # Take 1 bobbed up to 30 px in the walks (the gait allowed "a slight
         # bob") and swooped up to 36 px into the bites; the retakes hold the
@@ -579,8 +610,17 @@ class AssetTest(unittest.TestCase):
         for d in ("W", "N", "NE", "E"):
             self.assertIn("slight bob", calls[f"walk-{d}"])
             self.assertNotIn(bob, calls[f"walk-{d}"])
-        for d in ("S", "SW", "NW", "N", "NE", "E", "SE"):
-            self.assertIn(rise, calls[f"attack-{d}"])
+        self.assertIn(rise, calls["attack-SW"])
+        # Take 3: the bites still rose (N 32 px, SE 25, NE 20, S 16) or dropped
+        # (E 14), and attack-NW with its wings held in barely changed.
+        steady = "Its wings keep flapping in the same steady wingbeat as its hover all through the bite"
+        level = "its body stays at exactly the same height the whole time: it does not rise, climb, swoop up, drop or dip"
+        for d in ("S", "NW", "N", "NE", "E", "SE"):
+            self.assertIn(steady, calls[f"attack-{d}"])
+            self.assertIn(level, calls[f"attack-{d}"])
+            self.assertNotIn("wings stay close in", calls[f"attack-{d}"])
+        for d in ("W", "SW"):
+            self.assertNotIn(steady, calls[f"attack-{d}"])
         self.assertNotIn(rise, calls["attack-W"])
         for d in hs.CARDINALS:
             self.assertNotIn(rise, calls[f"death-{d}"])
@@ -880,6 +920,37 @@ class MonsterPrecheckTest(unittest.TestCase):
             deaths = [x for x in lines if x.startswith("death-")]
             self.assertEqual(sorted(x.split(":")[0] for x in deaths), [f"death-{d}.mp4" for d in "ENSW"])
             self.assertTrue(all("no loop (death)" in x for x in deaths), deaths)
+
+    def test_start_pose_is_compared_at_the_clip_frame_size(self):
+        # The wolf's death clips come back 960 px from a 720 px start pose.
+        # Placed straight from 720 px, the pose sits on another sub-pixel
+        # grid than the clip's frame 0 even when frame 0 is the pose: every
+        # death-N take "differed" by about 20 px (limit 0.2 x walk median 90).
+        import sprite_from_video as sv
+        from scipy import ndimage
+        cfg = hs.load_config("wolf")
+        spec, dirs = sv.sheet_spec(cfg), os.path.join(cfg["video"], "dirs")
+        limit = hs.START_POSE * 90
+
+        def cell(rgb):
+            return ndimage.binary_dilation(sv.pose_place(rgb, spec)[1], hs.CROSS)
+
+        def upscaled(d):
+            # The generator's own resize, a different filter from pose_at's.
+            return np.asarray(Image.open(os.path.join(dirs, f"{d}.png")).convert("RGB").resize((960, 960), Image.BICUBIC))
+        frame0 = {"rgb": upscaled("N")}
+        pose = os.path.join(dirs, "N.png")
+        self.assertEqual(hs.pose_at(pose, frame0).shape, (960, 960, 3))
+        same = int((cell(frame0["rgb"]) != cell(hs.pose_at(pose, frame0))).sum())
+        raw = int((cell(frame0["rgb"]) != cell(np.asarray(Image.open(pose).convert("RGB")))).sum())
+        self.assertLessEqual(same, 6)
+        self.assertGreater(raw, 3 * same)
+        # A clip that really starts elsewhere (turned to NE) still fails.
+        turned = int((cell(upscaled("NE")) != cell(hs.pose_at(pose, frame0))).sum())
+        self.assertGreater(turned, 2 * limit)
+        # A 720 px clip compares against the pose as it is.
+        self.assertTrue((hs.pose_at(pose, {"rgb": np.zeros((720, 720, 3), np.uint8)})
+                         == np.asarray(Image.open(pose).convert("RGB"))).all())
 
     def test_monster_precheck_reports_a_missing_cardinal_death(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,5 +1,5 @@
 {
- "_note": "Fifth monster (docs/ART-REDO.md), the ogre (sim kind troll). The concept crop is the ogre in monsters.jpg (the registry crop 524,292,226,286, widened to 526,292,768,580 so the club head is not cut); it shows the skeleton's shield at its left edge and a wolf's head at its right, so the views draw one ogre and nothing else. MARKS tusks and club. World height 34 is monsterHeights.troll; at the hero texel (32/88) that is 94 px, head to feet, under 1.75 keep doors. The club hangs at his side in the views, so the 94 px is the ogre itself. The cell is 160, not 110 (94 + 16): the slam lifts the club high over his head, about 50 px above it, and dead on his side he is about as long as he is tall, with the club beside him. The clips start from the skeleton, wolf and bat precheck lessons: every motion stays on the spot, the slam lands in front of him without a step, and the death holds the start pose for a moment and only moves down. The club is in his left hand (image-right in the front view), as the concept holds it, and is a MARK, so it is \"visible\": no view may hide it behind the body (the goblin's first view-E lost its spear).",
+ "_note": "Fifth monster (docs/ART-REDO.md), the ogre (sim kind troll). The concept crop is the ogre in monsters.jpg (the registry crop 524,292,226,286, widened to 526,292,768,580 so the club head is not cut); it shows the skeleton's shield at its left edge and a wolf's head at its right, so the views draw one ogre and nothing else. MARKS tusks and club. World height 34 is monsterHeights.troll; at the hero texel (32/88) that is 94 px, head to feet, under 1.75 keep doors. The club hangs at his side in the views, so the 94 px is the ogre itself. The cell is 160, not 110 (94 + 16): the slam lifts the club high over his head, about 50 px above it, and dead on his side he is about as long as he is tall, with the club beside him. The clips start from the skeleton, wolf and bat precheck lessons: every motion stays on the spot, the slam lands in front of him without a step, and the death holds the start pose for a moment and only moves down. The club is in his left hand (image-right in the front view), as the concept holds it, and is a MARK, so it is \"visible\": no view may hide it behind the body (the goblin's first view-E lost its spear). view-E came out facing screen-left twice (the second take also with a broken leg and a loose foot): 'right side toward the camera' fought 'club in his left hand, in full view', because in a right profile the left hand is on the far side. The item's sides.E now says where the far hand holds it (forward past his belly, the club head in front of him on the image-right side) and view_notes.E pins the facing: face and tusks to the right edge, the mirror of view-W.",
  "type": "monster",
  "noun": "ogre",
  "possessive": "his",
@@ -25,7 +25,10 @@
    "at": "left hand",
    "walk": "club hanging low at his side in his left hand, its spiked head near the ground",
    "still": "club",
-   "visible": true
+   "visible": true,
+   "sides": {
+    "E": "his far hand, held forward past his belly so the spiked head of the club shows in front of him on the image-right side"
+   }
   }
  ],
  "attack": "plants his feet, raises the club high over his head with both hands, then slams it straight down onto the ground just in front of him in the facing direction, then lifts it back; his feet stay planted on the same spot, he does not step or jump",
@@ -72,5 +75,8 @@
    "E": 6
   },
   "design": "huge hulking ogre with mossy green blocky skin, a heavy brow, small pointed ears, glowing orange-red eyes, a wide underbite jaw with two big upward tusks, a dark brown leather strap across his bare chest, a brown leather belt with a bone skull buckle over a ragged brown hide loincloth, brown leather bracers and shin wraps, big bare green feet, a huge spiked wooden club hanging low at his side in his left hand"
+ },
+ "view_notes": {
+  "E": "He faces screen-right: his face, tusks and nose point to the right edge of the image and his back is toward the left edge, the mirror image of the left profile view, not the same view; his right arm and right leg are nearest the camera and both legs are whole, each foot joined to its leg and standing on the ground"
  }
 }

@@ -92,7 +92,7 @@ Before the build, `precheck` names every clip to regenerate and why. It exits 1 
 
 - format: square, 24 fps, 49 frames (2 s with the last frame = the first);
 - the loop closes: the last frame's silhouette differs from the first by at most 0.5 (walk) or 0.6 (idle) of the walk median step;
-- the clip starts on its pose: the first frame differs from `dirs/<DIR>.png` by at most 0.2 of the walk median;
+- the clip starts on its pose: the first frame differs from `dirs/<DIR>.png` by at most 0.2 of the walk median. A clip that comes back at another size than the 720 px pose (the wolf's deaths are 960 px) is compared with the pose scaled to its frame size first (`pose_at`, Lanczos), so both sit on the same sub-pixel grid when they are placed in the cell;
 - an idle stays put: no frame differs from its first by more than 0.8 of the walk median. The approved idles reach at most 0.64; walks reach at least 1.04.
 
 Then it builds the sheet in memory and runs every check from step 9. Each failure names the clips whose frames failed it. Height, foot line, speckles, prop side and the back and front views blame the clip of the failing row. Walk legs blame the walk, idle subtle blames the idle, and a palette anchor blames the poses. The prop side and the view checks catch a walk that turns. Facing is not judged from the clip's silhouette, because that misread approved clips.
