@@ -150,6 +150,12 @@ test("the menu holds its paints and the sheet loader while Create waits on the s
     while (!landed) await new Promise((resolve) => setTimeout(resolve, 50))
     await route.continue()
   })
+  // On the live site the hero walk sheets can still be loading at the click.
+  // The menu redraws when they land, and that redraw must not end the hold.
+  await page.route("**/images/hd2d/*-walk*.png", async (route) => {
+    while (!landed) await new Promise((resolve) => setTimeout(resolve, 50))
+    await route.continue()
+  })
   let answered = 0
   await page.route("**/api/rooms", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1500))

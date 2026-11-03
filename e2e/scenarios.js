@@ -2900,6 +2900,40 @@ async function portraitHero(browser) {
   expect(errors, errors.join("\n")).toEqual([])
 }
 
+// On the live site the hero walk sheets arrive after the menu's first frame.
+// The menu draws again only once they load, so the first frame a player sees
+// is whatever the camera held when the stage's ResizeObserver refit it. Here
+// the sheets wait until the first frame is shot.
+async function theFirstMenuFrameWaitsForNoSheet(browser) {
+  const errors = []
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
+  let released = false
+  let parked = 0
+  await context.route("**/images/hd2d/*-walk*.png", async (route) => {
+    parked += 1
+    while (!released) await new Promise((resolve) => setTimeout(resolve, 50))
+    await route.continue().catch(() => {})
+  })
+  const page = await context.newPage()
+  watch(page, "first", errors)
+  try {
+    await page.goto(gameUrl("/"))
+    await page.locator("#start-button").waitFor()
+    await page.waitForFunction(() => {
+      const fig = window.__lastKeep && window.__lastKeep.figures && window.__lastKeep.figures[0]
+      return fig && fig.box && window.__lastKeep.renders > 0
+    })
+    // The ResizeObserver's first call has landed by the next frame.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    expect(parked, "the hero sheets were asked for and are still parked").toBeGreaterThan(0)
+    await assertLandMeetsSky(page, "first menu")
+  } finally {
+    released = true
+  }
+  await context.close()
+  expect(errors, errors.join("\n")).toEqual([])
+}
+
 async function theFogEdgeIsNotAFlatFill(browser) {
   const errors = []
   const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
@@ -3204,6 +3238,7 @@ module.exports = {
   classSelect,
   portraitHero,
   theFogEdgeIsNotAFlatFill,
+  theFirstMenuFrameWaitsForNoSheet,
   oneSeat,
   squarePixels,
   scoreList,
