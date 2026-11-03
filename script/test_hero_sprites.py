@@ -509,17 +509,27 @@ class AssetTest(unittest.TestCase):
         for d in ("S", "E", "N"):
             p = c[f"death-{d}"]["args"]["prompt"]
             self.assertIn("holds the exact first-frame pose perfectly still for a moment", p, d)
-            self.assertIn("All four paws stay on the ground the whole time", p, d)
             self.assertIn("never springs", p, d)
+        for d in ("S", "N"):
+            self.assertIn("All four paws stay on the ground the whole time", c[f"death-{d}"]["args"]["prompt"], d)
         self.assertNotIn("first-frame pose perfectly still", c["death-W"]["args"]["prompt"])
         self.assertIn("does not move away from the camera, up the frame", c["death-N"]["args"]["prompt"])
         # Take 4: death-N hopped up mid-fall (feet 11 px over the line) and
         # death-E ended with its head lifted (31 px tall, limit 30).
         self.assertIn("its hind legs fold first, then its front legs", c["death-N"]["args"]["prompt"])
         self.assertIn("its back only ever gets lower, frame by frame, never higher", c["death-N"]["args"]["prompt"])
-        self.assertIn("Its head stays down flat on the ground to the end", c["death-E"]["args"]["prompt"])
+        # Take 5: death-E kept its head down but ended resting on its belly,
+        # legs tucked (32 px tall): paws that all stay on the ground cannot
+        # end on its side, so death-E rolls onto its side without that line.
+        e = c["death-E"]["args"]["prompt"]
+        self.assertIn("rolls over onto its side on the exact spot where it stood, its legs toward the camera", e)
+        self.assertIn("It ends lying on its side, not resting on its belly", e)
+        self.assertIn("its head is never lifted again", e)
+        self.assertIn("Its body only ever moves down, never up", e)
+        self.assertNotIn("All four paws stay on the ground", e)
+        for d in ("S", "W", "N"):
+            self.assertNotIn("not resting on its belly", c[f"death-{d}"]["args"]["prompt"], d)
         for d in ("S", "W"):
-            self.assertNotIn("Its head stays down flat", c[f"death-{d}"]["args"]["prompt"], d)
             self.assertNotIn("hind legs fold first", c[f"death-{d}"]["args"]["prompt"], d)
         self.assertIn("one full stride a second", c["walk-SW"]["args"]["prompt"])
         for d in hs.COLUMNS:
@@ -614,11 +624,26 @@ class AssetTest(unittest.TestCase):
         # Take 3: the bites still rose (N 32 px, SE 25, NE 20, S 16) or dropped
         # (E 14), and attack-NW with its wings held in barely changed.
         steady = "Its wings keep flapping in the same steady wingbeat as its hover all through the bite"
-        level = "its body stays at exactly the same height the whole time: it does not rise, climb, swoop up, drop or dip"
-        for d in ("S", "NW", "N", "NE", "E", "SE"):
-            self.assertIn(steady, calls[f"attack-{d}"])
-            self.assertIn(level, calls[f"attack-{d}"])
-            self.assertNotIn("wings stay close in", calls[f"attack-{d}"])
+        self.assertIn(steady, calls["attack-E"])
+        self.assertNotIn("wings stay close in", calls["attack-E"])
+        # Take 4: S, NW, N, NE and SE left the hover on a third take: the
+        # lunge carries the body (up the frame in the back views) and attack-N
+        # turned to face the camera. They bite on the spot, never lunge or turn.
+        spot = "stays hovering on the exact spot and bites without moving its body: its wings keep the same steady wingbeat as its hover"
+        nolunge = ("There is no lunge: its body, chest and feet stay on the same spot in the frame at exactly the same height "
+                   "from the first frame to the last")
+        for d in ("S", "NW", "N", "NE", "SE"):
+            p = calls[f"attack-{d}"]
+            self.assertIn(spot, p, d)
+            self.assertIn(nolunge, p, d)
+            self.assertIn("keeps facing the same way and never turns", p, d)
+            self.assertNotIn("lunges", p, d)
+            self.assertNotIn("biting lunge", p, d)
+        self.assertIn("Its back stays toward the camera the whole time, so its face is never seen", calls["attack-N"])
+        for d in ("S", "NW", "NE", "SE", "E", "W", "SW"):
+            self.assertNotIn("face is never seen", calls[f"attack-{d}"], d)
+        for d in ("W", "SW", "E"):
+            self.assertNotIn(spot, calls[f"attack-{d}"], d)
         for d in ("W", "SW"):
             self.assertNotIn(steady, calls[f"attack-{d}"])
         self.assertNotIn(rise, calls["attack-W"])
