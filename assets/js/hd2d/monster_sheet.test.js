@@ -12,7 +12,7 @@ import { readRgbaPng } from "./png.js"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 const GOBLIN = MONSTER_SHEETS.goblin
-const SHEET_KINDS = ["goblin", "skeleton"]
+const SHEET_KINDS = ["goblin", "skeleton", "wolf"]
 
 function sheetImage(kind) {
   return readRgbaPng(fs.readFileSync(path.join(root, "priv/static", monsterSheetUrl(kind))))
@@ -121,6 +121,19 @@ test("the skeleton sheet decodes to Pillow's sums", () => {
   assert.equal(ink, 33470360)
 })
 
+test("the wolf sheet decodes to Pillow's sums", () => {
+  const image = sheetImage("wolf")
+  let opaque = 0
+  let ink = 0
+  for (let i = 0; i < image.rgba.length; i += 4) {
+    if (!image.rgba[i + 3]) continue
+    opaque += 1
+    ink += image.rgba[i] + image.rgba[i + 1] + image.rgba[i + 2]
+  }
+  assert.equal(opaque, 206755)
+  assert.equal(ink, 28400075)
+})
+
 for (const kind of SHEET_KINDS) {
   test(`a ${kind} card keeps the hero texel and stays under the hero and the keep door`, () => {
     const SPEC = MONSTER_SHEETS[kind]
@@ -149,7 +162,7 @@ test("a goblin keeps its voxel card until its sheet loads", () => {
   assert.equal(goblin.group.userData.rim, goblin.rim)
   assert.equal(goblin.group.userData.picture.frames, 11)
   assert.equal(goblin.group.userData.hd, undefined)
-  assert.throws(() => picture.attachMonsterSheet(sheetTexture(), "wolf"), /monster sheet/)
+  assert.throws(() => picture.attachMonsterSheet(sheetTexture(), "troll"), /monster sheet/)
   assert.throws(() => picture.attachMonsterSheet(null, "goblin"), /monster sheet/)
 })
 
@@ -203,19 +216,19 @@ test("dressMonster draws each goblin from its own clone of the sheet", () => {
   assert.equal(sheetGone, false)
 })
 
-test("dress gives a sheet to goblins and skeletons that spawned before it loaded, and leaves other kinds", () => {
+test("dress gives a sheet to goblins, skeletons and wolves that spawned before it loaded, and leaves other kinds", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const goblin = monsterGroup("goblin")
-  const wolf = monsterGroup("wolf")
-  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, wolf.group] })
+  const troll = monsterGroup("troll")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, troll.group] })
   assert.equal(goblin.group.userData.card.isSprite, true)
   picture.attachMonsterSheet(sheetTexture(), "goblin")
-  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, wolf.group] })
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, troll.group] })
   assert.equal(goblin.group.userData.card.isMesh, true)
-  assert.equal(wolf.group.userData.card, wolf.sprite)
-  assert.equal(wolf.group.userData.rim, wolf.rim)
-  assert.equal(wolf.group.userData.hd, undefined)
+  assert.equal(troll.group.userData.card, troll.sprite)
+  assert.equal(troll.group.userData.rim, troll.rim)
+  assert.equal(troll.group.userData.hd, undefined)
   // The skeleton waits for its own sheet, then draws from it.
   const skeleton = monsterGroup("skeleton")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [skeleton.group] })
@@ -226,6 +239,16 @@ test("dress gives a sheet to goblins and skeletons that spawned before it loaded
   assert.equal(skeleton.group.userData.hd, "skeleton")
   assert.equal(skeleton.group.userData.picture.h, MONSTER_SHEETS.skeleton.figure * SHEET_TEXEL)
   assert.equal(skeleton.group.userData.parts, 160)
+  // The wolf too, on its own 128 px cell.
+  const wolf = monsterGroup("wolf")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [wolf.group] })
+  assert.equal(wolf.group.userData.card.isSprite, true)
+  picture.attachMonsterSheet(sheetTexture(), "wolf")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [wolf.group] })
+  assert.equal(wolf.group.userData.card.isMesh, true)
+  assert.equal(wolf.group.userData.hd, "wolf")
+  assert.equal(wolf.group.userData.picture.h, MONSTER_SHEETS.wolf.figure * SHEET_TEXEL)
+  assert.equal(wolf.group.userData.parts, 160)
   // A hero in the monster list is not a monster.
   const hero = monsterGroup("goblin")
   hero.group.userData.role = "hero"
