@@ -585,6 +585,31 @@ class AssetTest(unittest.TestCase):
         for d in hs.CARDINALS:
             self.assertIn("holds the exact first-frame pose still for a moment", by[f"death-{d}"])
             self.assertIn("His body only ever moves down, never up.", by[f"death-{d}"])
+        # Take 2: death-S fell toward the camera and too slowly, the side
+        # deaths left the ground line; walk-NW crouched under 94 - 4 px.
+        self.assertIn("nothing comes lower in the frame than his feet were", by["death-S"])
+        self.assertIn("lying completely flat before the middle of the clip", by["death-S"])
+        for d in "WE":
+            self.assertIn("never moves toward or away from the camera", by[f"death-{d}"])
+            self.assertIn("same ground line from the first frame to the last", by[f"death-{d}"])
+        self.assertNotIn("ground line", by["death-N"])
+        self.assertIn("at his full standing height", by["walk-NW"])
+        self.assertIn("never crouching", by["walk-NW"])
+        self.assertNotIn("never crouching", by["walk-N"])
+
+    def test_boss_view_s_pins_a_square_front_view(self):
+        # Two view-S takes came out three-quarter, the horse's head turned to
+        # image-left like the reference image. Only the front view says so.
+        calls = {c["id"]: c["args"].get("description", "") for c in hs.build_prompts(hs.load_config("boss"))["calls"]}
+        s = calls["view-S"]
+        for want in ("not three-quarter like the reference image",
+                     "the horse's head points straight at the camera with both of its eyes equally visible",
+                     "square and symmetric about the image's vertical centre line",
+                     "the rider sits centred straight behind the horse's head",
+                     "holds the halberd upright beside the horse's head on the image-left side"):
+            self.assertIn(want, s)
+        for d in ("N", "W", "E"):
+            self.assertNotIn("both of its eyes equally visible", calls[f"view-{d}"], d)
 
     def test_boss_is_the_dark_rider_on_his_horse_in_a_wide_cell(self):
         # monsters.js draws the boss 34 world units tall: 94 px at the hero
@@ -789,6 +814,26 @@ class AssetTest(unittest.TestCase):
         self.assertEqual(back["ash"], (("count", "ash"), None, front["ash"][1] // 2))
         self.assertEqual(back["muzzle"], (("head", "ash"), None, 2))
 
+    def test_troll_check_profile_holds_no_prop_and_tells_front_from_back(self):
+        # The club is the leather's dark brown and its grey spikes drop under
+        # 6 px in NW, NE and E, so prop is null. The ogre's front is the pale
+        # warm colours: the bone skull buckle, tusks, eyes and lit hide.
+        import check_sprite_sheet as cs
+        cfg = hs.load_config("troll")
+        prof = cs.ASSETS["troll"]["profile"]
+        self.assertIsNone(prof["prop"])
+        self.assertFalse({"prop_dirs", "prop_side_below"} & set(cfg["check"]))
+        for rgb, want in (((173, 143, 101), "pale"), ((135, 114, 87), "pale"), ((164, 78, 31), "pale"),
+                          ((110, 95, 79), "pale"), ((44, 31, 22), "leather"), ((76, 59, 46), "leather"),
+                          ((133, 129, 90), "skin"), ((53, 54, 31), "skin"), ((149, 138, 128), "spike")):
+            self.assertEqual(cs.role(rgb, prof["roles"]), want, rgb)
+        front = {n: (m, lo, hi) for n, m, lo, hi in prof["front"][1]}
+        back = {n: (m, lo, hi) for n, m, lo, hi in prof["back"][1]}
+        # The back's ceiling is 0.2 x the S start pose's 237 pale px; the
+        # front's floor is twice that, so neither view passes as the other.
+        self.assertEqual(back["pale"], (("count", "pale"), None, 48))
+        self.assertEqual(front["pale"], (("count", "pale"), 2 * back["pale"][2], None))
+
     def test_bat_is_a_flier_in_a_wing_sized_cell(self):
         # monsters.js draws the bat 16 world units tall: 44 px at the hero
         # texel. The wingspan is about twice that and a wingbeat sweeps
@@ -896,6 +941,49 @@ class AssetTest(unittest.TestCase):
                     hs.load_config("w", reference=tmp)
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(hs.death_end(dict(wolf, video=tmp), "E", log=lambda *_: None))
+
+    def test_centred_attacks_start_a_flier_bite_at_the_frame_centre(self):
+        # The bat's attack-S (five takes) and attack-NW climbed until the body
+        # sat near the middle of the 720 px frame: the start pose stands on the
+        # view's foot line near the bottom edge. Those two attacks start and
+        # end on the pose moved up to the frame's vertical centre.
+        bat = hs.load_config("bat")
+        self.assertEqual(bat["centred_attacks"], ["S", "NW"])
+        calls = {c["id"]: c["args"] for c in hs.build_prompts(bat)["calls"]}
+        for d in hs.COLUMNS:
+            want = f"assets/reference/bat/video/{'mid' if d in ('S', 'NW') else 'dirs'}/{d}.png"
+            self.assertEqual((calls[f"attack-{d}"]["image_path"], calls[f"attack-{d}"]["last_frame_path"]), (want, want), d)
+            self.assertEqual(calls[f"walk-{d}"]["image_path"], f"assets/reference/bat/video/dirs/{d}.png", d)
+        for h in HEROES + ["goblin", "skeleton", "wolf", "troll", "boss"]:
+            self.assertNotIn("centred_attacks", hs.load_config(h), h)
+        px = lambda path: np.asarray(Image.open(path).convert("RGB"))
+        for d in ("S", "NW"):
+            pose = px(os.path.join(bat["video"], "dirs", f"{d}.png"))
+            mid = px(os.path.join(bat["video"], "mid", f"{d}.png"))
+            self.assertEqual(mid.shape, pose.shape)
+            top, foot = hs.sv.span(hs.sv.cut_out(mid))
+            self.assertLessEqual(abs(top + foot - (mid.shape[0] - 1)), 1, d)
+            t0, f0 = hs.sv.span(hs.sv.cut_out(pose))
+            shift = top - t0
+            self.assertLess(shift, -100, d)
+            # The same pixels, only moved; white where the frame opened up.
+            self.assertTrue(np.array_equal(mid[:shift], pose[-shift:]), d)
+            self.assertTrue((mid[shift:] == 255).all(), d)
+        # Only a flier's own attack directions; a missing pose gives None.
+        for bad, flies in ((["S"], False), (["S", "S"], True), (["X"], True), ("S", True)):
+            with tempfile.TemporaryDirectory() as tmp:
+                os.makedirs(os.path.join(tmp, "b"))
+                with open(os.path.join(bat["dir"], "asset.json")) as fh:
+                    cfg = json.load(fh)
+                cfg["centred_attacks"] = bad
+                if not flies:
+                    del cfg["flies"]
+                with open(os.path.join(tmp, "b", "asset.json"), "w") as fh:
+                    json.dump(cfg, fh)
+                with self.assertRaises(SystemExit, msg=repr(bad)):
+                    hs.load_config("b", reference=tmp)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(hs.mid_start(dict(bat, video=tmp), "S", log=lambda *_: None))
 
     def test_views_builds_the_mirrored_view_from_its_source(self):
         # The parent's hand-made v-W (a flip of v-E) is exactly what views

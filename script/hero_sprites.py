@@ -119,6 +119,15 @@ def load_config(hero, reference=REFERENCE):
             (d, s_) not in (("W", "E"), ("E", "W")) or d not in clips.get("death", ()) or s_ not in clips.get("death", ())
             for d, s_ in ends.items()):
         raise SystemExit(f"{hero}/{name}: death_ends is {{\"E\": \"W\"}} or {{\"W\": \"E\"}} between two death clips, got {ends!r}")
+    # A flier attack that keeps climbing to the middle of the frame (asset.json
+    # "centred_attacks", e.g. ["S", "NW"]) starts and ends on its start pose
+    # moved up to the frame's vertical centre (video/mid/<d>.png): the start
+    # poses stand on the view's foot line near the bottom edge, and the bat's
+    # attack-S rose to the frame centre on five takes whatever the wording.
+    mids = cfg.get("centred_attacks", [])
+    if not isinstance(mids, list) or len(set(mids)) != len(mids) or (mids and cfg.get("flies") is not True) or any(
+            d not in clips.get("attack", ()) for d in mids):
+        raise SystemExit(f"{hero}/{name}: centred_attacks lists a flier's attack directions, got {mids!r}")
     # Per-clip prompt overrides: a clip regenerated with different wording
     # (asset.json "clip_overrides", e.g. {"walk-NW": {"gait": ..., "walk": [...]}})
     # so prompts.json keeps saying exactly what was sent. A walk may override
@@ -314,6 +323,28 @@ def death_end(cfg, d, log=print):
     out = os.path.join(cfg["video"], "ends", f"{d}.png")
     wrote = save_png(out, np.asarray(img))
     log(f"{'wrote' if wrote else 'same '} {rel(out)} (last frame of {rel(src)}, flipped)")
+    return out
+
+
+def mid_start(cfg, d, log=print):
+    """video/mid/<d>.png: the start pose dirs/<d>.png moved straight up (or
+    down) so its figure's box is centred vertically in the frame, on white.
+    The image_path and last_frame_path of attack-<d> for a direction in
+    asset.json "centred_attacks". None until the pose is there."""
+    pose = os.path.join(cfg["video"], "dirs", f"{d}.png")
+    if not os.path.exists(pose):
+        return None
+    rgb = np.asarray(Image.open(pose).convert("RGB"))
+    top, foot = sv.span(sv.cut_out(rgb))
+    shift = (rgb.shape[0] - 1 - top - foot) // 2
+    out_rgb = np.full_like(rgb, 255)
+    if shift >= 0:
+        out_rgb[shift:] = rgb[:rgb.shape[0] - shift]
+    else:
+        out_rgb[:shift] = rgb[-shift:]
+    out = os.path.join(cfg["video"], "mid", f"{d}.png")
+    wrote = save_png(out, out_rgb)
+    log(f"{'wrote' if wrote else 'same '} {rel(out)} ({rel(pose)} moved {shift:+d} px)")
     return out
 
 
@@ -641,6 +672,8 @@ def build_prompts(cfg):
             args = {"prompt": text, "image_path": f"{vid}/dirs/{d}.png",
                     "last_frame_path": f"{vid}/dirs/{d}.png", "duration": 2,
                     "aspect_ratio": "1:1", "resolution": "720p", "filename": f"{h}-{kind}-{d}.mp4"}
+            if kind == "attack" and d in cfg.get("centred_attacks", []):
+                args["image_path"] = args["last_frame_path"] = f"{vid}/mid/{d}.png"
             if kind == "death":
                 del args["last_frame_path"]  # a fall ends on the ground, not on the start pose
                 if d in cfg.get("death_ends", {}):
@@ -822,6 +855,8 @@ def monster_precheck(cfg, log=print):
     missing += [f"dirs/{d}.png" for d in COLUMNS if not os.path.exists(os.path.join(vid, "dirs", f"{d}.png"))]
     missing += [f"ends/{d}.png (hero_sprites.py prep)" for d in cfg.get("death_ends", {})
                 if not os.path.exists(os.path.join(vid, "ends", f"{d}.png"))]
+    missing += [f"mid/{d}.png (hero_sprites.py prep)" for d in cfg.get("centred_attacks", [])
+                if not os.path.exists(os.path.join(vid, "mid", f"{d}.png"))]
     for kind, _ in spec.rows:
         for d in COLUMNS:
             try:
@@ -956,6 +991,8 @@ def main(argv=None):
         make_views(cfg)
         for d in cfg.get("death_ends", {}):
             death_end(cfg, d)
+        for d in cfg.get("centred_attacks", []):
+            mid_start(cfg, d)
         return 0
     if args.step == "views":
         make_views(cfg)

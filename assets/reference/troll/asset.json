@@ -78,5 +78,130 @@
  },
  "view_notes": {
   "E": "He faces screen-right: his face, tusks and nose point to the right edge of the image and his back is toward the left edge, the mirror image of the left profile view, not the same view; his right arm and right leg are nearest the camera and both legs are whole, each foot joined to its leg and standing on the ground"
+ },
+ "check": {
+  "_note": "anchors: concept colours (hero_sprites.py troll colours) the palette keeps within dE 15: the mossy green skin, its dark and its lit tone, the dark brown leather, the warm hide, the bone of the skull buckle and tusks, and the orange eye. roles, tuned on the take-1 trial sheet (all 20 clips): the ogre's colours are dull, half of them greys (chroma under 0.12), and they split by hue: green skin 45-70, brown leather and hide 15-45. pale is the light warm colours (hue 20-40, light over 0.28, not grey): the bone skull buckle, tusks and teeth, the eyes and the lit hide loincloth, all on his front. spike is the light grey of the club's iron spikes and the teeth. prop: null. The club is the same dark brown as the leather, and its grey spikes are under 6 px in NW, NE and E and in S and SW attack frames (the club over his head), so no colour follows the club in every frame. bounds: the skeleton's 0.64 x start pose floor fails the front's own slam (S start pose 237 pale px, the crouched slam 113, the club over his head 155). Instead the back's ceiling is 0.2 x the S start pose (48; N frames 16-47) and the front's floor twice that (96; S frames 113-283), so a front column turned away and a back column turned to the camera both fail.",
+  "anchors": {
+   "skin": [
+    58,
+    59,
+    35
+   ],
+   "skin lit": [
+    104,
+    104,
+    70
+   ],
+   "skin dark": [
+    45,
+    46,
+    26
+   ],
+   "leather": [
+    48,
+    36,
+    27
+   ],
+   "hide": [
+    87,
+    72,
+    60
+   ],
+   "bone": [
+    166,
+    151,
+    123
+   ],
+   "eye": [
+    175,
+    94,
+    47
+   ]
+  },
+  "roles": [
+   {
+    "name": "spike",
+    "neutral": true,
+    "light_gt": 0.45
+   },
+   {
+    "name": "leather",
+    "neutral": true,
+    "hue": [
+     15,
+     45
+    ]
+   },
+   {
+    "name": "skin",
+    "neutral": true
+   },
+   {
+    "name": "pale",
+    "hue": [
+     20,
+     40
+    ],
+    "light_gt": 0.28
+   },
+   {
+    "name": "leather",
+    "hue": [
+     15,
+     45
+    ]
+   },
+   {
+    "name": "skin",
+    "hue": [
+     45,
+     70
+    ]
+   }
+  ],
+  "prop": null,
+  "back": {
+   "title": "back view N shows little of the pale front",
+   "bounds": [
+    [
+     "pale",
+     [
+      "count",
+      "pale"
+     ],
+     null,
+     48
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps the pale buckle, tusks and hide",
+   "bounds": [
+    [
+     "pale",
+     [
+      "count",
+      "pale"
+     ],
+     96,
+     null
+    ]
+   ]
+  }
+ },
+ "clip_overrides": {
+  "_note": "Take 2 (take 1 kept in /workspace/lk/troll-take1, with its precheck log). Take 1 passed every clip check but four sheet checks, on the 160 px cell with foot line 153: walk-NW stood 89 px in one frame (94 +-4: a crouch in the stomp); death-S had not finished falling when the clip ended (last frame 70 px tall, limit 60% of 94 = 56; still on hands and knees at frame 47), sank 4-6 px under the foot line (falling toward the camera; limit 3) and its club rolled out to the cell's bottom edge; death-W and death-E rose 4 px off the line while kneeling (moving away from the camera) and death-W ended 5 px under it. So walk-NW stomps at full height without crouching, death-S falls fast and sideways, lying flat for the last second with the club against his body, and the side deaths fall forward along the ground line and never toward or away from the camera.",
+  "walk-NW": {
+   "gait": "Slow heavy ogre stomp on the spot at his full standing height: knees only slightly bent, never crouching or lowering the body, legs alternating clearly, big shoulders swaying, very slight body bob; his body never moves forward"
+  },
+  "death-S": {
+   "death": "roars and holds the exact first-frame pose still for a moment, then quickly lets the club drop straight down against his feet, sinks to his knees exactly where his feet stood and topples sideways onto his side toward the image-left, his whole body lying flat along the same ground line his feet stood on, the club lying close against his body, not rolling away. He is lying completely flat before the middle of the clip and stays still for the whole last second. His body only ever moves down, never up. It never moves toward the camera: nothing comes lower in the frame than his feet were. He does not leap, spin or fall forward toward the camera; he lies where his feet were"
+  },
+  "death-W": {
+   "death": "roars and holds the exact first-frame pose still for a moment, then lets the club drop straight down beside his feet, sinks to his knees exactly where his feet stood and falls forward flat onto his front in the facing direction, his body lying along the same ground line his feet stood on, the club lying close beside him. His body only ever moves down, never up. His knees and body never lift off the ground and he never moves toward or away from the camera: in the side view he stays on the same ground line from the first frame to the last. He does not leap or spin; he lies where his feet were"
+  },
+  "death-E": {
+   "death": "roars and holds the exact first-frame pose still for a moment, then lets the club drop straight down beside his feet, sinks to his knees exactly where his feet stood and falls forward flat onto his front in the facing direction, his body lying along the same ground line his feet stood on, the club lying close beside him. His body only ever moves down, never up. His knees and body never lift off the ground and he never moves toward or away from the camera: in the side view he stays on the same ground line from the first frame to the last. He does not leap or spin; he lies where his feet were"
+  }
  }
 }
