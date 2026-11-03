@@ -5,22 +5,52 @@
  "possessive": "its",
  "concept": {
   "source": "docs/concept/monsters.jpg",
-  "box": [760, 340, 1030, 585]
+  "box": [
+   760,
+   340,
+   1030,
+   585
+  ]
  },
  "source_note": "the reference shows two wolves, with parts of other monsters at its edges; draw only one wolf with their look and nothing else, no rider, no weapon",
- "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
  "design": "lean savage dire wolf with shaggy charcoal-grey fur that bristles into sharp spiky tufts along its neck, shoulders and back, a lighter ash-grey muzzle, throat and legs, glowing red eyes, pointed ears, a snarling open jaw with white fangs, big pale grey paws, and a bushy dark grey tail hanging low behind it",
  "feet": "paws",
- "view_pose": "Whole animal from the tips of its ears down to its paws and from its nose to the tip of its tail, standing square on all four paws in a neutral alert pose, head level, tail hanging low and close behind it, all four legs visible, nothing cropped",
+ "view_pose": "Whole animal from the tips of its ears down to its paws, standing square on all four paws in a neutral alert pose, head level, tail hanging low and close, all four legs visible, nothing cropped; the spine points exactly along the view direction, so in a front or back view the body is foreshortened straight behind the head with the two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways",
  "view_height": 300,
  "gait": "Steady wolf trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, back level, head held level and low, tail hanging low and close behind it, slight body bob; its body never moves forward",
  "items": [],
  "attack": "crouches back onto its hind legs, then lunges its head, neck and chest forward toward the facing direction in one snapping bite, jaws wide open, front paws lifting a little off the ground while the hind paws stay planted on the same spot, then draws back",
  "death": "yelps, its legs buckle and it collapses down onto its side on the exact spot where it stood, legs stretched out, head down, tail flat on the ground. It does not leap, roll, slide or fall forward toward the camera; it lies where its paws were",
  "clips": {
-  "walk": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
-  "attack": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
-  "death": ["S", "W", "N", "E"]
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
  },
  "sheet": {
   "world_height": 18,
@@ -30,7 +60,11 @@
  "turntable": {
   "seconds": 8,
   "fps": 24,
-  "keyframes": {"W": 2, "N": 4, "E": 6},
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
   "design": "lean savage dire wolf with shaggy charcoal-grey fur bristling into sharp spiky tufts along its neck, shoulders and back, a lighter ash-grey muzzle, throat and legs, glowing red eyes, pointed ears, a snarling open jaw with white fangs, big pale grey paws, a bushy dark grey tail hanging low and close behind it, standing on all four paws"
  }
 }

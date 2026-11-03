@@ -1,0 +1,44 @@
+{
+ "frames": 193,
+ "picker": {
+  "NE": {
+   "balance": 0.992,
+   "band": [
+    110,
+    110
+   ],
+   "frame": 110
+  },
+  "NW": {
+   "balance": 0.981,
+   "band": [
+    83,
+    84
+   ],
+   "frame": 84
+  },
+  "SE": {
+   "balance": 0.98,
+   "band": [
+    160,
+    162
+   ],
+   "frame": 162
+  },
+  "SW": {
+   "balance": 0.996,
+   "band": [
+    34,
+    36
+   ],
+   "frame": 34
+  }
+ },
+ "pinned": [],
+ "used": {
+  "NE": 110,
+  "NW": 84,
+  "SE": 162,
+  "SW": 34
+ }
+}
