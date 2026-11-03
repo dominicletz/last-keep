@@ -1,0 +1,86 @@
+{
+ "_note": "Sixth monster (docs/ART-REDO.md), the boss: the dark rider in monsters.jpg, rider and horse as one figure. The concept box is the registry crop (1000,70,275,520) widened left to 915 so the halberd head is in it; it shows a wolf at its lower left, so the views draw the rider and his horse and nothing else. MARKS helm and horse. World height 34 is monsterHeights.boss; at the hero texel (32/88) that is 94 px, from the top of the helm's spikes to the hooves. The cell is 192, not 110 (94 + 16): side-on the horse and rider are wider than tall, the chop raises the halberd high over the helm, and dead, the horse lies on its side about 1.5 times as long as the figure is tall. view_height is 360: the side view with the horse's length and the halberd is the widest view (at most 640 px on the 720 canvas). The clips start from the skeleton, wolf, bat and troll lessons: every motion stays on the spot, the horse never rears (a rear lifts the figure off its start height), the chop lands beside the horse without a step, and the death holds the start pose for a moment and only moves down. The rider stays slumped on the horse as it sinks onto its belly (the wolf's death-E would not lie on its side): one body, settling low, so the last frame stays under DEATH_DOWN. The halberd is in his right hand, as the concept holds it, and is visible; sides.W says where the far hand holds it in the left profile (the troll's view-E lesson). The concept's purple smoke at the hooves and wisps on the cape are left out: the death prompt forbids particles, and loose wisps break the silhouette checks.",
+ "type": "monster",
+ "noun": "dark rider",
+ "possessive": "his",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [
+   915,
+   70,
+   1280,
+   600
+  ]
+ },
+ "source_note": "the reference shows the dark rider on his horse with a wolf at its lower left edge; draw only the rider on his horse with his halberd and nothing else, no wolf, no smoke",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "armoured dark knight riding a black armoured warhorse: a dark iron great helm crowned with tall spikes and a narrow glowing purple visor slit, spiked dark iron pauldrons, dark plate armour with a brown leather belt, a long tattered charcoal cape over his back, armoured legs in the stirrups; the horse is black with dark iron plate barding on its head, neck and chest, a glowing purple eye, a short dark mane, a long dark tail and dark hooves",
+ "feet": "hooves",
+ "view_pose": "Whole rider and horse from the tips of the helm's spikes down to the hooves, the rider sitting upright in the saddle, the horse standing square on all four hooves in a neutral alert pose, head level, all four legs visible, nothing cropped; the horse's spine points exactly along the view direction, so in a front or back view the horse is foreshortened straight behind its head with its two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways",
+ "view_height": 360,
+ "gait": "Steady horse trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, the horse's back level and head held level, the rider sitting upright in the saddle and rising and falling slightly with the horse, the cape swaying a little; the horse's body never moves forward",
+ "items": [
+  {
+   "name": "long dark iron halberd with a broad axe blade and a spike",
+   "at": "right hand",
+   "walk": "halberd held upright in his right hand, its blade above his helm",
+   "still": "halberd",
+   "visible": true,
+   "sides": {
+    "W": "his far hand, held upright beside the horse's neck so the shaft and the blade of the halberd show above the horse's head on the image-left side"
+   }
+  },
+  {
+   "name": "glowing purple eyes",
+   "at": "body",
+   "glows": "the purple glow of his visor and of the horse's eye"
+  }
+ ],
+ "attack": "keeps the horse standing on all four hooves on the same spot and swings the halberd up high over his helm, then chops it down hard beside the horse's head in the facing direction, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle",
+ "death": "holds the exact first-frame pose still for a moment, then the rider slumps forward over the horse's neck, the halberd falls flat to the ground beside the horse, and the horse's legs fold under it and it sinks straight down onto its belly and settles low on the ground on the exact spot where it stood, the rider still slumped on its back. Horse and rider only ever move down, never up. The horse never rears up, leaps or falls forward toward the camera, and the rider never falls off; it lies where its hooves were",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "sheet": {
+  "world_height": 34,
+  "height": 94,
+  "cell": 192
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "armoured dark knight on a black armoured warhorse: dark iron great helm with tall spikes and a glowing purple visor slit, spiked pauldrons, dark plate armour, a long tattered charcoal cape, a long dark iron halberd held upright in his right hand; the horse black with dark iron barding on its head, neck and chest, a glowing purple eye, a short dark mane, a long dark tail, standing square on all four hooves"
+ }
+}

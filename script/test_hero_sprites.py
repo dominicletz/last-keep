@@ -586,6 +586,73 @@ class AssetTest(unittest.TestCase):
             self.assertIn("holds the exact first-frame pose still for a moment", by[f"death-{d}"])
             self.assertIn("His body only ever moves down, never up.", by[f"death-{d}"])
 
+    def test_boss_is_the_dark_rider_on_his_horse_in_a_wide_cell(self):
+        # monsters.js draws the boss 34 world units tall: 94 px at the hero
+        # texel (32/88), helm spikes to hooves. Side-on the horse is wider
+        # than the figure is tall and the chop lifts the halberd over the
+        # helm, so the cell is 192 and the views normalize 360 px tall.
+        with open(os.path.join(hs.ROOT, "assets/js/monsters.js")) as fh:
+            world = float(re.search(r"boss: (\d+)", fh.read()).group(1))
+        cfg = hs.load_config("boss")
+        self.assertEqual((cfg["type"], cfg["noun"], cfg["possessive"], cfg["feet"]),
+                         ("monster", "dark rider", "his", "hooves"))
+        self.assertEqual(round(world * 88 / 32), 94)
+        self.assertEqual(cfg["sheet"], {"world_height": world, "height": 94, "cell": 192})
+        self.assertGreaterEqual(cfg["sheet"]["cell"], round(1.5 * cfg["sheet"]["height"]) + 16)
+        self.assertEqual(cfg["view_height"], 360)
+        self.assertEqual(cfg["clips"], {"walk": hs.COLUMNS, "attack": hs.COLUMNS, "death": hs.CARDINALS})
+        for key in ("flies", "mirror_views", "death_ends"):
+            self.assertNotIn(key, cfg)
+        halberd, glow = cfg["items"]
+        self.assertEqual((halberd["at"], halberd["still"], halberd.get("visible")), ("right hand", "halberd", True))
+        self.assertEqual(glow["at"], "body")
+        # The concept box is the registry crop, widened left only, so the
+        # halberd head is in it.
+        with open(os.path.join(hs.ROOT, "assets/models/registry.js")) as fh:
+            x, y, w, h = map(int, re.search(r'monster\("boss", \d+, \d+, crop\((\d+), (\d+), (\d+), (\d+)\)',
+                                            fh.read()).groups())
+        bx0, by0, bx1, by1 = cfg["concept"]["box"]
+        src = Image.open(os.path.join(hs.ROOT, cfg["concept"]["source"]))
+        self.assertTrue(bx0 < x and by0 <= y and bx1 >= x + w and by1 >= y + h)
+        self.assertTrue(bx1 <= src.width and by1 <= src.height)
+        crop = np.asarray(Image.open(os.path.join(hs.ROOT, cfg["concept"]["source"])).convert("RGB").crop((bx0, by0, bx1, by1)))
+        self.assertEqual(png_bytes(crop), read(os.path.join(cfg["dir"], "concept.png")))
+
+    def test_boss_prompts_keep_the_horse_on_the_spot_and_the_halberd_in_view(self):
+        calls = hs.build_prompts(hs.load_config("boss"))["calls"]
+        self.assertEqual(len(calls), 25)
+        self.assertEqual([c["id"] for c in calls[:5]], ["view-S", "view-N", "view-W", "view-E", "turntable"])
+        self.assertEqual(calls[3].get("then"), "hero_sprites.py views")
+        self.assertEqual(calls[0]["args"]["reference_image_paths"],
+                         ["assets/reference/boss/concept.png", "assets/reference/engineer/video/views/v-S.png"])
+        views = {c["id"][5:]: c["args"]["description"] for c in calls[:4]}
+        for d, text in views.items():
+            self.assertIn("draw only the rider on his horse with his halberd and nothing else, no wolf, no smoke", text)
+            self.assertIn("Whole rider and horse from the tips of the helm's spikes down to the hooves", text)
+            self.assertIn("not hidden behind the body", text)
+            self.assertNotIn("partly hidden behind the body", text)
+        self.assertIn("in his right hand (on the image-left side, in full view)", views["S"])
+        self.assertIn("in his right hand (on the image-right side, in full view)", views["N"])
+        self.assertIn("in his right hand (toward the camera, in full view)", views["E"])
+        # In the left profile the right hand is the far one (the troll's view-E lesson).
+        self.assertIn("in his right hand (his far hand, held upright beside the horse's neck", views["W"])
+        for d in ("S", "N", "E"):
+            self.assertNotIn("far hand", views[d], d)
+        by = {c["id"]: c["args"].get("prompt", "") for c in calls}
+        for d in hs.COLUMNS:
+            self.assertIn("Steady horse trot on the spot", by[f"walk-{d}"])
+            self.assertIn("the horse's hooves stay planted on the same spot, it does not step, rear up or jump",
+                          by[f"attack-{d}"])
+            self.assertIn("the purple glow of his visor and of the horse's eye keeps exactly the same brightness",
+                          by[f"attack-{d}"])
+        for d in hs.CARDINALS:
+            t = by[f"death-{d}"]
+            self.assertIn("holds the exact first-frame pose still for a moment", t)
+            self.assertIn("sinks straight down onto its belly", t)
+            self.assertIn("Horse and rider only ever move down, never up.", t)
+            self.assertIn("the rider never falls off", t)
+            self.assertNotIn("onto its side", t)
+
     def test_troll_view_e_puts_the_far_hand_club_and_the_face_on_the_right(self):
         # view-E faced screen-left twice: "right side toward the camera"
         # fought "club in his left hand, in full view", the left hand being
@@ -802,7 +869,7 @@ class AssetTest(unittest.TestCase):
         for d in ("S", "W", "N"):
             self.assertNotIn("last_frame_path", c[f"death-{d}"]["args"], d)
             self.assertNotIn("pose of the last frame", c[f"death-{d}"]["args"]["prompt"], d)
-        for h in HEROES + ["goblin", "skeleton", "bat", "troll"]:
+        for h in HEROES + ["goblin", "skeleton", "bat", "troll", "boss"]:
             self.assertNotIn("death_ends", hs.load_config(h), h)
         px = lambda path: np.asarray(Image.open(path).convert("RGB"))
         end = px(os.path.join(wolf["video"], "ends", "E.png"))
