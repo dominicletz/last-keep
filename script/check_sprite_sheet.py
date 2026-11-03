@@ -24,6 +24,7 @@ import sys
 
 import numpy as np
 from PIL import Image
+from scipy import ndimage
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sprite_from_video as sv  # noqa: E402
@@ -468,6 +469,35 @@ WALK_SWING = 4           # px: the walk height may move this far off it (the spe
 ATTACK_FOOT = 1
 DEATH_FOOT = 3
 DEATH_DOWN = 0.6         # the last death frame is at most this share of the figure height
+# A flier (spec.flies, the bat) hovers: its wings sweep far past the walk's
+# height and foot line, so it has its own checks in their place, never a
+# looser version of them (see run_monster_checks).
+HOVER_BOB = 0.3          # share of the figure height the body core of a walk or attack frame stays within of the start pose's
+                         # (the core still carries the wing roots: the bat's side-view walks, whose body visibly holds still, measure up to 0.27)
+FLIER_CORE = 0.3         # the body core: the largest part left by an opening with a square this share of the figure height
+WINGBEAT = 150           # px at the hero's 88 px, by area: a flier's walk sweep, frame 0 vs the walk frame most unlike it
+
+
+def body_core(cell, height):
+    """The opaque mask of a cell without its thin parts (wings, ears, feet):
+    the largest connected part left by an opening with a square FLIER_CORE x
+    height wide, or the widest square under that which leaves anything (a
+    side view's body is narrower); the whole silhouette when even 3 px
+    leaves nothing."""
+    a = cell[..., 3] > 0
+    k = max(3, int(round(FLIER_CORE * height)))
+    k -= 1 - k % 2  # odd, so the square has a centre
+    for side in range(k, 2, -2):
+        core = ndimage.binary_opening(a, np.ones((side, side), bool))
+        if core.any():
+            lab, n = ndimage.label(core)
+            sizes = ndimage.sum(core, lab, range(1, n + 1))
+            return lab == int(np.argmax(sizes)) + 1
+    return a
+
+
+def core_y(cell, height):
+    return float(np.nonzero(body_core(cell, height))[0].mean())
 
 
 def area_scaled(n, height):
@@ -539,7 +569,27 @@ def run_monster_checks(asset, sheet, poses_dir, quiet=False):
     bad = [(c, r) for c, r in starts if abs(tall(c, r) - H) > START_TOLERANCE]
     rep.check(not bad, f"start frames {H} +-{START_TOLERANCE} px",
               f"{sorted({tall(c, r) for c, r in starts})}", [where(COLUMNS[c], r) for c, r in bad])
-    if "walk" in rows:
+    flies = getattr(spec, "flies", False)
+    if flies:
+        # In place of the walk height, the one walk foot line and the attack
+        # feet: the start pose sits on the foot line, and the body core
+        # (wings opened away) hangs at the start pose's height in every walk
+        # and attack frame.
+        w0 = [(c, rows["walk"][0]) for c in range(len(COLUMNS))]
+        rep.check(all(abs(span[k][1] - target) <= 1 for k in w0), "flier start pose on the foot line",
+                  f"rows {sorted({span[k][1] for k in w0})} (target {target})",
+                  [where(COLUMNS[c], r) for c, r in w0 if abs(span[(c, r)][1] - target) > 1])
+        base = {c: core_y(grid[c][r], H) for c, r in w0}
+        for kind in ("walk", "attack"):
+            if kind not in rows:
+                continue
+            cs_ = [(c, r) for c in range(len(COLUMNS)) for r in rows[kind]]
+            off = [core_y(grid[c][r], H) - base[c] for c, r in cs_]
+            bob = HOVER_BOB * H
+            rep.check(all(abs(o) <= bob for o in off), f"{kind} hovers at the start height +-{bob:.0f} px",
+                      f"body core {min(off):+.1f}..{max(off):+.1f} px",
+                      [where(COLUMNS[c], r) for (c, r), o in zip(cs_, off) if abs(o) > bob])
+    if "walk" in rows and not flies:
         cs_ = [(c, r) for c in range(len(COLUMNS)) for r in rows["walk"]]
         hs = [tall(c, r) for c, r in cs_]
         rep.check(all(abs(h - H) <= WALK_SWING for h in hs), f"walk height {H} +-{WALK_SWING} px",
@@ -549,7 +599,7 @@ def run_monster_checks(asset, sheet, poses_dir, quiet=False):
                   f"rows {min(feet)}..{max(feet)} (target {target})",
                   [where(COLUMNS[c], r) for (c, r), f in zip(cs_, feet) if abs(f - target) > 1])
     for kind, tol in (("attack", ATTACK_FOOT), ("death", DEATH_FOOT)):
-        if kind not in rows:
+        if kind not in rows or (flies and kind == "attack"):
             continue
         cs_ = [(c, r) for c in range(len(COLUMNS)) for r in rows[kind]]
         feet = [span[k][1] for k in cs_]
@@ -636,11 +686,22 @@ def run_monster_checks(asset, sheet, poses_dir, quiet=False):
     for c, d in enumerate(COLUMNS):
         if "walk" in rows:
             w = list(rows["walk"])
-            moves = [changed_lower(grid[c][w[i]], grid[c][w[(i + 1) % len(w)]]) for i in range(len(w))]
-            contact = changed_lower(grid[c][w[0]], grid[c][w[len(w) // 2]])
-            rep.check(min(moves) >= legs and contact >= legs, f"walk {d} legs move",
-                      f"lower-half px per step {moves}, contact 0 vs {len(w) // 2} {contact} (floor {legs})",
-                      [where(d, w[0])])
+            if flies:
+                # A wingbeat changes the whole silhouette, not the lower half.
+                # The 8 frames may hold one wingbeat or two, so the sweep is
+                # frame 0 against the frame most unlike it, not half a cycle on.
+                moves = [shape(grid[c][w[i]], grid[c][w[(i + 1) % len(w)]]) for i in range(len(w))]
+                sweep = max(shape(grid[c][w[0]], grid[c][r]) for r in w[1:])
+                beat = area_scaled(WINGBEAT, H)
+                rep.check(min(moves) >= legs and sweep >= beat, f"walk {d} wings beat",
+                          f"silhouette px per step {moves} (floor {legs}), sweep from frame 0 {sweep} (floor {beat})",
+                          [where(d, w[0])])
+            else:
+                moves = [changed_lower(grid[c][w[i]], grid[c][w[(i + 1) % len(w)]]) for i in range(len(w))]
+                contact = changed_lower(grid[c][w[0]], grid[c][w[len(w) // 2]])
+                rep.check(min(moves) >= legs and contact >= legs, f"walk {d} legs move",
+                          f"lower-half px per step {moves}, contact 0 vs {len(w) // 2} {contact} (floor {legs})",
+                          [where(d, w[0])])
             step = float(np.median([shape(grid[c][w[i]], grid[c][w[(i + 1) % len(w)]]) for i in range(len(w))]))
         if "attack" in rows and "walk" in rows:
             at = list(rows["attack"])

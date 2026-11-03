@@ -16,7 +16,7 @@ import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
-import { SHEET_HEROES, cellOffset, pictureColumn, sheetRow } from "./pictures.js"
+import { SHEET_HEROES, cellOffset, flierLift, pictureColumn, sheetRow } from "./pictures.js"
 import { sheetHeroSize } from "./hd2d/picture.js"
 import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
 import { keepParts, modelParts } from "../models/registry.js"
@@ -1555,10 +1555,13 @@ export function createView(stage, picture) {
     const pose = smoothed(key)
     const spread = mesh.userData.spread || { x: 0, z: 0 }
     const step = worldStep()
-    mesh.position.set(snapWorld(pose.x + spread.x, step), mesh.userData.lift || 0, snapWorld(pose.z + spread.z, step))
+    const picture = mesh.userData.picture
+    const lift = flierLift(mesh.userData.lift || 0, mesh.userData.pose, performance.now(), picture && picture.death)
+    mesh.position.set(snapWorld(pose.x + spread.x, step), lift, snapWorld(pose.z + spread.z, step))
+    // A flier's shadow stays on the ground under it.
+    if (mesh.userData.shadow) mesh.userData.shadow.position.y = 0.46 - lift
     const card = mesh.userData.card
     if (!card) return
-    const picture = mesh.userData.picture
     const viewYaw = Math.atan2(camera.position.x - mesh.position.x, camera.position.z - mesh.position.z)
     const facing = Number.isFinite(mesh.rotation.y) ? -mesh.rotation.y : 0
     const column = pictureColumn(viewYaw, facing)
@@ -1823,7 +1826,14 @@ export function createView(stage, picture) {
     mesh.userData.parts = picture.directions * picture.frames
     mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: picture.y, height: picture.h }
     mesh.userData.face = true
-    if (row.kind === "bat") mesh.userData.lift = 22
+    if (row.kind === "bat") {
+      mesh.userData.lift = 22
+      // The bat hangs in the air: a contact disc on the ground under it
+      // (placeMesh holds it at ground level) shows where it is.
+      const shadow = contactDisc(10)
+      mesh.add(shadow)
+      mesh.userData.shadow = shadow
+    }
     const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(22, 4, 2)), mat(0x1a100c))
     const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(20, 3, 2)), mat(0x7ea35a))
     plate.position.y = picture.h + 4

@@ -169,6 +169,29 @@ class MonsterGeometryTest(unittest.TestCase):
         self.assertEqual(len(picks), 6)
         self.assertEqual(picks, sorted(picks))
 
+    def test_a_flier_hangs_on_frame_0_and_lands_on_its_own_lowest_pixel(self):
+        # A wingbeat drops the wings below the body: a figure on its feet
+        # would re-anchor on that lowest pixel and the body would jump up.
+        body = np.zeros((300, 300), bool)
+        body[100:200, 120:180] = True
+        down = body.copy()
+        down[180:260, 40:120] = down[180:260, 180:260] = True   # wings swept below the feet
+        start = (sv.torso_centre(body, 100), sv.feet_centre(body, 100), 199)
+        for kind in ("walk", "attack"):
+            self.assertEqual(sv.monster_anchor(kind, down, 100, start, flies=True), (start[0], 199), kind)
+            self.assertEqual(sv.monster_anchor(kind, down, 100, start)[1], 259, kind)
+        self.assertEqual(sv.monster_anchor("death", down, 100, start, flies=True), (start[0], 259))
+        self.assertEqual(sv.monster_anchor("death", down, 100, start), (start[0], 199))
+        self.assertEqual(sv.monster_anchor("walk", body, 100, start), (sv.torso_centre(body, 100), 199))
+
+    def test_only_a_flies_config_gets_a_flier_spec(self):
+        self.assertFalse(sv.HERO_SPEC.flies)
+        for a in ("goblin", "skeleton", "wolf"):
+            self.assertFalse(sv.sheet_spec(sv.asset_config(a)).flies, a)
+        bat = sv.sheet_spec(sv.asset_config("bat"))
+        self.assertTrue(bat.flies)
+        self.assertEqual((bat.cell, bat.height, bat.foot), (128, 44, 120))
+
     def test_death_picks_end_when_the_fall_comes_to_rest(self):
         d = [0, 1, 3, 6, 10, 15, 20, 25, 28, 30, 30, 30, 30, 30, 30, 30]
         frames = frames_from([[[v]] for v in d])
@@ -232,6 +255,58 @@ class MonsterCheckTest(unittest.TestCase):
         rep = cs.run_monster_checks(bare, sheet, "/nonexistent", quiet=True)
         self.assertIn("death W ends on the ground", [n for ok, n, _, _ in rep.results if not ok])
 
+    def flier(self, sheet):
+        rep = cs.run_monster_checks(dict(GOBLIN, spec=GOBLIN["spec"]._replace(flies=True)), sheet, self.poses, quiet=True)
+        return rep
+
+    def test_a_flier_swaps_the_foot_checks_for_hover_checks(self):
+        # The flier checks replace exactly the walk height, the walk foot
+        # line, the attack feet and the legs; every other check is the same.
+        names = lambda rep: [n for _, n, _, _ in rep.results]
+        ground = names(cs.run_monster_checks(GOBLIN, self.sheet, self.poses, quiet=True))
+        fly = names(self.flier(self.sheet))
+        swapped = lambda n: (n.startswith("walk height") or n == "walk shares one foot line"
+                             or n.startswith("attack feet") or n.endswith(" legs move"))
+        flier_only = lambda n: n.startswith("flier ") or " hovers at " in n or n.endswith(" wings beat")
+        self.assertEqual([n for n in ground if not swapped(n)], [n for n in fly if not flier_only(n)])
+        self.assertEqual(sum(swapped(n) for n in ground), 11)
+        self.assertEqual(sum(flier_only(n) for n in fly), 11)
+        self.assertIn("death feet on the line +-3 px", fly)
+        self.assertEqual(cs.HOVER_BOB, 0.3)
+
+    def test_a_flier_that_sinks_or_stops_beating_fails(self):
+        fails = lambda sheet: {n: c for ok, n, _, c in self.flier(sheet).results if not ok}
+        base = fails(self.sheet)
+        self.assertNotIn("walk-S.mp4", base.get("walk hovers at the start height +-15 px", ()))
+        self.assertNotIn("walk N wings beat", base)
+        sheet = self.sheet.copy()
+        cell = sheet[3 * 80:4 * 80, 0:80]
+        cell[:] = np.roll(cell, -18, axis=0)  # walk-S frame 3 rises 18 px (0.3 x 50 = 15 allowed)
+        self.assertIn("walk-S.mp4", fails(sheet).get("walk hovers at the start height +-15 px", ()))
+        sheet = self.sheet.copy()
+        c = sv.COLUMNS.index("N")
+        for r in range(1, 8):                 # walk-N frozen on its start pose
+            sheet[r * 80:(r + 1) * 80, c * 80:(c + 1) * 80] = sheet[0:80, c * 80:(c + 1) * 80]
+        self.assertEqual(fails(sheet).get("walk N wings beat"), ("walk-N.mp4",))
+
+    def test_body_core_drops_thin_wings(self):
+        cell = np.zeros((128, 128, 4), np.uint8)
+        cell[60:100, 46:66, 3] = 255          # body 20 px wide
+        cell[20:60, 10:14, 3] = 255           # a thin raised wing
+        cell[60:66, 66:110, 3] = 255          # a wing 6 px thick, joined to the body
+        cell[100:120, 90:96, 3] = 255         # a loose part 6 px wide, beyond the body
+        core = cs.body_core(cell, 44)
+        self.assertFalse(core[20:60, 10:14].any())
+        self.assertFalse(core[60:66, 70:110].any())
+        self.assertEqual(cs.core_y(cell, 44), 79.5)
+        # A side view thinner than 0.3 x the height: the widest square that
+        # leaves anything, not the whole silhouette.
+        thin = np.zeros((128, 128, 4), np.uint8)
+        thin[60:100, 50:60, 3] = 255          # body 10 px wide
+        thin[30:60, 54:56, 3] = 255           # an ear or wing edge-on
+        self.assertEqual(int(cs.body_core(thin, 44).sum()), 400)
+        self.assertEqual(cs.core_y(thin, 44), 79.5)
+
     def test_a_null_prop_is_refused_with_prop_settings_and_on_a_hero(self):
         check = json.loads(json.dumps(sv.asset_config("goblin")["check"]))
         check["prop"] = None
@@ -256,7 +331,7 @@ class MonsterCheckTest(unittest.TestCase):
 
 class AssetProfileTest(unittest.TestCase):
     def test_goblin_roles(self):
-        self.assertEqual(sorted(cs.ASSETS), ["goblin", "skeleton", "wolf"])
+        self.assertEqual(sorted(cs.ASSETS), ["bat", "goblin", "skeleton", "wolf"])
         table = cs.ASSETS["goblin"]["profile"]["roles"]
         self.assertEqual(cs.role((142, 136, 134), table), "iron")
         self.assertEqual(cs.role((56, 39, 27), table), "leather")

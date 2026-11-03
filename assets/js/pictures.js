@@ -289,6 +289,21 @@ export function sheetRow(picture, pose, now) {
   return 0
 }
 
+// A flier (the bat) hangs `lift` world units above the ground while it
+// lives. Its death cells keep the body on the sheet foot line (the build
+// anchors each death frame on its own lowest pixel), so the fall is this
+// lift: frame 0 still hovers, then it drops faster and faster (t squared)
+// and lands as the last death frame starts. No death row: it is gone.
+export function flierLift(lift, pose, now, deathFrames) {
+  if (!lift) return 0
+  if (!pose || !pose.dead) return lift
+  if (!deathFrames) return 0
+  const started = Number.isFinite(pose.deadAt) ? pose.deadAt : now
+  const fall = Math.max(1, deathFrames - 2) * 160
+  const t = Math.min(1, Math.max(0, (now - started - 160) / fall))
+  return lift * (1 - t * t)
+}
+
 function paste(cellW, cellH, image) {
   const rgb = new Uint8Array(cellW * cellH * 3)
   const mask = new Uint8Array(cellW * cellH)

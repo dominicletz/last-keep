@@ -501,8 +501,16 @@ class AssetTest(unittest.TestCase):
             p = c[f"death-{d}"]["args"]["prompt"]
             self.assertIn("sinks straight down onto its belly", p, d)
             self.assertIn("head resting on the ground", p, d)
-            self.assertIn("never rears up, rises on its hind legs, leaps or jumps", p, d)
+            self.assertIn("rears up, rises on its hind legs, leaps or jumps", p, d)
             self.assertNotIn("collapses down onto its side", p, d)
+        # Take 3: death-E still sprang off its paws, death-S rose onto its
+        # hind legs and death-N started off the pose; death-W passed take 2.
+        for d in ("S", "E", "N"):
+            p = c[f"death-{d}"]["args"]["prompt"]
+            self.assertIn("holds the exact first-frame pose perfectly still for a moment", p, d)
+            self.assertIn("All four paws stay on the ground the whole time", p, d)
+            self.assertIn("never springs", p, d)
+        self.assertNotIn("first-frame pose perfectly still", c["death-W"]["args"]["prompt"])
         self.assertIn("does not move away from the camera, up the frame", c["death-N"]["args"]["prompt"])
         self.assertIn("one full stride a second", c["walk-SW"]["args"]["prompt"])
         for d in hs.COLUMNS:
@@ -510,6 +518,105 @@ class AssetTest(unittest.TestCase):
                 self.assertNotIn("one full stride a second", c[f"walk-{d}"]["args"]["prompt"], d)
         self.assertEqual(c["view-S"]["args"]["reference_image_paths"],
                          ["assets/reference/wolf/concept.png", "assets/reference/engineer/video/views/v-S.png"])
+
+    def test_troll_is_the_ogre_with_a_visible_club_in_a_slam_sized_cell(self):
+        # monsters.js draws the troll 34 world units tall: 94 px at the hero
+        # texel (32/88), head to feet. The slam lifts the club about 50 px
+        # over his head, so the cell is 160, not 94 + 16.
+        with open(os.path.join(hs.ROOT, "assets/js/monsters.js")) as fh:
+            world = float(re.search(r"troll: (\d+)", fh.read()).group(1))
+        cfg = hs.load_config("troll")
+        self.assertEqual(cfg["type"], "monster")
+        self.assertEqual(cfg["noun"], "ogre")
+        self.assertEqual(round(world * 88 / 32), 94)
+        self.assertEqual(cfg["sheet"], {"world_height": world, "height": 94, "cell": 160})
+        self.assertGreaterEqual(cfg["sheet"]["cell"] - 8 - cfg["sheet"]["height"], 50)
+        self.assertEqual(cfg["clips"], {"walk": hs.COLUMNS, "attack": hs.COLUMNS, "death": hs.CARDINALS})
+        self.assertNotIn("flies", cfg)
+        (club,) = cfg["items"]
+        self.assertEqual((club["at"], club["still"], club.get("visible")), ("left hand", "club", True))
+        # The concept box is the registry crop, widened so the club head is in it.
+        with open(os.path.join(hs.ROOT, "assets/models/registry.js")) as fh:
+            x, y, w, h = map(int, re.search(r'monster\("troll", \d+, \d+, crop\((\d+), (\d+), (\d+), (\d+)\)',
+                                            fh.read()).groups())
+        bx0, by0, bx1, by1 = cfg["concept"]["box"]
+        self.assertTrue(bx0 >= x and by0 >= y and bx1 >= x + w and by1 >= y + h)
+        crop = np.asarray(Image.open(os.path.join(hs.ROOT, cfg["concept"]["source"])).convert("RGB").crop((bx0, by0, bx1, by1)))
+        self.assertEqual(png_bytes(crop), read(os.path.join(cfg["dir"], "concept.png")))
+
+    def test_troll_prompts_slam_on_the_spot_and_keep_the_club_in_view(self):
+        calls = hs.build_prompts(hs.load_config("troll"))["calls"]
+        self.assertEqual(len(calls), 25)
+        self.assertEqual([c["id"] for c in calls[:5]], ["view-S", "view-N", "view-W", "view-E", "turntable"])
+        self.assertEqual(calls[3].get("then"), "hero_sprites.py views")
+        self.assertEqual(calls[0]["args"]["reference_image_paths"],
+                         ["assets/reference/troll/concept.png", "assets/reference/engineer/video/views/v-S.png"])
+        for c in calls[:4]:
+            d = c["args"]["description"]
+            self.assertIn("draw only the ogre with his spiked club and nothing else", d)
+            self.assertIn("in his left hand", d)
+            self.assertIn("not hidden behind the body", d)
+            self.assertNotIn("partly hidden behind the body", d)
+        self.assertIn("(on the image-right side, in full view)", calls[0]["args"]["description"])
+        by = {c["id"]: c["args"].get("prompt", "") for c in calls}
+        for d in hs.COLUMNS:
+            self.assertIn("slams it straight down onto the ground just in front of him", by[f"attack-{d}"])
+            self.assertIn("he does not step or jump", by[f"attack-{d}"])
+        for d in hs.CARDINALS:
+            self.assertIn("holds the exact first-frame pose still for a moment", by[f"death-{d}"])
+            self.assertIn("His body only ever moves down, never up.", by[f"death-{d}"])
+
+    def test_bat_take_2_hangs_at_one_height(self):
+        # Take 1 bobbed up to 30 px in the walks (the gait allowed "a slight
+        # bob") and swooped up to 36 px into the bites; the retakes hold the
+        # body still and leave the passing clips' text alone.
+        calls = {c["id"]: c["args"].get("prompt") for c in hs.build_prompts(hs.load_config("bat"))["calls"]}
+        bob = "The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move."
+        rise = "Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip"
+        for d in ("S", "SW", "NW", "SE"):
+            self.assertIn(bob, calls[f"walk-{d}"])
+            self.assertNotIn("slight bob", calls[f"walk-{d}"])
+        for d in ("W", "N", "NE", "E"):
+            self.assertIn("slight bob", calls[f"walk-{d}"])
+            self.assertNotIn(bob, calls[f"walk-{d}"])
+        for d in ("S", "SW", "NW", "N", "NE", "E", "SE"):
+            self.assertIn(rise, calls[f"attack-{d}"])
+        self.assertNotIn(rise, calls["attack-W"])
+        for d in hs.CARDINALS:
+            self.assertNotIn(rise, calls[f"death-{d}"])
+
+    def test_bat_check_profile_tells_front_from_back(self):
+        # The back never shows the red face; the front keeps its lit chest
+        # and membrane. The start poses hold the bounds.
+        import check_sprite_sheet as cs
+        import sprite_from_video as sv
+        cfg = hs.load_config("bat")
+        a = cs.ASSETS["bat"]
+        prof, spec = a["profile"], a["spec"]
+        self.assertTrue(spec.flies)
+        self.assertIsNone(prof["prop"])
+        self.assertEqual(cs.role((112, 40, 36), prof["roles"]), "red")
+        self.assertEqual(cs.role((172, 49, 41), prof["roles"]), "red")
+        self.assertEqual(cs.role((100, 85, 78), prof["roles"]), "light")
+        self.assertEqual(cs.role((48, 40, 35), prof["roles"]), "fur")
+        self.assertEqual(cs.role((49, 29, 25), prof["roles"]), "fur")
+        pal = sv.build_palette(sv.monster_palette_samples(os.path.join(cfg["video"], "dirs"), spec), k=spec.colours)
+        lab = sv.srgb_to_lab(np.array(pal, np.float64))
+        for name, rgb in prof["anchors"].items():
+            d = np.sqrt(((lab - sv.srgb_to_lab(np.array([rgb], np.float64))) ** 2).sum(1)).min()
+            self.assertLessEqual(d, 15, name)
+        cell = {}
+        for d in ("S", "N"):
+            rgb, al = sv.pose_place(np.asarray(Image.open(os.path.join(cfg["video"], "dirs", f"{d}.png")).convert("RGB")), spec)
+            cell[d] = sv.outline(sv.quantize(rgb, al, lab, pal))
+        self.assertEqual(prof["back"][1], (("red", ("count", "red"), None, 2),))
+        self.assertEqual(prof["front"][1], (("light", ("count", "light"), 45, None),))
+        for d, (_, bounds) in (("S", prof["front"]), ("N", prof["back"])):
+            for name, m, lo, hi in bounds:
+                v = cs.measure(cell[d], prof["roles"], m)
+                self.assertTrue((lo is None or v >= lo) and (hi is None or v <= hi), (d, name, v))
+        self.assertEqual(cs.measure(cell["S"], prof["roles"], ("count", "red")), 11)
+        self.assertEqual(cs.measure(cell["N"], prof["roles"], ("count", "red")), 0)
 
     def test_wolf_check_profile_holds_no_prop_and_tells_front_from_back(self):
         # The jaws are the weapon: prop null and no prop settings. Every
@@ -536,13 +643,14 @@ class AssetTest(unittest.TestCase):
     def test_bat_is_a_flier_in_a_wing_sized_cell(self):
         # monsters.js draws the bat 16 world units tall: 44 px at the hero
         # texel. The wingspan is about twice that and a wingbeat sweeps
-        # above and below the start pose, so the cell is 112.
+        # above and below the start pose. 112 was the first guess; dead on its
+        # back with the wings spread flat, take 1 touched the cell edge, so 128.
         with open(os.path.join(hs.ROOT, "assets/js/monsters.js")) as fh:
             world = float(re.search(r"bat: (\d+)", fh.read()).group(1))
         cfg = hs.load_config("bat")
         self.assertEqual(cfg["type"], "monster")
         self.assertIs(cfg["flies"], True)
-        self.assertEqual(cfg["sheet"], {"world_height": world, "height": 44, "cell": 112})
+        self.assertEqual(cfg["sheet"], {"world_height": world, "height": 44, "cell": 128})
         self.assertEqual(cfg["clips"], {"walk": hs.COLUMNS, "attack": hs.COLUMNS, "death": hs.CARDINALS})
         self.assertEqual(cfg["items"], [])
         # A spread-wing front view up to 2.6 times as wide as tall still fits.
@@ -560,7 +668,7 @@ class AssetTest(unittest.TestCase):
 
     def test_bat_prompts_hover_instead_of_walking(self):
         c = self.calls("bat")
-        self.assertEqual(len(c), 25)
+        self.assertEqual(len(c), 24)  # no view-W: mirror_views flips v-E
         for k, v in c.items():
             text = json.dumps(v["args"])
             for grounded in hs.GROUNDED.values():
@@ -576,6 +684,7 @@ class AssetTest(unittest.TestCase):
         for d in hs.CARDINALS:
             self.assertIn("drops straight down onto the ground just below where it hovered", c[f"death-{d}"]["args"]["prompt"])
             self.assertNotIn("last_frame_path", c[f"death-{d}"]["args"])
+        for d in ("S", "N", "E"):
             v = c[f"view-{d}"]["args"]["description"]
             self.assertIn("draw only the big bat", v)
             self.assertIn("the body faces exactly along the view direction", v)
@@ -583,6 +692,74 @@ class AssetTest(unittest.TestCase):
         self.assertIn("The bat hangs perfectly still in the air on an invisible turntable with its wings spread wide and "
                       "frozen and rotates", t)
         self.assertIn("no ghosting, no flapping, no text", t)
+
+    def test_mirror_views_drops_the_mirrored_call_and_moves_then(self):
+        c = self.calls("bat")
+        self.assertEqual([k for k in c if k.startswith("view-")], ["view-S", "view-N", "view-E"])
+        self.assertEqual(c["view-E"]["then"], "hero_sprites.py views")
+        self.assertIsNone(c["view-N"].get("then"))
+        cfg = hs.load_config("bat")
+        cfg["mirror_views"] = {"E": "W"}
+        p = {x["id"]: x for x in hs.build_prompts(cfg)["calls"]}
+        self.assertNotIn("view-E", p)
+        self.assertEqual(p["view-W"]["then"], "hero_sprites.py views")
+        for h in HEROES + ["goblin", "skeleton", "wolf"]:
+            self.assertNotIn("mirror_views", hs.load_config(h), h)
+            views = [x for x in self.calls(h) if x.startswith("view-")]
+            self.assertEqual(views, ["view-S", "view-N", "view-W", "view-E"], h)
+            self.assertEqual(self.calls(h)["view-E"]["then"], "hero_sprites.py views", h)
+
+    def test_views_builds_the_mirrored_view_from_its_source(self):
+        # The parent's hand-made v-W (a flip of v-E) is exactly what views
+        # builds, and k-W is then the exact flip of k-E.
+        bat = hs.load_config("bat")
+        with tempfile.TemporaryDirectory() as tmp:
+            views = os.path.join(tmp, "b", "video", "views")
+            os.makedirs(views)
+            shutil.copyfile(os.path.join(bat["dir"], "asset.json"), os.path.join(tmp, "b", "asset.json"))
+            for d in ("S", "N", "E"):
+                shutil.copyfile(os.path.join(bat["video"], "views", f"v-{d}.png"), os.path.join(views, f"v-{d}.png"))
+            cfg = hs.load_config("b", reference=tmp)
+            self.assertIsNone(hs.mirror_view(dict(cfg, mirror_views={"E": "W"}), "E", log=lambda *_: None))
+            self.assertEqual(sorted(hs.make_views(cfg, log=lambda *_: None)), ["E", "N", "S", "W"])
+            px = lambda path: np.asarray(Image.open(path).convert("RGB"))
+            self.assertTrue(np.array_equal(px(os.path.join(views, "v-W.png")),
+                                           px(os.path.join(bat["video"], "views", "v-W.png"))))
+            self.assertTrue(np.array_equal(px(os.path.join(views, "v-W.png")), px(os.path.join(views, "v-E.png"))[:, ::-1]))
+            for d in hs.CARDINALS:
+                self.assertTrue(np.array_equal(px(os.path.join(views, f"k-{d}.png")),
+                                               px(os.path.join(bat["video"], "views", f"k-{d}.png"))), d)
+            self.assertTrue(np.array_equal(px(os.path.join(views, "k-W.png")), px(os.path.join(views, "k-E.png"))[:, ::-1]))
+            # Run again: nothing changes. A stray generated v-W.jpg is refused.
+            logs = []
+            hs.make_views(cfg, log=logs.append)
+            self.assertTrue(all(x.startswith("same ") for x in logs), logs)
+            Image.new("RGB", (8, 8), "white").save(os.path.join(views, "v-W.jpg"))
+            with self.assertRaises(SystemExit):
+                hs.make_views(cfg, log=lambda *_: None)
+
+    def test_a_bad_mirror_views_is_refused(self):
+        base = json.loads(read(os.path.join(hs.REFERENCE, "bat", "asset.json")))
+        for value in ({"W": "W"}, {"N": "S"}, {"S": "N"}, {"W": "E", "E": "W"}, ["W", "E"], "W", {"W": "N"}):
+            with tempfile.TemporaryDirectory() as tmp:
+                os.makedirs(os.path.join(tmp, "g"))
+                with open(os.path.join(tmp, "g", "asset.json"), "w") as fh:
+                    json.dump(dict(base, mirror_views=value), fh)
+                with self.assertRaises(SystemExit, msg=value):
+                    hs.load_config("g", reference=tmp)
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "g"))
+            with open(os.path.join(tmp, "g", "asset.json"), "w") as fh:
+                json.dump(dict(base, view_notes={"W": "Wings spread."}), fh)
+            with self.assertRaises(SystemExit):
+                hs.load_config("g", reference=tmp)
+        hero = json.loads(read(os.path.join(hs.REFERENCE, "mage", "hero.json")))
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "m"))
+            with open(os.path.join(tmp, "m", "hero.json"), "w") as fh:
+                json.dump(dict(hero, mirror_views={"W": "E"}), fh)
+            with self.assertRaises(SystemExit):
+                hs.load_config("m", reference=tmp)
 
     def test_grounded_words_are_what_every_walking_figure_already_says(self):
         # FLIER replaces exactly these phrases, so every committed prompt of a

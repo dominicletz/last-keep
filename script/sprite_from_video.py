@@ -64,6 +64,7 @@ class Spec(NamedTuple):
     foot: int
     rows: tuple
     colours: int = COLOURS
+    flies: bool = False  # asset.json "flies": hover anchoring (monster_anchor) and the flier checks
 
     @property
     def fill(self):
@@ -99,7 +100,8 @@ def sheet_spec(cfg):
     s = cfg["sheet"]
     cell = int(s["cell"])
     rows = tuple((k, n) for k, n in MONSTER_ROWS if k in cfg["clips"])
-    return Spec(cell, int(s["height"]), cell - FOOT_MARGIN, rows, int(s.get("colours", COLOURS)))
+    return Spec(cell, int(s["height"]), cell - FOOT_MARGIN, rows, int(s.get("colours", COLOURS)),
+                cfg.get("flies") is True)
 
 
 def clip_for(clips, kind, d):
@@ -548,15 +550,31 @@ def monster_geometry(kind, frames, spec):
 
     def placer(i):
         f = frames[i]
-        m = f["mask"]
-        if kind == "walk":
-            ax, foot = torso_centre(m, h), span(m)[1]
-        elif kind == "attack":
-            ax, foot = torso0 + feet_centre(m, h) - feet0, span(m)[1]
-        else:
-            ax, foot = torso0, foot0
+        ax, foot = monster_anchor(kind, f["mask"], h, (torso0, feet0, foot0), spec.flies)
         return place(f, scale, ax, foot, spec.cell, spec.foot)
     return picks, scale, placer, info
+
+
+def monster_anchor(kind, m, h, start, flies=False):
+    """(anchor x, foot line) of one frame's mask m; start is frame 0's
+    (torso x, feet x, foot line) and h its height. A figure on its feet: see
+    monster_geometry. A flier (asset.json "flies") has no feet on a line:
+    the wings sweep below the body on the downstroke, so the lowest pixel
+    is not the ground. Its walk (a wingbeat in place) and attack (a bite
+    from the hover) keep frame 0's anchor and foot line, like a locked
+    camera: the body stays where the clip has it and the precheck loop and
+    the hover check catch a drift. Its death anchors x on frame 0 and the
+    foot line on each frame's own lowest pixel, so the cells keep the body
+    in the cell while it drops; the drop itself is the client bringing the
+    lift down to 0 (render.js)."""
+    torso0, feet0, foot0 = start
+    if flies:
+        return torso0, (span(m)[1] if kind == "death" else foot0)
+    if kind == "walk":
+        return torso_centre(m, h), span(m)[1]
+    if kind == "attack":
+        return torso0 + feet_centre(m, h) - feet0, span(m)[1]
+    return torso0, foot0
 
 
 def build_monster(clips, spec, have, inspect=None):

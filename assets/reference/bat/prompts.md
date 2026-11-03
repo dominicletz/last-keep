@@ -35,22 +35,6 @@ Save as `assets/reference/bat/video/views/v-N.png`.
 }
 ```
 
-## view-W (GenerateImage)
-
-Save as `assets/reference/bat/video/views/v-W.png`.
-
-```json
-{
- "description": "Full-body game character reference of the bat from the reference image, left profile view, facing screen-left, its left side toward the camera. The reference shows one big bat with parts of two smaller bats at its lower corners; draw only the big bat and nothing else. Same design exactly: savage cave bat with large leathery dark brown-grey wings stretched on thick bony finger struts, a stocky furry dark grey-brown body, big pointed ears, glowing red eyes, a blunt pig-like snout with small white fangs, and little clawed feet. Whole bat from the tips of its ears and wings down to its feet, hovering in the air with both wings spread wide and held still, body upright, head level, little clawed feet hanging below, nothing cropped; the body faces exactly along the view direction, so in a front or back view the two wings spread out symmetric to the left and right, not turned three-quarter, and in a profile view the wings reach straight toward and away from the camera, seen edge-on. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
- "reference_image_paths": [
-  "assets/reference/bat/concept.png",
-  "assets/reference/bat/video/views/v-S.png"
- ],
- "aspect_ratio": "1:1",
- "filename": "bat-v-W.png"
-}
-```
-
 ## view-E (GenerateImage)
 
 Save as `assets/reference/bat/video/views/v-E.png`. Then run `hero_sprites.py views`.
@@ -103,7 +87,7 @@ Save as `assets/reference/bat/video/walk-S.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The bat hovers in place in the air, flapping its wings, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady wingbeat on the spot: both wings sweep down together below the body and back up above it, the body stays level with only a slight bob, ears up, feet hanging; it never flies forward, up or down. The bat stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full wingbeats, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The bat hovers in place in the air, flapping its wings, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down. The bat stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full wingbeats, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/bat/video/dirs/S.png",
  "last_frame_path": "assets/reference/bat/video/dirs/S.png",
  "duration": 2,
@@ -119,7 +103,7 @@ Save as `assets/reference/bat/video/attack-S.mp4`.
 
 ```json
 {
- "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (facing the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (facing the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/bat/video/dirs/S.png",
  "last_frame_path": "assets/reference/bat/video/dirs/S.png",
  "duration": 2,
@@ -150,7 +134,7 @@ Save as `assets/reference/bat/video/walk-SW.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The bat hovers in place in the air, flapping its wings, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady wingbeat on the spot: both wings sweep down together below the body and back up above it, the body stays level with only a slight bob, ears up, feet hanging; it never flies forward, up or down. The bat stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full wingbeats, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The bat hovers in place in the air, flapping its wings, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down. The bat stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full wingbeats, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/bat/video/dirs/SW.png",
  "last_frame_path": "assets/reference/bat/video/dirs/SW.png",
  "duration": 2,
@@ -166,7 +150,7 @@ Save as `assets/reference/bat/video/attack-SW.mp4`.
 
 ```json
 {
- "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/bat/video/dirs/SW.png",
  "last_frame_path": "assets/reference/bat/video/dirs/SW.png",
  "duration": 2,
@@ -229,7 +213,7 @@ Save as `assets/reference/bat/video/walk-NW.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The bat hovers in place in the air, flapping its wings, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady wingbeat on the spot: both wings sweep down together below the body and back up above it, the body stays level with only a slight bob, ears up, feet hanging; it never flies forward, up or down. The bat stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full wingbeats, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The bat hovers in place in the air, flapping its wings, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down. The bat stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full wingbeats, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/bat/video/dirs/NW.png",
  "last_frame_path": "assets/reference/bat/video/dirs/NW.png",
  "duration": 2,
@@ -245,7 +229,7 @@ Save as `assets/reference/bat/video/attack-NW.mp4`.
 
 ```json
 {
- "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/bat/video/dirs/NW.png",
  "last_frame_path": "assets/reference/bat/video/dirs/NW.png",
  "duration": 2,
@@ -277,7 +261,7 @@ Save as `assets/reference/bat/video/attack-N.mp4`.
 
 ```json
 {
- "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (seen from directly behind, back to the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (seen from directly behind, back to the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/bat/video/dirs/N.png",
  "last_frame_path": "assets/reference/bat/video/dirs/N.png",
  "duration": 2,
@@ -324,7 +308,7 @@ Save as `assets/reference/bat/video/attack-NE.mp4`.
 
 ```json
 {
- "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/bat/video/dirs/NE.png",
  "last_frame_path": "assets/reference/bat/video/dirs/NE.png",
  "duration": 2,
@@ -356,7 +340,7 @@ Save as `assets/reference/bat/video/attack-E.mp4`.
 
 ```json
 {
- "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (facing screen-right, its right side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (facing screen-right, its right side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/bat/video/dirs/E.png",
  "last_frame_path": "assets/reference/bat/video/dirs/E.png",
  "duration": 2,
@@ -387,7 +371,7 @@ Save as `assets/reference/bat/video/walk-SE.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The bat hovers in place in the air, flapping its wings, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady wingbeat on the spot: both wings sweep down together below the body and back up above it, the body stays level with only a slight bob, ears up, feet hanging; it never flies forward, up or down. The bat stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full wingbeats, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The bat hovers in place in the air, flapping its wings, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down. The bat stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full wingbeats, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/bat/video/dirs/SE.png",
  "last_frame_path": "assets/reference/bat/video/dirs/SE.png",
  "duration": 2,
@@ -403,7 +387,7 @@ Save as `assets/reference/bat/video/attack-SE.mp4`. Then run `hero_sprites.py pr
 
 ```json
 {
- "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The bat keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers, then returns exactly to the starting pose and holds it for the last frames. The bat stays exactly centered, it hangs in the air at the same height, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/bat/video/dirs/SE.png",
  "last_frame_path": "assets/reference/bat/video/dirs/SE.png",
  "duration": 2,

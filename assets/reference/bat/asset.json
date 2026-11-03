@@ -20,6 +20,9 @@
  "feet": "feet",
  "flies": true,
  "view_pose": "Whole bat from the tips of its ears and wings down to its feet, hovering in the air with both wings spread wide and held still, body upright, head level, little clawed feet hanging below, nothing cropped; the body faces exactly along the view direction, so in a front or back view the two wings spread out symmetric to the left and right, not turned three-quarter, and in a profile view the wings reach straight toward and away from the camera, seen edge-on",
+ "mirror_views": {
+  "W": "E"
+ },
  "view_height": 240,
  "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it, the body stays level with only a slight bob, ears up, feet hanging; it never flies forward, up or down",
  "items": [],
@@ -53,10 +56,97 @@
    "E"
   ]
  },
+ "check": {
+  "_note": "Tuned on the start poses (dirs/) and on the take-1 trial build. anchors: concept colours (hero_sprites.py bat colours) the palette keeps within dE 15: the dark brown fur and its shade, the wing membrane mid and light tones, the pale highlight, and the red of the eyes and open mouth with its bright tip. The brightest red (203, 53, 43, 0.2% of the concept) is not anchored: dE 13 from the nearest palette colour, and at 44 px an eye is one px. roles: every brown is a grey (chroma under 0.12): light is every grey over 0.27, the lit membrane and chest; fur is the rest; red is any colour of hue 340-30 above chroma 0.12, the eyes and mouth. prop: null, the teeth are the weapon. bounds: the face is too few px to hold a floor (S shows 11 red px on dirs/S.png but 5 in its sheet start cell and 0-13 across the walk and attack), but the back never shows it: N has 0 red in every start pose, walk and attack frame, so the back ceiling is 2 and a bat that turns to face the camera fails. The front floor is light: S start cell 71 -> 0.64 x 71 = 45 (the skeleton's rule; take-1 S frames 65-126, N frames 12-73).",
+  "anchors": {
+   "fur": [
+    55,
+    46,
+    42
+   ],
+   "fur shade": [
+    45,
+    37,
+    33
+   ],
+   "membrane": [
+    80,
+    69,
+    64
+   ],
+   "membrane light": [
+    93,
+    81,
+    76
+   ],
+   "highlight": [
+    108,
+    97,
+    92
+   ],
+   "red": [
+    112,
+    40,
+    36
+   ],
+   "red light": [
+    177,
+    52,
+    46
+   ]
+  },
+  "roles": [
+   {
+    "name": "red",
+    "hue": [
+     340,
+     30
+    ]
+   },
+   {
+    "name": "light",
+    "neutral": true,
+    "light_gt": 0.27
+   },
+   {
+    "name": "fur",
+    "neutral": true
+   }
+  ],
+  "prop": null,
+  "back": {
+   "title": "back view N shows no face",
+   "bounds": [
+    [
+     "red",
+     [
+      "count",
+      "red"
+     ],
+     null,
+     2
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps its pale chest and lit wings",
+   "bounds": [
+    [
+     "light",
+     [
+      "count",
+      "light"
+     ],
+     45,
+     null
+    ]
+   ]
+  }
+ },
  "sheet": {
   "world_height": 16,
   "height": 44,
-  "cell": 112
+  "cell": 128
  },
  "turntable": {
   "seconds": 8,
@@ -67,5 +157,41 @@
    "E": 6
   },
   "design": "savage cave bat with large leathery dark brown-grey wings spread wide on thick bony finger struts, a stocky furry dark grey-brown body, big pointed ears, glowing red eyes, a blunt pig-like snout with small white fangs, and little clawed feet hanging below"
+ },
+ "clip_overrides": {
+  "_note": "Take 2 (take 1 kept in /workspace/lk/bat-take1). Take-1 checks on the 128 px cell, body core vs the start pose with the hover limit 0.3 x 44 = 13 px: walk-S rose 30 px, walk-SW 30, walk-NW 28 (two wingbeats bobbing with the 'slight bob' the gait allowed); walk-SE rose 13 px and its spread wings touched the cell edge in frame 5; attack-S rose 22 px, attack-NW 36, attack-N 15, attack-NE 17, attack-E 25, attack-SE 17 (swooping up into the bite); attack-SW touched the cell edge and its bite changed the silhouette 1218 px against the walk step median 1242. So the walks hang at one height with no bob and the attacks bite without rising, wings kept in, with a bigger lunge. walk-W/N/NE/E, attack-W and the deaths passed and keep their text.",
+  "walk-S": {
+   "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down"
+  },
+  "walk-SW": {
+   "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down"
+  },
+  "walk-NW": {
+   "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down"
+  },
+  "walk-SE": {
+   "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down"
+  },
+  "attack-S": {
+   "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers"
+  },
+  "attack-SW": {
+   "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers"
+  },
+  "attack-NW": {
+   "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers"
+  },
+  "attack-N": {
+   "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers"
+  },
+  "attack-NE": {
+   "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers"
+  },
+  "attack-E": {
+   "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers"
+  },
+  "attack-SE": {
+   "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers"
+  }
  }
 }

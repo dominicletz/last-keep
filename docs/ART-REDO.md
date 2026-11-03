@@ -70,9 +70,9 @@ HP bar.
 |---|---|---|---|---|---|---|
 | goblin | `assets/reference/goblin/` | card, crop 16,328,236,246 | a | walk ×8, attack ×8 (spear jab), death S/W/N/E | Most common enemy and the smallest figure, so it tests the scale rule first. Sheet 50 px in an 80 px cell. The spear is held upright, so the 50 px includes it. MARKS: ears, spear | **built, awaiting final review** (sheet in the client; walk-N regenerated; Dominic approved the sheet) |
 | skeleton | `assets/reference/skeleton/` | card, crop 260,328,260,246 | a | walk ×8, attack ×8 (sword slash), death S/W/N/E (collapses into bones) | 60 px in an 88 px cell (room for the slash and the heap). MARKS: ribs, blade. One sword in the right hand, no shield; one iron shoulder plate on the sword arm. The sword is `visible: true`, so every prompt asks for it in full view. Must read pale against the night yard. Every clip generated; retakes carry their own wording in `asset.json` `clip_overrides` (prompts.json says what was sent): 9 clips in take 2, then walk-E, attack-E, attack-W and death-W in take 3. All 20 pass precheck; `skeleton-sheet.png` builds byte for byte and passes every check. In the client through MONSTER_SHEETS (88 px cell, 60 px figure, foot row 81). Check profile tuned on the start poses (see `asset.json` check `_note`). Approval: sheet, strips, GIFs and a night shot in /workspace/lk/approval/skeleton | **built, awaiting final review** (sheet in the client; Dominic approved the sheet) |
-| wolf | `assets/reference/wolf/` | card, crop 760,340,270,245 | a | walk ×8 (trot on the spot), attack ×8 (lunge bite from planted hind paws), death S/W/N/E (collapses onto its side) | The first quadruped. 50 px tall (ear tips to paws) in a 128 px cell: side-on it is about 95 px long and the lunge reaches about 15 px further. No held item (`items` is empty, check `prop` null). `view_height` 300 normalizes the views shorter so the side view fits the 720 canvas; `view_pose` replaces the person's "arms relaxed" sentence and pins the spine along the view direction (take 1 and 2 of view-S came out three-quarter while it said "from its nose to the tip of its tail"). MARKS: muzzle, tail. Dark charcoal fur: watch it against the night yard. Check profile tuned on the start poses (S keeps its pale ash muzzle, throat and legs; N has none in the head and at most half as much in all). Take 1 (all 20 clips): 15 pass precheck and the sheet checks. walk-SW misses its loop (120 px, limit 111); death-N starts 20 px off the pose (limit 18) and leaps away (paws 12 px above the line); deaths S, W and E end 31-32 px tall (limit 30) with the head or tail up. Take 2 retakes those five through `clip_overrides`; take 1 is kept in /workspace/lk/wolf-take1 | **in progress: take-2 retakes** (walk-SW, death S/W/N/E) |
-| bat | `assets/reference/bat/` | card, crop 408,68,260,96 | a | walk ×8 (a wingbeat in place, `flies`), attack ×8 (snapping bite from the hover), death S/W/N/E (drops to the ground) | The first flier. 44 px (ear and wing tips to feet, wings spread) in a 112 px cell: the wingspan is about 88 px and a wingbeat sweeps above and below the start pose. The concept box is 418,66,682,206, not the card crop, which cuts the bat off below its eyes. `view_height` 240 for the spread wings. No held item (check `prop` null). Drawn at `lift` 22: the sheet foot line is the lowest pixel of the hovering start pose, and it needs a shadow disc on the ground under it. The death drops onto the ground just below, so the client must bring the lift down to 0 as it falls. Still to do once the clips exist: the walk placement and checks for a wingbeat (the wings change the height and lowest pixel by far more than the walk ±4 px and one foot line allow, so a flier needs its own anchor and checks, not looser ones), and the death drop. MARKS: ears, wings. The e2e test needs the wings to read above the night yard | **in progress: prompts** (views next) |
-| troll (ogre) | same | card | a | walk ×8, attack ×8 (club slam, ties to the `slam` event), death ×4 | 94 px, under 1.75 keep doors. MARKS: tusks, club | todo |
+| wolf | `assets/reference/wolf/` | card, crop 760,340,270,245 | a | walk ×8 (trot on the spot), attack ×8 (lunge bite from planted hind paws), death S/W/N/E (collapses onto its side) | The first quadruped. 50 px tall (ear tips to paws) in a 128 px cell: side-on it is about 95 px long and the lunge reaches about 15 px further. No held item (`items` is empty, check `prop` null). `view_height` 300 normalizes the views shorter so the side view fits the 720 canvas; `view_pose` replaces the person's "arms relaxed" sentence and pins the spine along the view direction (take 1 and 2 of view-S came out three-quarter while it said "from its nose to the tip of its tail"). MARKS: muzzle, tail. Dark charcoal fur: watch it against the night yard. Check profile tuned on the start poses (S keeps its pale ash muzzle, throat and legs; N has none in the head and at most half as much in all). Take 1 (all 20 clips): 15 pass precheck and the sheet checks. walk-SW misses its loop (120 px, limit 111); death-N starts 20 px off the pose (limit 18) and leaps away (paws 12 px above the line); deaths S, W and E end 31-32 px tall (limit 30) with the head or tail up. Take 2 retakes those five through `clip_overrides`; take 1 is kept in /workspace/lk/wolf-take1. Take 2: walk-SW and death-W pass; death-E springs forward off its paws before it drops (feet up to 18 px above the line, limit 3), death-S rises 5 px onto its hind legs, and death-N again starts 20 px off its pose (limit 18). Take 3 asks those three to hold the first-frame pose still for a moment and keep all four paws on the ground (the body only moves down); take 2 is kept in /workspace/lk/wolf-take2 | **in progress: take-3 retakes** (death S/N/E) |
+| bat | `assets/reference/bat/` | card, crop 408,68,260,96 | a | walk ×8 (a wingbeat in place, `flies`), attack ×8 (snapping bite from the hover), death S/W/N/E (drops to the ground) | The first flier. 44 px (ear and wing tips to feet, wings spread) in a 128 px cell: the wingspan is about 88 px, a wingbeat sweeps above and below the start pose, and take 1 dead on its back with the wings spread flat touched the edge of a 112 px cell. The concept box is 418,66,682,206, not the card crop, which cuts the bat off below its eyes. `view_height` 240 for the spread wings. view-W came out three-quarter twice, so `mirror_views` {"W": "E"} builds it as the flip of v-E (24 calls). Views, turntable and dirs done (SW=32 NW=70 NE=124 SE=164). Flier build and checks (`flies`, see "Fliers" below): walk and attack keep frame 0's anchor and foot line, death lands on each frame's own lowest pixel, and the walk height, walk foot line, attack feet and legs checks are swapped for a start-pose foot line, a body-core hover check and a wingbeat check. Check profile: no prop; the back never shows the red face (N 0 red in every take-1 frame, ceiling 2) and the front keeps its lit chest and membrane (light ≥ 45 = 0.64 × the S start cell's 71). Take 1 (kept in /workspace/lk/bat-take1): walk-S/SW/NW bobbed 28 to 30 px, walk-SE 13 px and touched the cell edge, attack-S/NW/N/NE/E/SE rose 15 to 36 px into the bite, attack-SW touched the edge and struck 1218 px against 1242; the other 9 clips pass. `clip_overrides` retake those 11 with the body held at one height. Client: drawn at `lift` 22 with a contact disc held on the ground under it; `flierLift` brings the lift to 0 across the death row. MARKS: ears, wings. The e2e test needs the wings to read above the night yard | **in progress: clips** (take 2: 11 retakes, calls in /workspace/lk/bat-batch.json) |
+| troll (ogre) | `assets/reference/troll/` | card, crop 524,292,226,286 | a | walk ×8 (heavy stomp on the spot), attack ×8 (overhead club slam in front of him, ties to the `slam` event), death S/W/N/E (sinks to his knees, topples onto his side) | 94 px (34 world units at the hero texel), under 1.75 keep doors, in a 160 px cell: the slam lifts the club about 50 px over his head. The concept box is 526,292,768,580, the registry crop widened so the club head is in it. The club is in his left hand, as the concept holds it, and `visible` so no view hides it. The death holds the start pose for a moment and only moves down (the wolf lesson). MARKS: tusks, club | **in progress: views** (asset.json, concept crop and prompts ready: 4 view calls) |
 | boss (dark rider) | same | card | a | ride ×8 (horse gallop), attack ×8 (lance or sword), death ×4 | 94 px. Rider and horse together; the horse sets the silhouette. MARKS: helm, horse | todo |
 | elite marks | `render.js` (plated, lean, spiked boxes) | box meshes | c | 3 small icons | Could become overlays on the sheet instead of boxes | todo |
 | HP bars | `render.js` box meshes | mesh | d | — | Keep, but snap to the texel grid | keep |
@@ -275,6 +275,11 @@ These are proposed, all purely client-side decoration with no gameplay.
     the air with its wings frozen ("no flapping" for "no walking").
     `hero_sprites.GROUNDED` and `FLIER` hold the swapped phrases; every
     other figure's prompts are unchanged.
+  - `mirror_views` (a monster only, `{"W": "E"}` or `{"E": "W"}`): the
+    bat is left-right symmetric and its view-W came out three-quarter
+    twice, so `views` builds `v-W.png` as the exact horizontal flip of
+    `v-E` and `prompts.json` drops the view-W call (the bat has 24 calls).
+    The flip is deterministic: the views step rebuilds the same pixels.
   - In the check profile, `"prop": null` says the figure holds nothing. The
     monster checks then skip only the prop checks; `prop_dirs` and
     `prop_side_below` are refused with it, and a hero cannot have it.
@@ -336,11 +341,63 @@ for the skeleton; `prompts.json` says what was sent.
 ## Bat: how to run it
 
 Same steps as the goblin below, with `bat` for `goblin`. Calls:
-`assets/reference/bat/prompts.json` (25 calls: 4 views, 1 turntable, 8
-walk, 8 attack and 4 death clips). The views normalize to 240 px
+`assets/reference/bat/prompts.json` (24 calls: 3 views, 1 turntable, 8
+walk, 8 attack and 4 death clips; `views` mirrors v-E into v-W). The views normalize to 240 px
 (`view_height`), so `views` refuses a view more than about 2.7 times as wide
-as it is tall. Before `build`, `sprite_from_video` and the monster checks
-need the flier's wingbeat anchor and checks (see the bat row).
+as it is tall. The build and checks treat it as a flier (see "Fliers");
+the check profile in `asset.json` is a draft tuned on the start poses.
+
+## Troll: how to run it
+
+Same steps as the goblin below, with `troll` for `goblin`. Calls:
+`assets/reference/troll/prompts.json` (25 calls: 4 views, 1 turntable, 8
+walk, 8 attack and 4 death clips). The views normalize to the default
+height; the club stays in full view in every view. The `check` profile
+(green skin, brown leather, the club as the prop) is written after `dirs`,
+tuned on the eight start poses like the skeleton's.
+
+## Fliers
+
+A monster with `"flies": true` (the bat) hangs in the air, so the walk
+checks that hold a figure on its feet cannot hold it: a wingbeat sweeps
+the wings far past the walk height ±4 px, and on the downstroke the wings
+are the lowest pixel, so the "one foot line" would follow the wings. A
+flier gets its own anchor and checks in their place; no existing limit is
+loosened, and every figure on its feet runs exactly the checks it did.
+
+- Build (`sprite_from_video.monster_anchor`, `Spec.flies`): walk and attack
+  keep frame 0's torso x and foot line for every frame, like a locked
+  camera, so the body stays where the clip has it (the precheck loop and
+  start checks catch a drift). Death keeps frame 0's x and puts each
+  frame's own lowest pixel on the foot line, so the fall stays inside the
+  cell; the drop itself is the client's lift.
+- Checks (`check_sprite_sheet.run_monster_checks`), replacing the walk
+  height, the walk foot line, the attack feet and the walk legs:
+  - `flier start pose on the foot line`: walk frame 0 of every column on
+    the foot line ±1.
+  - `walk/attack hovers at the start height ±N px` (`HOVER_BOB` 0.3 × the
+    figure height, 13 px for the bat): the body core keeps its mean row
+    within N px of the start pose's. The core is the largest piece left
+    after opening the silhouette with a square 0.3 × the figure height
+    (smaller squares down to 3 px if that leaves nothing, so a thin side
+    view keeps its body), which drops the wings, ears and feet. On side
+    views the core still carries the wing roots: the bat's take-1 W and E
+    walks, whose body visibly holds still, measure up to 12 px, so the
+    limit is 0.3 × H; the walks that really bob (S, SW, NW: 28 to 30 px)
+    and the bites that swoop up (15 to 36 px) still fail.
+  - `walk <D> wings beat`: the whole silhouette changes by at least the
+    legs floor every step, and frame 0 against the walk frame most unlike
+    it by at least `WINGBEAT` (150 px at the hero's 88 px, by area; 38 at
+    44 px). The 8 frames may hold one wingbeat or two (walk-NE take 1 is
+    48 frames, two beats), so it is a sweep, not half a cycle.
+  - Unchanged: start frames, death feet ±3, death ends on the ground, the
+    palette, outline, cell border, front and back views, 8 distinct
+    directions, attack strikes.
+- Client: `flierLift(lift, pose, now, deathFrames)` in `pictures.js`
+  holds the lift while it lives; in death frame 0 still hovers, then it
+  falls ever faster (t²) and lands as the last death frame starts.
+  `render.js` gives only the bat `lift` 22 and a contact disc that
+  `placeMesh` holds on the ground under it.
 
 ## Goblin: how to run it
 

@@ -1,0 +1,76 @@
+{
+ "_note": "Fifth monster (docs/ART-REDO.md), the ogre (sim kind troll). The concept crop is the ogre in monsters.jpg (the registry crop 524,292,226,286, widened to 526,292,768,580 so the club head is not cut); it shows the skeleton's shield at its left edge and a wolf's head at its right, so the views draw one ogre and nothing else. MARKS tusks and club. World height 34 is monsterHeights.troll; at the hero texel (32/88) that is 94 px, head to feet, under 1.75 keep doors. The club hangs at his side in the views, so the 94 px is the ogre itself. The cell is 160, not 110 (94 + 16): the slam lifts the club high over his head, about 50 px above it, and dead on his side he is about as long as he is tall, with the club beside him. The clips start from the skeleton, wolf and bat precheck lessons: every motion stays on the spot, the slam lands in front of him without a step, and the death holds the start pose for a moment and only moves down. The club is in his left hand (image-right in the front view), as the concept holds it, and is a MARK, so it is \"visible\": no view may hide it behind the body (the goblin's first view-E lost its spear).",
+ "type": "monster",
+ "noun": "ogre",
+ "possessive": "his",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [
+   526,
+   292,
+   768,
+   580
+  ]
+ },
+ "source_note": "the reference shows one ogre with parts of other monsters at its edges; draw only the ogre with his spiked club and nothing else, no shield, no wolf",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "huge hulking ogre with mossy green blocky skin, a heavy brow, small pointed ears, glowing orange-red eyes, a wide underbite jaw with two big upward tusks and yellowed teeth, a dark brown leather strap across his bare chest, a brown leather belt with a bone skull buckle over a ragged brown hide loincloth, brown leather bracers on his forearms and wraps on his shins, and big bare green feet",
+ "feet": "feet",
+ "gait": "Slow heavy ogre stomp on the spot: knees bent, legs alternating clearly, big shoulders swaying, slight body bob; his body never moves forward",
+ "items": [
+  {
+   "name": "huge dark brown wooden club studded with grey iron spikes",
+   "at": "left hand",
+   "walk": "club hanging low at his side in his left hand, its spiked head near the ground",
+   "still": "club",
+   "visible": true
+  }
+ ],
+ "attack": "plants his feet, raises the club high over his head with both hands, then slams it straight down onto the ground just in front of him in the facing direction, then lifts it back; his feet stay planted on the same spot, he does not step or jump",
+ "death": "roars and holds the exact first-frame pose still for a moment, then drops the club, sinks to his knees and topples over onto his side on the exact spot where he stood, the club lying beside him. His body only ever moves down, never up. He does not leap, spin or fall forward toward the camera; he lies where his feet were",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "sheet": {
+  "world_height": 34,
+  "height": 94,
+  "cell": 160
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "huge hulking ogre with mossy green blocky skin, a heavy brow, small pointed ears, glowing orange-red eyes, a wide underbite jaw with two big upward tusks, a dark brown leather strap across his bare chest, a brown leather belt with a bone skull buckle over a ragged brown hide loincloth, brown leather bracers and shin wraps, big bare green feet, a huge spiked wooden club hanging low at his side in his left hand"
+ }
+}

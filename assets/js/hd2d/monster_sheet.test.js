@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url"
 import * as THREE from "three"
 import { releaseGeometries } from "../meshes.js"
 import { monsterHeights } from "../monsters.js"
-import { MONSTER_SHEETS, monsterSheetUrl, sheetRow, spriteHeight } from "../pictures.js"
+import { flierLift, MONSTER_SHEETS, monsterSheetUrl, sheetRow, spriteHeight } from "../pictures.js"
 import { createPicture, monsterSheetPicture, SHEET_TEXEL, sheetCardGeometry } from "./picture.js"
 import { readRgbaPng } from "./png.js"
 
@@ -281,4 +281,33 @@ test("a sheet missing a clip kind falls back to the kinds it has", () => {
   const walkOnly = monsterSheetPicture({ ...GOBLIN, rows: { walk: 8 } })
   assert.deepEqual(walkOnly, { directions: 8, frames: 8, walk: 8, attack: 0, death: 0, idle: 0 })
   assert.throws(() => monsterSheetPicture({ ...GOBLIN, rows: { attack: 6 } }), /walk rows/)
+})
+
+test("a flier hovers at its lift and drops to the ground through its death row", () => {
+  const lift = 22
+  assert.equal(flierLift(0, { dead: true, deadAt: 0 }, 500, 6), 0)
+  assert.equal(flierLift(lift, undefined, 500, 6), lift)
+  assert.equal(flierLift(lift, { moving: true }, 500, 6), lift)
+  // Death: frame 0 still hovers, then it falls ever faster and lands as the
+  // last of 6 death frames starts (5 x 160 ms), and stays down.
+  const at = (ms) => flierLift(lift, { dead: true, deadAt: 1000 }, 1000 + ms, 6)
+  assert.equal(at(0), lift)
+  assert.equal(at(160), lift)
+  assert.ok(at(480) < lift && at(480) > lift / 2)
+  assert.ok(lift - at(320) < at(480) - at(640))
+  assert.equal(at(800), 0)
+  assert.equal(at(5000), 0)
+  for (let ms = 0; ms < 900; ms += 20) assert.ok(at(ms + 20) <= at(ms), `falls at ${ms}`)
+  // No death row: the monster is let go at once, so it is not left hanging.
+  assert.equal(flierLift(lift, { dead: true, deadAt: 1000 }, 1000, 0), 0)
+})
+
+test("render.js lifts only the bat and keeps its shadow disc on the ground", () => {
+  const render = fs.readFileSync(path.join(root, "assets/js/render.js"), "utf8")
+  assert.match(render, /if \(row\.kind === "bat"\) \{\s+mesh\.userData\.lift = 22/)
+  assert.match(render, /const shadow = contactDisc\(10\)\s+mesh\.add\(shadow\)\s+mesh\.userData\.shadow = shadow/)
+  assert.match(render, /const lift = flierLift\(mesh\.userData\.lift \|\| 0, mesh\.userData\.pose, performance\.now\(\), picture && picture\.death\)/)
+  assert.match(render, /mesh\.position\.set\(snapWorld\(pose\.x \+ spread\.x, step\), lift, /)
+  assert.match(render, /if \(mesh\.userData\.shadow\) mesh\.userData\.shadow\.position\.y = 0\.46 - lift/)
+  assert.equal((render.match(/userData\.lift = 22/g) || []).length, 1)
 })

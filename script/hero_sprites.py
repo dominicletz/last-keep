@@ -2,7 +2,7 @@
 """One entry point for a hero's (or another figure's) 8-direction sprite sheet.
 
     python3 script/hero_sprites.py HERO prep       # concept crop, prompts, views
-    python3 script/hero_sprites.py HERO views      # normalize views/v-*.* to k-*.png
+    python3 script/hero_sprites.py HERO views      # mirror_views flips, then normalize views/v-*.* to k-*.png
     python3 script/hero_sprites.py HERO dirs       # views + 8 start poses from the turntable
     python3 script/hero_sprites.py HERO precheck   # which clips to regenerate, before the build
     python3 script/hero_sprites.py HERO build      # sheet + checks + approval files
@@ -143,6 +143,18 @@ def load_config(hero, reference=REFERENCE):
     # holds it in the air with its wings still (see FLIER below).
     if "flies" in cfg and (cfg["flies"] is not True or kind == "hero"):
         raise SystemExit(f"{hero}/{name}: flies is true on a monster, or absent")
+    # A left-right symmetric figure (the bat) mirrors one side view from the
+    # other instead of generating it: {"W": "E"} makes views/v-W.png the
+    # horizontal flip of v-E, and prompts.json has no view-W call. Only W and
+    # E mirror into each other; a hero holds its items in one hand, so never.
+    mirror = cfg.get("mirror_views", {})
+    if not isinstance(mirror, dict) or len(mirror) > 1 or any(
+            (d, s) not in (("W", "E"), ("E", "W")) for d, s in mirror.items()):
+        raise SystemExit(f"{hero}/{name}: mirror_views is {{\"W\": \"E\"}} or {{\"E\": \"W\"}}, got {mirror!r}")
+    if mirror and kind == "hero":
+        raise SystemExit(f"{hero}/{name}: mirror_views is for symmetric creatures; a hero's items are handed")
+    if set(mirror) & set(notes):
+        raise SystemExit(f"{hero}/{name}: view_notes for the mirrored view {sorted(set(mirror) & set(notes))} is never sent")
     if kind != "hero":
         sheet = cfg.get("sheet") or {}
         for key in ("world_height", "height", "cell"):
@@ -260,8 +272,26 @@ def view_source(cfg, d):
     return None
 
 
+def mirror_view(cfg, d, log=print):
+    """views/v-<d>.png as the horizontal flip of the view it mirrors
+    (asset.json "mirror_views"); None until that view is there."""
+    src = view_source(cfg, cfg["mirror_views"][d])
+    if not src:
+        return None
+    out = os.path.join(cfg["video"], "views", f"v-{d}.png")
+    for ext in ("jpg", "jpeg", "webp"):
+        stale = os.path.join(cfg["video"], "views", f"v-{d}.{ext}")
+        if os.path.exists(stale):
+            raise SystemExit(f"{rel(stale)}: v-{d} is mirrored from v-{cfg['mirror_views'][d]}; delete it")
+    wrote = save_png(out, np.asarray(Image.open(src).convert("RGB"))[:, ::-1])
+    log(f"{'wrote' if wrote else 'same '} {rel(out)} (mirror of {rel(src)})")
+    return out
+
+
 def make_views(cfg, log=print):
     done = []
+    for d in cfg.get("mirror_views", {}):
+        mirror_view(cfg, d, log)
     for d in CARDINALS:
         src = view_source(cfg, d)
         if not src:
@@ -493,7 +523,9 @@ def build_prompts(cfg):
     design = cfg["design"]
     words = FLIER if cfg.get("flies") else GROUNDED
     calls = []
-    for d in ("S", "N", "W", "E"):
+    mirror = cfg.get("mirror_views", {})
+    views = [d for d in ("S", "N", "W", "E") if d not in mirror]
+    for d in views:
         items = [item_line(i, d, poss) for i in cfg["items"]]
         items = "; ".join(x for x in items if x)
         front = view_source(cfg, "S")
@@ -520,7 +552,7 @@ def build_prompts(cfg):
                       "args": {"description": text, "reference_image_paths": refs, "aspect_ratio": "1:1",
                                "filename": f"{h}-v-{d}.png"},
                       "save_as": f"{vid}/views/v-{d}.png",
-                      "then": "hero_sprites.py views" if d == "E" else None})
+                      "then": "hero_sprites.py views" if d == views[-1] else None})
     t = cfg["turntable"]
     keys = [{"image_path": f"{vid}/views/k-{d}.png", "timestamp_s": t["keyframes"][d]} for d in ("W", "N", "E")]
     turn = (f"Game character turnaround reference. The {noun} {words['turn_pose']} and rotates a full 360 degrees at a constant speed, turning to show {poss} left "
