@@ -1,6 +1,7 @@
 import { lockInk, lockedPalette, styleHexes } from "./art_score.js"
 import { monsterRim } from "./bodies.js"
 import { monsterFronts } from "./monster-data.js"
+import { monsterSheets } from "./monster-sheets.js"
 import { buildCard } from "./pictures.js"
 
 // World height of the crop card. Goblins, skeletons, wolves, and bats stay
@@ -15,6 +16,7 @@ export const monsterHeights = {
 }
 
 const KINDS = Object.keys(monsterHeights)
+// kind -> parts. Filled by a loaded sheet or, failing that, bakeMonster.
 const cache = new Map()
 
 export function monsterKinds() {
@@ -45,25 +47,119 @@ function buildMonster(kind) {
   return parts
 }
 
-// The sheet lock is done once, when this module loads, not when a kind first spawns.
-function prepareMonsterPictures() {
-  const palette = lockedPalette(styleHexes)
-  for (const kind of KINDS) {
-    const parts = buildMonster(kind)
-    lockAtlas(parts[0], palette)
-    cache.set(kind, parts)
-  }
+let palette = null
+
+// The procedural card, palette-locked. The browser takes the same pixels from
+// the PNGs script/bake_monsters.mjs writes, so this runs in node (models,
+// tests, the bake) and in a browser only for a kind whose sheet has not
+// arrived when it first spawns.
+export function bakeMonster(kind) {
+  if (!palette) palette = lockedPalette(styleHexes)
+  const parts = buildMonster(kind)
+  lockAtlas(parts[0], palette)
+  return parts
 }
 
 export function monsterParts(kind) {
   const ready = cache.get(kind)
   if (ready) return ready
-  const parts = buildMonster(kind)
+  const parts = bakeMonster(kind)
   cache.set(kind, parts)
+  sources.set(kind, "baked")
   return parts
 }
 
-prepareMonsterPictures()
+const sources = new Map()
+
+// "sheet" when the kind came from its PNG, "baked" when it was built here.
+export function monsterSource(kind) {
+  return sources.get(kind) || null
+}
+
+export function monsterSheetUrl(kind) {
+  return `/images/hd2d/monsters/${kind}.png`
+}
+
+// A loaded atlas becomes the kind's card. The card is the one bakeMonster
+// builds, minus the unlocked front image that only the node models read.
+export function adoptMonsterSheet(kind, atlas) {
+  if (cache.has(kind)) return false
+  const meta = monsterSheets[kind]
+  if (!meta) throw new Error(`no monster sheet for ${kind}`)
+  if (atlas.length !== meta.card.atlasW * meta.card.atlasH * 4) throw new Error(`monster sheet ${kind} size`)
+  const card = { ...meta.card, atlas, rim: monsterRim(kind) }
+  const parts = /** @type {any} */ ([card])
+  parts.marks = meta.marks.slice()
+  parts.voxelCount = meta.voxelCount
+  parts.bounds = { ...meta.bounds }
+  cache.set(kind, parts)
+  sources.set(kind, "sheet")
+  return true
+}
+
+async function decodeSheet(blob) {
+  const bitmap = await createImageBitmap(blob, { premultiplyAlpha: "none", colorSpaceConversion: "none" })
+  const { width, height } = bitmap
+  const canvas = typeof OffscreenCanvas === "function" ? new OffscreenCanvas(width, height) : Object.assign(document.createElement("canvas"), { width, height })
+  const ctx = /** @type {CanvasRenderingContext2D} */ (canvas.getContext("2d", { willReadFrequently: true }))
+  ctx.drawImage(bitmap, 0, 0)
+  if (bitmap.close) bitmap.close()
+  return new Uint8Array(ctx.getImageData(0, 0, width, height).data.buffer)
+}
+
+const nextTask = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+// Fetches each sheet in turn and yields between kinds, so no one task holds
+// more than one decode. A sheet that fails leaves its kind to bakeMonster.
+let loading = null
+
+// A hold parks the loader before its next sheet. Create holds it from the
+// click to the room's first frame: each decode is a main-thread task, and on
+// a small machine it takes CPU from the server laying out the new room.
+let gate = null
+let openGate = null
+
+export function holdMonsterSheets() {
+  if (gate) return
+  gate = new Promise((resolve) => {
+    openGate = resolve
+  })
+}
+
+export function releaseMonsterSheets() {
+  if (!gate) return
+  const open = openGate
+  gate = null
+  openGate = null
+  if (open) open()
+}
+
+export function loadMonsterSheets(options) {
+  if (options) return loadSheets(options)
+  if (!loading) loading = loadSheets({})
+  return loading
+}
+
+async function loadSheets(options) {
+  const get = options.fetch || ((url) => fetch(url))
+  const decode = options.decode || decodeSheet
+  let adopted = 0
+  for (const kind of KINDS) {
+    if (cache.has(kind) || !monsterSheets[kind]) continue
+    while (gate) await gate
+    if (cache.has(kind)) continue
+    try {
+      const response = await get(monsterSheetUrl(kind))
+      if (!response.ok) throw new Error(`${response.status}`)
+      const atlas = await decode(await response.blob())
+      if (adoptMonsterSheet(kind, atlas)) adopted += 1
+    } catch (err) {
+      console.warn(`monster sheet ${kind}: ${err && err.message}`)
+    }
+    await nextTask()
+  }
+  return adopted
+}
 
 function lockAtlas(card, palette) {
   const count = card.atlasW * card.atlasH

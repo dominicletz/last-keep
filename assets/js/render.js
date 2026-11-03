@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { cameraFocus, drawDue, frameFor, paintGap } from "./frame"
+import { cameraFocus, frameFor, frameSignature, ghostLook, paintDue, paintGap, sceneKey, snapshotDue, testHooks } from "./frame"
 import { clockScore } from "./hd2d/score.js"
 import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
 import { pixelStep, snapWorld } from "./art_score.js"
@@ -302,8 +302,11 @@ export function createView(stage, picture) {
   const bursts = []
   let lastTick = -1
   let heroKey = null
+  let stageSize = null
   applyFrame()
-  window.addEventListener("resize", applyFrame)
+  window.addEventListener("resize", onResize)
+  const stageWatch = typeof ResizeObserver === "function" ? new ResizeObserver(() => onResize()) : null
+  if (stageWatch) stageWatch.observe(stage)
 
   const forestLook = forestState()
 
@@ -448,6 +451,18 @@ export function createView(stage, picture) {
   let pending = null
   let drawnTick = -1
   let viewApi = null
+  // Without test hooks a frame paints only when its signature moved or
+  // something outside the signature (a draw, a resize, the ghost) set this.
+  let dirty = true
+  let lastSignature = null
+  // The last drawn snapshot's sceneKey. A snapshot at 20 Hz that changes only
+  // the countdown leaves the picture as it was.
+  let lastSceneKey = null
+  let lastGhost = null
+  let firstPaint = null
+  // hold() stops paints until the next draw(). See paintDue.
+  let held = false
+  const rimAtlases = new WeakMap()
   let sampleTarget = null
   const savedClear = new THREE.Color()
   const samplePoint = new THREE.Vector3()
@@ -474,6 +489,11 @@ export function createView(stage, picture) {
     lastSubmit = presented && Number.isFinite(presented.submitMs) ? presented.submitMs : null
     renders += 1
     if (window.__lastKeep) window.__lastKeep.renders = renders
+    if (firstPaint) {
+      const mark = firstPaint
+      firstPaint = null
+      if (typeof performance !== "undefined" && performance.mark) performance.mark(mark)
+    }
   }
 
   function sampleYard(gl, canvas) {
@@ -531,7 +551,7 @@ export function createView(stage, picture) {
     // The socket handler only queues. Drawing here lets the test's wait run
     // between snapshots. A draw inside the handler piles up and the page
     // never returns, so the fireball wait dies when the browser closes.
-    if (pending && viewApi && pending.snap.tick !== drawnTick && drawDue(now, lastRender, lastInput)) {
+    if (pending && viewApi && pending.snap.tick !== drawnTick && snapshotDue(testHooks, now, lastRender, lastInput)) {
       viewApi.draw(pending.snap, pending.selfId)
       drawnTick = pending.snap.tick
     }
@@ -555,12 +575,16 @@ export function createView(stage, picture) {
       window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
     }
     cullActors()
-    if (drawDue(now, lastRender, lastInput)) {
+    const signature = testHooks ? null : frameSignature(camera, meshes.values())
+    const changed = dirty || bursts.length > 0 || signature !== lastSignature
+    if (paintDue(testHooks, now, lastRender, lastInput, changed, held)) {
       const started = performance.now()
       paintFrame()
       publishPerf(performance.now() - started)
       lastRender = now
-    } else {
+      dirty = false
+      lastSignature = signature
+    } else if (testHooks) {
       publishPerf(null)
     }
     const gap = paintGap(performance.now() - now)
@@ -580,12 +604,13 @@ export function createView(stage, picture) {
     canvas: renderer.domElement,
     rims(show) {
       showRims(show)
+      dirty = true
     },
     repaint() {
       const frame = renderer.info.render.frame
       cullActors()
       paintFrame()
-      publishPerf(null)
+      publishPerf(null, true)
       const perf = window.__lastKeepPerf
       return {
         calls: perf.calls,
@@ -601,7 +626,8 @@ export function createView(stage, picture) {
     },
     stop() {
       closed = true
-      window.removeEventListener("resize", applyFrame)
+      window.removeEventListener("resize", onResize)
+      if (stageWatch) stageWatch.disconnect()
       window.removeEventListener("pointerdown", noteInput)
       window.removeEventListener("keydown", noteInput)
     },
@@ -633,8 +659,27 @@ export function createView(stage, picture) {
       const point = new THREE.Vector3(x, 8, z).project(camera)
       return { x: point.x, y: point.y, behind: point.z > 1 }
     },
+    // A view marks its first painted frame of each kind for the probe:
+    // lastkeep:firstMenuFrame or lastkeep:firstWorldFrame.
+    markFirstPaint(name) {
+      firstPaint = name
+    },
+    hold() {
+      held = true
+    },
+    resume() {
+      if (held) dirty = true
+      held = false
+    },
+    get held() {
+      return held
+    },
     draw(snap, selfId) {
+      held = false
       drawnTick = snap.tick
+      const key = testHooks ? null : sceneKey(snap)
+      if (testHooks || key !== lastSceneKey) dirty = true
+      lastSceneKey = key
       const name = lightName(snap)
       liveLight = name
       townRank = snap.town || 0
@@ -705,6 +750,8 @@ export function createView(stage, picture) {
         }
       }
 
+      heroKey = me ? `hero:${me.id}` : null
+      if (!testHooks) return
       const kept = window.__lastKeep || {}
       const counts = { heroes: 0, monsters: 0, shots: 0 }
       scene.traverse((object) => {
@@ -762,7 +809,6 @@ export function createView(stage, picture) {
         min: { x: keepBounds.min.x, y: keepBounds.min.y, z: keepBounds.min.z },
         max: { x: keepBounds.max.x, y: keepBounds.max.y, z: keepBounds.max.z }
       }
-      heroKey = me ? `hero:${me.id}` : null
       const heroMesh = heroKey ? meshes.get(heroKey) : null
       const heroTrack = heroKey ? tracks.get(heroKey) : null
       window.__lastKeep = {
@@ -882,6 +928,11 @@ export function createView(stage, picture) {
       })
     },
     ghost(kind, x, z, ok) {
+      // play.js calls this on every snapshot. Only a ghost or ring that
+      // changed asks for a paint.
+      const look = ghostLook(kind, x, z, ok, bearer)
+      if (look !== lastGhost) dirty = true
+      lastGhost = look
       ghost.visible = !!kind
       const ring = rangeRingState(!!kind, bearer.range)
       rangeRing.visible = ring.on
@@ -1601,7 +1652,11 @@ export function createView(stage, picture) {
     return card
   }
 
-  function rimCard(picture, rim) {
+  // A rim atlas is the card's atlas in one color. Each spawn used to copy and
+  // recolor the whole atlas, about 10MB for a goblin; one copy per kind does.
+  function rimBytes(picture, rim) {
+    const held = rimAtlases.get(picture)
+    if (held && held.color === rim.color) return held.bytes
     const bytes = new Uint8Array(picture.atlas)
     const red = (rim.color >> 16) & 255
     const green = (rim.color >> 8) & 255
@@ -1612,6 +1667,12 @@ export function createView(stage, picture) {
       bytes[i + 1] = green
       bytes[i + 2] = blue
     }
+    rimAtlases.set(picture, { color: rim.color, bytes })
+    return bytes
+  }
+
+  function rimCard(picture, rim) {
+    const bytes = rimBytes(picture, rim)
     const map = new THREE.DataTexture(bytes, picture.atlasW, picture.atlasH, THREE.RGBAFormat)
     map.magFilter = THREE.NearestFilter
     map.minFilter = THREE.NearestFilter
@@ -1744,11 +1805,20 @@ export function createView(stage, picture) {
     return mesh
   }
 
+  // draw() fits the frame every snapshot. Reading the stage rect there forced
+  // a layout per tick, so the size is read once and again only on a resize.
   function applyFrame() {
-    const rect = stage.getBoundingClientRect()
-    const cssW = rect.width || stage.clientWidth || 480
-    const cssH = rect.height || stage.clientHeight || 270
-    viewFrame = picture.fit(renderer, camera, cssW, cssH, townRank)
+    if (!stageSize) {
+      const rect = stage.getBoundingClientRect()
+      stageSize = { w: rect.width || stage.clientWidth || 480, h: rect.height || stage.clientHeight || 270 }
+    }
+    viewFrame = picture.fit(renderer, camera, stageSize.w, stageSize.h, townRank)
+  }
+
+  function onResize() {
+    stageSize = null
+    dirty = true
+    applyFrame()
   }
 
   function cullActors() {
@@ -1779,14 +1849,18 @@ export function createView(stage, picture) {
     })
   }
 
-  function publishPerf(paintMs) {
+  // The census and the rim count walk the whole scene. They run each frame
+  // only for test hooks, and on repaint() when a test asks.
+  function publishPerf(paintMs, full = testHooks) {
     const perf = window.__lastKeepPerf || (window.__lastKeepPerf = { paints: [] })
     perf.geometries = renderer.info.memory.geometries
     perf.textures = renderer.info.memory.textures
     perf.calls = renderer.info.render.calls
     perf.triangles = renderer.info.render.triangles
-    perf.census = geometryCensus(scene)
-    perf.rims = visibleRims()
+    if (full) {
+      perf.census = geometryCensus(scene)
+      perf.rims = visibleRims()
+    }
     perf.submitMs = lastSubmit
     perf.driver = driverName()
     perf.tier = picture.tier

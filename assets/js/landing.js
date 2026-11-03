@@ -1,3 +1,4 @@
+import { continueInRoom } from "./play"
 import { mountStart } from "./start"
 
 const storageKey = "lastkeep-name"
@@ -8,12 +9,13 @@ export function bootLanding() {
   const error = form.querySelector("#start-error")
   let token = null
 
-  mountStart({
+  const menu = mountStart({
     stage,
     form,
     mode: "create",
     onAccept: async (pick) => {
       error.hidden = true
+      menu.hold()
       token = token || crypto.randomUUID().replaceAll("-", "")
       try {
         const response = await fetch("/api/rooms", {
@@ -26,17 +28,22 @@ export function bootLanding() {
           sessionStorage.removeItem("lastkeep-arrive")
           error.hidden = false
           error.textContent = body.error || "Could not create the game."
+          menu.resume()
           return
         }
         const stored = { token: body.token, name: pick.name, hero: pick.hero }
         localStorage.setItem(storageKey, pick.name)
         localStorage.setItem("lastkeep-hero", pick.hero)
         localStorage.setItem(`lastkeep:${body.code}`, JSON.stringify(stored))
-        window.location = body.path
+        // No reload: the menu's renderer and scene carry on into the room.
+        // Back from the room reloads, so the home page starts clean.
+        window.history.pushState({ room: body.code }, "", body.path)
+        continueInRoom(body.code, stored, menu)
       } catch (_err) {
         sessionStorage.removeItem("lastkeep-arrive")
         error.hidden = false
         error.textContent = "The keep did not answer."
+        menu.resume()
       }
     }
   })

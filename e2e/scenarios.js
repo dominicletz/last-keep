@@ -3116,7 +3116,83 @@ async function liveSmoke(browser) {
   await Promise.all([host.context.close(), guest.context.close()])
 }
 
+// Create used to reload into /r/CODE, which threw away the menu's renderer,
+// scene, and shaders and evaluated the whole bundle again. Now the address
+// changes in place and the menu's canvas becomes the room's canvas.
+async function createKeepsThePage(browser) {
+  const errors = []
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
+  const page = await context.newPage()
+  watch(page, "host", errors)
+  await page.goto(gameUrl("/"))
+  await page.locator("#start-button").waitFor()
+  await page.waitForFunction(() => document.querySelector("#stage canvas") && performance.getEntriesByName("lastkeep:firstMenuFrame").length === 1)
+  const before = await page.evaluate(() => {
+    window.__sameDocument = true
+    window.__menuCanvas = document.querySelector("#stage canvas")
+    return { history: history.length }
+  })
+  await page.locator("#player-name").fill("Ada")
+  await page.locator("#start-button").click()
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Ada"))
+  await page.waitForFunction(() => performance.getEntriesByName("lastkeep:firstWorldFrame").length === 1)
+  const after = await page.evaluate(() => ({
+    same: window.__sameDocument === true,
+    canvas: document.querySelector("#stage canvas") === window.__menuCanvas,
+    canvases: document.querySelectorAll("#stage canvas").length,
+    page: document.body.dataset.page,
+    code: document.body.dataset.code,
+    path: location.pathname,
+    history: history.length,
+    joinHidden: document.querySelector("#start-screen").hidden,
+    scoreLists: document.querySelectorAll("#score-list").length,
+    hud: !document.querySelector("#hud").hidden,
+    menuFrames: performance.getEntriesByName("lastkeep:firstMenuFrame").length,
+    worldAfterMenu:
+      performance.getEntriesByName("lastkeep:firstWorldFrame")[0].startTime > performance.getEntriesByName("lastkeep:firstMenuFrame")[0].startTime
+  }))
+  expect(after.same).toBe(true)
+  expect(after.canvas).toBe(true)
+  expect(after.canvases).toBe(1)
+  expect(after.page).toBe("room")
+  expect(after.path).toBe(`/r/${after.code}`)
+  expect(after.history).toBe(before.history + 1)
+  expect(after.joinHidden).toBe(true)
+  expect(after.scoreLists).toBe(0)
+  expect(after.hud).toBe(true)
+  expect(after.menuFrames).toBe(1)
+  expect(after.worldAfterMenu).toBe(true)
+
+  // The monster cards come from the baked PNGs, the same pixels the page
+  // used to build while the bundle loaded.
+  const sheets = await page.evaluate(() => window.__lastKeepTest.monsterSheets())
+  for (const [kind, sheet] of Object.entries(sheets)) {
+    expect(sheet.source, kind).toBe("sheet")
+    expect(sheet.same, kind).toBe(true)
+  }
+  expect(Object.keys(sheets).length).toBe(6)
+
+  // The room plays like a reloaded one: the hero walks.
+  const start = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
+  await page.evaluate(() => window.__lastKeepTest.hold("KeyW", true))
+  await page.waitForFunction((from) => Math.hypot(window.__lastKeep.self.x - from.x, window.__lastKeep.self.y - from.y) > 20, start)
+  await page.evaluate(() => window.__lastKeepTest.hold("KeyW", false))
+
+  // A reload of /r/CODE sits back in the same seat, and back goes home.
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Ada"))
+  expect(await page.locator("[data-roster]").innerText()).not.toContain("Ada 2")
+  await page.goBack()
+  await page.waitForURL((url) => url.pathname === "/")
+  await page.locator("#start-button").waitFor()
+  expect(await page.evaluate(() => document.body.dataset.page)).toBe("home")
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
 module.exports = {
+  createKeepsThePage,
   liveSmoke,
   prepareProof,
   proofDir,

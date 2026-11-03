@@ -33,6 +33,44 @@ defmodule LastKeep.Game.RoomTest do
     assert length(back.players) == 1
   end
 
+  test "rooms keep their world layout in their own process and free it when they stop" do
+    before = :persistent_term.info().count
+    seeds = Enum.to_list(301..308)
+
+    rooms =
+      for seed <- seeds do
+        {:ok, code} = Rooms.create(auto_tick: false, seed: seed)
+        [{pid, _}] = Registry.lookup(LastKeep.Game.Registry, code)
+        {seed, code, pid}
+      end
+
+    assert :persistent_term.info().count == before
+
+    for {seed, code, pid} <- rooms do
+      {:dictionary, dict} = Process.info(pid, :dictionary)
+      layout = :proplists.get_value({LastKeep.Game.World, seed}, dict)
+      assert %{seed: ^seed, pois: pois} = layout
+      assert length(pois) == 25
+      refute Map.has_key?(layout, :chunks)
+      assert Room.snapshot(code).seed == seed
+    end
+
+    # The same seed in a fresh process lays the same world.
+    {seed, _code, pid} = hd(rooms)
+    {:dictionary, dict} = Process.info(pid, :dictionary)
+    stored = :proplists.get_value({LastKeep.Game.World, seed}, dict)
+    assert stored == Task.await(Task.async(fn -> LastKeep.Game.World.generate(seed) end), 30_000)
+
+    for {_seed, _code, pid} <- rooms do
+      ref = Process.monitor(pid)
+      :ok = DynamicSupervisor.terminate_child(LastKeep.Game.Supervisor, pid)
+      assert_receive {:DOWN, ^ref, :process, ^pid, _}, 5_000
+      assert Process.info(pid, :dictionary) == nil
+    end
+
+    assert :persistent_term.info().count == before
+  end
+
   test "two rooms do not share a wave" do
     {:ok, left} = Rooms.create(auto_tick: false, seed: 1, build_ticks: 1, hold: false)
     {:ok, right} = Rooms.create(auto_tick: false, seed: 9, build_ticks: 50)

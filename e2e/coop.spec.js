@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, theFogEdgeIsNotAFlatFill, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
+const { captionsClearTheBuilds, createKeepsThePage, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, theFogEdgeIsNotAFlatFill, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -109,4 +109,8 @@ test("the fog edge is not a flat fill", async ({ browser }) => {
 test("six seats hold the match budgets across three waves", async ({ browser }) => {
   test.setTimeout(660_000)
   await sixSeatMatch(browser)
+})
+
+test("create turns the home page into the room without a reload", async ({ browser }) => {
+  await createKeepsThePage(browser)
 })
