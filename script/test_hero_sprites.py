@@ -500,7 +500,8 @@ class AssetTest(unittest.TestCase):
         for d in hs.CARDINALS:
             p = c[f"death-{d}"]["args"]["prompt"]
             self.assertIn("sinks straight down onto its belly", p, d)
-            self.assertIn("head resting on the ground", p, d)
+            if d != "E":
+                self.assertIn("head resting on the ground", p, d)
             self.assertIn("rears up, rises on its hind legs, ", p, d)
             self.assertIn("leaps or jumps", p, d)
             self.assertNotIn("collapses down onto its side", p, d)
@@ -521,14 +522,14 @@ class AssetTest(unittest.TestCase):
         # Take 5: death-E kept its head down but ended resting on its belly,
         # legs tucked (32 px tall): paws that all stay on the ground cannot
         # end on its side, so death-E rolls onto its side without that line.
+        # Take 6: it ended on its belly again (31 px), so it ends on death-W's
+        # flipped last frame (test_death_ends_...) and says that pose.
         e = c["death-E"]["args"]["prompt"]
-        self.assertIn("rolls over onto its side on the exact spot where it stood, its legs toward the camera", e)
-        self.assertIn("It ends lying on its side, not resting on its belly", e)
-        self.assertIn("its head is never lifted again", e)
+        self.assertIn("ending exactly in the pose of the last frame: stretched out flat on its belly, chin resting on its front paws", e)
+        self.assertIn("Its head is never lifted again", e)
         self.assertIn("Its body only ever moves down, never up", e)
         self.assertNotIn("All four paws stay on the ground", e)
-        for d in ("S", "W", "N"):
-            self.assertNotIn("not resting on its belly", c[f"death-{d}"]["args"]["prompt"], d)
+        self.assertNotIn("onto its side", e)
         for d in ("S", "W"):
             self.assertNotIn("hind legs fold first", c[f"death-{d}"]["args"]["prompt"], d)
         self.assertIn("one full stride a second", c["walk-SW"]["args"]["prompt"])
@@ -634,12 +635,28 @@ class AssetTest(unittest.TestCase):
                    "from the first frame to the last")
         for d in ("S", "NW", "N", "NE", "SE"):
             p = calls[f"attack-{d}"]
-            self.assertIn(spot, p, d)
+            self.assertIn(spot if d != "NW" else spot.split(": its wings")[0], p, d)
             self.assertIn(nolunge, p, d)
             self.assertIn("keeps facing the same way and never turns", p, d)
             self.assertNotIn("lunges", p, d)
             self.assertNotIn("biting lunge", p, d)
         self.assertIn("Its back stays toward the camera the whole time, so its face is never seen", calls["attack-N"])
+        # Take 5: NE and SE passed and N stayed level. S rose a fourth time
+        # (16 px) facing the camera, N tipped its head back showing its red
+        # mouth, NW without a lunge barely changed its silhouette.
+        self.assertIn("It bites at something right in front of it at its own height, down below the camera: it never comes "
+                      "up toward the camera, and its feet stay at the same height in the frame as in the first frame", calls["attack-S"])
+        self.assertIn("Its head stays bowed forward, away from the camera, all through the bite, never tipped back", calls["attack-N"])
+        self.assertIn("its wings beat in full, wide strokes, from high above its back down to low below its body, bigger than its hover wingbeat",
+                      calls["attack-NW"])
+        self.assertNotIn("same steady wingbeat", calls["attack-NW"])
+        for d in hs.COLUMNS:
+            if d != "S":
+                self.assertNotIn("down below the camera", calls[f"attack-{d}"], d)
+            if d != "N":
+                self.assertNotIn("head stays bowed forward", calls[f"attack-{d}"], d)
+            if d != "NW":
+                self.assertNotIn("full, wide strokes", calls[f"attack-{d}"], d)
         for d in ("S", "NW", "NE", "SE", "E", "W", "SW"):
             self.assertNotIn("face is never seen", calls[f"attack-{d}"], d)
         for d in ("W", "SW", "E"):
@@ -773,6 +790,45 @@ class AssetTest(unittest.TestCase):
             views = [x for x in self.calls(h) if x.startswith("view-")]
             self.assertEqual(views, ["view-S", "view-N", "view-W", "view-E"], h)
             self.assertEqual(self.calls(h)["view-E"]["then"], "hero_sprites.py views", h)
+
+    def test_death_ends_gives_one_side_death_the_flipped_end_of_the_other(self):
+        # death-E ended 31-32 px tall (limit 30) on three takes running, on its
+        # belly with the mane up; death-W settles flat. death-E ends on death-W's
+        # last frame, flipped and scaled to the 720 px pose.
+        wolf = hs.load_config("wolf")
+        c = {x["id"]: x for x in hs.build_prompts(wolf)["calls"]}
+        self.assertEqual(c["death-E"]["args"]["last_frame_path"], "assets/reference/wolf/video/ends/E.png")
+        self.assertIn("ending exactly in the pose of the last frame", c["death-E"]["args"]["prompt"])
+        for d in ("S", "W", "N"):
+            self.assertNotIn("last_frame_path", c[f"death-{d}"]["args"], d)
+            self.assertNotIn("pose of the last frame", c[f"death-{d}"]["args"]["prompt"], d)
+        for h in HEROES + ["goblin", "skeleton", "bat", "troll"]:
+            self.assertNotIn("death_ends", hs.load_config(h), h)
+        px = lambda path: np.asarray(Image.open(path).convert("RGB"))
+        end = px(os.path.join(wolf["video"], "ends", "E.png"))
+        last = hs.sv.run_ffmpeg_frames(os.path.join(wolf["video"], "death-W.mp4"))[-1]
+        self.assertEqual(end.shape, px(os.path.join(wolf["video"], "dirs", "E.png")).shape)
+        want = np.asarray(Image.fromarray(np.ascontiguousarray(last[:, ::-1])).resize(end.shape[1::-1], Image.LANCZOS))
+        self.assertTrue(np.array_equal(end, want))
+        # The end is low: under DEATH_DOWN of the start pose's height, so the
+        # clip is asked to end where the check wants it.
+        h = lambda rgb: (lambda ys: ys[-1] - ys[0] + 1)(np.nonzero(hs.sv.cut_out(rgb).any(1))[0])
+        import check_sprite_sheet as cs
+        self.assertLess(h(end), cs.DEATH_DOWN * h(px(os.path.join(wolf["video"], "dirs", "E.png"))))
+        self.assertGreater(h(end[:, ::-1]), 0.3 * h(px(os.path.join(wolf["video"], "dirs", "E.png"))))
+        # Only E and W, only between death clips; a missing source gives None.
+        for bad in ({"N": "S"}, {"E": "E"}, {"E": "W", "W": "E"}, ["E"]):
+            with tempfile.TemporaryDirectory() as tmp:
+                os.makedirs(os.path.join(tmp, "w"))
+                with open(os.path.join(wolf["dir"], "asset.json")) as fh:
+                    cfg = json.load(fh)
+                cfg["death_ends"] = bad
+                with open(os.path.join(tmp, "w", "asset.json"), "w") as fh:
+                    json.dump(cfg, fh)
+                with self.assertRaises(SystemExit, msg=repr(bad)):
+                    hs.load_config("w", reference=tmp)
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertIsNone(hs.death_end(dict(wolf, video=tmp), "E", log=lambda *_: None))
 
     def test_views_builds_the_mirrored_view_from_its_source(self):
         # The parent's hand-made v-W (a flip of v-E) is exactly what views

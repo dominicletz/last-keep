@@ -46,6 +46,7 @@ All of it needs python3 with numpy, scipy and Pillow, plus ffmpeg and ffprobe on
 - `items`: `name`, `at` (`right hand`, `left arm`, `left hip`, `back`, `right shoulder back`, or `body`), `walk` (how it moves in the walk), `still` (what must not move in the idle), `idle` (an allowed idle motion), `glows` (a light that must stay steady), and `sides` (the image side per direction, when the default is wrong).
 - `turntable`: 8 s at 24 fps, keyframes W 2, N 4, E 6. An optional `design` replaces the hero's `design` in the turntable prompt only, for example to name the held items there (the engineer).
 - `diagonals`: turntable frames pinned by eye (0-based). They override the picker.
+- `death_ends` (monsters, `{"E": "W"}` or `{"W": "E"}`): that side's death call gets a `last_frame_path`, `video/ends/<D>.png`, which `prep` writes as the other side's passing death's last frame, flipped and scaled with Lanczos to the start pose's size. For a side death that keeps ending too high whatever its wording (the wolf's death-E).
 - `check`: the check profile (see step 9). A hero without one can run every step except `build`.
 
 The prompts name the hand that holds each item and the side of the image it shows on. The script turns the item's body position to each facing. An item in the right hand is image-left from the front, image-right from behind, and partly hidden behind the body in the left profile (W). A `sides` entry overrides that. The mage's staff stays image-left for S, SW, W and NW, and image-right for N, NE, E and SE, because the clips hold it out to the side.

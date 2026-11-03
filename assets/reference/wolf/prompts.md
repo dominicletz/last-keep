@@ -372,12 +372,13 @@ Save as `assets/reference/wolf/video/death-E.mp4`.
 
 ```json
 {
- "prompt": "Game sprite death. The wolf starts exactly in the pose and facing of the first frame (facing screen-right, its right side toward the camera). It is struck down: it flinches and holds the exact first-frame pose perfectly still for a moment, then its legs fold under it and it sinks straight down onto its belly, then rolls over onto its side on the exact spot where it stood, its legs toward the camera, and lies stretched out flat on its side like a dead animal: head resting on the ground, neck and ears flat, legs stretched out limp, tail lying flat along the ground, the fur on its back lying flat. It ends lying on its side, not resting on its belly: its shoulders, hips and head end lower than they would be lying on its belly, and its head is never lifted again. Its body only ever moves down, never up. It never springs, rears up, rises on its hind legs, leaps or jumps; it does not slide or fall forward, it lies where its paws were. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+ "prompt": "Game sprite death. The wolf starts exactly in the pose and facing of the first frame (facing screen-right, its right side toward the camera). It is struck down: it flinches and holds the exact first-frame pose perfectly still for a moment, then its legs fold under it and it sinks straight down onto its belly and settles flat and low on the ground, ending exactly in the pose of the last frame: stretched out flat on its belly, chin resting on its front paws, legs stretched out, back low, tail lying flat along the ground. Its head is never lifted again. Its body only ever moves down, never up. It never springs, rears up, rises on its hind legs, leaps or jumps; it does not slide or fall forward, it lies where its paws were. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
  "image_path": "assets/reference/wolf/video/dirs/E.png",
  "duration": 2,
  "aspect_ratio": "1:1",
  "resolution": "720p",
- "filename": "wolf-death-E.mp4"
+ "filename": "wolf-death-E.mp4",
+ "last_frame_path": "assets/reference/wolf/video/ends/E.png"
 }
 ```
 

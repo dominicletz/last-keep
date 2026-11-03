@@ -110,6 +110,15 @@ def load_config(hero, reference=REFERENCE):
     if not isinstance(notes, dict) or any(d not in ("S", "N", "W", "E") or not isinstance(t, str) or not t.strip()
                                           for d, t in notes.items()):
         raise SystemExit(f"{hero}/{name}: view_notes maps S, N, W or E to one sentence, got {notes!r}")
+    # A side-view death that keeps ending too high (asset.json "death_ends",
+    # {"E": "W"}) ends on the flipped last frame of the other side's passing
+    # death: the call gets it as last_frame_path. Only E and W flip into each
+    # other, and both must be death clips.
+    ends = cfg.get("death_ends", {})
+    if not isinstance(ends, dict) or len(ends) > 1 or any(
+            (d, s_) not in (("W", "E"), ("E", "W")) or d not in clips.get("death", ()) or s_ not in clips.get("death", ())
+            for d, s_ in ends.items()):
+        raise SystemExit(f"{hero}/{name}: death_ends is {{\"E\": \"W\"}} or {{\"W\": \"E\"}} between two death clips, got {ends!r}")
     # Per-clip prompt overrides: a clip regenerated with different wording
     # (asset.json "clip_overrides", e.g. {"walk-NW": {"gait": ..., "walk": [...]}})
     # so prompts.json keeps saying exactly what was sent. A walk may override
@@ -285,6 +294,26 @@ def mirror_view(cfg, d, log=print):
             raise SystemExit(f"{rel(stale)}: v-{d} is mirrored from v-{cfg['mirror_views'][d]}; delete it")
     wrote = save_png(out, np.asarray(Image.open(src).convert("RGB"))[:, ::-1])
     log(f"{'wrote' if wrote else 'same '} {rel(out)} (mirror of {rel(src)})")
+    return out
+
+
+def death_end(cfg, d, log=print):
+    """video/ends/<d>.png: the last frame of the death clip asset.json
+    "death_ends" names for d, flipped left-right and scaled with Lanczos to
+    the start pose's size (the deaths come back 960 px, dirs/ is 720). It is
+    the last_frame_path of death-<d>. None until that clip is there."""
+    src = os.path.join(cfg["video"], f"death-{cfg['death_ends'][d]}.mp4")
+    pose = os.path.join(cfg["video"], "dirs", f"{d}.png")
+    if not os.path.exists(src) or not os.path.exists(pose):
+        return None
+    last = sv.run_ffmpeg_frames(src)[-1][:, ::-1]
+    img = Image.fromarray(np.ascontiguousarray(last))
+    size = Image.open(pose).size
+    if img.size != size:
+        img = img.resize(size, Image.LANCZOS)
+    out = os.path.join(cfg["video"], "ends", f"{d}.png")
+    wrote = save_png(out, np.asarray(img))
+    log(f"{'wrote' if wrote else 'same '} {rel(out)} (last frame of {rel(src)}, flipped)")
     return out
 
 
@@ -614,6 +643,8 @@ def build_prompts(cfg):
                     "aspect_ratio": "1:1", "resolution": "720p", "filename": f"{h}-{kind}-{d}.mp4"}
             if kind == "death":
                 del args["last_frame_path"]  # a fall ends on the ground, not on the start pose
+                if d in cfg.get("death_ends", {}):
+                    args["last_frame_path"] = f"{vid}/ends/{d}.png"
             calls.append({"id": f"{kind}-{d}", "step": "precheck", "tool": "GenerateVideo",
                           "args": args,
                           "save_as": f"{vid}/{kind}-{d}.mp4",
@@ -789,6 +820,8 @@ def monster_precheck(cfg, log=print):
     missing = [f"{k}-{d}.mp4" for k, dirs in have.items() for d in dirs
                if not os.path.exists(os.path.join(vid, f"{k}-{d}.mp4"))]
     missing += [f"dirs/{d}.png" for d in COLUMNS if not os.path.exists(os.path.join(vid, "dirs", f"{d}.png"))]
+    missing += [f"ends/{d}.png (hero_sprites.py prep)" for d in cfg.get("death_ends", {})
+                if not os.path.exists(os.path.join(vid, "ends", f"{d}.png"))]
     for kind, _ in spec.rows:
         for d in COLUMNS:
             try:
@@ -921,6 +954,8 @@ def main(argv=None):
         print(f"concept {rel(os.path.join(cfg['dir'], 'concept.png'))}")
         write_prompts(cfg)
         make_views(cfg)
+        for d in cfg.get("death_ends", {}):
+            death_end(cfg, d)
         return 0
     if args.step == "views":
         make_views(cfg)
