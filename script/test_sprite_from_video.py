@@ -256,7 +256,7 @@ class MonsterCheckTest(unittest.TestCase):
 
 class AssetProfileTest(unittest.TestCase):
     def test_goblin_roles(self):
-        self.assertEqual(sorted(cs.ASSETS), ["goblin", "skeleton"])
+        self.assertEqual(sorted(cs.ASSETS), ["goblin", "skeleton", "wolf"])
         table = cs.ASSETS["goblin"]["profile"]["roles"]
         self.assertEqual(cs.role((142, 136, 134), table), "iron")
         self.assertEqual(cs.role((56, 39, 27), table), "leather")

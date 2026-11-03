@@ -1,0 +1,71 @@
+{
+ "_note": "Fourth monster and the first flier (docs/ART-REDO.md). The concept crop is the big bat in monsters.jpg, box 418,66,682,206. It is not the registry card crop (408,68,260,96): that one cuts the bat off below its eyes, which is fine for the old card but would hide the body, snout, fangs and feet from the views. World height 16 is monsterHeights.bat; at the hero texel (32/88) that is 44 px, ear and wing tips to feet, in the start pose with the wings spread. The wingspan is about twice that, about 88 px, and a wingbeat lifts the wings above and sweeps them below the start pose, so the cell is 112. flies: true makes the walk a wingbeat in place (no treadmill, two wingbeats), the attack hang at one height instead of planting feet, and the turntable hold the bat in the air with its wings frozen. view_height 240: spread wings make the front view about 1.9 times as wide as tall in the concept and up to about 2.6 in a flat spread; 240 x 2.6 = 624 still fits normalize_view's 640. view_pose keeps the wolf lesson: it names the height only and pins the body along the view direction, so the front view is not three-quarter. No held item: the fangs are the weapon, so items is empty and the check profile will set prop null. In game the bat is drawn at lift 22 above a shadow disc; the sheet's foot line is the lowest pixel of the hovering start pose (its feet or a wing tip), and the death drops it onto the ground right below, so the client lowers the lift as it falls (see docs/ART-REDO.md).",
+ "type": "monster",
+ "noun": "bat",
+ "possessive": "its",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [
+   418,
+   66,
+   682,
+   206
+  ]
+ },
+ "source_note": "the reference shows one big bat with parts of two smaller bats at its lower corners; draw only the big bat and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "savage cave bat with large leathery dark brown-grey wings stretched on thick bony finger struts, a stocky furry dark grey-brown body, big pointed ears, glowing red eyes, a blunt pig-like snout with small white fangs, and little clawed feet",
+ "feet": "feet",
+ "flies": true,
+ "view_pose": "Whole bat from the tips of its ears and wings down to its feet, hovering in the air with both wings spread wide and held still, body upright, head level, little clawed feet hanging below, nothing cropped; the body faces exactly along the view direction, so in a front or back view the two wings spread out symmetric to the left and right, not turned three-quarter, and in a profile view the wings reach straight toward and away from the camera, seen edge-on",
+ "view_height": 240,
+ "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it, the body stays level with only a slight bob, ears up, feet hanging; it never flies forward, up or down",
+ "items": [],
+ "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers",
+ "death": "shrieks, its wings fold and go limp and it drops straight down onto the ground just below where it hovered, landing on its back with its wings spread out flat on the ground and its head down. It does not fly off, glide, spin or tumble toward the camera; it lands right below where it hovered",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "sheet": {
+  "world_height": 16,
+  "height": 44,
+  "cell": 112
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "savage cave bat with large leathery dark brown-grey wings spread wide on thick bony finger struts, a stocky furry dark grey-brown body, big pointed ears, glowing red eyes, a blunt pig-like snout with small white fangs, and little clawed feet hanging below"
+ }
+}

@@ -138,6 +138,11 @@ def load_config(hero, reference=REFERENCE):
     # upright (a quadruped has no arms and its length matters too).
     if "view_pose" in cfg and not (isinstance(cfg["view_pose"], str) and cfg["view_pose"].strip()):
         raise SystemExit(f"{hero}/{name}: view_pose is one sentence, got {cfg['view_pose']!r}")
+    # A flier (the bat) hovers instead of walking: its "walk" clips are a
+    # wingbeat in place, its attack does not plant feet, and the turntable
+    # holds it in the air with its wings still (see FLIER below).
+    if "flies" in cfg and (cfg["flies"] is not True or kind == "hero"):
+        raise SystemExit(f"{hero}/{name}: flies is true on a monster, or absent")
     if kind != "hero":
         sheet = cfg.get("sheet") or {}
         for key in ("world_height", "height", "cell"):
@@ -460,6 +465,24 @@ def steady_light(cfg):
     return "No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame."
 
 
+# The prompt words that assume a figure standing on its feet, and what a
+# flier (asset.json "flies": true) says instead. Everything else is shared.
+GROUNDED = {
+    "walk_lead": "walks in place on a treadmill",
+    "walk_beats": "Two full steps",
+    "attack_hold": "feet stay planted",
+    "turn_pose": "stands perfectly still in a neutral idle pose on an invisible turntable",
+    "turn_still": "no walking",
+}
+FLIER = {
+    "walk_lead": "hovers in place in the air, flapping its wings",
+    "walk_beats": "Two full wingbeats",
+    "attack_hold": "it hangs in the air at the same height",
+    "turn_pose": "hangs perfectly still in the air on an invisible turntable with its wings spread wide and frozen",
+    "turn_still": "no flapping",
+}
+
+
 def build_prompts(cfg):
     """Every GenerateImage / GenerateVideo call for the hero, in order, with
     the exact arguments and where to save the result. Paths are relative to
@@ -468,6 +491,7 @@ def build_prompts(cfg):
     base = f"assets/reference/{h}"
     vid = f"{base}/video"
     design = cfg["design"]
+    words = FLIER if cfg.get("flies") else GROUNDED
     calls = []
     for d in ("S", "N", "W", "E"):
         items = [item_line(i, d, poss) for i in cfg["items"]]
@@ -499,12 +523,11 @@ def build_prompts(cfg):
                       "then": "hero_sprites.py views" if d == "E" else None})
     t = cfg["turntable"]
     keys = [{"image_path": f"{vid}/views/k-{d}.png", "timestamp_s": t["keyframes"][d]} for d in ("W", "N", "E")]
-    turn = (f"Game character turnaround reference. The {noun} stands perfectly still in a neutral idle pose on an "
-            f"invisible turntable and rotates a full 360 degrees at a constant speed, turning to show {poss} left "
+    turn = (f"Game character turnaround reference. The {noun} {words['turn_pose']} and rotates a full 360 degrees at a constant speed, turning to show {poss} left "
             f"side, then {poss} back, then {poss} right side, then front again. Locked-off camera, slightly "
             "elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white "
             f"background, even soft lighting. The design stays exactly identical: {t.get('design', design)}. "
-            f"{steady_light(cfg)} Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, "
+            f"{steady_light(cfg)} Crisp sharp detail in every frame, no motion blur, no ghosting, {words['turn_still']}, "
             "no text.")
     calls.append({"id": "turntable", "step": "dirs", "tool": "GenerateVideo",
                   "args": {"prompt": turn, "image_path": f"{vid}/views/k-S.png",
@@ -523,14 +546,14 @@ def build_prompts(cfg):
         face = DIRECTION[d].format(poss=poss)
         ow, oa, od = (over.get(f"{k}-{d}", {}) for k in ("walk", "attack", "death"))
         props = "; ".join(x for x in (item_line(i, d, poss) for i in cfg["items"]) if x)
-        walk = (f"Game sprite walk cycle. The {noun} walks in place on a treadmill, keeping exactly the facing "
+        walk = (f"Game sprite walk cycle. The {noun} {words['walk_lead']}, keeping exactly the facing "
                 f"direction of the first frame ({face}). Holding exactly the body angle of the first frame: torso "
                 "does not twist. " + ow.get("gait", gait)
                 + "".join(f", {b}" for b in ow.get("walk", walk_bits)) + ". "
                 + (f"Props stay where the first frame has them: {props}. " if props else "")
                 + f"The {noun} stays exactly centered, does not turn, move or change size. Locked-off camera, no "
-                "zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, "
-                "loops seamlessly back to the starting pose.")
+                "zoom, plain flat white background, even lighting, crisp frames, no motion blur. "
+                f"{words['walk_beats']}, loops seamlessly back to the starting pose.")
         idle = (f"Nearly static game sprite idle loop. The {noun} holds exactly the pose, angle and facing of the "
                 f"first frame ({face}) for the whole clip. Only a very small breathing motion: chest and shoulders "
                 "rise and fall by a few pixels" + "".join(f", {b}" for b in idle_bits) + ". "
@@ -543,7 +566,7 @@ def build_prompts(cfg):
                   f"{oa.get('attack', cfg.get('attack', ''))}, then returns exactly to the starting pose and holds it for the last "
                   "frames. "
                   + (f"Props stay where the first frame has them: {props}. " if props else "")
-                  + f"The {noun} stays exactly centered, feet stay planted, no turning, no change of size. "
+                  + f"The {noun} stays exactly centered, {words['attack_hold']}, no turning, no change of size. "
                   f"{steady_light(cfg)} Locked-off camera, no zoom, plain flat white background, even lighting, "
                   "crisp frames, no motion blur, no speed lines, no effects.")
         death = (f"Game sprite death. The {noun} starts exactly in the pose and facing of the first frame ({face}). "
