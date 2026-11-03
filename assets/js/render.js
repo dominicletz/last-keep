@@ -303,6 +303,9 @@ export function createView(stage, picture) {
   let lastTick = -1
   let heroKey = null
   let stageSize = null
+  // The snapshot and player the camera was last seated for. fit() resets the
+  // lens to the world view, so a refit outside draw() seats the camera again.
+  let lastSeat = null
   applyFrame()
   window.addEventListener("resize", onResize)
   const stageWatch = typeof ResizeObserver === "function" ? new ResizeObserver(() => onResize()) : null
@@ -1013,6 +1016,7 @@ export function createView(stage, picture) {
   }
 
   function seatCamera(snap, me) {
+    lastSeat = { snap, me }
     const portrait = !!snap.portrait
     const hero = portrait
       ? { x: PORTRAIT_STAND.x, z: PORTRAIT_STAND.z }
@@ -1815,10 +1819,17 @@ export function createView(stage, picture) {
     viewFrame = picture.fit(renderer, camera, stageSize.w, stageSize.h, townRank)
   }
 
+  // fit() sets the world lens: fov, near, far. The menu's portrait seat
+  // narrows the fov and pulls near in to 1, so a refit without a seat paints
+  // the portrait pose through the world lens: near clips the hero and the
+  // ground under him, and the lower frame is the clear color. The
+  // ResizeObserver's first call lands after the menu's first draw, and the
+  // menu draws again only when its hero sheets load.
   function onResize() {
     stageSize = null
     dirty = true
     applyFrame()
+    if (lastSeat) seatCamera(lastSeat.snap, lastSeat.me)
   }
 
   function cullActors() {

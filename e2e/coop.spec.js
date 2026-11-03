@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, createKeepsThePage, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, theFogEdgeIsNotAFlatFill, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
+const { captionsClearTheBuilds, createKeepsThePage, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, theFirstMenuFrameWaitsForNoSheet, theFogEdgeIsNotAFlatFill, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -104,6 +104,10 @@ test("the start hero fills the frame", async ({ browser }) => {
 test("the fog edge is not a flat fill", async ({ browser }) => {
   test.setTimeout(60_000)
   await theFogEdgeIsNotAFlatFill(browser)
+})
+
+test("the first menu frame shows the ground before the hero sheets load", async ({ browser }) => {
+  await theFirstMenuFrameWaitsForNoSheet(browser)
 })
 
 test("six seats hold the match budgets across three waves", async ({ browser }) => {
