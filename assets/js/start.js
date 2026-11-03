@@ -96,8 +96,10 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
     form.querySelector("[data-class-role]").textContent = heroLine(kind)
   }
 
+  // A held menu draws nothing: draw() is the room's way to end the hold, and
+  // the hero sheets that load while Create waits would end it early.
   function paint() {
-    if (!view || !alive) return
+    if (!view || !alive || held) return
     const motion = heroMotion(swap, performance.now())
     if (swap && motion.opacity === 1 && motion.slide === 0) swap = 0
     view.draw(previewSnap(kinds[index], tick, motion), "pick")
@@ -143,6 +145,7 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
       held = false
       releaseMonsterSheets()
       if (view && view.resume) view.resume()
+      paint()
     },
     // Stops the menu but hands its view and picture on, still running. Both
     // are null when the menu never got its first frame.
