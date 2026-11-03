@@ -48,6 +48,8 @@ VIEW_MIN = 225       # min(RGB) below this is figure, for views and the picker
 VIEW_HEIGHT = 520    # normalized figure height on the 720 canvas
 VIEW_CANVAS = 720
 VIEW_FEET = 640      # the figure's last row is VIEW_FEET - 1
+VIEW_SIDE = 40       # a normalized view keeps this much white on each side
+VIEW_HEIGHT_MIN = 200  # asset.json "view_height" floor: a quadruped's side view is wide, not small
 STRAY = 0.02         # fragments under 2% of the figure outside its box are blanked
 BALANCE_BAND = 0.9   # diagonal candidates: balance within 90% of the best
 CLIP_FPS = 24
@@ -127,6 +129,15 @@ def load_config(hero, reference=REFERENCE):
                 isinstance(v, list) and all(isinstance(x, str) and x.strip() for x in v))
             if f not in allowed[k] or not ok:
                 raise SystemExit(f"{hero}/{name}: clip_overrides {cid!r} field {f!r} (a {k} takes {allowed[k]})")
+    # A wide figure (a quadruped side-on) normalizes its views shorter so
+    # the side view fits the canvas; every view of one asset shares it.
+    vh = cfg.get("view_height", VIEW_HEIGHT)
+    if type(vh) is not int or not VIEW_HEIGHT_MIN <= vh <= VIEW_HEIGHT:
+        raise SystemExit(f"{hero}/{name}: view_height {vh!r} is a whole number of px from {VIEW_HEIGHT_MIN} to {VIEW_HEIGHT}")
+    # The views' last sentence for a figure that is not a person standing
+    # upright (a quadruped has no arms and its length matters too).
+    if "view_pose" in cfg and not (isinstance(cfg["view_pose"], str) and cfg["view_pose"].strip()):
+        raise SystemExit(f"{hero}/{name}: view_pose is one sentence, got {cfg['view_pose']!r}")
     if kind != "hero":
         sheet = cfg.get("sheet") or {}
         for key in ("world_height", "height", "cell"):
@@ -199,9 +210,12 @@ def crop_concept(cfg):
 
 # ---------------------------------------------------------------- 2 views
 
-def normalize_view(rgb):
-    """A generated view on white -> 720x720 white canvas, figure 520 px tall,
-    centred, last figure row at y = 639. The figure is min(RGB) < 225.
+def normalize_view(rgb, height=VIEW_HEIGHT):
+    """A generated view on white -> 720x720 white canvas, figure height px
+    tall (520 unless asset.json sets "view_height"), centred, last figure row
+    at y = 639. The figure is min(RGB) < 225. A figure that would come out
+    wider than the canvas less VIEW_SIDE on each side is refused, never
+    cropped: a long body (a wolf's side view) needs a lower view_height.
     Fragments under 2% of the largest blob that reach outside its box are
     blanked, so a stray speck cannot widen the box and change the scale.
     Specks inside the box stay; the sheet build drops them."""
@@ -223,10 +237,13 @@ def normalize_view(rgb):
             mask[lab == i] = False
     ys, xs = np.nonzero(mask)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
-    w = round((x1 - x0) * VIEW_HEIGHT / (y1 - y0))
-    crop = Image.fromarray(a).crop((x0, y0, x1, y1)).resize((w, VIEW_HEIGHT), Image.LANCZOS)
+    w = round((x1 - x0) * height / (y1 - y0))
+    if w > VIEW_CANVAS - 2 * VIEW_SIDE:
+        raise ValueError(f"view is {w} px wide at {height} px tall (at most {VIEW_CANVAS - 2 * VIEW_SIDE}): "
+                         f"set a lower view_height in asset.json")
+    crop = Image.fromarray(a).crop((x0, y0, x1, y1)).resize((w, height), Image.LANCZOS)
     out = Image.new("RGB", (VIEW_CANVAS, VIEW_CANVAS), "white")
-    out.paste(crop, (round((VIEW_CANVAS - w) / 2), VIEW_FEET - VIEW_HEIGHT))
+    out.paste(crop, (round((VIEW_CANVAS - w) / 2), VIEW_FEET - height))
     return np.asarray(out)
 
 
@@ -245,7 +262,11 @@ def make_views(cfg, log=print):
         if not src:
             continue
         out = os.path.join(cfg["video"], "views", f"k-{d}.png")
-        wrote = save_png(out, normalize_view(np.asarray(Image.open(src).convert("RGB"))))
+        try:
+            norm = normalize_view(np.asarray(Image.open(src).convert("RGB")), cfg.get("view_height", VIEW_HEIGHT))
+        except ValueError as e:
+            raise SystemExit(f"{rel(src)}: {e}")
+        wrote = save_png(out, norm)
         log(f"{'wrote' if wrote else 'same '} {rel(out)}")
         done.append(d)
     return done
@@ -462,12 +483,14 @@ def build_prompts(cfg):
         style = (" Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art "
                  "look, block size, outline-free shading and soft lighting, but not its design."
                  if d == "S" and cfg.get("style_refs") else "")
+        pose = cfg.get("view_pose") or (f"Whole figure from the top of the head to the {cfg.get('feet', 'boots')}, "
+                                         "standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped")
+        # Items, notes and the style line; a figure with no items (the wolf) has none of the first two.
+        mid = f"{sentence(items)}{note}{style}".strip()
         text = (f"Full-body game character reference of the {noun} from the reference image, "
                 f"{VIEW[d].format(poss=poss)}.{(' ' + sentence(source)) if source else ''} Same design exactly: {design}. "
-                f"{sentence(items)}{note}{style} "
-                f"Whole figure from the top of the head to the {cfg.get('feet', 'boots')}, standing in a neutral idle "
-                "pose, arms relaxed, "
-                "feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, "
+                f"{mid + ' ' if mid else ''}"
+                f"{sentence(pose)} Plain flat white background, no floor, no shadow, no text, "
                 "no other figures. One single view only, not a sheet of several views.")
         calls.append({"id": f"view-{d}", "step": "views", "tool": "GenerateImage",
                       "args": {"description": text, "reference_image_paths": refs, "aspect_ratio": "1:1",

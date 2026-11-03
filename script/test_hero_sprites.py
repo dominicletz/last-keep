@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hero_sprites as hs  # noqa: E402
 
 HEROES = ["engineer", "farmer", "mage", "scout", "warrior"]
-ASSETS = ["goblin", "skeleton"]  # non-hero figures with an asset.json (docs/ART-REDO.md)
+ASSETS = ["goblin", "skeleton", "wolf"]  # non-hero figures with an asset.json (docs/ART-REDO.md)
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
             "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
             "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164},
@@ -83,6 +83,44 @@ class ConceptAndViewsTest(unittest.TestCase):
         self.assertTrue(np.array_equal(out, clean))
         ys, xs = np.nonzero(out.min(2) < hs.VIEW_MIN)
         self.assertEqual((ys.min(), ys.max() + 1), (hs.VIEW_FEET - hs.VIEW_HEIGHT, hs.VIEW_FEET))
+
+
+    def test_a_wide_view_is_refused_at_the_default_height_and_fits_a_lower_one(self):
+        # A wolf side-on is about twice as long as it is tall: at 520 px it
+        # would be cropped by the 720 canvas, so normalize_view refuses it,
+        # and asset.json "view_height" fits it whole with the same foot line.
+        img = np.full((500, 1000, 3), 255, np.uint8)
+        img[150:450, 100:900] = (60, 58, 64)  # 800 x 300: aspect 2.67
+        with self.assertRaises(ValueError):
+            hs.normalize_view(img)
+        img = np.full((500, 1000, 3), 255, np.uint8)
+        img[150:450, 200:800] = (60, 58, 64)  # 600 x 300: aspect 2
+        out = hs.normalize_view(img, 300)
+        ys, xs = np.nonzero(out.min(2) < hs.VIEW_MIN)
+        self.assertEqual((ys.min(), ys.max() + 1), (hs.VIEW_FEET - 300, hs.VIEW_FEET))
+        self.assertEqual((xs.min(), xs.max() + 1), (60, 660))
+        # 2 x 320 = 640 is the widest that keeps VIEW_SIDE on each side; 321 is too wide.
+        _, xs = np.nonzero(hs.normalize_view(img, 320).min(2) < hs.VIEW_MIN)
+        self.assertEqual(xs.max() + 1 - xs.min(), hs.VIEW_CANVAS - 2 * hs.VIEW_SIDE)
+        with self.assertRaises(ValueError):
+            hs.normalize_view(img, 321)
+
+    def test_make_views_uses_the_asset_view_height_and_names_a_view_too_wide(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "wolf", "video", "views"))
+            shutil.copyfile(os.path.join(hs.REFERENCE, "wolf", "asset.json"), os.path.join(tmp, "wolf", "asset.json"))
+            cfg = hs.load_config("wolf", reference=tmp)
+            img = np.full((500, 1000, 3), 255, np.uint8)
+            img[200:450, 250:750] = (60, 58, 64)  # 500 x 250
+            Image.fromarray(img).save(os.path.join(cfg["video"], "views", "v-W.png"))
+            self.assertEqual(hs.make_views(cfg, log=lambda *a: None), ["W"])
+            out = np.asarray(Image.open(os.path.join(cfg["video"], "views", "k-W.png")).convert("RGB"))
+            ys, _ = np.nonzero(out.min(2) < hs.VIEW_MIN)
+            self.assertEqual(ys.max() + 1 - ys.min(), cfg["view_height"])
+            cfg["view_height"] = hs.VIEW_HEIGHT
+            with self.assertRaises(SystemExit) as e:
+                hs.make_views(cfg, log=lambda *a: None)
+            self.assertIn("v-W.png", str(e.exception))
 
 
 class DirsTest(unittest.TestCase):
@@ -416,6 +454,66 @@ class AssetTest(unittest.TestCase):
                 json.dump(base, fh)
             with self.assertRaises(SystemExit):
                 hs.load_config("g", reference=tmp)
+
+    def test_wolf_is_a_quadruped_in_a_hero_sized_cell(self):
+        # monsters.js draws the wolf 18 world units tall: 50 px at the hero
+        # texel, ear tips to paws. It is about twice as long, and the lunge
+        # reaches further, so the cell is 128 (docs/ART-REDO.md).
+        with open(os.path.join(hs.ROOT, "assets/js/monsters.js")) as fh:
+            world = float(re.search(r"wolf: (\d+)", fh.read()).group(1))
+        cfg = hs.load_config("wolf")
+        self.assertEqual(cfg["type"], "monster")
+        self.assertEqual(cfg["sheet"], {"world_height": world, "height": 50, "cell": 128})
+        self.assertEqual(cfg["clips"], {"walk": hs.COLUMNS, "attack": hs.COLUMNS, "death": hs.CARDINALS})
+        self.assertEqual(cfg["items"], [])
+        self.assertEqual(cfg["view_height"], 300)
+        # A 2:1 side view fits the canvas at 300 px, with VIEW_SIDE to spare.
+        self.assertLessEqual(2 * cfg["view_height"], hs.VIEW_CANVAS - 2 * hs.VIEW_SIDE)
+        with open(os.path.join(hs.ROOT, "assets/models/registry.js")) as fh:
+            x, y, w, h = map(int, re.search(r'monster\("wolf", \d+, \d+, crop\((\d+), (\d+), (\d+), (\d+)\)\)',
+                                            fh.read()).groups())
+        self.assertEqual(cfg["concept"]["box"], [x, y, x + w, y + h])
+        crop = np.asarray(Image.open(os.path.join(hs.ROOT, cfg["concept"]["source"])).convert("RGB").crop((x, y, x + w, y + h)))
+        self.assertEqual(png_bytes(crop), read(os.path.join(cfg["dir"], "concept.png")))
+
+    def test_wolf_prompts_describe_an_animal_on_the_spot(self):
+        c = self.calls("wolf")
+        self.assertEqual(len(c), 25)
+        for d in ("S", "N", "W", "E"):
+            v = c[f"view-{d}"]["args"]["description"]
+            self.assertIn("draw only one wolf", v)
+            self.assertIn("on all four paws", v)
+            self.assertIn("from its nose to the tip of its tail", v)
+            self.assertNotIn("arms relaxed", v)
+            self.assertNotIn("top of the head", v)
+        for k, v in c.items():
+            text = json.dumps(v["args"])
+            self.assertNotIn("  ", text, k)  # no empty items sentence
+            self.assertNotIn("Props stay", text, k)
+        self.assertIn("trot on the spot", c["walk-NW"]["args"]["prompt"])
+        self.assertIn("hind paws stay planted on the same spot", c["attack-E"]["args"]["prompt"])
+        self.assertIn("collapses down onto its side on the exact spot", c["death-W"]["args"]["prompt"])
+        self.assertEqual(c["view-S"]["args"]["reference_image_paths"],
+                         ["assets/reference/wolf/concept.png", "assets/reference/engineer/video/views/v-S.png"])
+
+    def test_view_pose_and_view_height_leave_every_other_asset_alone(self):
+        for h in HEROES + ["goblin", "skeleton"]:
+            cfg = hs.load_config(h)
+            self.assertNotIn("view_pose", cfg, h)
+            self.assertNotIn("view_height", cfg, h)
+            self.assertIn("standing in a neutral idle pose, arms relaxed, feet on the ground",
+                          self.calls(h)["view-S"]["args"]["description"], h)
+
+    def test_a_bad_view_height_or_view_pose_is_refused(self):
+        base = json.loads(read(os.path.join(hs.REFERENCE, "wolf", "asset.json")))
+        for key, value in (("view_height", 150), ("view_height", 521), ("view_height", 300.0), ("view_height", "300"),
+                           ("view_pose", " "), ("view_pose", 3)):
+            with tempfile.TemporaryDirectory() as tmp:
+                os.makedirs(os.path.join(tmp, "g"))
+                with open(os.path.join(tmp, "g", "asset.json"), "w") as fh:
+                    json.dump(dict(base, **{key: value}), fh)
+                with self.assertRaises(SystemExit, msg=(key, value)):
+                    hs.load_config("g", reference=tmp)
 
     def test_prep_rewrites_nothing_on_the_committed_goblin(self):
         with tempfile.TemporaryDirectory() as tmp:

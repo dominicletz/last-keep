@@ -55,11 +55,15 @@ def _measure(spec):
 
 
 def profile(check):
-    """The check profile in a hero.json, in the form main reads."""
+    """The check profile in a hero.json, in the form main reads. "prop" is
+    required; null says the figure holds nothing (a wolf), and then it may
+    not set prop_dirs or prop_side_below."""
+    if check["prop"] is None and ({"prop_dirs", "prop_side_below"} & set(check)):
+        raise ValueError("prop is null: prop_dirs and prop_side_below have no prop to measure")
     return {
         "anchors": {k: tuple(v) for k, v in check["anchors"].items()},
         "roles": tuple((r["name"], _role_test(r)) for r in check["roles"]),
-        "prop": tuple(check["prop"]),
+        "prop": None if check["prop"] is None else tuple(check["prop"]),
         "prop_dirs": tuple(check.get("prop_dirs", COLUMNS)),
         "prop_side_below": float(check.get("prop_side_below", 0.0)),
         "back": (check["back"]["title"], tuple((n, _measure(m), lo, hi) for n, m, lo, hi in check["back"]["bounds"])),
@@ -91,6 +95,8 @@ def load_heroes(reference=os.path.join(ROOT, "assets/reference")):
                 check = json.load(fh).get("check")
             if check:
                 out[name] = profile(check)
+                if out[name]["prop"] is None:
+                    raise ValueError(f"{name}/hero.json: a hero holds a prop (check prop is null)")
     return out
 
 
@@ -571,16 +577,19 @@ def run_monster_checks(asset, sheet, poses_dir, quiet=False):
     # The prop: present in every walk and attack frame where the start pose
     # shows it off the body midline, and on the pose's side while walking.
     # An attack swings it across the body, so attack frames need it, not its side.
-    prop_name, prop_role = prof["prop"]
+    # A figure that holds nothing (check prop null) has no prop to follow.
+    prop_name, prop_role = prof["prop"] or (None, None)
+    if prop_name is None:
+        rep.check(True, "no held prop", "check prop is null: the figure holds nothing")
     poses = {}
-    for d in COLUMNS:
+    for d in (COLUMNS if prop_name else ()):
         rgb, al = sv.pose_place(np.asarray(Image.open(os.path.join(poses_dir, f"{d}.png")).convert("RGB")), spec)
         cell = np.zeros((C, C, 4), np.uint8)
         cell[al, :3] = np.clip(rgb[al], 0, 255).astype(np.uint8)
         cell[al, 3] = 255
         poses[d] = cell
     held = [r for k in ("walk", "attack") if k in rows for r in rows[k]]
-    for c, d in enumerate(COLUMNS):
+    for c, d in enumerate(COLUMNS if prop_name else ()):
         if d not in prof["prop_dirs"]:
             rep.check(True, f"{prop_name} {d}", "on the body midline in this view: no side to hold")
             continue

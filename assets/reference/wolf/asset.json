@@ -1,0 +1,36 @@
+{
+ "_note": "Third monster and the first quadruped (docs/ART-REDO.md). The concept crop is the wolf group in monsters.jpg (the registry crop 760,340,270,245); it shows two wolves with the goblin spear tip at its left edge and the dark rider at its right, so the views draw one wolf and nothing else. MARKS muzzle and tail. World height 18 is monsterHeights.wolf; at the hero texel (32/88) that is 50 px, ear tips to paws, the same in every view. A wolf is about twice as long as it is tall: side-on it is about 95 px nose to tail, and the lunge bite reaches about 15 px further forward; lying on its side in the S death it is as wide as it is long. So the cell is 128 (the hero cell), not 80: 50 + 16 would fit the height but not the length. view_height 300: at the default 520 px a side view would be about 1000 px wide on the 720 canvas; at 300 it is about 600 (normalize_view refuses anything wider than 640). No held item: the jaws are the weapon, so items is empty and no prompt has a props line. view_pose replaces the person's 'arms relaxed' sentence. The clips follow the skeleton precheck lessons from the first take: every motion stays on the spot (trot on a treadmill, the bite lunges from planted hind paws, the collapse lies down where it stood), starts and ends on the start pose, and the tail stays low and close so it cannot leave the frame.",
+ "type": "monster",
+ "noun": "wolf",
+ "possessive": "its",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [760, 340, 1030, 585]
+ },
+ "source_note": "the reference shows two wolves, with parts of other monsters at its edges; draw only one wolf with their look and nothing else, no rider, no weapon",
+ "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+ "design": "lean savage dire wolf with shaggy charcoal-grey fur that bristles into sharp spiky tufts along its neck, shoulders and back, a lighter ash-grey muzzle, throat and legs, glowing red eyes, pointed ears, a snarling open jaw with white fangs, big pale grey paws, and a bushy dark grey tail hanging low behind it",
+ "feet": "paws",
+ "view_pose": "Whole animal from the tips of its ears down to its paws and from its nose to the tip of its tail, standing square on all four paws in a neutral alert pose, head level, tail hanging low and close behind it, all four legs visible, nothing cropped",
+ "view_height": 300,
+ "gait": "Steady wolf trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, back level, head held level and low, tail hanging low and close behind it, slight body bob; its body never moves forward",
+ "items": [],
+ "attack": "crouches back onto its hind legs, then lunges its head, neck and chest forward toward the facing direction in one snapping bite, jaws wide open, front paws lifting a little off the ground while the hind paws stay planted on the same spot, then draws back",
+ "death": "yelps, its legs buckle and it collapses down onto its side on the exact spot where it stood, legs stretched out, head down, tail flat on the ground. It does not leap, roll, slide or fall forward toward the camera; it lies where its paws were",
+ "clips": {
+  "walk": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
+  "attack": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
+  "death": ["S", "W", "N", "E"]
+ },
+ "sheet": {
+  "world_height": 18,
+  "height": 50,
+  "cell": 128
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {"W": 2, "N": 4, "E": 6},
+  "design": "lean savage dire wolf with shaggy charcoal-grey fur bristling into sharp spiky tufts along its neck, shoulders and back, a lighter ash-grey muzzle, throat and legs, glowing red eyes, pointed ears, a snarling open jaw with white fangs, big pale grey paws, a bushy dark grey tail hanging low and close behind it, standing on all four paws"
+ }
+}

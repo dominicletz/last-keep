@@ -48,7 +48,9 @@ below waits on this choice.
 
 The table is in priority order. Status values: `todo`, `prompts` (the
 prompts.json is committed and the media is not generated yet), `media`,
-`sheet`, `live`, `keep` (variant d, no work), `blocked`, and `planned` (a
+`sheet`, `built, awaiting final review` (the sheet is built and in the client;
+Dominic reviews every sheet together once the whole redo is done, with no
+per-sheet approval), `live`, `keep` (variant d, no work), `blocked`, and `planned` (a
 proposed asset the game does not draw yet).
 
 Terrain, buildings, flora and fauna are all remade on the new pipeline
@@ -66,9 +68,9 @@ HP bar.
 
 | Asset | Files | Current | Var | Clips / views | Notes | Status |
 |---|---|---|---|---|---|---|
-| goblin | `assets/reference/goblin/` | card, crop 16,328,236,246 | a | walk ×8, attack ×8 (spear jab), death S/W/N/E | Most common enemy and the smallest figure, so it tests the scale rule first. Sheet 50 px in an 80 px cell. The spear is held upright, so the 50 px includes it. MARKS: ears, spear | **sheet built, in the client; walk-N to regenerate** |
-| skeleton | `assets/reference/skeleton/` | card, crop 260,328,260,246 | a | walk ×8, attack ×8 (sword slash), death S/W/N/E (collapses into bones) | 60 px in an 88 px cell (room for the slash and the heap). MARKS: ribs, blade. One sword in the right hand, no shield; one iron shoulder plate on the sword arm. The sword is `visible: true`, so every prompt asks for it in full view. Must read pale against the night yard. Every clip generated; retakes carry their own wording in `asset.json` `clip_overrides` (prompts.json says what was sent): 9 clips in take 2, then walk-E, attack-E, attack-W and death-W in take 3. All 20 pass precheck; `skeleton-sheet.png` builds byte for byte and passes every check. In the client through MONSTER_SHEETS (88 px cell, 60 px figure, foot row 81). Check profile tuned on the start poses (see `asset.json` check `_note`). Approval: sheet, strips, GIFs and a night shot in /workspace/lk/approval/skeleton | **sheet built, in the client; awaiting approval** |
-| wolf | same | card | a | run ×8 (quadruped gait), attack ×8 (lunge bite), death ×4 | 50 px tall but wide, so the cell may need to be wider than tall. The turntable is side-on. MARKS: muzzle, tail | todo |
+| goblin | `assets/reference/goblin/` | card, crop 16,328,236,246 | a | walk ×8, attack ×8 (spear jab), death S/W/N/E | Most common enemy and the smallest figure, so it tests the scale rule first. Sheet 50 px in an 80 px cell. The spear is held upright, so the 50 px includes it. MARKS: ears, spear | **built, awaiting final review** (sheet in the client; walk-N regenerated; Dominic approved the sheet) |
+| skeleton | `assets/reference/skeleton/` | card, crop 260,328,260,246 | a | walk ×8, attack ×8 (sword slash), death S/W/N/E (collapses into bones) | 60 px in an 88 px cell (room for the slash and the heap). MARKS: ribs, blade. One sword in the right hand, no shield; one iron shoulder plate on the sword arm. The sword is `visible: true`, so every prompt asks for it in full view. Must read pale against the night yard. Every clip generated; retakes carry their own wording in `asset.json` `clip_overrides` (prompts.json says what was sent): 9 clips in take 2, then walk-E, attack-E, attack-W and death-W in take 3. All 20 pass precheck; `skeleton-sheet.png` builds byte for byte and passes every check. In the client through MONSTER_SHEETS (88 px cell, 60 px figure, foot row 81). Check profile tuned on the start poses (see `asset.json` check `_note`). Approval: sheet, strips, GIFs and a night shot in /workspace/lk/approval/skeleton | **built, awaiting final review** (sheet in the client; Dominic approved the sheet) |
+| wolf | `assets/reference/wolf/` | card, crop 760,340,270,245 | a | walk ×8 (trot on the spot), attack ×8 (lunge bite from planted hind paws), death S/W/N/E (collapses onto its side) | The first quadruped. 50 px tall (ear tips to paws) in a 128 px cell: side-on it is about 95 px long and the lunge reaches about 15 px further. No held item (`items` is empty; the check profile will set `prop` null). `view_height` 300 normalizes the views shorter so the side view fits the 720 canvas; `view_pose` replaces the person's "arms relaxed" sentence. MARKS: muzzle, tail. Dark charcoal fur: watch it against the night yard | **in progress: prompts** (views next) |
 | bat | same | card | a | fly ×8 (flap loop replaces walk), attack ×8 (dive), death ×4 (falls) | 44 px, drawn at `lift` 22, needs a shadow disc. The e2e test needs the wings to read above the night yard | todo |
 | troll (ogre) | same | card | a | walk ×8, attack ×8 (club slam, ties to the `slam` event), death ×4 | 94 px, under 1.75 keep doors. MARKS: tusks, club | todo |
 | boss (dark rider) | same | card | a | ride ×8 (horse gallop), attack ×8 (lance or sword), death ×4 | 94 px. Rider and horse together; the horse sets the silhouette. MARKS: helm, horse | todo |
@@ -253,6 +255,19 @@ These are proposed, all purely client-side decoration with no gameplay.
 - `view_notes`: an extra sentence for one view, after the items sentence.
   The goblin's view-E was regenerated with one so the spear stays visible;
   `prompts.json` records what was sent.
+- For a figure that is not a person standing upright (the wolf):
+  - `view_pose`: replaces the views' last sentence ("Whole figure from the
+    top of the head to the boots, ... arms relaxed, ...").
+  - `view_height` (200 to 520, default 520): the figure height
+    `normalize_view` scales every view to. A side-on quadruped is about
+    twice as long as it is tall, so at 520 it would overflow the 720 canvas;
+    `normalize_view` now refuses any view wider than 640 px (40 px clear on
+    each side) instead of cropping it.
+  - `items` may be empty: the views then have no items sentence and the
+    clips no props line.
+  - In the check profile, `"prop": null` says the figure holds nothing. The
+    monster checks then skip only the prop checks; `prop_dirs` and
+    `prop_side_below` are refused with it, and a hero cannot have it.
 
 **Monster sheets (done):**
 
@@ -296,6 +311,16 @@ These are proposed, all purely client-side decoration with no gameplay.
 - `walk-N.mp4` fails precheck: the clip stalls for its last ten frames, so
   the loop hitches and the first frame is 19 px off the pose (limit 18).
   Regenerate it; the sheet built from it passes the sheet checks.
+
+## Wolf: how to run it
+
+Same steps as the goblin below, with `wolf` for `goblin`. Calls:
+`assets/reference/wolf/prompts.json` (25 calls: 4 views, 1 turntable, 8
+walk, 8 attack and 4 death clips). The views normalize to 300 px
+(`view_height`), so `views` refuses a view wider than about 2.1 times its
+height: regenerate it with the tail held closer. The `check` profile is
+written after `dirs`, tuned on the eight start poses like the skeleton's,
+with `"prop": null`.
 
 ## Goblin: how to run it
 

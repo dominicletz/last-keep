@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Local tests for script/sprite_from_video.py: python3 script/test_sprite_from_video.py"""
 
+import json
 import os
 import sys
 import tempfile
@@ -211,6 +212,40 @@ class MonsterCheckTest(unittest.TestCase):
         cell = sheet[9 * 80:10 * 80, c * 80:(c + 1) * 80]
         cell[:] = np.roll(cell, 30, axis=1)
         self.assertIn("attack-E.mp4", self.fails(sheet).get("clear of the cell border (nothing cut off)", ()))
+
+    def test_a_figure_with_no_prop_skips_only_the_prop_checks(self):
+        # The wolf holds nothing: check "prop": null drops the spear checks
+        # and nothing else, and the poses directory is never read for them.
+        names = lambda rep: [name for _, name, _, _ in rep.results]
+        full = cs.run_monster_checks(GOBLIN, self.sheet, self.poses, quiet=True)
+        bare = dict(GOBLIN, profile=dict(GOBLIN["profile"], prop=None))
+        rep = cs.run_monster_checks(bare, self.sheet, "/nonexistent", quiet=True)
+        self.assertEqual({n: ok for ok, n, _, _ in rep.results if not ok}, {})
+        self.assertEqual([n for n in names(full) if not n.startswith("spear ")],
+                         [n for n in names(rep) if n != "no held prop"])
+        self.assertIn("no held prop", names(rep))
+        self.assertTrue(any(n.startswith("spear ") for n in names(full)))
+        # A broken death still fails without a prop.
+        sheet = self.sheet.copy()
+        c = sv.COLUMNS.index("W")
+        sheet[19 * 80:20 * 80, c * 80:(c + 1) * 80] = sheet[14 * 80:15 * 80, c * 80:(c + 1) * 80]
+        rep = cs.run_monster_checks(bare, sheet, "/nonexistent", quiet=True)
+        self.assertIn("death W ends on the ground", [n for ok, n, _, _ in rep.results if not ok])
+
+    def test_a_null_prop_is_refused_with_prop_settings_and_on_a_hero(self):
+        check = json.loads(json.dumps(sv.asset_config("goblin")["check"]))
+        check["prop"] = None
+        check.pop("prop_dirs")
+        self.assertIsNone(cs.profile(check)["prop"])
+        for extra in ({"prop_dirs": ["S"]}, {"prop_side_below": 0.3}):
+            with self.assertRaises(ValueError, msg=extra):
+                cs.profile(dict(check, **extra))
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "h"))
+            with open(os.path.join(tmp, "h", "hero.json"), "w") as fh:
+                json.dump({"check": check}, fh)
+            with self.assertRaises(ValueError):
+                cs.load_heroes(tmp)
 
     def test_a_death_that_stays_standing_fails(self):
         sheet = self.sheet.copy()
