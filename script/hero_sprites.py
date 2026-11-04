@@ -153,9 +153,9 @@ def load_config(hero, reference=REFERENCE):
     # Per-clip prompt overrides: a clip regenerated with different wording
     # (asset.json "clip_overrides", e.g. {"walk-NW": {"gait": ..., "walk": [...]}})
     # so prompts.json keeps saying exactly what was sent. A walk may override
-    # its gait and its item walk texts ([] drops them), an attack its attack, a death its death.
+    # its gait and its item walk texts ([] drops them), an attack its attack, a death its death and its lead-in ("struck", default "It is struck down: it").
     over = cfg.get("clip_overrides", {})
-    allowed = {"walk": ("gait", "walk"), "idle": (), "attack": ("attack",), "death": ("death",)}
+    allowed = {"walk": ("gait", "walk"), "idle": (), "attack": ("attack",), "death": ("struck", "death")}
     if not isinstance(over, dict):
         raise SystemExit(f"{hero}/{name}: clip_overrides maps clip ids to fields, got {over!r}")
     for cid, fields in over.items():
@@ -727,7 +727,7 @@ def build_prompts(cfg):
                   f"{steady_light(cfg)} Locked-off camera, no zoom, plain flat white background, even lighting, "
                   "crisp frames, no motion blur, no speed lines, no effects.")
         death = (f"Game sprite death. The {noun} starts exactly in the pose and facing of the first frame ({face}). "
-                 f"It is struck down: it {od.get('death', cfg.get('death', ''))}. It lies still on the ground for the last half "
+                 f"{od.get('struck', 'It is struck down: it')} {od.get('death', cfg.get('death', ''))}. It lies still on the ground for the last half "
                  f"second. The body stays centered on the same spot and does not slide out of frame. "
                  f"{steady_light(cfg)} No blood, no gore, no fading, no particles, no effects. Locked-off camera, "
                  "no zoom, plain flat white background, even lighting, crisp frames, no motion blur.")

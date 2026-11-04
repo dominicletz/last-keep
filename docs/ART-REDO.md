@@ -101,7 +101,7 @@ Nothing below was changed without your OK; each item is waiting on a decision.
 20. **Flora counts.** Grass tufts, stumps and two broadleaf trees joined
    the seeded scatter; to stay at 64 sprites, bushes went 22 -> 18 and
    flowers 24 -> 16.
-21. **Deer view checks are weak.** The grazing idle (attack rows) breaks every colour split between front and back: head down, S hides its pale throat and N lifts its cream rump into view. The profile's bounds (N head-band pale at most 17, S pale at least 4) pass every frame but would catch little. Options: a separate graze row kind exempt from view checks, or a shape-based front/back test. Deer take 1 also failed two build checks (walk-N height 54, death-S/N off the foot line); retakes are in /workspace/lk/deer-retake-batch.json.
+21. **Deer view checks are weak.** The grazing idle (attack rows) breaks every colour split between front and back: head down, S hides its pale throat and N lifts its cream rump into view. The profile's bounds (N head-band pale at most 17, S pale at least 4) pass every frame but would catch little. Options: a separate graze row kind exempt from view checks, or a shape-based front/back test. Deer take 1 also failed two build checks (walk-N height 54, death-S/N off the foot line); retakes are in /workspace/lk/deer-retake-batch.json. Take 2 fixed walk-N and death-N; death-S still lifts to row 117, so take 3 is in /workspace/lk/deer-retake2-batch.json (asset.json clip_overrides carry every retake prompt).
 
 ## Variants
 
@@ -518,3 +518,6 @@ To produce the goblin:
    `priv/static/images/hd2d/goblin-sheet.png` and the approval images:
    `sheet.png`, `strip.png`, `contact.png`, and `walk`, `attack` and
    `death.gif`.
+
+
+**Far pines (done):** horizon.js `placeTrees` draws the picture's pine cells as pine-sheet quads (variants a/b by hash, two instanced meshes, cap 180, alpha-tested, facing the camera when placed). 360 triangles at the cap instead of 720 for the cones; one more draw call (2 instead of 1); the matrices are rebuilt only when the camera changes chunk.

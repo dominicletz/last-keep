@@ -435,6 +435,20 @@ class AssetTest(unittest.TestCase):
         for h in HEROES + ["goblin"]:
             self.assertNotIn("clip_overrides", hs.load_config(h), h)
 
+    def test_deer_clip_overrides_reproduce_the_retakes(self):
+        # walk-N nodded (height 54) and death-S/N reared off the foot line in
+        # take 1; the retakes were sent with these prompts. A death override
+        # may replace the "It is struck down: it" lead-in ("struck").
+        got = self.calls("deer")
+        self.assertIn("never dipping or nodding, no body bob", got["walk-N"]["args"]["prompt"])
+        self.assertIn("slight body bob", got["walk-S"]["args"]["prompt"])
+        for d in ("S", "N"):
+            self.assertIn("It is struck down where it stands:", got[f"death-{d}"]["args"]["prompt"])
+            self.assertNotIn("It is struck down: it", got[f"death-{d}"]["args"]["prompt"])
+        for d in ("W", "E"):
+            self.assertIn("It is struck down: it startles and drops:", got[f"death-{d}"]["args"]["prompt"])
+        self.assertIn("front knees buckle first", got["death-S"]["args"]["prompt"])
+
     def test_a_bad_clip_override_is_refused(self):
         base = json.loads(read(os.path.join(hs.REFERENCE, "skeleton", "asset.json")))
         bad = [{"death-SW": {"death": "falls"}}, {"walk-S": {"attack": "jabs"}}, {"walk-S": {"walk": "low"}}, {"walk-S": {"walk": [" "]}},
