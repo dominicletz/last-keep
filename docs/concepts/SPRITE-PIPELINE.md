@@ -63,6 +63,8 @@ Run `view-S` first, with the concept as its reference. Then run `view-N`, `view-
 
 A left-right symmetric creature with nothing in its hands (the bat) can set `"mirror_views": {"W": "E"}` in its `asset.json` (or `{"E": "W"}`). `prompts.json` then has no call for the mirrored view, and `views` writes `video/views/v-W.png` itself as the exact horizontal flip of `v-E` before it normalizes. Only W and E mirror. A hero is refused: its items are handed, so the screen convention above still holds for every hero. A `view_notes` entry for the mirrored view is refused too, since it would never be sent.
 
+A turntable that keeps losing a prop at a diagonal (the boss's halberd at NW and SE, twice) can be keyed on that diagonal too: add it to `turntable.keyframes` between its two cardinals (the boss: W 2, NW 3, N 4, E 6, SE 7). `prompts.json` then has a `view-<D>` GenerateImage call for it, with the concept, v-S and the two neighbouring cardinal views as references, and the asset's `diagonal_pose` instead of `view_pose` if it has one. `views` normalizes it to `k-<D>.png`, the turntable call keys on it, and `dirs` copies it to `dirs/<D>.png` like a cardinal; `diagonals.json` lists it under `viewed`. Keyframes out of turn order, missing W, N or E, or at 0 s or the clip's end are refused, as is a `view_notes` entry for an unkeyed diagonal.
+
 ### 4. `views`
 
 Turns each `v-<DIR>` into `k-<DIR>.png`. The figure is min(RGB) < 225. A fragment under 2% of the figure that reaches outside the figure's box is blanked, so a speck cannot change the scale. The figure is cropped to its box, scaled with Lanczos to 520 px tall, and centred on a 720×720 white canvas with its last row at y = 639. These are the turntable keyframes and the four cardinal start poses.

@@ -2,43 +2,43 @@
  "frames": 193,
  "picker": {
   "NE": {
-   "balance": 0.985,
+   "balance": 0.957,
    "band": [
-    119,
-    122
+    116,
+    118
    ],
-   "frame": 119
+   "frame": 117
   },
   "NW": {
-   "balance": 0.992,
+   "balance": 0.985,
    "band": [
-    75,
-    76
+    76,
+    78
    ],
-   "frame": 75
+   "frame": 77
   },
   "SE": {
-   "balance": 0.999,
+   "balance": 0.992,
    "band": [
-    164,
-    166
+    163,
+    168
    ],
-   "frame": 165
+   "frame": 167
   },
   "SW": {
-   "balance": 0.988,
+   "balance": 0.995,
    "band": [
     32,
     35
    ],
-   "frame": 34
+   "frame": 35
   }
  },
  "pinned": [],
  "used": {
-  "NE": 119,
-  "NW": 75,
-  "SE": 165,
-  "SW": 34
+  "NE": 117,
+  "NW": 77,
+  "SE": 167,
+  "SW": 35
  }
 }

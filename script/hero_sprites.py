@@ -106,10 +106,21 @@ def load_config(hero, reference=REFERENCE):
     for item in cfg["items"]:
         if "visible" in item and (item["visible"] is not True or item.get("at") in (None, "", "body")):
             raise SystemExit(f"{hero}/{name}: item {item.get('name')!r}: visible is true on a held item, or absent")
+    # Turntable keyframes: W, N and E, plus any diagonal that gets its own
+    # view, in turn order (S, SW, W, NW, N, NE, E, SE) inside the clip.
+    if "turntable" in cfg:
+        keys = cfg["turntable"].get("keyframes", {})
+        order = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"]
+        times = [keys[d] for d in order if d in keys]
+        if (any(d not in order[1:] for d in keys) or any(d not in keys for d in ("W", "N", "E"))
+                or times != sorted(set(times)) or times[0] <= 0 or times[-1] >= cfg["turntable"]["seconds"]):
+            raise SystemExit(f"{hero}/{name}: turntable keyframes are W, N, E (and diagonals) in turn order "
+                             f"inside the clip, got {keys!r}")
+    viewed = ["S", "N", "W", "E"] + keyed_diagonals(cfg)
     notes = cfg.get("view_notes", {})
-    if not isinstance(notes, dict) or any(d not in ("S", "N", "W", "E") or not isinstance(t, str) or not t.strip()
+    if not isinstance(notes, dict) or any(d not in viewed or not isinstance(t, str) or not t.strip()
                                           for d, t in notes.items()):
-        raise SystemExit(f"{hero}/{name}: view_notes maps S, N, W or E to one sentence, got {notes!r}")
+        raise SystemExit(f"{hero}/{name}: view_notes maps S, N, W, E or a keyed diagonal to one sentence, got {notes!r}")
     # A side-view death that keeps ending too high (asset.json "death_ends",
     # {"E": "W"}) ends on the flipped last frame of the other side's passing
     # death: the call gets it as last_frame_path. Only E and W flip into each
@@ -352,11 +363,19 @@ def mid_start(cfg, d, log=print):
     return out
 
 
+def keyed_diagonals(cfg):
+    """Diagonals the turntable is keyed on (asset.json turntable.keyframes):
+    each gets its own view, and dirs/<d>.png is that view, not a turntable
+    frame."""
+    keys = cfg.get("turntable", {}).get("keyframes", {})
+    return [d for d in DIAGONALS if d in keys]
+
+
 def make_views(cfg, log=print):
     done = []
     for d in cfg.get("mirror_views", {}):
         mirror_view(cfg, d, log)
-    for d in CARDINALS:
+    for d in CARDINALS + keyed_diagonals(cfg):
         src = view_source(cfg, d)
         if not src:
             continue
@@ -435,7 +454,16 @@ def make_dirs(cfg, log=print):
     picked = pick_diagonals(frames, cards, key_frames(cfg, len(frames)))
     pins = cfg.get("diagonals") or {}
     used = {}
+    keyed = keyed_diagonals(cfg)
     for d in DIAGONALS:
+        if d in keyed:
+            k = os.path.join(cfg["video"], "views", f"k-{d}.png")
+            if not os.path.exists(k):
+                raise SystemExit(f"no {rel(k)}: generate the {d} view first")
+            dst = os.path.join(dirs, f"{d}.png")
+            used[d] = "view"
+            log(f"{'wrote' if copy_if_changed(k, dst) else 'same '} {rel(dst)}: the keyed {d} view")
+            continue
         t = int(pins.get(d, picked[d]["frame"]))
         used[d] = t
         dst = os.path.join(dirs, f"{d}.png")
@@ -444,6 +472,8 @@ def make_dirs(cfg, log=print):
         log(f"{'wrote' if wrote else 'same '} {rel(dst)}: frame {t} ({how}; picker {picked[d]['frame']})")
     record = {"frames": len(frames), "picker": picked, "used": used,
               "pinned": sorted(d for d in DIAGONALS if d in pins)}
+    if keyed:
+        record["viewed"] = keyed
     write_text(os.path.join(cfg["video"], "diagonals.json"), json.dumps(record, indent=1, sort_keys=True) + "\n")
     return record
 
@@ -465,6 +495,13 @@ VIEW = {
     "N": "back view, seen from directly behind, back to the camera",
     "W": "left profile view, facing screen-left, {poss} left side toward the camera",
     "E": "right profile view, facing screen-right, {poss} right side toward the camera",
+    # Diagonal views, only for a turntable keyed on a diagonal (asset.json
+    # turntable.keyframes): the boss's halberd vanished at NW and SE on two
+    # unkeyed turntables.
+    "SW": "three-quarter front view, turned exactly halfway between the front view and the left profile, facing down and to screen-left, {poss} front and left side toward the camera",
+    "NW": "three-quarter back view, turned exactly halfway between the left profile and the back view, facing up and to screen-left, {poss} back and left side toward the camera",
+    "NE": "three-quarter back view, turned exactly halfway between the back view and the right profile, facing up and to screen-right, {poss} back and right side toward the camera",
+    "SE": "three-quarter front view, turned exactly halfway between the right profile and the front view, facing down and to screen-right, {poss} front and right side toward the camera",
 }
 # Where an item sits on the body, in the S view: x to image-right, z toward the camera.
 PLACE = {"right": (-1.0, 0.0), "left": (1.0, 0.0), "back": (0.0, -1.0), "front": (0.0, 1.0)}
@@ -588,13 +625,21 @@ def build_prompts(cfg):
     words = FLIER if cfg.get("flies") else GROUNDED
     calls = []
     mirror = cfg.get("mirror_views", {})
-    views = [d for d in ("S", "N", "W", "E") if d not in mirror]
+    t = cfg["turntable"]
+    views = [d for d in ("S", "N", "W", "E") if d not in mirror] + keyed_diagonals(cfg)
     for d in views:
         items = [item_line(i, d, poss) for i in cfg["items"]]
         items = "; ".join(x for x in items if x)
         front = view_source(cfg, "S")
         front = f"{vid}/views/{os.path.basename(front) if front else 'v-S.png'}"
         refs = [f"{base}/concept.png"] + (list(cfg.get("style_refs", [])) if d == "S" else [front])
+        if d in DIAGONALS:
+            # A diagonal view also sees the two cardinal views it sits between.
+            for c in DIAGONALS[d]:
+                src = view_source(cfg, c)
+                ref = f"{vid}/views/{os.path.basename(src) if src else f'v-{c}.png'}"
+                if ref not in refs:
+                    refs.append(ref)
         source = cfg.get("source_note", "")
         # A per-view sentence for a take that lost a prop (asset.json "view_notes").
         note = cfg.get("view_notes", {}).get(d, "")
@@ -603,7 +648,9 @@ def build_prompts(cfg):
         style = (" Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art "
                  "look, block size, outline-free shading and soft lighting, but not its design."
                  if d == "S" and cfg.get("style_refs") else "")
-        pose = cfg.get("view_pose") or (f"Whole figure from the top of the head to the {cfg.get('feet', 'boots')}, "
+        # A diagonal view's own pose (asset.json "diagonal_pose"): the boss's
+        # view_pose pins the horse's spine to a front, back or profile view.
+        pose = (cfg.get("diagonal_pose") if d in DIAGONALS else None) or cfg.get("view_pose") or (f"Whole figure from the top of the head to the {cfg.get('feet', 'boots')}, "
                                          "standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped")
         # Items, notes and the style line; a figure with no items (the wolf) has none of the first two.
         mid = f"{sentence(items)}{note}{style}".strip()
@@ -617,8 +664,8 @@ def build_prompts(cfg):
                                "filename": f"{h}-v-{d}.png"},
                       "save_as": f"{vid}/views/v-{d}.png",
                       "then": "hero_sprites.py views" if d == views[-1] else None})
-    t = cfg["turntable"]
-    keys = [{"image_path": f"{vid}/views/k-{d}.png", "timestamp_s": t["keyframes"][d]} for d in ("W", "N", "E")]
+    keys = [{"image_path": f"{vid}/views/k-{d}.png", "timestamp_s": s}
+            for d, s in sorted(t["keyframes"].items(), key=lambda kv: kv[1])]
     turn = (f"Game character turnaround reference. The {noun} {words['turn_pose']} and rotates a full 360 degrees at a constant speed, turning to show {poss} left "
             f"side, then {poss} back, then {poss} right side, then front again. Locked-off camera, slightly "
             "elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white "

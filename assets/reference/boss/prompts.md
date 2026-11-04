@@ -53,7 +53,7 @@ Save as `assets/reference/boss/video/views/v-W.png`.
 
 ## view-E (GenerateImage)
 
-Save as `assets/reference/boss/video/views/v-E.png`. Then run `hero_sprites.py views`.
+Save as `assets/reference/boss/video/views/v-E.png`.
 
 ```json
 {
@@ -64,6 +64,41 @@ Save as `assets/reference/boss/video/views/v-E.png`. Then run `hero_sprites.py v
  ],
  "aspect_ratio": "1:1",
  "filename": "boss-v-E.png"
+}
+```
+
+## view-NW (GenerateImage)
+
+Save as `assets/reference/boss/video/views/v-NW.png`.
+
+```json
+{
+ "description": "Full-body game character reference of the dark rider from the reference image, three-quarter back view, turned exactly halfway between the left profile and the back view, facing up and to screen-left, his back and left side toward the camera. The reference shows the dark rider on his horse with a wolf at its lower left edge; draw only the rider on his horse with his halberd and nothing else, no wolf, no smoke. Same design exactly: armoured dark knight riding a black armoured warhorse: a dark iron great helm crowned with tall spikes and a narrow glowing purple visor slit, spiked dark iron pauldrons, dark plate armour with a brown leather belt, a long tattered charcoal cape over his back, armoured legs in the stirrups; the horse is black with dark iron plate barding on its head, neck and chest, a glowing purple eye, a short dark mane, a long dark tail and dark hooves. Long dark iron halberd with a broad axe blade and a spike in his right hand (his far right hand, held upright beside his right shoulder so the shaft and the broad axe blade of the halberd rise high above his helm on the image-right side, clear against the white background, in full view). Seen from behind and to the left, exactly halfway between the left profile and the back view in the reference images: the horse's rump and tail are nearest the camera at the lower image-right, its head, neck and one glowing eye point up and to the image-left, so its spine runs diagonally at 45 degrees, neither sideways nor straight away from the camera; the rider faces the same way, his back, cape and left side toward the camera. This is a three-quarter view, not a profile and not a back view. The long dark iron halberd with a broad axe blade and a spike stays clearly visible in full in this view, held out clear of his body: not hidden behind the body, not dropped, not cut off. Whole rider and horse from the tips of the helm's spikes down to the hooves, the rider sitting upright in the saddle, the horse standing square on all four hooves in a neutral alert pose, head level, all four legs visible, nothing cropped; the horse is turned exactly three-quarter, its spine at 45 degrees to the camera, so its near side and its front or back both show. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+ "reference_image_paths": [
+  "assets/reference/boss/concept.png",
+  "assets/reference/boss/video/views/v-S.png",
+  "assets/reference/boss/video/views/v-W.png",
+  "assets/reference/boss/video/views/v-N.png"
+ ],
+ "aspect_ratio": "1:1",
+ "filename": "boss-v-NW.png"
+}
+```
+
+## view-SE (GenerateImage)
+
+Save as `assets/reference/boss/video/views/v-SE.png`. Then run `hero_sprites.py views`.
+
+```json
+{
+ "description": "Full-body game character reference of the dark rider from the reference image, three-quarter front view, turned exactly halfway between the right profile and the front view, facing down and to screen-right, his front and right side toward the camera. The reference shows the dark rider on his horse with a wolf at its lower left edge; draw only the rider on his horse with his halberd and nothing else, no wolf, no smoke. Same design exactly: armoured dark knight riding a black armoured warhorse: a dark iron great helm crowned with tall spikes and a narrow glowing purple visor slit, spiked dark iron pauldrons, dark plate armour with a brown leather belt, a long tattered charcoal cape over his back, armoured legs in the stirrups; the horse is black with dark iron plate barding on its head, neck and chest, a glowing purple eye, a short dark mane, a long dark tail and dark hooves. Long dark iron halberd with a broad axe blade and a spike in his right hand (his near right hand, held upright beside his right shoulder so the shaft and the broad axe blade of the halberd rise high above his helm on the image-left side, clear against the white background, never in front of his helm or chest, in full view). Seen from the front and to the right, exactly halfway between the right profile and the front view in the reference images: the horse's head, chest and glowing eye point down and to the image-right, nearest the camera, its rump and tail behind it at the upper image-left, so its spine runs diagonally at 45 degrees, neither sideways nor straight at the camera; the rider faces the same way, his visor, chest and right side toward the camera. This is a three-quarter view, not a profile and not a front view. The long dark iron halberd with a broad axe blade and a spike stays clearly visible in full in this view, held out clear of his body: not hidden behind the body, not dropped, not cut off. Whole rider and horse from the tips of the helm's spikes down to the hooves, the rider sitting upright in the saddle, the horse standing square on all four hooves in a neutral alert pose, head level, all four legs visible, nothing cropped; the horse is turned exactly three-quarter, its spine at 45 degrees to the camera, so its near side and its front or back both show. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+ "reference_image_paths": [
+  "assets/reference/boss/concept.png",
+  "assets/reference/boss/video/views/v-S.png",
+  "assets/reference/boss/video/views/v-E.png"
+ ],
+ "aspect_ratio": "1:1",
+ "filename": "boss-v-SE.png"
 }
 ```
 
@@ -82,12 +117,20 @@ Save as `assets/reference/boss/video/turntable.mp4`. Then run `hero_sprites.py d
    "timestamp_s": 2
   },
   {
+   "image_path": "assets/reference/boss/video/views/k-NW.png",
+   "timestamp_s": 3
+  },
+  {
    "image_path": "assets/reference/boss/video/views/k-N.png",
    "timestamp_s": 4
   },
   {
    "image_path": "assets/reference/boss/video/views/k-E.png",
    "timestamp_s": 6
+  },
+  {
+   "image_path": "assets/reference/boss/video/views/k-SE.png",
+   "timestamp_s": 7
   }
  ],
  "duration": 8,
@@ -229,7 +272,7 @@ Save as `assets/reference/boss/video/walk-NW.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The dark rider walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady horse trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, the horse's back level and head held level, the rider sitting upright in the saddle and rising and falling slightly with the horse, the cape swaying a little; the horse's body never moves forward, halberd held upright in his right hand, its blade above his helm. Props stay where the first frame has them: long dark iron halberd with a broad axe blade and a spike in his right hand (on the image-right side, in full view). The dark rider stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The dark rider walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Steady horse trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, the horse's back level and head held level, the rider sitting upright in the saddle and rising and falling slightly with the horse, the cape swaying a little; the horse's body never moves forward, halberd held upright in his right hand, its blade above his helm. Props stay where the first frame has them: long dark iron halberd with a broad axe blade and a spike in his right hand (his far right hand, held upright beside his right shoulder so the shaft and the broad axe blade of the halberd rise high above his helm on the image-right side, clear against the white background, in full view). The dark rider stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/boss/video/dirs/NW.png",
  "last_frame_path": "assets/reference/boss/video/dirs/NW.png",
  "duration": 2,
@@ -245,7 +288,7 @@ Save as `assets/reference/boss/video/attack-NW.mp4`.
 
 ```json
 {
- "prompt": "Game sprite attack. The dark rider keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it keeps the horse standing on all four hooves on the same spot and swings the halberd up high over his helm, then chops it down hard beside the horse's head in the facing direction, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long dark iron halberd with a broad axe blade and a spike in his right hand (on the image-right side, in full view). The dark rider stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the purple glow of his visor and of the horse's eye keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The dark rider keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it keeps the horse standing on all four hooves on the same spot and swings the halberd up high over his helm, then chops it down hard beside the horse's head in the facing direction, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long dark iron halberd with a broad axe blade and a spike in his right hand (his far right hand, held upright beside his right shoulder so the shaft and the broad axe blade of the halberd rise high above his helm on the image-right side, clear against the white background, in full view). The dark rider stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the purple glow of his visor and of the horse's eye keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/boss/video/dirs/NW.png",
  "last_frame_path": "assets/reference/boss/video/dirs/NW.png",
  "duration": 2,
@@ -387,7 +430,7 @@ Save as `assets/reference/boss/video/walk-SE.mp4`.
 
 ```json
 {
- "prompt": "Game sprite walk cycle. The dark rider walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady horse trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, the horse's back level and head held level, the rider sitting upright in the saddle and rising and falling slightly with the horse, the cape swaying a little; the horse's body never moves forward, halberd held upright in his right hand, its blade above his helm. Props stay where the first frame has them: long dark iron halberd with a broad axe blade and a spike in his right hand (on the image-left side, toward the camera, in full view). The dark rider stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+ "prompt": "Game sprite walk cycle. The dark rider walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Steady horse trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, the horse's back level and head held level, the rider sitting upright in the saddle and rising and falling slightly with the horse, the cape swaying a little; the horse's body never moves forward, halberd held upright in his right hand, its blade above his helm. Props stay where the first frame has them: long dark iron halberd with a broad axe blade and a spike in his right hand (his near right hand, held upright beside his right shoulder so the shaft and the broad axe blade of the halberd rise high above his helm on the image-left side, clear against the white background, never in front of his helm or chest, in full view). The dark rider stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
  "image_path": "assets/reference/boss/video/dirs/SE.png",
  "last_frame_path": "assets/reference/boss/video/dirs/SE.png",
  "duration": 2,
@@ -403,7 +446,7 @@ Save as `assets/reference/boss/video/attack-SE.mp4`. Then run `hero_sprites.py p
 
 ```json
 {
- "prompt": "Game sprite attack. The dark rider keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it keeps the horse standing on all four hooves on the same spot and swings the halberd up high over his helm, then chops it down hard beside the horse's head in the facing direction, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long dark iron halberd with a broad axe blade and a spike in his right hand (on the image-left side, toward the camera, in full view). The dark rider stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the purple glow of his visor and of the horse's eye keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "prompt": "Game sprite attack. The dark rider keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it keeps the horse standing on all four hooves on the same spot and swings the halberd up high over his helm, then chops it down hard beside the horse's head in the facing direction, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long dark iron halberd with a broad axe blade and a spike in his right hand (his near right hand, held upright beside his right shoulder so the shaft and the broad axe blade of the halberd rise high above his helm on the image-left side, clear against the white background, never in front of his helm or chest, in full view). The dark rider stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the purple glow of his visor and of the horse's eye keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
  "image_path": "assets/reference/boss/video/dirs/SE.png",
  "last_frame_path": "assets/reference/boss/video/dirs/SE.png",
  "duration": 2,
