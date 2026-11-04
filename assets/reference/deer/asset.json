@@ -70,5 +70,96 @@
  "_note": "Wild animal 1 (docs/ART-REDO.md section 10): the deer. The concept paintings have no animal, so the concept crop is the theme.jpg forest edge at the lower left (palette and light only) and the source_note says so; the design text carries the look. Quadruped like the wolf, so it reuses the wolf's view_pose and turntable layout. World height 22 (ears to hooves, a little taller than the wolf's 18, under a hero's 32) is 60 px at the hero texel; side-on about 110 px nose to tail, so the 128 hero cell. Clips: walk x8, idle (the attack slot: head down grazing, back up) x8, death (flee is not a clip kind yet: open question). check anchors come after the views, from `hero_sprites.py deer colours` (the concept crop has no deer colours to anchor). view-S take 1 came out three-quarter twice (head to the camera, flank to screen-right; kept in /workspace/lk/deer-viewS-take1): view_notes.S is the boss's take-3 square-front wording, describing only what a front view shows (face, chest, front legs side by side, hind legs peeking behind) and never the flank, and view_pose no longer asks for all four legs visible.",
  "view_notes": {
   "S": "Seen exactly from the front, not three-quarter like a deer standing side-on: like looking at a deer walking straight at you, its head points straight at the camera with both of its eyes and both ears equally visible, and the face, neck and chest are square and symmetric about the image's vertical centre line. Only the front of the face, the throat and the chest show; the body is completely hidden straight behind the chest. The two front legs stand side by side, symmetric, and the two hind legs only just peek out behind them"
+ },
+ "check": {
+  "_note": "Tuned on the take-1 trial build (/workspace/lk/deer-clips-take1/trial-sheet.png). anchors: the concepts have no deer, so the anchors are the main colours of the deer's own sheet palette (the russet coat and its shade, the dark brown of hooves, nose and eyes, the near-black, the cream and fawn of the throat, belly and rump); they pin the palette to the approved views, not to a concept. roles: pale is any colour lighter than 0.45 (cream throat, belly, rump patch), dark any colour under 0.2, coat the rest. prop: null. bounds: walking, S shows 33-83 pale px and N 4-17, but the grazing idle (the attack rows) breaks every colour split: head down, S hides its throat (pale 4-20) and N raises its cream rump into view (pale up to 43, and into the head band, 15-17). So the back ceiling is the head band's pale at N's maximum (17; S walk frames 5-45, start 18), and the front floor is S's grazing low point (4). Both are weak: open question 21.",
+  "anchors": {
+   "coat": [
+    139,
+    80,
+    33
+   ],
+   "coat shade": [
+    105,
+    59,
+    22
+   ],
+   "dark": [
+    67,
+    42,
+    21
+   ],
+   "near black": [
+    39,
+    33,
+    26
+   ],
+   "cream": [
+    189,
+    151,
+    113
+   ],
+   "fawn": [
+    153,
+    119,
+    86
+   ]
+  },
+  "roles": [
+   {
+    "name": "pale",
+    "light_gt": 0.45
+   },
+   {
+    "name": "pale",
+    "neutral": true,
+    "light_gt": 0.45
+   },
+   {
+    "name": "dark",
+    "light_lt": 0.2
+   },
+   {
+    "name": "dark",
+    "neutral": true,
+    "light_lt": 0.2
+   },
+   {
+    "name": "coat"
+   },
+   {
+    "name": "coat",
+    "neutral": true
+   }
+  ],
+  "prop": null,
+  "back": {
+   "title": "back view N shows no pale throat in its head band",
+   "bounds": [
+    [
+     "pale",
+     [
+      "head",
+      "pale"
+     ],
+     null,
+     17
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps some pale throat or chest",
+   "bounds": [
+    [
+     "pale",
+     [
+      "count",
+      "pale"
+     ],
+     4,
+     null
+    ]
+   ]
+  }
  }
 }

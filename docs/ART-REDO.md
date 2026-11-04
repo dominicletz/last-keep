@@ -101,6 +101,7 @@ Nothing below was changed without your OK; each item is waiting on a decision.
 20. **Flora counts.** Grass tufts, stumps and two broadleaf trees joined
    the seeded scatter; to stay at 64 sprites, bushes went 22 -> 18 and
    flowers 24 -> 16.
+21. **Deer view checks are weak.** The grazing idle (attack rows) breaks every colour split between front and back: head down, S hides its pale throat and N lifts its cream rump into view. The profile's bounds (N head-band pale at most 17, S pale at least 4) pass every frame but would catch little. Options: a separate graze row kind exempt from view checks, or a shape-based front/back test. Deer take 1 also failed two build checks (walk-N height 54, death-S/N off the foot line); retakes are in /workspace/lk/deer-retake-batch.json.
 
 ## Variants
 
