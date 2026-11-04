@@ -50,11 +50,15 @@ export const staticSheets = {
   // Flora, scattered by flora.js: b and c are smaller cuts (sizes from scale).
   bush: staticSheet("bush", [80, 48], ["a", "b", "c"]),
   rock: staticSheet("rock", [88, 56], ["a", "b", "c"]),
-  flowers: staticSheet("flowers", [64, 24], ["a", "b"])
+  flowers: staticSheet("flowers", [64, 24], ["a", "b"]),
+  grass_tufts: staticSheet("grass_tufts", [40, 24], ["a", "b", "c"]),
+  // b (a lying log) is pending a retake: the sheet has only the stump.
+  stump_log: staticSheet("stump_log", [80, 40], ["a"]),
+  broadleaf: staticSheet("broadleaf", [136, 120], ["a", "b"])
 }
 
 // Static sheets that are scenery, not a building kind.
-export const floraSheets = ["bush", "rock", "flowers"]
+export const floraSheets = ["bush", "rock", "flowers", "grass_tufts", "stump_log", "broadleaf"]
 
 // The tree card's art is the pine sheet.
 export const treeSheet = staticSheets.pine

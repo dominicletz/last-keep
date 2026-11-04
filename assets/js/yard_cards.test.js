@@ -128,12 +128,12 @@ function sheetRows(name) {
 
 test("every building sheet matches its asset.json, stands on its foot row and is its card's height", () => {
   const heights = { wall: [110], stone_wall: [110], tower: [132], house: [176], forge: [99], trap: [55, 33] }
-  const flora = { bush: [38, 30, 25], rock: [44, 31, 22], flowers: [16, 16] }
+  const flora = { bush: [38, 30, 25], rock: [44, 31, 22], flowers: [16, 16], grass_tufts: [14, 11, 9], stump_log: [28], broadleaf: [110, 94] }
   for (const [name, want] of Object.entries({ ...heights, ...flora })) {
     const cfg = JSON.parse(fs.readFileSync(path.join(root, "assets/reference", name, "asset.json"), "utf8"))
     const sheet = staticSheets[name]
     assert.deepEqual(sheet.cell, cfg.cell, name)
-    assert.deepEqual(sheet.variants, cfg.variants.map((v) => v.id), name)
+    assert.deepEqual(sheet.variants, cfg.variants.filter((v) => !v.pending).map((v) => v.id), name)
     const rows = sheetRows(name)
     for (const [top, bottom] of rows) assert.equal(bottom, sheet.footRow, name)
     assert.deepEqual(rows.map(([t, b]) => b - t + 1), want, name)

@@ -1087,7 +1087,9 @@ def load_static(cfg, hero, name, reference=REFERENCE):
     if (not isinstance(vs, list) or not 1 <= len(vs) <= STATIC_VARIANTS or len(set(ids)) != len(ids)
             or any(not isinstance(i, str) or not i.isalnum() or not i.islower() for i in ids)
             or any(not isinstance(v.get("note", ""), str) for v in vs)
-            or any(set(v) - {"id", "note", "scale", "pick", "squash_of"} for v in vs)
+            or any(set(v) - {"id", "note", "scale", "pick", "squash_of", "framing", "pending"} for v in vs)
+            or any(not isinstance(v.get("framing", ""), str) or v.get("pending", False) not in (True, False) for v in vs)
+            or all(v.get("pending") for v in vs)
             or any(v.get("pick", "left") not in STATIC_PICKS for v in vs)):
         raise SystemExit(f"{hero}/{name}: variants is 1-{STATIC_VARIANTS} entries "
                          f"{{\"id\" (lowercase letters/digits, unique), \"note\", \"scale\"?, \"pick\"? {STATIC_PICKS}}}, got {vs!r}")
@@ -1096,6 +1098,9 @@ def load_static(cfg, hero, name, reference=REFERENCE):
         if src is not None and (src not in ids or src == v["id"]
                                 or next(u for u in vs if u["id"] == src).get("squash_of")):
             raise SystemExit(f"{hero}/{name}: variant {v['id']!r} squash_of is another variant with an image, got {src!r}")
+    for v in vs:
+        if v.get("squash_of") and next(u for u in vs if u["id"] == v["squash_of"]).get("pending"):
+            raise SystemExit(f"{hero}/{name}: variant {v['id']!r} is squashed from the pending variant {v['squash_of']!r}")
     m = cfg.get("match")
     if m is not None and (not isinstance(m, str) or not m.isidentifier() or m == hero):
         raise SystemExit(f"{hero}/{name}: match names another static piece's sheet, got {m!r}")
@@ -1137,9 +1142,12 @@ def static_prompts(cfg):
         if v.get("squash_of"):
             continue
         note = f" {sentence(v['note'])}" if v.get("note") else ""
+        # A variant's "framing" replaces the upright framing sentence (a log
+        # lies along the ground; "upright" made the model draw a stump).
+        framing = (sentence(v["framing"]) if v.get("framing") else
+                   f"The whole {noun} from its top to the ground it stands on, upright, centred, nothing cropped.")
         desc = (f"Game prop reference of the {noun} from the reference image, {STATIC_VIEWS[cfg.get('view', 'front')]}. {sentence(source) + ' ' if source else ''}"
-                f"Same design: {cfg['design']}.{note}{style} The whole {noun} from its top to the ground it stands "
-                f"on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no "
+                f"Same design: {cfg['design']}.{note}{style} {framing} Plain flat white background, no ground, no grass, no "
                 f"shadow, no text, no other objects. One single {noun} only, not a sheet of several.")
         calls.append({"id": f"image-{v['id']}", "step": "build", "tool": "GenerateImage",
                       "args": {"description": desc, "reference_image_paths": refs, "aspect_ratio": "1:1",
@@ -1290,7 +1298,9 @@ def static_build(cfg, out=None, approval=None, log=print):
     """Pixelize every variant into the sheet, run static_checks, and write
     the approval files (sheet.png, contact.png at 4x on grey, check.txt).
     Returns the number of failing checks; the sheet is written only when
-    none fail."""
+    none fail. A variant with "pending": true (its image is being retaken)
+    is left out of the sheet until the flag is removed."""
+    cfg = dict(cfg, variants=[v for v in cfg["variants"] if not v.get("pending")])
     images = {}
     for v in cfg["variants"]:
         if v.get("squash_of"):

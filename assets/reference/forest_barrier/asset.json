@@ -1,5 +1,5 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 9, dense forest barrier). The concept box is the dense pines at the lower left of theme.jpg (skeletons and goblins excluded by source_note). A wide strip of interlocking pines so the forest wall reads as one barrier and draws as few quads; world height 32 (88 px, the wall rings' 0.62-0.8 pine scales); the 256 px cell is about 2.3 pines wide. Tileable ends are not checked by the build (open question).",
+ "_note": "Static piece (docs/ART-REDO.md section 9, dense forest barrier). The concept box is the dense pines at the lower left of theme.jpg (skeletons and goblins excluded by source_note). A wide strip of interlocking pines so the forest wall reads as one barrier and draws as few quads; world height 32 (88 px, the wall rings' 0.62-0.8 pine scales); the cell is 272 px: b came out a very wide flat strip, 264 px with its outline at the 88 px height, and the build widens, never crops. Tileable ends are not checked by the build (open question).",
  "type": "static",
  "view": "front",
  "noun": "dense strip of pine forest",
@@ -19,7 +19,7 @@
  "design": "a wide, dense wall of overlapping dark evergreen pines of slightly different heights, conical crowns of layered dark green needle tiers with lighter yellow-green tips on the lit side, packed so no gap shows between them, short dark trunks at the base, the strip wider than it is tall",
  "world_height": 32,
  "cell": [
-  256,
+  272,
   96
  ],
  "variants": [

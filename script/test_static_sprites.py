@@ -250,7 +250,10 @@ class StaticTest(unittest.TestCase):
     def test_every_committed_static_sheet_rebuilds_byte_for_byte(self):
         views = {"pine": "front", "stone_wall": "front", "wall": "three_quarter", "tower": "three_quarter",
                  "house": "three_quarter", "forge": "three_quarter", "trap": "three_quarter",
-                 "bush": "three_quarter", "rock": "three_quarter", "flowers": "three_quarter"}
+                 "bush": "three_quarter", "rock": "three_quarter", "flowers": "three_quarter",
+                 "broadleaf": "front", "field": "three_quarter", "forest_barrier": "front",
+                 "stump_log": "three_quarter", "cliff_face": "front", "grass_tufts": "three_quarter",
+                 "reeds": "three_quarter", "dead_tree": "front"}
         for name, view in views.items():
             cfg = hs.load_config(name)
             self.assertEqual(cfg.get("view", "front"), view, name)
@@ -338,6 +341,48 @@ class StaticTest(unittest.TestCase):
         # Greens are matched to the pine forest, as the bush is.
         for name in ("broadleaf", "forest_barrier", "grass_tufts", "reeds"):
             self.assertEqual(hs.load_config(name)["match"], "pine", name)
+
+    def test_framing_replaces_the_upright_sentence_and_pending_variants_wait_outside_the_sheet(self):
+        cfg = self.config(variants=[{"id": "a"}, {"id": "b", "framing": "the whole log lying flat along the ground",
+                                                  "pending": True}])
+        a, b = [c["args"]["description"] for c in hs.static_prompts(cfg)["calls"]]
+        self.assertIn("from its top to the ground it stands on, upright", a)
+        self.assertNotIn("upright", b)
+        self.assertIn("The whole log lying flat along the ground.", b)
+        # b's image does not exist: the build leaves b out instead of refusing.
+        os.makedirs(os.path.join(cfg["dir"], "views"))
+        Image.fromarray(pine_image()).save(os.path.join(cfg["dir"], "views", "a.png"))
+        tmp = tempfile.mkdtemp()
+        out = os.path.join(tmp, "s.png")
+        self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "x"), log=lambda *a, **k: None), 0)
+        self.assertEqual(Image.open(out).size, (128, 120))
+        for bad in ([{"id": "a", "pending": True}], [{"id": "a", "pending": "yes"}], [{"id": "a", "framing": 3}],
+                    [{"id": "a", "pending": True}, {"id": "b", "squash_of": "a"}]):
+            with self.assertRaises(SystemExit, msg=bad):
+                self.config(variants=bad)
+
+    def test_the_lying_log_is_retaken_with_its_own_framing_and_the_built_scenery_stands_on_its_foot_row(self):
+        log = hs.load_config("stump_log")
+        b = log["variants"][1]
+        self.assertTrue(b["pending"])
+        d = hs.static_prompts(log)["calls"][1]["args"]["description"]
+        self.assertIn("lying flat along the ground, much longer than it is tall", d)
+        self.assertNotIn("upright, centred", d)
+        sizes = {"broadleaf": [110, 94], "field": [33, 33], "forest_barrier": [88, 88], "stump_log": [28],
+                 "cliff_face": [44, 44], "grass_tufts": [14, 11, 9], "reeds": [25, 20], "dead_tree": [99]}
+        for name, want in sizes.items():
+            cfg = hs.load_config(name)
+            sheet = np.asarray(Image.open(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")).convert("RGBA"))
+            cw, ch = cfg["cell"]
+            self.assertEqual(sheet.shape[:2], (ch, cw * len(want)), name)
+            got = []
+            for i in range(len(want)):
+                rows = np.nonzero((sheet[:, i * cw:(i + 1) * cw, 3] > 0).any(1))[0]
+                self.assertEqual(rows[-1], ch - 1 - hs.STATIC_MARGIN, name)
+                got.append(int(rows[-1] - rows[0] + 1))
+            self.assertEqual(got, want, name)
+            built = dict(cfg, variants=[v for v in cfg["variants"] if not v.get("pending")])
+            self.assertEqual([n for ok, n, _ in hs.static_checks(built, sheet) if not ok], [], name)
 
 
 if __name__ == "__main__":

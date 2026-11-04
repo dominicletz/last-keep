@@ -13,9 +13,13 @@ const TRIES = 12
 
 // count per band; dist ranges in world units from the keep.
 export const floraLook = {
-  bush: { variants: ["a", "b", "c"], yard: 8, edge: 14 },
+  bush: { variants: ["a", "b", "c"], yard: 6, edge: 12 },
   rock: { variants: ["a", "b", "c"], yard: 6, edge: 8 },
-  flowers: { variants: ["a", "b"], yard: 18, edge: 6 }
+  flowers: { variants: ["a", "b"], yard: 12, edge: 4 },
+  grass_tufts: { variants: ["a", "b", "c"], yard: 8, edge: 2 },
+  stump_log: { variants: ["a"], yard: 0, edge: 4 },
+  // A few leafy trees among the forest edge's pines.
+  broadleaf: { variants: ["a", "b"], yard: 0, edge: 2 }
 }
 export const floraBands = {
   yard: { near: 160, far: 205 },

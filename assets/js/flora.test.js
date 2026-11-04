@@ -39,8 +39,8 @@ test("flora stays off the plaza and the four roads, inside the yard and forest e
 
 test("each kind uses every variant over a few seeds", () => {
   const seen = new Set()
-  for (let seed = 0; seed < 5; seed++) for (const s of floraSlots(seed, 0)) seen.add(`${s.kind}-${s.variant}`)
-  assert.equal(seen.size, 8)
+  for (let seed = 0; seed < 12; seed++) for (const s of floraSlots(seed, 0)) seen.add(`${s.kind}-${s.variant}`)
+  assert.equal(seen.size, Object.values(floraLook).reduce((n, look) => n + look.variants.length, 0))
 })
 
 test("flora draws its static sheets from a pooled set of sprites, not buildings", () => {
