@@ -27,3 +27,39 @@ test("pictureCell matches the committed fixture", () => {
   }
   assert.ok(rows.some((row) => row.seed === 1 && Math.hypot(row.x, row.y) > 7200))
 })
+
+test("far pines: capped, outside the yard, on pine cells, stable and both variants", async () => {
+  const { farPines, FAR_PINE_CAP } = await import("./horizon.js")
+  const picks = farPines(7, 0, 0, 0, 2400)
+  assert.equal(FAR_PINE_CAP, 180)
+  assert.ok(picks.length > 0 && picks.length <= 180)
+  for (const t of picks) {
+    assert.ok(!(Math.abs(t.x) < 380 && Math.abs(t.z) < 380))
+    assert.equal(pictureCell(7, 0, t.x, t.z), "pine")
+    assert.ok(["a", "b"].includes(t.variant))
+  }
+  assert.deepEqual(new Set(picks.map((t) => t.variant)), new Set(["a", "b"]))
+  assert.deepEqual(farPines(7, 0, 0, 0, 2400), picks)
+})
+
+test("far pines draw as pine-sheet quads: two instanced meshes, two triangles a tree", async () => {
+  const THREE = await import("three")
+  const { mountPicture } = await import("./horizon.js")
+  const scene = new THREE.Scene()
+  const urls = []
+  const pic = mountPicture(scene, { loadMap: (u) => (urls.push(u), new THREE.Texture()) })
+  const camera = new THREE.PerspectiveCamera()
+  camera.position.set(0, 400, 600)
+  pic.sync({ seed: 7, attempt: 0, portals: [] }, camera, 168)
+  const pines = scene.children.filter((c) => c.userData.role === "far-pine")
+  assert.equal(pines.length, 2)
+  assert.deepEqual(urls, ["/images/hd2d/pine-sheet.png", "/images/hd2d/pine-sheet.png"])
+  let total = 0
+  for (const m of pines) {
+    assert.ok(m.isInstancedMesh)
+    assert.equal(m.geometry.index.count / 3, 2)
+    assert.ok(m.material.map && m.material.alphaTest === 0.5 && !m.material.transparent)
+    total += m.count
+  }
+  assert.ok(total > 0 && total <= 180)
+})
