@@ -479,6 +479,16 @@ class SheetBuildTest(unittest.TestCase):
     def test_the_wolf_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
         self.rebuild("wolf", ["wolf-sheet.png"])
 
+    def test_the_bat_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
+        self.rebuild("bat", ["bat-sheet.png"])
+
+    def test_the_committed_bat_sheet_passes_its_checks(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sheet = np.asarray(Image.open(os.path.join(root, "priv/static/images/hd2d/bat-sheet.png")).convert("RGBA"))
+        rep = cs.run_monster_checks(cs.ASSETS["bat"], sheet,
+                                    os.path.join(root, "assets/reference/bat/video/dirs"), quiet=True)
+        self.assertEqual([name for ok, name, _, _ in rep.results if not ok], [])
+
     def test_the_committed_wolf_sheet_passes_its_checks(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         sheet = np.asarray(Image.open(os.path.join(root, "priv/static/images/hd2d/wolf-sheet.png")).convert("RGBA"))

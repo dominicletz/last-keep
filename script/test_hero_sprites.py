@@ -592,8 +592,9 @@ class AssetTest(unittest.TestCase):
         self.assertIn("comes lower in the frame than his feet were", by["death-S"])
         self.assertIn("He is lying flat before the middle of the clip", by["death-S"])
         for d in "SWE":
-            self.assertIn("away from the camera", by[f"death-{d}"])
             self.assertIn("his feet staying exactly where they stood", by[f"death-{d}"])
+        for d in "WE":
+            self.assertIn("away from the camera", by[f"death-{d}"])
             self.assertIn("lies on the ground behind his feet, farther from the camera", by[f"death-{d}"])
         for d in "WE":
             self.assertIn("lower in the frame than his feet were", by[f"death-{d}"])
@@ -612,11 +613,18 @@ class AssetTest(unittest.TestCase):
         for d in "SWN":
             self.assertNotIn("last_frame_path", [c for c in calls if c["id"] == f"death-{d}"][0]["args"], d)
             self.assertNotIn("pose of the last frame", by[f"death-{d}"], d)
-        for want in ("lets the club fall behind him", "beside his hip on the image-right side, never in front of his feet",
-                     "He ends lying completely flat on his back", "his arms down on the ground along his sides",
-                     "nothing raised, propped or sitting up", "not his feet and not the club"):
+        # Take 4: falling backward, death-S ended sitting up (74 px) with
+        # his legs slid to the cell's bottom edge: take 5 falls across the
+        # frame toward image-left, as take 2 did, and rolls flat onto his back.
+        for want in ("topples over sideways toward the image-left edge", "neither toward nor away from the camera",
+                     "ending lying completely flat across the frame", "nothing raised, propped or sitting up",
+                     "his legs never sliding toward the camera", "not his feet, his legs and not the club"):
             self.assertIn(want, by["death-S"])
+        self.assertNotIn("topples straight backward", by["death-S"])
         self.assertIn("his head stays at exactly the same height in every frame, with no bob and no dip", by["walk-NW"])
+        # The dip is the knee bend in each step (four takes at 89 px).
+        self.assertIn("his knees stay almost straight", by["walk-NW"])
+        self.assertNotIn("his knees stay almost straight", by["walk-N"])
         self.assertNotIn("very slight body bob", by["walk-NW"])
 
     def test_boss_view_s_pins_a_square_front_view(self):
@@ -654,6 +662,15 @@ class AssetTest(unittest.TestCase):
         self.assertNotIn("point to the right edge", calls["view-W"])
         # The halberd is handed, so E is generated, never mirrored from W.
         self.assertNotIn("mirror_views", hs.load_config("boss"))
+        # Take 2 of view-E faces right and is its own drawing: its figure is
+        # nearer the flipped view-W than view-W itself (it faces the other
+        # way), yet differs from that flip in over a tenth of its pixels.
+        views = os.path.join(hs.load_config("boss")["video"], "views")
+        fig = lambda d: np.asarray(Image.open(os.path.join(views, f"k-{d}.png")).convert("RGB")).min(2) < 235
+        e, w = fig("E"), fig("W")
+        flipped = int((e != w[:, ::-1]).sum())
+        self.assertLess(flipped, int((e != w).sum()))
+        self.assertGreater(flipped, 0.1 * int(e.sum()))
 
     def test_boss_is_the_dark_rider_on_his_horse_in_a_wide_cell(self):
         # monsters.js draws the boss 34 world units tall: 94 px at the hero

@@ -30,10 +30,15 @@ export function walkSheetUrl(hero, normal = false) {
 // goblin's and the skeleton's pixels are the same size as the heroes'
 // (docs/ART-REDO.md). The skeleton's wider cell holds the slash and the heap;
 // the wolf's 128 px cell holds its side-on length, the lunge and the body lying flat.
+// The bat is a flier: its 128 px cell holds the spread wings, and its foot line
+// (row 104, outline row 105) sits 24 px over the cell bottom so the wings'
+// downstroke stays inside the cell.
+// render.js lifts it (flierLift) and drops it to the ground through its death row.
 export const MONSTER_SHEETS = {
   goblin: { cell: 80, figure: 50, footRow: 73, rows: { walk: 8, attack: 6, death: 6 } },
   skeleton: { cell: 88, figure: 60, footRow: 81, rows: { walk: 8, attack: 6, death: 6 } },
-  wolf: { cell: 128, figure: 50, footRow: 121, rows: { walk: 8, attack: 6, death: 6 } }
+  wolf: { cell: 128, figure: 50, footRow: 121, rows: { walk: 8, attack: 6, death: 6 } },
+  bat: { cell: 128, figure: 44, footRow: 105, rows: { walk: 8, attack: 6, death: 6 } }
 }
 
 export function monsterSheetUrl(kind) {

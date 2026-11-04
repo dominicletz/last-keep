@@ -12,7 +12,7 @@ import { readRgbaPng } from "./png.js"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 const GOBLIN = MONSTER_SHEETS.goblin
-const SHEET_KINDS = ["goblin", "skeleton", "wolf"]
+const SHEET_KINDS = ["goblin", "skeleton", "wolf", "bat"]
 
 function sheetImage(kind) {
   return readRgbaPng(fs.readFileSync(path.join(root, "priv/static", monsterSheetUrl(kind))))
@@ -87,7 +87,10 @@ for (const kind of SHEET_KINDS) {
         const rows = cellRows(image, SPEC.cell, column, row)
         assert.ok(rows, `cell ${column},${row} is empty`)
         // Walk feet stay on the line; attack and death never sink past it by more than the checker allows.
-        if (row < layout.walk) assert.equal(rows[1], SPEC.footRow, `walk ${column},${row}`)
+        // A flier's wings beat below its feet in the walk and attack rows (inside the cell); its
+        // death rows lie on the line like a walker's.
+        if (asset.flies && row < layout.walk + layout.attack) assert.ok(rows[1] < SPEC.cell - 1, `wing ${column},${row} at the edge`)
+        else if (row < layout.walk) assert.equal(rows[1], SPEC.footRow, `walk ${column},${row}`)
         else assert.ok(Math.abs(rows[1] - SPEC.footRow) <= 3, `cell ${column},${row} feet at ${rows[1]}`)
       }
     }
@@ -132,6 +135,27 @@ test("the wolf sheet decodes to Pillow's sums", () => {
   }
   assert.equal(opaque, 203606)
   assert.equal(ink, 27885119)
+})
+
+test("the bat sheet decodes to Pillow's sums", () => {
+  const image = sheetImage("bat")
+  let opaque = 0
+  let ink = 0
+  for (let i = 0; i < image.rgba.length; i += 4) {
+    if (!image.rgba[i + 3]) continue
+    opaque += 1
+    ink += image.rgba[i] + image.rgba[i + 1] + image.rgba[i + 2]
+  }
+  assert.equal(opaque, 173274)
+  assert.equal(ink, 18987743)
+})
+
+test("the bat's foot line is the flier line, 24 px over the cell bottom", () => {
+  // sprite_from_video.py FLIER_FOOT_MARGIN: the feet's lowest body row is
+  // cell - 24 = 104, and footRow is the outline row under it, as for the
+  // walkers (the wolf's 128 - 8 = 120, footRow 121).
+  const SPEC = MONSTER_SHEETS.bat
+  assert.equal(SPEC.footRow, SPEC.cell - 24 + 1)
 })
 
 for (const kind of SHEET_KINDS) {
@@ -216,7 +240,7 @@ test("dressMonster draws each goblin from its own clone of the sheet", () => {
   assert.equal(sheetGone, false)
 })
 
-test("dress gives a sheet to goblins, skeletons and wolves that spawned before it loaded, and leaves other kinds", () => {
+test("dress gives a sheet to goblins, skeletons, wolves and bats that spawned before it loaded, and leaves other kinds", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const goblin = monsterGroup("goblin")
@@ -249,6 +273,16 @@ test("dress gives a sheet to goblins, skeletons and wolves that spawned before i
   assert.equal(wolf.group.userData.hd, "wolf")
   assert.equal(wolf.group.userData.picture.h, MONSTER_SHEETS.wolf.figure * SHEET_TEXEL)
   assert.equal(wolf.group.userData.parts, 160)
+  // The bat too: a flier on its 128 px cell, still lifted by render.js.
+  const bat = monsterGroup("bat")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [bat.group] })
+  assert.equal(bat.group.userData.card.isSprite, true)
+  picture.attachMonsterSheet(sheetTexture(), "bat")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [bat.group] })
+  assert.equal(bat.group.userData.card.isMesh, true)
+  assert.equal(bat.group.userData.hd, "bat")
+  assert.equal(bat.group.userData.picture.h, MONSTER_SHEETS.bat.figure * SHEET_TEXEL)
+  assert.equal(bat.group.userData.picture.death, MONSTER_SHEETS.bat.rows.death)
   // A hero in the monster list is not a monster.
   const hero = monsterGroup("goblin")
   hero.group.userData.role = "hero"
