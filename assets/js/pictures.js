@@ -34,11 +34,15 @@ export function walkSheetUrl(hero, normal = false) {
 // (row 104, outline row 105) sits 24 px over the cell bottom so the wings'
 // downstroke stays inside the cell.
 // render.js lifts it (flierLift) and drops it to the ground through its death row.
+// The troll is the one walker taller than a hero (34 world units, under 1.75
+// keep doors): its 160 px cell holds the club slammed over his head and the
+// body lying flat across the frame.
 export const MONSTER_SHEETS = {
   goblin: { cell: 80, figure: 50, footRow: 73, rows: { walk: 8, attack: 6, death: 6 } },
   skeleton: { cell: 88, figure: 60, footRow: 81, rows: { walk: 8, attack: 6, death: 6 } },
   wolf: { cell: 128, figure: 50, footRow: 121, rows: { walk: 8, attack: 6, death: 6 } },
-  bat: { cell: 128, figure: 44, footRow: 105, rows: { walk: 8, attack: 6, death: 6 } }
+  bat: { cell: 128, figure: 44, footRow: 105, rows: { walk: 8, attack: 6, death: 6 } },
+  troll: { cell: 160, figure: 94, footRow: 153, rows: { walk: 8, attack: 6, death: 6 } }
 }
 
 export function monsterSheetUrl(kind) {

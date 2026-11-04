@@ -725,6 +725,25 @@ class AssetTest(unittest.TestCase):
         crop = np.asarray(Image.open(os.path.join(hs.ROOT, cfg["concept"]["source"])).convert("RGB").crop((bx0, by0, bx1, by1)))
         self.assertEqual(png_bytes(crop), read(os.path.join(cfg["dir"], "concept.png")))
 
+    def test_boss_walk_n_take_2_asks_for_a_big_trot_and_only_walk_n_changes(self):
+        # Take-1 walk-N failed the start check (84 px vs 0.2 x its 274 walk
+        # median = 55): from behind the trot barely moved. Only walk-N is retaken.
+        cfg = hs.load_config("boss")
+        got = {c["id"]: c for c in hs.build_prompts(cfg)["calls"]}
+        plain = json.loads(json.dumps(cfg))
+        del plain["clip_overrides"]
+        base = {c["id"]: c for c in hs.build_prompts(plain)["calls"]}
+        self.assertEqual(sorted(k for k in cfg["clip_overrides"] if not k.startswith("_")), ["walk-N"])
+        for cid in base:
+            if cid != "walk-N":
+                self.assertEqual(got[cid], base[cid], cid)
+        w = got["walk-N"]["args"]["prompt"]
+        self.assertNotEqual(w, base["walk-N"]["args"]["prompt"])
+        for phrase in ("Big, clearly visible horse trot", "each hoof lifted high off the ground",
+                       "the horse's body never moves forward", "seen from directly behind"):
+            self.assertIn(phrase, w)
+        self.assertEqual(got["walk-N"]["args"]["image_path"], "assets/reference/boss/video/dirs/N.png")
+
     def test_boss_nw_and_se_are_their_own_views_that_show_the_halberd(self):
         # Turntables 1 and 2 lost the halberd at NW (behind his back between
         # W and N) and SE (lost against his chest between E and S). Keying
@@ -896,7 +915,10 @@ class AssetTest(unittest.TestCase):
             self.assertNotIn("far hand", views[d], d)
         by = {c["id"]: c["args"].get("prompt", "") for c in calls}
         for d in hs.COLUMNS:
-            self.assertIn("Steady horse trot on the spot", by[f"walk-{d}"])
+            # walk-N take 2 asks for a bigger trot, still on the spot.
+            trot = "Big, clearly visible horse trot on the spot" if d == "N" else "Steady horse trot on the spot"
+            self.assertIn(trot, by[f"walk-{d}"])
+            self.assertIn("the horse's body never moves forward", by[f"walk-{d}"])
             self.assertIn("the horse's hooves stay planted on the same spot, it does not step, rear up or jump",
                           by[f"attack-{d}"])
             self.assertIn("the purple glow of his visor and of the horse's eye keeps exactly the same brightness",

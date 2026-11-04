@@ -482,6 +482,18 @@ class SheetBuildTest(unittest.TestCase):
     def test_the_bat_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
         self.rebuild("bat", ["bat-sheet.png"])
 
+    def test_the_troll_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
+        self.rebuild("troll", ["troll-sheet.png"])
+
+    def test_the_committed_troll_sheet_passes_its_checks(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sheet = np.asarray(Image.open(os.path.join(root, "priv/static/images/hd2d/troll-sheet.png")).convert("RGBA"))
+        self.assertEqual(sheet.shape, (20 * 160, 8 * 160, 4))
+        rep = cs.run_monster_checks(cs.ASSETS["troll"], sheet,
+                                    os.path.join(root, "assets/reference/troll/video/dirs"), quiet=True)
+        self.assertEqual([name for ok, name, _, _ in rep.results if not ok], [])
+        self.assertGreater(len(rep.results), 50)
+
     def test_the_committed_bat_sheet_passes_its_checks(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         sheet = np.asarray(Image.open(os.path.join(root, "priv/static/images/hd2d/bat-sheet.png")).convert("RGBA"))

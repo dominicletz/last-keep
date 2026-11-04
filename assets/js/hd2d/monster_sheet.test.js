@@ -12,7 +12,7 @@ import { readRgbaPng } from "./png.js"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 const GOBLIN = MONSTER_SHEETS.goblin
-const SHEET_KINDS = ["goblin", "skeleton", "wolf", "bat"]
+const SHEET_KINDS = ["goblin", "skeleton", "wolf", "bat", "troll"]
 
 function sheetImage(kind) {
   return readRgbaPng(fs.readFileSync(path.join(root, "priv/static", monsterSheetUrl(kind))))
@@ -150,6 +150,26 @@ test("the bat sheet decodes to Pillow's sums", () => {
   assert.equal(ink, 18987743)
 })
 
+test("the troll sheet decodes to Pillow's sums", () => {
+  const image = sheetImage("troll")
+  assert.equal(image.width, 8 * MONSTER_SHEETS.troll.cell)
+  assert.equal(image.height, 20 * MONSTER_SHEETS.troll.cell)
+  let opaque = 0
+  let ink = 0
+  for (let i = 0; i < image.rgba.length; i += 4) {
+    if (!image.rgba[i + 3]) continue
+    opaque += 1
+    ink += image.rgba[i] + image.rgba[i + 1] + image.rgba[i + 2]
+  }
+  assert.equal(opaque, 680037)
+  assert.equal(ink, 91136020)
+})
+
+test("the troll's foot line is the walkers' line, 8 px over the cell bottom", () => {
+  const SPEC = MONSTER_SHEETS.troll
+  assert.equal(SPEC.footRow, SPEC.cell - 8 + 1)
+})
+
 test("the bat's foot line is the flier line, 24 px over the cell bottom", () => {
   // sprite_from_video.py FLIER_FOOT_MARGIN: the feet's lowest body row is
   // cell - 24 = 104, and footRow is the outline row under it, as for the
@@ -164,7 +184,11 @@ for (const kind of SHEET_KINDS) {
     const drawn = SPEC.figure * SHEET_TEXEL
     // Within one texel of the world height the voxel card and the sim use.
     assert.ok(Math.abs(drawn - monsterHeights[kind]) <= SHEET_TEXEL, `${drawn} vs ${monsterHeights[kind]}`)
-    assert.ok(drawn < spriteHeight)
+    // Only the troll (and later the boss) is designed taller than a hero
+    // (docs/ART-REDO.md: 34 world units); every monster stays under 1.75
+    // keep doors.
+    if (monsterHeights[kind] < spriteHeight) assert.ok(drawn < spriteHeight)
+    else assert.ok(["troll", "boss"].includes(kind), kind)
     assert.ok(drawn <= 20 * 1.75)
     const geometry = sheetCardGeometry(SPEC.cell, SPEC.footRow)
     geometry.computeBoundingBox()
@@ -186,7 +210,7 @@ test("a goblin keeps its voxel card until its sheet loads", () => {
   assert.equal(goblin.group.userData.rim, goblin.rim)
   assert.equal(goblin.group.userData.picture.frames, 11)
   assert.equal(goblin.group.userData.hd, undefined)
-  assert.throws(() => picture.attachMonsterSheet(sheetTexture(), "troll"), /monster sheet/)
+  assert.throws(() => picture.attachMonsterSheet(sheetTexture(), "boss"), /monster sheet/)
   assert.throws(() => picture.attachMonsterSheet(null, "goblin"), /monster sheet/)
 })
 
@@ -240,19 +264,19 @@ test("dressMonster draws each goblin from its own clone of the sheet", () => {
   assert.equal(sheetGone, false)
 })
 
-test("dress gives a sheet to goblins, skeletons, wolves and bats that spawned before it loaded, and leaves other kinds", () => {
+test("dress gives a sheet to goblins, skeletons, wolves, bats and trolls that spawned before it loaded, and leaves other kinds", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const goblin = monsterGroup("goblin")
-  const troll = monsterGroup("troll")
-  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, troll.group] })
+  const boss = monsterGroup("boss")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, boss.group] })
   assert.equal(goblin.group.userData.card.isSprite, true)
   picture.attachMonsterSheet(sheetTexture(), "goblin")
-  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, troll.group] })
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, boss.group] })
   assert.equal(goblin.group.userData.card.isMesh, true)
-  assert.equal(troll.group.userData.card, troll.sprite)
-  assert.equal(troll.group.userData.rim, troll.rim)
-  assert.equal(troll.group.userData.hd, undefined)
+  assert.equal(boss.group.userData.card, boss.sprite)
+  assert.equal(boss.group.userData.rim, boss.rim)
+  assert.equal(boss.group.userData.hd, undefined)
   // The skeleton waits for its own sheet, then draws from it.
   const skeleton = monsterGroup("skeleton")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [skeleton.group] })
@@ -283,6 +307,16 @@ test("dress gives a sheet to goblins, skeletons, wolves and bats that spawned be
   assert.equal(bat.group.userData.hd, "bat")
   assert.equal(bat.group.userData.picture.h, MONSTER_SHEETS.bat.figure * SHEET_TEXEL)
   assert.equal(bat.group.userData.picture.death, MONSTER_SHEETS.bat.rows.death)
+  // The troll on its 160 px cell, 94 px tall.
+  const troll = monsterGroup("troll")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [troll.group] })
+  assert.equal(troll.group.userData.card.isSprite, true)
+  picture.attachMonsterSheet(sheetTexture(), "troll")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [troll.group] })
+  assert.equal(troll.group.userData.card.isMesh, true)
+  assert.equal(troll.group.userData.hd, "troll")
+  assert.equal(troll.group.userData.picture.h, MONSTER_SHEETS.troll.figure * SHEET_TEXEL)
+  assert.equal(troll.group.userData.parts, 160)
   // A hero in the monster list is not a monster.
   const hero = monsterGroup("goblin")
   hero.group.userData.role = "hero"
