@@ -11,7 +11,8 @@
 
 Everything is driven by assets/reference/HERO/hero.json, or by
 assets/reference/ASSET/asset.json for a non-hero figure ("type": "monster"; see
-docs/ART-REDO.md). A non-hero asset runs prep, views, dirs and prompts; it runs
+docs/ART-REDO.md) or a piece of static art ("type": "static": a few front
+images pixelized into one row of cells; it runs prep, build, colours, prompts). A non-hero asset runs prep, views, dirs and prompts; it runs
 every step, with the sheet layout from its "sheet" block. Only the
 GenerateImage and GenerateVideo calls are manual; prep writes them, with every
 input path, to assets/reference/HERO/prompts.json and prompts.md. Every step
@@ -70,7 +71,7 @@ ATTACK_LOOP = WALK_LOOP  # a monster attack ends back on its start pose like a w
 # "attack": [...8], "death": ["S", "W", "N", "E"]}.
 CLIP_KINDS = ("walk", "idle", "attack", "death")
 HERO_CLIPS = {"walk": COLUMNS, "idle": COLUMNS}
-TYPES = ("hero", "monster")
+TYPES = ("hero", "monster", "static")
 # One sheet texel in world units: the hero's 32-unit body over its 88 px.
 TEXEL = 32 / 88
 
@@ -91,6 +92,8 @@ def load_config(hero, reference=REFERENCE):
     with open(path) as fh:
         cfg = json.load(fh)
     name = os.path.basename(path)
+    if cfg.get("type") == "static":
+        return load_static(cfg, hero, name, reference)
     for key in ("noun", "possessive", "concept", "design", "items", "turntable"):
         if key not in cfg:
             raise SystemExit(f"{hero}/{name} is missing {key!r}")
@@ -626,6 +629,8 @@ def build_prompts(cfg):
     """Every GenerateImage / GenerateVideo call for the hero, in order, with
     the exact arguments and where to save the result. Paths are relative to
     the repository root."""
+    if cfg.get("type") == "static":
+        return static_prompts(cfg)
     h, poss, noun = cfg["hero"], cfg["possessive"], cfg["noun"]
     base = f"assets/reference/{h}"
     vid = f"{base}/video"
@@ -1035,6 +1040,220 @@ def concept_colours(cfg, k=12):
 
 # ---------------------------------------------------------------- CLI
 
+# ---------------------------------------------------------------- static art
+
+# A static piece (asset.json "type": "static") never walks: a tree, a rock, a
+# building. It is a few generated front images (variants), each pixelized at
+# the hero texel to its world height, outlined, on a transparent background,
+# side by side in one row of cells: priv/static/images/hd2d/<name>-sheet.png.
+STATIC_VARIANTS = 4    # most variants per piece
+STATIC_MARGIN = 4      # transparent rows/columns kept around the figure in its cell
+STATIC_SAMPLES = 60000  # palette samples, every n-th body pixel in variant order
+STATIC_SCALE = (0.5, 1.0)  # a variant's "scale": its height over world_height
+
+
+def load_static(cfg, hero, name, reference=REFERENCE):
+    """Validate a static asset.json: noun, concept, design, world_height
+    (units; the figure is sheet_height(world_height) px tall with its
+    outline), cell [w, h] in px, variants [{"id", "note", "scale"?}]."""
+    for key in ("noun", "concept", "design", "world_height", "cell", "variants"):
+        if key not in cfg:
+            raise SystemExit(f"{hero}/{name} is missing {key!r}")
+    wh = cfg["world_height"]
+    if not isinstance(wh, (int, float)) or isinstance(wh, bool) or wh <= 0:
+        raise SystemExit(f"{hero}/{name}: world_height is a positive number of world units, got {wh!r}")
+    vs = cfg["variants"]
+    ids = [v.get("id") for v in vs] if isinstance(vs, list) else []
+    if (not isinstance(vs, list) or not 1 <= len(vs) <= STATIC_VARIANTS or len(set(ids)) != len(ids)
+            or any(not isinstance(i, str) or not i.isalnum() or not i.islower() for i in ids)
+            or any(not isinstance(v.get("note", ""), str) for v in vs)
+            or any(set(v) - {"id", "note", "scale"} for v in vs)):
+        raise SystemExit(f"{hero}/{name}: variants is 1-{STATIC_VARIANTS} entries "
+                         f"{{\"id\" (lowercase letters/digits, unique), \"note\", \"scale\"?}}, got {vs!r}")
+    for v in vs:
+        s = v.get("scale", 1.0)
+        if not isinstance(s, (int, float)) or isinstance(s, bool) or not STATIC_SCALE[0] <= s <= STATIC_SCALE[1]:
+            raise SystemExit(f"{hero}/{name}: variant {v['id']!r} scale {s!r} is from {STATIC_SCALE[0]} to {STATIC_SCALE[1]}")
+    cell = cfg["cell"]
+    h = sheet_height(wh)
+    if (not isinstance(cell, list) or len(cell) != 2 or any(type(c) is not int or c % 8 for c in cell)
+            or cell[1] < h + 2 * STATIC_MARGIN):
+        raise SystemExit(f"{hero}/{name}: cell is [w, h], multiples of 8, h at least {h + 2 * STATIC_MARGIN} "
+                         f"({h} px figure + {STATIC_MARGIN} px above and below), got {cell!r}")
+    cfg["type"] = "static"
+    cfg["hero"] = hero
+    cfg["dir"] = os.path.join(reference, hero)
+    cfg["height"] = h
+    return cfg
+
+
+def static_height(cfg, v):
+    """Px height, outline included, of variant v."""
+    return int(round(cfg["height"] * v.get("scale", 1.0)))
+
+
+def static_prompts(cfg):
+    """One GenerateImage call per variant, paths relative to the repository root."""
+    h, noun = cfg["hero"], cfg["noun"]
+    base = f"assets/reference/{h}"
+    refs = [f"{base}/concept.png"] + list(cfg.get("style_refs", []))
+    source = cfg.get("source_note", "")
+    style = (" Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art "
+             "look, block size, outline-free shading and soft lighting, but not its subject."
+             if cfg.get("style_refs") else "")
+    calls = []
+    for v in cfg["variants"]:
+        note = f" {sentence(v['note'])}" if v.get("note") else ""
+        desc = (f"Game prop reference of the {noun} from the reference image, seen from the front at the game's "
+                f"camera angle, slightly from above. {sentence(source) + ' ' if source else ''}"
+                f"Same design: {cfg['design']}.{note}{style} The whole {noun} from its top to the ground it stands "
+                f"on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no "
+                f"shadow, no text, no other objects. One single {noun} only, not a sheet of several.")
+        calls.append({"id": f"image-{v['id']}", "step": "build", "tool": "GenerateImage",
+                      "args": {"description": desc, "reference_image_paths": refs, "aspect_ratio": "1:1",
+                               "filename": f"{h}-{v['id']}.png"},
+                      "save_as": f"{base}/views/{v['id']}.png",
+                      "then": f"python3 script/hero_sprites.py {h} build"})
+    return {"hero": h, "calls": calls, "type": "static"}
+
+
+def static_cut(rgb, height):
+    """A generated image on white -> (RGB, mask) of the figure scaled so its
+    opaque body is height - 2 px tall (the outline adds a row above and
+    below). Background is sv.cut_out's white; the figure is its bounding box."""
+    mask = sv.cut_out(rgb)
+    if not mask.any():
+        raise ValueError("no figure on the image")
+    ys, xs = np.nonzero(mask)
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    fill = height - 2
+    w = max(1, int(round((x1 - x0) * fill / (y1 - y0))))
+    img = Image.fromarray(np.ascontiguousarray(rgb[y0:y1, x0:x1]))
+    small = np.asarray(img.resize((w, fill), Image.BOX), np.float64)
+    a = np.asarray(Image.fromarray((mask[y0:y1, x0:x1] * 255).astype(np.uint8)).resize((w, fill), Image.BOX))
+    keep = a >= 128
+    # A thin tip (a pine's point) can fall under the threshold: every row of
+    # the box keeps at least its most covered pixel, so the height is exact.
+    for y in np.nonzero(~keep.any(1))[0]:
+        keep[y, int(a[y].argmax())] = True
+    return np.clip(np.round(small), 0, 255).astype(np.uint8), keep
+
+
+def static_sheet(cfg, images):
+    """images: variant id -> RGB array. Returns the RGBA sheet: one cell per
+    variant in config order, each figure centred, its lowest outline row
+    STATIC_MARGIN px above the cell bottom, one shared palette."""
+    cw, ch = cfg["cell"]
+    cuts = []
+    for v in cfg["variants"]:
+        rgb, keep = static_cut(images[v["id"]], static_height(cfg, v))
+        if keep.shape[1] + 2 > cw - 2 * STATIC_MARGIN:
+            raise ValueError(f"{cfg['hero']} {v['id']}: {keep.shape[1] + 2} px wide with its outline, "
+                             f"cell {cw} keeps {cw - 2 * STATIC_MARGIN}: widen cell, never crop")
+        cuts.append((rgb, keep))
+    samples = np.concatenate([rgb[keep] for rgb, keep in cuts]).astype(np.float64)
+    step = max(1, len(samples) // STATIC_SAMPLES)
+    pal = sv.build_palette(samples[::step], k=cfg.get("colours", sv.COLOURS))
+    pal_lab = sv.srgb_to_lab(np.array(pal, np.float64))
+    sheet = np.zeros((ch, cw * len(cuts), 4), np.uint8)
+    for i, (rgb, keep) in enumerate(cuts):
+        body = sv.quantize(rgb, keep, pal_lab, pal)
+        hh, ww = keep.shape
+        cell = np.zeros((ch, cw, 4), np.uint8)
+        top = ch - STATIC_MARGIN - 1 - hh  # the outline row under the body is ch - STATIC_MARGIN - 1
+        left = (cw - ww) // 2
+        cell[top:top + hh, left:left + ww] = body
+        sheet[:, i * cw:(i + 1) * cw] = sv.outline(cell)
+    return sheet
+
+
+def static_checks(cfg, sheet):
+    """[(ok, name, detail)] for a static sheet; the build fails on any."""
+    cw, ch = cfg["cell"]
+    n = len(cfg["variants"])
+    out = [(sheet.shape == (ch, cw * n, 4), "sheet size", f"{sheet.shape[1]}x{sheet.shape[0]} (want {cw * n}x{ch})")]
+    if not out[0][0]:
+        return out
+    alpha = sheet[..., 3]
+    out.append((set(np.unique(alpha)) <= {0, 255}, "alpha is 0 or 255", ""))
+    body = {tuple(int(x) for x in c) for c in np.unique(sheet[alpha > 0][:, :3], axis=0)} - {sv.OUTLINE}
+    out.append((len(body) <= 32, "palette size", f"{len(body)} colours + outline"))
+    a = alpha > 0
+    p = np.pad(a, 1)
+    edge = a & ~(p[:-2, 1:-1] & p[2:, 1:-1] & p[1:-1, :-2] & p[1:-1, 2:])
+    off = int((~np.all(sheet[edge][:, :3] == sv.OUTLINE, axis=1)).sum())
+    out.append((off == 0, "1 px outline on every silhouette edge", f"{off} edge pixels off-outline"))
+    for i, v in enumerate(cfg["variants"]):
+        ca = a[:, i * cw:(i + 1) * cw]
+        if not ca.any():
+            out.append((False, f"{v['id']} has a figure", "empty cell"))
+            continue
+        ys, xs = np.nonzero(ca)
+        want = static_height(cfg, v)
+        got = int(ys.max() - ys.min() + 1)
+        out.append((got == want, f"{v['id']} height {want} px", f"{got} px"))
+        out.append((ys.max() == ch - STATIC_MARGIN - 1, f"{v['id']} stands on the cell's ground row",
+                    f"lowest row {ys.max()} (want {ch - STATIC_MARGIN - 1})"))
+        clear = (ys.min() >= STATIC_MARGIN and xs.min() >= STATIC_MARGIN and xs.max() < cw - STATIC_MARGIN)
+        out.append((clear, f"{v['id']} clear of the cell border", f"rows {ys.min()}..{ys.max()}, cols {xs.min()}..{xs.max()}"))
+        _, parts = ndimage.label(ca)
+        out.append((parts == 1, f"{v['id']} is one piece", f"{parts} pieces"))
+    return out
+
+
+def static_build(cfg, out=None, approval=None, log=print):
+    """Pixelize every variant into the sheet, run static_checks, and write
+    the approval files (sheet.png, contact.png at 4x on grey, check.txt).
+    Returns the number of failing checks; the sheet is written only when
+    none fail."""
+    images = {}
+    for v in cfg["variants"]:
+        path = os.path.join(cfg["dir"], "views", f"{v['id']}.png")
+        if not os.path.exists(path):
+            raise SystemExit(f"no {rel(path)}: generate it first (see prompts.md)")
+        images[v["id"]] = np.asarray(Image.open(path).convert("RGB"))
+    sheet = static_sheet(cfg, images)
+    res = static_checks(cfg, sheet)
+    text = "".join(f"{'PASS' if ok else 'FAIL'}  {name}  {detail}\n" for ok, name, detail in res)
+    bad = sum(1 for ok, _, _ in res if not ok)
+    text += f"{'OK: 0 failing checks' if not bad else f'FAILED: {bad} failing checks'}\n"
+    log(text, end="")
+    adir = approval_dir(cfg["hero"], approval)
+    os.makedirs(adir, exist_ok=True)
+    sv.write_png(os.path.join(adir, "sheet.png"), sheet)
+    big = np.repeat(np.repeat(sheet, 4, 0), 4, 1)
+    grey = np.zeros_like(big)
+    grey[..., :3], grey[..., 3] = 128, 255
+    m = big[..., 3:] > 0
+    sv.write_png(os.path.join(adir, "contact.png"), np.where(m, big, grey))
+    write_text(os.path.join(adir, "check.txt"), text)
+    if not bad:
+        dst = out or os.path.join(ROOT, "priv/static/images/hd2d", f"{cfg['hero']}-sheet.png")
+        sv.write_png(dst, sheet)
+        log(f"wrote {rel(dst) if dst.startswith(ROOT) else dst}")
+    log(f"approval files in {adir}")
+    return bad
+
+
+def static_main(cfg, args):
+    if args.step == "prep":
+        crop_concept(cfg)
+        print(f"concept {rel(os.path.join(cfg['dir'], 'concept.png'))}")
+        write_prompts(cfg)
+        return 0
+    if args.step == "build":
+        return static_build(cfg, approval=args.approval)
+    if args.step == "colours":
+        for share, c, hh, ll, chm in concept_colours(cfg):
+            print(f"{share:6.1%}  rgb{c}  hue {hh:3d}  light {ll:.2f}  chroma {chm:.2f}")
+        return 0
+    if args.step == "prompts":
+        p = static_prompts(cfg)
+        print(json.dumps(absolute(p) if args.abs else p, indent=1))
+        return 0
+    raise SystemExit(f"{cfg['hero']} is static art: it runs prep, build, colours and prompts, not {args.step}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("hero")
@@ -1044,6 +1263,8 @@ def main(argv=None):
     ap.add_argument("--abs", action="store_true", help="prompts: print with absolute paths")
     args = ap.parse_args(argv)
     cfg = load_config(args.hero)
+    if cfg["type"] == "static":
+        return static_main(cfg, args)
     if args.step == "prep":
         crop_concept(cfg)
         print(f"concept {rel(os.path.join(cfg['dir'], 'concept.png'))}")

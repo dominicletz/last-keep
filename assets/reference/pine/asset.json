@@ -1,0 +1,35 @@
+{
+ "_note": "First static piece (docs/ART-REDO.md section 9). Today every tree is the one `tree` card (assets/js/yard_cards.js 48x40 world units, crop 300,600,96,112 of theme.jpg in propCrops), used for the yard trees, the forest wall (scenery.js forestWall, pine 0x353e27) and the outer rings. world_height 40 is that card's height: at the hero texel (32/88) the pine is 110 px tall with its outline, so a pine stands 1.25 heroes tall, as the card does now. The concept box 278,536,392,720 is the single pine in the south forest of theme.jpg (the card's own crop, widened to the whole tree; the skeletons at its left and the bush at its right are excluded by source_note). Two variants: a, the full pine, and b, a narrower, younger pine at 0.85 (94 px), so a row of them does not repeat. The cell is 128x120: 120 is the 110 px tree plus 4 px above and below, rounded up to a multiple of 8; 128 keeps a pine up to 118 px wide with its outline.",
+ "type": "static",
+ "noun": "pine tree",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   278,
+   536,
+   392,
+   720
+  ]
+ },
+ "source_note": "The reference shows one pine in a dark forest with other trees and figures at its edges; draw only the single pine tree and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a tall dark evergreen pine tree with a narrow conical crown of layered dark green needle tiers, lighter yellow-green tips on the lit side, a pointed top, and a short dark brown trunk visible under the lowest branches",
+ "world_height": 40,
+ "cell": [
+  128,
+  120
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "a full, mature pine, its crown widest near the ground"
+  },
+  {
+   "id": "b",
+   "note": "a younger, narrower pine with fewer, sparser tiers and a slightly longer bare trunk",
+   "scale": 0.85
+  }
+ ]
+}

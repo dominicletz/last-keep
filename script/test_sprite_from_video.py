@@ -358,7 +358,7 @@ class MonsterCheckTest(unittest.TestCase):
 
 class AssetProfileTest(unittest.TestCase):
     def test_goblin_roles(self):
-        self.assertEqual(sorted(cs.ASSETS), ["bat", "goblin", "skeleton", "troll", "wolf"])
+        self.assertEqual(sorted(cs.ASSETS), ["bat", "boss", "goblin", "skeleton", "troll", "wolf"])
         table = cs.ASSETS["goblin"]["profile"]["roles"]
         self.assertEqual(cs.role((142, 136, 134), table), "iron")
         self.assertEqual(cs.role((56, 39, 27), table), "leather")
@@ -481,6 +481,24 @@ class SheetBuildTest(unittest.TestCase):
 
     def test_the_bat_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
         self.rebuild("bat", ["bat-sheet.png"])
+
+    def test_the_boss_check_profile_sits_between_the_measured_columns(self):
+        # Trial sheet (all 20 clips): steel S 120-208 vs N 58-109, leather
+        # S 66-119 vs N 27-53; the glow overlaps (S 4-23, N 0-6) and is no bound.
+        prof = cs.ASSETS["boss"]["profile"]
+        self.assertIsNone(prof["prop"])
+        back = {n: hi for n, _, lo, hi in prof["back"][1]}
+        front = {n: lo for n, _, lo, hi in prof["front"][1]}
+        self.assertEqual(back, {"steel": 114, "leather": 59})
+        self.assertEqual(front, {"steel": 115, "leather": 60})
+        for n in back:
+            self.assertLess(back[n], front[n])
+        table = prof["roles"]
+        self.assertEqual(cs.role((88, 82, 89), table), "steel")
+        self.assertEqual(cs.role((46, 34, 27), table), "leather")
+        self.assertEqual(cs.role((45, 41, 46), table), "iron")
+        self.assertEqual(cs.role((158, 84, 185), table), "glow")
+        self.assertEqual(cs.ASSETS["boss"]["spec"].cell, 192)
 
     def test_the_troll_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
         self.rebuild("troll", ["troll-sheet.png"])

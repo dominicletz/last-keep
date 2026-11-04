@@ -15,3 +15,15 @@ export const yardCards = {
 // The masonry crop repeats this many times across one stone face. Density is
 // the face's world size over (crop pixels × this repeat).
 export const stoneRepeat = { x: 2, y: 4 }
+
+// A building with no card of its own draws the card named here until its art
+// exists. stone_wall (rules.ex building/1) had neither a card nor a model, so
+// buildingMesh threw "no model for stone_wall" when one was built.
+export const cardFallback = { stone_wall: "wall" }
+
+// The yardCards key a building of this kind draws, or null when it is a model.
+export function buildingCard(kind) {
+  if (yardCards[kind]) return kind
+  const other = cardFallback[kind]
+  return other && yardCards[other] ? other : null
+}

@@ -725,24 +725,32 @@ class AssetTest(unittest.TestCase):
         crop = np.asarray(Image.open(os.path.join(hs.ROOT, cfg["concept"]["source"])).convert("RGB").crop((bx0, by0, bx1, by1)))
         self.assertEqual(png_bytes(crop), read(os.path.join(cfg["dir"], "concept.png")))
 
-    def test_boss_walk_n_take_2_asks_for_a_big_trot_and_only_walk_n_changes(self):
-        # Take-1 walk-N failed the start check (84 px vs 0.2 x its 274 walk
-        # median = 55): from behind the trot barely moved. Only walk-N is retaken.
+    def test_boss_retakes_change_only_the_five_failing_clips(self):
+        # walk-N take 1 failed the start check (84 px vs 55); take 2 bounced on
+        # the trial sheet (85-107 px against 94 +-4), as did walk-NE (103);
+        # attack-N and attack-SW chopped too little; death-N ended 58 px tall.
         cfg = hs.load_config("boss")
         got = {c["id"]: c for c in hs.build_prompts(cfg)["calls"]}
         plain = json.loads(json.dumps(cfg))
         del plain["clip_overrides"]
         base = {c["id"]: c for c in hs.build_prompts(plain)["calls"]}
-        self.assertEqual(sorted(k for k in cfg["clip_overrides"] if not k.startswith("_")), ["walk-N"])
+        redo = ["attack-N", "attack-SW", "death-N", "walk-N", "walk-NE"]
+        self.assertEqual(sorted(k for k in cfg["clip_overrides"] if not k.startswith("_")), redo)
         for cid in base:
-            if cid != "walk-N":
-                self.assertEqual(got[cid], base[cid], cid)
-        w = got["walk-N"]["args"]["prompt"]
-        self.assertNotEqual(w, base["walk-N"]["args"]["prompt"])
-        for phrase in ("Big, clearly visible horse trot", "each hoof lifted high off the ground",
-                       "the horse's body never moves forward", "seen from directly behind"):
-            self.assertIn(phrase, w)
-        self.assertEqual(got["walk-N"]["args"]["image_path"], "assets/reference/boss/video/dirs/N.png")
+            (self.assertNotEqual if cid in redo else self.assertEqual)(got[cid], base[cid], cid)
+        for w in ("walk-N", "walk-NE"):
+            p = got[w]["args"]["prompt"]
+            self.assertIn("stay level at exactly the same height in every frame", p)
+            self.assertIn("never bobs, bounces or rears", p)
+            self.assertNotIn("bobbing", p)
+        self.assertIn("seen from directly behind", got["walk-N"]["args"]["prompt"])
+        for a in ("attack-N", "attack-SW"):
+            p = got[a]["args"]["prompt"]
+            self.assertIn("big, wide arc", p)
+            self.assertIn("the horse's hooves stay planted on the same spot", p)
+        d = got["death-N"]["args"]["prompt"]
+        for phrase in ("hooves staying on the ground", "lowers its neck and head flat onto the ground", "lying completely flat and low", "only ever move down, never up"):
+            self.assertIn(phrase, d)
 
     def test_boss_nw_and_se_are_their_own_views_that_show_the_halberd(self):
         # Turntables 1 and 2 lost the halberd at NW (behind his back between
@@ -781,6 +789,8 @@ class AssetTest(unittest.TestCase):
             if h == "boss" or not os.path.isdir(os.path.join(hs.REFERENCE, h)):
                 continue
             c = hs.load_config(h)
+            if c["type"] == "static":
+                continue  # static art has views of its own (test_static_sprites.py), no turntable
             self.assertEqual(hs.diagonal_views(c), [], h)
             turn = [x for x in hs.build_prompts(c)["calls"] if x["id"] == "turntable"][0]
             self.assertLessEqual(len(turn["args"]["keyframes"]), hs.MAX_KEYFRAMES, h)
@@ -916,7 +926,7 @@ class AssetTest(unittest.TestCase):
         by = {c["id"]: c["args"].get("prompt", "") for c in calls}
         for d in hs.COLUMNS:
             # walk-N take 2 asks for a bigger trot, still on the spot.
-            trot = "Big, clearly visible horse trot on the spot" if d == "N" else "Steady horse trot on the spot"
+            trot = {"N": "Clearly visible horse trot on the spot"}.get(d, "Steady horse trot on the spot")
             self.assertIn(trot, by[f"walk-{d}"])
             self.assertIn("the horse's body never moves forward", by[f"walk-{d}"])
             self.assertIn("the horse's hooves stay planted on the same spot, it does not step, rear up or jump",

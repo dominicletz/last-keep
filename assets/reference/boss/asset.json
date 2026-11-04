@@ -98,9 +98,132 @@
   "SE": "Seen from the front and to the right, exactly halfway between the right profile and the front view in the reference images: the horse's head, chest and glowing eye point down and to the image-right, nearest the camera, its rump and tail behind it at the upper image-left, so its spine runs diagonally at 45 degrees, neither sideways nor straight at the camera; the rider faces the same way, his visor, chest and right side toward the camera. This is a three-quarter view, not a profile and not a front view"
  },
  "clip_overrides": {
-  "_note": "Take 2 of walk-N (take 1 kept in /workspace/lk/boss-clips-take1 with attack-N). Take-1 walk-N failed the precheck start check by 84 px (limit 55 = 0.2 x its walk median 274): seen from behind the trot barely moved, so its median and limit were tiny. Take 2 asks for a big, clearly visible trot from behind. attack-N (87 px) is kept for now; it is judged against the new walk-N median.",
+  "_note": "Take 2 of walk-N (take 1 kept in /workspace/lk/boss-clips-take1 with attack-N). Take-1 walk-N failed the precheck start check by 84 px (limit 55 = 0.2 x its walk median 274): seen from behind the trot barely moved. Take 2 passed the precheck (median 857, start 82 px, limit 171) and attack-N passed with it (87 px), but on the trial sheet (kept as boss-clips-take1/trial-sheet.png) take 2 bounced: walk-N 85-107 px tall (94 +-4), and walk-NE rose to 103 px. Take 3 of walk-N and take 2 of walk-NE keep the legs clearly moving and the body level. attack-N and attack-SW chopped too little (largest change 781 and 958 px against the walk step medians 857 and 1107), so take 2 swings the halberd wide and far out to the side and back. death-N ended 58 px tall (at most 56) and its lowest row rose 4 px as the legs folded (death feet +-3), so take 2 folds the legs with the hooves on the ground and ends lying flat on its belly with its neck and head on the ground (not on its side: the wolf's death-E would not lie on its side). Every take is kept in /workspace/lk/boss-clips-take1 (walk-N take 2 as walk-N-take2.mp4). No limit was changed.",
   "walk-N": {
-   "gait": "Big, clearly visible horse trot on the spot, seen from behind: the diagonal pairs of legs move together, each hoof lifted high off the ground in turn so the hind legs and hooves visibly rise and fall under the horse's tail, the horse's rump bobbing up and down with every step, the rider rising and falling in the saddle, the cape swinging from side to side; the horse's body never moves forward"
+   "gait": "Clearly visible horse trot on the spot, seen from behind: the diagonal pairs of legs move together, the hind legs and hooves visibly stepping in turn under the horse's tail, the cape swaying a little; the horse's back, its rump and the rider's helm stay level at exactly the same height in every frame, the horse never bobs, bounces or rears; the horse's body never moves forward"
+  },
+  "walk-NE": {
+   "gait": "Steady horse trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, the cape swaying a little; the horse's back, its rump and the rider's helm stay level at exactly the same height in every frame, the horse never bobs, bounces or rears; the horse's body never moves forward"
+  },
+  "attack-N": {
+   "attack": "keeps the horse standing on all four hooves on the same spot and swings the halberd in a big, wide arc: up high over his helm, then far down and out to his side in one hard chop that sweeps the whole blade clearly away from his body, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle"
+  },
+  "attack-SW": {
+   "attack": "keeps the horse standing on all four hooves on the same spot and swings the halberd in a big, wide arc: up high over his helm, then far down and out to his side in one hard chop that sweeps the whole blade clearly away from his body, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle"
+  },
+  "death-N": {
+   "death": "holds the exact first-frame pose still for a moment, then the rider slumps forward over the horse's neck, the halberd falls flat to the ground beside the horse, and the horse's legs fold under it with its hooves staying on the ground, it sinks straight down onto its belly with its legs tucked under it and lowers its neck and head flat onto the ground, lying completely flat and low on the exact spot where it stood, the rider slumped low and flat along its back. Horse and rider only ever move down, never up. The horse never rears up, leaps or falls toward the camera, and the rider never falls off; it lies where its hooves were"
+  }
+ },
+ "check": {
+  "_note": "anchors: concept colours (hero_sprites.py boss colours) the palette keeps within dE 15: the dark iron of the armour and barding, its mid and lit tones, the dark violet-black of the cape, and the purple glow of the visor and the horse's eye. roles, tuned on the trial sheet of all 20 take-1/take-2 clips (/workspace/lk/boss-trial): the rider and horse are almost all greys (chroma under 0.12). steel is the lit armour greys (light over 0.3): helm, pauldrons and the horse's chest plate catch the light from the front. leather is the brown greys (hue 10-40): belt, saddle, breast strap and reins, mostly on the front. glow is the saturated purple (hue 255-300, chroma over 0.12) of the visor and eye. prop: null: the halberd is the same dark iron as the armour, so no colour follows it alone. bounds: the glow cannot bound a view (S walk/attack frames hold 4-23 glow px, N 0-6: they overlap), and the troll's 0.2 x start pose ceiling would fail the back's own frames (N steel up to 109 px against 0.2 x the S start pose's 165 = 33). Measured per frame on walk and attack rows: steel S 120-208, N 58-109; leather S 66-119, N 27-53. Each bound sits between the two columns: front floors steel 115 and leather 60, back ceilings steel 114 and leather 59, so a front column turned away and a back column turned to the camera both fail. Open question: the margins are thin (5-7 px from the measured extremes), much thinner than the troll's 48/96.",
+  "anchors": {
+   "iron dark": [
+    45,
+    41,
+    46
+   ],
+   "iron": [
+    64,
+    60,
+    66
+   ],
+   "iron lit": [
+    88,
+    82,
+    89
+   ],
+   "cape": [
+    40,
+    30,
+    49
+   ],
+   "glow": [
+    142,
+    66,
+    167
+   ]
+  },
+  "roles": [
+   {
+    "name": "steel",
+    "neutral": true,
+    "light_gt": 0.3
+   },
+   {
+    "name": "leather",
+    "neutral": true,
+    "hue": [
+     10,
+     40
+    ]
+   },
+   {
+    "name": "iron",
+    "neutral": true
+   },
+   {
+    "name": "glow",
+    "hue": [
+     255,
+     300
+    ],
+    "chroma_gt": 0.12
+   },
+   {
+    "name": "leather",
+    "hue": [
+     10,
+     40
+    ]
+   }
+  ],
+  "prop": null,
+  "back": {
+   "title": "back view N shows little of the lit front armour and leather",
+   "bounds": [
+    [
+     "steel",
+     [
+      "count",
+      "steel"
+     ],
+     null,
+     114
+    ],
+    [
+     "leather",
+     [
+      "count",
+      "leather"
+     ],
+     null,
+     59
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps the lit helm, chest plate and leather straps",
+   "bounds": [
+    [
+     "steel",
+     [
+      "count",
+      "steel"
+     ],
+     115,
+     null
+    ],
+    [
+     "leather",
+     [
+      "count",
+      "leather"
+     ],
+     60,
+     null
+    ]
+   ]
   }
  }
 }

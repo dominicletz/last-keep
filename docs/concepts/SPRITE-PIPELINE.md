@@ -165,6 +165,40 @@ python3 script/test_hero_sprites.py        # configs, crop, views, picker, pins,
 
 `test_hero_sprites.py` requires the mage `k-*.png` to come out of the view step byte for byte, the pinned frames to reproduce every committed diagonal byte for byte, `prep`, `views` and `dirs` to write nothing on a committed hero, the committed prompt files to match the configs, and `precheck` to name a walk cut short and an idle that walks.
 
+## Static art (`"type": "static"`)
+
+Trees, rocks and buildings never walk, so they skip the views, turntable,
+clips and precheck. An `asset.json` with `"type": "static"` (the first is
+`assets/reference/pine/`) has `noun`, `concept`, `design`, optional
+`source_note` and `style_refs`, `world_height` in world units, `cell` as
+`[w, h]` px (multiples of 8, `h` at least the figure plus 4 px above and
+below), and 1-4 `variants` (`{"id", "note", "scale"?}`, scale 0.5-1.0 of
+`world_height`). Steps:
+
+1. `hero_sprites.py <name> prep` crops the concept and writes `prompts.json`
+   and `prompts.md`: one GenerateImage call per variant (front view at the
+   game's camera angle, plain white background), saved to
+   `views/<id>.png`.
+2. Generate those images (manual).
+3. `hero_sprites.py <name> build` cuts each image off its white
+   background, scales it so the figure is `sheet_height(world_height × scale)`
+   px tall with its outline (the hero texel, 32/88 units per px; a thin tip
+   keeps at least one pixel per row so the height is exact), quantizes all
+   variants to one shared palette (k-means, fixed seed), adds the 1 px
+   outline, and stands each figure centred in its cell with its lowest
+   outline row 4 px above the cell bottom, on a transparent background.
+   A figure wider than its cell is refused, never cropped.
+4. The build checks sheet size, alpha 0/255, at most 32 colours, an outline
+   on every silhouette edge, and per variant: exact height, standing on the
+   ground row, clear of the cell border, one piece. It writes the sheet to
+   `priv/static/images/hd2d/<name>-sheet.png` only when every check passes,
+   and always writes `sheet.png`, `contact.png` (4× on grey) and `check.txt`
+   to the approval folder.
+
+Every step is deterministic. `colours` and `prompts --abs` work as for a
+figure; `views`, `dirs` and `precheck` are refused. Tests:
+`script/test_static_sprites.py`.
+
 ## Lessons learned
 
 - Make each profile its own image and say which hand holds each item. The one prompt that asked for four views in one image duplicated a profile, so two views showed the same side.

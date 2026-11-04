@@ -10,7 +10,7 @@ import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { mountPicture } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
-import { stoneRepeat, yardCards } from "./yard_cards.js"
+import { buildingCard, stoneRepeat, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -1686,10 +1686,11 @@ export function createView(stage, picture) {
   }
 
   function buildingMesh(row) {
-    const spec = sheetKinds[row.kind]
+    const cardKind = buildingCard(row.kind)
+    const spec = cardKind ? sheetKinds[cardKind] : null
     const group = new THREE.Group()
     if (spec?.stand) {
-      const card = new THREE.Sprite(sheetMats[row.kind])
+      const card = new THREE.Sprite(sheetMats[cardKind])
       card.center.set(0.5, 0)
       card.scale.set(spec.w, spec.h, 1)
       card.renderOrder = 1
@@ -1712,7 +1713,7 @@ export function createView(stage, picture) {
         }
       }
     } else if (spec) {
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(spec.w, spec.h), sheetMats[row.kind])
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(spec.w, spec.h), sheetMats[cardKind])
       mesh.rotation.x = -Math.PI / 2
       mesh.position.y = 0.42
       group.add(mesh)
