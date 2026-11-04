@@ -17,7 +17,7 @@ export const floraLook = {
   rock: { variants: ["a", "b", "c"], yard: 6, edge: 8 },
   flowers: { variants: ["a", "b"], yard: 12, edge: 4 },
   grass_tufts: { variants: ["a", "b", "c"], yard: 8, edge: 2 },
-  stump_log: { variants: ["a"], yard: 0, edge: 4 },
+  stump_log: { variants: ["a", "b"], yard: 0, edge: 4 },
   // A few leafy trees among the forest edge's pines.
   broadleaf: { variants: ["a", "b"], yard: 0, edge: 2 }
 }

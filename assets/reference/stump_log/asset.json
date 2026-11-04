@@ -1,5 +1,5 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 9, stump and log; also the felled wood). The concept has no stump or log, so the box is the theme.jpg pine for its wood colours and source_note says so. world height 10 (28 px). Variant b take 1 and 2 drew an upright stump (kept in /workspace/lk/stump-b-take1-stump.jpg and take2): the generic framing sentence asks for 'upright, from its top to the ground it stands on'. b's \"framing\" replaces it, and \"pending\": true leaves b out of the sheet until take 3 is in.",
+ "_note": "Static piece (docs/ART-REDO.md section 9, stump and log; also the felled wood). The concept has no stump or log, so the box is the theme.jpg pine for its wood colours and source_note says so. world height 10 (28 px). Variant b take 1 and 2 drew an upright stump (kept in /workspace/lk/stump-b-take1-stump.jpg and take2): the generic framing sentence asks for 'upright, from its top to the ground it stands on'. b's \"framing\" replaces it, and \"pending\": true leaves b out of the sheet until take 3 is in. Take 3 is a lying log (3/4, ring end toward the camera), so b is no longer pending.",
  "type": "static",
  "view": "three_quarter",
  "noun": "piece of felled pine wood",
@@ -30,8 +30,7 @@
   {
    "id": "b",
    "note": "a felled log lying flat on its side on the ground, its long trunk running across the image, one round cut end with rings toward the camera",
-   "framing": "the whole log lying flat along the ground, much longer than it is tall, centred, nothing cropped; it is not standing upright and it is not a stump",
-   "pending": true
+   "framing": "the whole log lying flat along the ground, much longer than it is tall, centred, nothing cropped; it is not standing upright and it is not a stump"
   }
  ]
 }

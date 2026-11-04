@@ -361,14 +361,14 @@ class StaticTest(unittest.TestCase):
             with self.assertRaises(SystemExit, msg=bad):
                 self.config(variants=bad)
 
-    def test_the_lying_log_is_retaken_with_its_own_framing_and_the_built_scenery_stands_on_its_foot_row(self):
+    def test_the_lying_log_has_its_own_framing_and_the_built_scenery_stands_on_its_foot_row(self):
         log = hs.load_config("stump_log")
         b = log["variants"][1]
-        self.assertTrue(b["pending"])
+        self.assertNotIn("pending", b)  # take 3 lies flat
         d = hs.static_prompts(log)["calls"][1]["args"]["description"]
         self.assertIn("lying flat along the ground, much longer than it is tall", d)
         self.assertNotIn("upright, centred", d)
-        sizes = {"broadleaf": [110, 94], "field": [33, 33], "forest_barrier": [88, 88], "stump_log": [28],
+        sizes = {"broadleaf": [110, 94], "field": [33, 33], "forest_barrier": [88, 88], "stump_log": [28, 28],
                  "cliff_face": [44, 44], "grass_tufts": [14, 11, 9], "reeds": [25, 20], "dead_tree": [99]}
         for name, want in sizes.items():
             cfg = hs.load_config(name)

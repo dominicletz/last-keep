@@ -52,8 +52,8 @@ export const staticSheets = {
   rock: staticSheet("rock", [88, 56], ["a", "b", "c"]),
   flowers: staticSheet("flowers", [64, 24], ["a", "b"]),
   grass_tufts: staticSheet("grass_tufts", [40, 24], ["a", "b", "c"]),
-  // b (a lying log) is pending a retake: the sheet has only the stump.
-  stump_log: staticSheet("stump_log", [80, 40], ["a"]),
+  // a a stump, b a felled log lying on its side.
+  stump_log: staticSheet("stump_log", [80, 40], ["a", "b"]),
   broadleaf: staticSheet("broadleaf", [136, 120], ["a", "b"])
 }
 
