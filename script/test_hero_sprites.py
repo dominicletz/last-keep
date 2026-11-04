@@ -589,8 +589,8 @@ class AssetTest(unittest.TestCase):
         # the ground ends 4-5 px under his foot line, so S, W and E topple
         # away from the camera behind feet that stay put. walk-NW hunched
         # under 94 - 4 px twice: an upright back.
-        self.assertIn("nothing comes lower in the frame than his feet were", by["death-S"])
-        self.assertIn("lying completely flat before the middle of the clip", by["death-S"])
+        self.assertIn("comes lower in the frame than his feet were", by["death-S"])
+        self.assertIn("He is lying flat before the middle of the clip", by["death-S"])
         for d in "SWE":
             self.assertIn("away from the camera", by[f"death-{d}"])
             self.assertIn("his feet staying exactly where they stood", by[f"death-{d}"])
@@ -601,6 +601,23 @@ class AssetTest(unittest.TestCase):
         self.assertIn("at his full standing height", by["walk-NW"])
         self.assertIn("never hunched forward, bent over or crouching", by["walk-NW"])
         self.assertNotIn("never crouching", by["walk-N"])
+        # Take 3: death-W passed; death-E stumbled mid-fall, so it ends on
+        # death-W's flipped last frame. death-S ended propped up, 62 px tall,
+        # its club in front of his feet at the cell edge. walk-NW still dipped
+        # 89 px in its stride.
+        e = [c for c in calls if c["id"] == "death-E"][0]["args"]
+        self.assertEqual(e["last_frame_path"], "assets/reference/troll/video/ends/E.png")
+        self.assertIn("ending exactly in the pose of the last frame", e["prompt"])
+        self.assertIn("His feet stay flat on the ground until his body is lying down", e["prompt"])
+        for d in "SWN":
+            self.assertNotIn("last_frame_path", [c for c in calls if c["id"] == f"death-{d}"][0]["args"], d)
+            self.assertNotIn("pose of the last frame", by[f"death-{d}"], d)
+        for want in ("lets the club fall behind him", "beside his hip on the image-right side, never in front of his feet",
+                     "He ends lying completely flat on his back", "his arms down on the ground along his sides",
+                     "nothing raised, propped or sitting up", "not his feet and not the club"):
+            self.assertIn(want, by["death-S"])
+        self.assertIn("his head stays at exactly the same height in every frame, with no bob and no dip", by["walk-NW"])
+        self.assertNotIn("very slight body bob", by["walk-NW"])
 
     def test_boss_view_s_pins_a_square_front_view(self):
         # Two view-S takes came out three-quarter, the horse's head turned to
@@ -624,6 +641,19 @@ class AssetTest(unittest.TestCase):
             self.assertIn(want, n)
         for d in ("W", "E"):
             self.assertNotIn("symmetric about the image's vertical centre line", calls[f"view-{d}"], d)
+        # view-E take 1 faced left like view-W: E names the right edge for the
+        # head and the face, the tail on image-left, and the halberd's side.
+        e = calls["view-E"]
+        for want in ("facing screen-right",
+                     "the horse's head, muzzle and glowing eye point to the right edge of the image",
+                     "its rump and long tail are on the image-left side",
+                     "the rider faces the right edge too",
+                     "not the same view: nothing faces the left edge",
+                     "show above the horse's head on the image-right side"):
+            self.assertIn(want, e)
+        self.assertNotIn("point to the right edge", calls["view-W"])
+        # The halberd is handed, so E is generated, never mirrored from W.
+        self.assertNotIn("mirror_views", hs.load_config("boss"))
 
     def test_boss_is_the_dark_rider_on_his_horse_in_a_wide_cell(self):
         # monsters.js draws the boss 34 world units tall: 94 px at the hero
@@ -757,6 +787,13 @@ class AssetTest(unittest.TestCase):
                       calls["attack-NW"])
         self.assertNotIn("same steady wingbeat", calls["attack-NW"])
         self.assertNotIn("same steady wingbeat", calls["attack-S"])
+        # Take 7: attack-S folded its wings in on the downstroke, 1228 px
+        # against 1305 in every frame, so only S keeps them fully spread.
+        self.assertIn("never folded against its body", calls["attack-S"])
+        self.assertIn("reach straight up high above its ears", calls["attack-S"])
+        for d in hs.COLUMNS:
+            if d != "S":
+                self.assertNotIn("never folded against its body", calls[f"attack-{d}"], d)
         for d in hs.COLUMNS:
             if d != "S":
                 self.assertNotIn("down below the camera", calls[f"attack-{d}"], d)
@@ -929,20 +966,24 @@ class AssetTest(unittest.TestCase):
         for d in ("S", "W", "N"):
             self.assertNotIn("last_frame_path", c[f"death-{d}"]["args"], d)
             self.assertNotIn("pose of the last frame", c[f"death-{d}"]["args"]["prompt"], d)
-        for h in HEROES + ["goblin", "skeleton", "bat", "troll", "boss"]:
+        # The troll's death-E (take 3) stumbled mid-fall: it ends on his
+        # passing death-W the same way.
+        self.assertEqual(hs.load_config("troll")["death_ends"], {"E": "W"})
+        for h in HEROES + ["goblin", "skeleton", "bat", "boss"]:
             self.assertNotIn("death_ends", hs.load_config(h), h)
         px = lambda path: np.asarray(Image.open(path).convert("RGB"))
-        end = px(os.path.join(wolf["video"], "ends", "E.png"))
-        last = hs.sv.run_ffmpeg_frames(os.path.join(wolf["video"], "death-W.mp4"))[-1]
-        self.assertEqual(end.shape, px(os.path.join(wolf["video"], "dirs", "E.png")).shape)
-        want = np.asarray(Image.fromarray(np.ascontiguousarray(last[:, ::-1])).resize(end.shape[1::-1], Image.LANCZOS))
-        self.assertTrue(np.array_equal(end, want))
-        # The end is low: under DEATH_DOWN of the start pose's height, so the
-        # clip is asked to end where the check wants it.
         h = lambda rgb: (lambda ys: ys[-1] - ys[0] + 1)(np.nonzero(hs.sv.cut_out(rgb).any(1))[0])
         import check_sprite_sheet as cs
-        self.assertLess(h(end), cs.DEATH_DOWN * h(px(os.path.join(wolf["video"], "dirs", "E.png"))))
-        self.assertGreater(h(end[:, ::-1]), 0.3 * h(px(os.path.join(wolf["video"], "dirs", "E.png"))))
+        for cfg in (wolf, hs.load_config("troll")):
+            end = px(os.path.join(cfg["video"], "ends", "E.png"))
+            last = hs.sv.run_ffmpeg_frames(os.path.join(cfg["video"], "death-W.mp4"))[-1]
+            self.assertEqual(end.shape, px(os.path.join(cfg["video"], "dirs", "E.png")).shape)
+            want = np.asarray(Image.fromarray(np.ascontiguousarray(last[:, ::-1])).resize(end.shape[1::-1], Image.LANCZOS))
+            self.assertTrue(np.array_equal(end, want), cfg["hero"])
+            # The end is low: under DEATH_DOWN of the start pose's height, so
+            # the clip is asked to end where the check wants it.
+            self.assertLess(h(end), cs.DEATH_DOWN * h(px(os.path.join(cfg["video"], "dirs", "E.png"))), cfg["hero"])
+            self.assertGreater(h(end[:, ::-1]), 0.3 * h(px(os.path.join(cfg["video"], "dirs", "E.png"))), cfg["hero"])
         # Only E and W, only between death clips; a missing source gives None.
         for bad in ({"N": "S"}, {"E": "E"}, {"E": "W", "W": "E"}, ["E"]):
             with tempfile.TemporaryDirectory() as tmp:
