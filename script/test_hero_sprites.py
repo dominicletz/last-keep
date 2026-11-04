@@ -624,11 +624,15 @@ class AssetTest(unittest.TestCase):
         self.assertNotIn("topples straight backward", by["death-S"])
         # Take 5: he lay flat in time; only the dropped club's head rolled
         # 1 px past the line (row 157, limit 156). Take 6 laid it beside his
-        # foot, across the frame to the cell edge: take 7 drops it behind him.
-        self.assertIn("drops straight down behind his heels, away from the camera", by["death-S"])
-        self.assertIn("it never rolls, bounces or tips toward the camera", by["death-S"])
-        self.assertIn("never lies across the frame and never reaches the edges of the image", by["death-S"])
-        self.assertNotIn("beside his feet on the image-right side", by["death-S"])
+        # foot, across the frame to the cell edge; take 7 dropped it behind him.
+        # Takes 5-7 dropped the club and it landed in front of the line every
+        # time (take 7: 3 cells at the edge, rows 150..159): take 8 keeps it.
+        self.assertIn("never letting go of the club: he keeps it gripped in his left hand the whole time", by["death-S"])
+        self.assertIn("ends lying along his body on the far side of him, away from the camera, never in front of him",
+                      by["death-S"])
+        self.assertIn("never across the frame and never reaching the edges of the image", by["death-S"])
+        for gone in ("beside his feet on the image-right side", "lets go of the club", "lets the club drop"):
+            self.assertNotIn(gone, by["death-S"])
         for d in "WEN":
             self.assertNotIn("never rolls, bounces", by[f"death-{d}"], d)
         self.assertIn("his head stays at exactly the same height in every frame, with no bob and no dip", by["walk-NW"])
@@ -721,16 +725,17 @@ class AssetTest(unittest.TestCase):
         crop = np.asarray(Image.open(os.path.join(hs.ROOT, cfg["concept"]["source"])).convert("RGB").crop((bx0, by0, bx1, by1)))
         self.assertEqual(png_bytes(crop), read(os.path.join(cfg["dir"], "concept.png")))
 
-    def test_boss_turntable_take_3_is_keyed_on_nw_and_se_views_that_show_the_halberd(self):
+    def test_boss_nw_and_se_are_their_own_views_that_show_the_halberd(self):
         # Turntables 1 and 2 lost the halberd at NW (behind his back between
-        # W and N) and SE (lost against his chest between E and S).
+        # W and N) and SE (lost against his chest between E and S). Keying
+        # the turntable on them needs 5 keyframes, over GenerateVideo's 4, so
+        # dirs/NW and dirs/SE are the views and the turntable keeps W, N, E.
         cfg = hs.load_config("boss")
-        self.assertEqual(hs.keyed_diagonals(cfg), ["NW", "SE"])
+        self.assertEqual(hs.diagonal_views(cfg), ["NW", "SE"])
         calls = {c["id"]: c for c in hs.build_prompts(cfg)["calls"]}
         v = "assets/reference/boss/video/views"
         self.assertEqual([(k["image_path"], k["timestamp_s"]) for k in calls["turntable"]["args"]["keyframes"]],
-                         [(f"{v}/k-W.png", 2), (f"{v}/k-NW.png", 3), (f"{v}/k-N.png", 4),
-                          (f"{v}/k-E.png", 6), (f"{v}/k-SE.png", 7)])
+                         [(f"{v}/k-W.png", 2), (f"{v}/k-N.png", 4), (f"{v}/k-E.png", 6)])
         self.assertEqual(calls["view-NW"]["args"]["reference_image_paths"],
                          ["assets/reference/boss/concept.png", f"{v}/v-S.png", f"{v}/v-W.png", f"{v}/v-N.png"])
         self.assertEqual(calls["view-SE"]["args"]["reference_image_paths"],
@@ -752,19 +757,45 @@ class AssetTest(unittest.TestCase):
         for d in "SNWE":
             self.assertIn("the horse's spine points exactly along the view direction",
                           calls[f"view-{d}"]["args"]["description"])
-        # No other asset is keyed on a diagonal, so none gets a diagonal view.
+        # No other asset draws a diagonal view.
         for h in sorted(os.listdir(hs.REFERENCE)):
             if h == "boss" or not os.path.isdir(os.path.join(hs.REFERENCE, h)):
                 continue
             c = hs.load_config(h)
-            self.assertEqual(hs.keyed_diagonals(c), [], h)
+            self.assertEqual(hs.diagonal_views(c), [], h)
+            turn = [x for x in hs.build_prompts(c)["calls"] if x["id"] == "turntable"][0]
+            self.assertLessEqual(len(turn["args"]["keyframes"]), hs.MAX_KEYFRAMES, h)
             self.assertEqual([x["id"] for x in hs.build_prompts(c)["calls"] if x["id"][5:] in hs.DIAGONALS
                               and x["id"].startswith("view-")], [], h)
 
+    def test_committed_boss_nw_and_se_are_the_views_and_face_their_way(self):
+        video = hs.load_config("boss")["video"]
+
+        def mask(d):
+            return hs.figure_mask(np.asarray(Image.open(os.path.join(video, "dirs", f"{d}.png")).convert("RGB")))
+        for d in ("NW", "SE"):
+            with open(os.path.join(video, "dirs", f"{d}.png"), "rb") as a, \
+                    open(os.path.join(video, "views", f"k-{d}.png"), "rb") as b:
+                self.assertEqual(a.read(), b.read(), d)
+            # Between its two cardinals: neither differs from it by more than
+            # 1 / 0.8 times the other (the turntable picks balance 0.93-0.96).
+            a_, b_ = hs.DIAGONALS[d]
+            da, db = int((mask(d) ^ mask(a_)).sum()), int((mask(d) ^ mask(b_)).sum())
+            self.assertGreater(min(da, db) / max(da, db), 0.8, d)
+        # Each faces away from its mirror diagonal: closer to that one flipped.
+        for d, o in (("NW", "NE"), ("SE", "SW")):
+            self.assertLess(int((mask(d) ^ mask(o)[:, ::-1]).sum()), int((mask(d) ^ mask(o)).sum()), d)
+        rec = json.loads(read(os.path.join(video, "diagonals.json")))
+        self.assertEqual(rec["viewed"], ["NW", "SE"])
+        self.assertEqual({d: rec["used"][d] for d in hs.DIAGONALS}, {"SW": 35, "NW": "view", "NE": 117, "SE": "view"})
+
     def test_turntable_keyframes_out_of_turn_order_are_refused(self):
         base = json.loads(read(os.path.join(hs.REFERENCE, "boss", "asset.json")))
+        self.assertEqual(hs.MAX_KEYFRAMES, 4)
         bad = [{"W": 2, "N": 4, "E": 6, "NW": 5}, {"W": 2, "N": 4}, {"W": 2, "N": 2, "E": 6},
-               {"W": 2, "N": 4, "E": 6, "SE": 8}, {"W": 0, "N": 4, "E": 6}, {"W": 2, "N": 4, "E": 6, "S": 7}]
+               {"W": 2, "N": 4, "E": 6, "SE": 8}, {"W": 0, "N": 4, "E": 6}, {"W": 2, "N": 4, "E": 6, "S": 7},
+               # 5 keyframes: GenerateVideo refused the take-3 turntable call.
+               {"W": 2, "NW": 3, "N": 4, "E": 6, "SE": 7}]
         for keys in bad:
             cfg = json.loads(json.dumps(base))
             cfg["turntable"]["keyframes"] = keys
@@ -776,9 +807,30 @@ class AssetTest(unittest.TestCase):
                 with self.assertRaises(SystemExit, msg=keys) as e:
                     hs.load_config("g", reference=tmp)
                 self.assertIn("turntable keyframes", str(e.exception), keys)
-        # A note for a diagonal the turntable is not keyed on is refused too.
+        # 4 keyframes still load.
         cfg = json.loads(json.dumps(base))
-        cfg["turntable"]["keyframes"].pop("SE")
+        cfg["turntable"]["keyframes"] = {"W": 2, "NW": 3, "N": 4, "E": 6}
+        with tempfile.TemporaryDirectory() as tmp:
+            os.makedirs(os.path.join(tmp, "g"))
+            with open(os.path.join(tmp, "g", "asset.json"), "w") as fh:
+                json.dump(cfg, fh)
+            c = hs.load_config("g", reference=tmp)
+            self.assertEqual(len([x for x in hs.build_prompts(c)["calls"] if x["id"] == "turntable"][0]
+                                 ["args"]["keyframes"]), 4)
+        # Bad diagonal_views are refused.
+        for dv in (["N"], ["NW", "NW"], "NW"):
+            cfg = json.loads(json.dumps(base))
+            cfg["diagonal_views"] = dv
+            with tempfile.TemporaryDirectory() as tmp:
+                os.makedirs(os.path.join(tmp, "g"))
+                with open(os.path.join(tmp, "g", "asset.json"), "w") as fh:
+                    json.dump(cfg, fh)
+                with self.assertRaises(SystemExit, msg=dv) as e:
+                    hs.load_config("g", reference=tmp)
+                self.assertIn("diagonal_views", str(e.exception))
+        # A note for a diagonal that is not drawn as a view is refused too.
+        cfg = json.loads(json.dumps(base))
+        cfg["diagonal_views"] = ["NW"]
         with tempfile.TemporaryDirectory() as tmp:
             os.makedirs(os.path.join(tmp, "g"))
             with open(os.path.join(tmp, "g", "asset.json"), "w") as fh:
@@ -787,7 +839,7 @@ class AssetTest(unittest.TestCase):
                 hs.load_config("g", reference=tmp)
             self.assertIn("view_notes", str(e.exception))
 
-    def test_dirs_of_a_keyed_diagonal_are_its_view_not_a_turntable_frame(self):
+    def test_dirs_of_a_diagonal_view_are_its_view_not_a_turntable_frame(self):
         def figure(w, shade=(60, 58, 64)):
             img = np.full((720, 720, 3), 255, np.uint8)
             img[200:560, 360 - w // 2:360 + w // 2] = shade
@@ -814,7 +866,7 @@ class AssetTest(unittest.TestCase):
                 with open(os.path.join(cfg["video"], "dirs", f"{d}.png"), "rb") as a, \
                         open(os.path.join(views, f"k-{d}.png"), "rb") as b:
                     self.assertEqual(a.read(), b.read(), d)
-            # Without its view a keyed diagonal stops dirs, naming the view.
+            # Without its view a diagonal_views entry stops dirs, naming the view.
             os.remove(os.path.join(views, "v-SE.png"))
             os.remove(os.path.join(views, "k-SE.png"))
             with self.assertRaises(SystemExit) as e:

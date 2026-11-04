@@ -39,6 +39,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REFERENCE = os.path.join(ROOT, "assets/reference")
 COLUMNS = sv.COLUMNS
 CARDINALS = ["S", "W", "N", "E"]
+# The most keyframes one GenerateVideo call accepts (its schema's maxItems).
+MAX_KEYFRAMES = 4
 # Each diagonal sits between two cardinals on the turntable.
 DIAGONALS = {"SW": ("S", "W"), "NW": ("W", "N"), "NE": ("N", "E"), "SE": ("E", "S")}
 # Facing in degrees, turning from S (camera) through W (screen-left).
@@ -106,21 +108,27 @@ def load_config(hero, reference=REFERENCE):
     for item in cfg["items"]:
         if "visible" in item and (item["visible"] is not True or item.get("at") in (None, "", "body")):
             raise SystemExit(f"{hero}/{name}: item {item.get('name')!r}: visible is true on a held item, or absent")
-    # Turntable keyframes: W, N and E, plus any diagonal that gets its own
-    # view, in turn order (S, SW, W, NW, N, NE, E, SE) inside the clip.
+    # Turntable keyframes: W, N and E, plus at most one other direction (a
+    # GenerateVideo call takes at most MAX_KEYFRAMES), in turn order (S, SW,
+    # W, NW, N, NE, E, SE) inside the clip.
     if "turntable" in cfg:
         keys = cfg["turntable"].get("keyframes", {})
         order = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"]
         times = [keys[d] for d in order if d in keys]
         if (any(d not in order[1:] for d in keys) or any(d not in keys for d in ("W", "N", "E"))
+                or len(keys) > MAX_KEYFRAMES
                 or times != sorted(set(times)) or times[0] <= 0 or times[-1] >= cfg["turntable"]["seconds"]):
-            raise SystemExit(f"{hero}/{name}: turntable keyframes are W, N, E (and diagonals) in turn order "
-                             f"inside the clip, got {keys!r}")
-    viewed = ["S", "N", "W", "E"] + keyed_diagonals(cfg)
+            raise SystemExit(f"{hero}/{name}: turntable keyframes are W, N, E (and at most {MAX_KEYFRAMES} in all) "
+                             f"in turn order inside the clip, got {keys!r}")
+    # Diagonals drawn as their own views (asset.json "diagonal_views").
+    dv = cfg.get("diagonal_views", [])
+    if not isinstance(dv, list) or len(set(dv)) != len(dv) or any(d not in DIAGONALS for d in dv):
+        raise SystemExit(f"{hero}/{name}: diagonal_views lists diagonals ({', '.join(DIAGONALS)}), got {dv!r}")
+    viewed = ["S", "N", "W", "E"] + diagonal_views(cfg)
     notes = cfg.get("view_notes", {})
     if not isinstance(notes, dict) or any(d not in viewed or not isinstance(t, str) or not t.strip()
                                           for d, t in notes.items()):
-        raise SystemExit(f"{hero}/{name}: view_notes maps S, N, W, E or a keyed diagonal to one sentence, got {notes!r}")
+        raise SystemExit(f"{hero}/{name}: view_notes maps S, N, W, E or a diagonal_views entry to one sentence, got {notes!r}")
     # A side-view death that keeps ending too high (asset.json "death_ends",
     # {"E": "W"}) ends on the flipped last frame of the other side's passing
     # death: the call gets it as last_frame_path. Only E and W flip into each
@@ -363,19 +371,20 @@ def mid_start(cfg, d, log=print):
     return out
 
 
-def keyed_diagonals(cfg):
-    """Diagonals the turntable is keyed on (asset.json turntable.keyframes):
-    each gets its own view, and dirs/<d>.png is that view, not a turntable
-    frame."""
-    keys = cfg.get("turntable", {}).get("keyframes", {})
-    return [d for d in DIAGONALS if d in keys]
+def diagonal_views(cfg):
+    """Diagonals drawn as their own views (asset.json "diagonal_views"): each
+    gets a view call, and dirs/<d>.png is that view, not a turntable frame,
+    the way the cardinals are theirs. The turntable needs no keyframe for
+    them (a GenerateVideo call takes at most MAX_KEYFRAMES)."""
+    dv = cfg.get("diagonal_views", [])
+    return [d for d in DIAGONALS if d in dv]
 
 
 def make_views(cfg, log=print):
     done = []
     for d in cfg.get("mirror_views", {}):
         mirror_view(cfg, d, log)
-    for d in CARDINALS + keyed_diagonals(cfg):
+    for d in CARDINALS + diagonal_views(cfg):
         src = view_source(cfg, d)
         if not src:
             continue
@@ -454,15 +463,15 @@ def make_dirs(cfg, log=print):
     picked = pick_diagonals(frames, cards, key_frames(cfg, len(frames)))
     pins = cfg.get("diagonals") or {}
     used = {}
-    keyed = keyed_diagonals(cfg)
+    viewed = diagonal_views(cfg)
     for d in DIAGONALS:
-        if d in keyed:
+        if d in viewed:
             k = os.path.join(cfg["video"], "views", f"k-{d}.png")
             if not os.path.exists(k):
                 raise SystemExit(f"no {rel(k)}: generate the {d} view first")
             dst = os.path.join(dirs, f"{d}.png")
             used[d] = "view"
-            log(f"{'wrote' if copy_if_changed(k, dst) else 'same '} {rel(dst)}: the keyed {d} view")
+            log(f"{'wrote' if copy_if_changed(k, dst) else 'same '} {rel(dst)}: the {d} view")
             continue
         t = int(pins.get(d, picked[d]["frame"]))
         used[d] = t
@@ -472,8 +481,8 @@ def make_dirs(cfg, log=print):
         log(f"{'wrote' if wrote else 'same '} {rel(dst)}: frame {t} ({how}; picker {picked[d]['frame']})")
     record = {"frames": len(frames), "picker": picked, "used": used,
               "pinned": sorted(d for d in DIAGONALS if d in pins)}
-    if keyed:
-        record["viewed"] = keyed
+    if viewed:
+        record["viewed"] = viewed
     write_text(os.path.join(cfg["video"], "diagonals.json"), json.dumps(record, indent=1, sort_keys=True) + "\n")
     return record
 
@@ -495,9 +504,8 @@ VIEW = {
     "N": "back view, seen from directly behind, back to the camera",
     "W": "left profile view, facing screen-left, {poss} left side toward the camera",
     "E": "right profile view, facing screen-right, {poss} right side toward the camera",
-    # Diagonal views, only for a turntable keyed on a diagonal (asset.json
-    # turntable.keyframes): the boss's halberd vanished at NW and SE on two
-    # unkeyed turntables.
+    # Diagonal views, only for an asset's "diagonal_views": the boss's halberd
+    # vanished at NW and SE on two turntables.
     "SW": "three-quarter front view, turned exactly halfway between the front view and the left profile, facing down and to screen-left, {poss} front and left side toward the camera",
     "NW": "three-quarter back view, turned exactly halfway between the left profile and the back view, facing up and to screen-left, {poss} back and left side toward the camera",
     "NE": "three-quarter back view, turned exactly halfway between the back view and the right profile, facing up and to screen-right, {poss} back and right side toward the camera",
@@ -626,7 +634,7 @@ def build_prompts(cfg):
     calls = []
     mirror = cfg.get("mirror_views", {})
     t = cfg["turntable"]
-    views = [d for d in ("S", "N", "W", "E") if d not in mirror] + keyed_diagonals(cfg)
+    views = [d for d in ("S", "N", "W", "E") if d not in mirror] + diagonal_views(cfg)
     for d in views:
         items = [item_line(i, d, poss) for i in cfg["items"]]
         items = "; ".join(x for x in items if x)
@@ -666,6 +674,7 @@ def build_prompts(cfg):
                       "then": "hero_sprites.py views" if d == views[-1] else None})
     keys = [{"image_path": f"{vid}/views/k-{d}.png", "timestamp_s": s}
             for d, s in sorted(t["keyframes"].items(), key=lambda kv: kv[1])]
+    assert len(keys) <= MAX_KEYFRAMES, keys
     turn = (f"Game character turnaround reference. The {noun} {words['turn_pose']} and rotates a full 360 degrees at a constant speed, turning to show {poss} left "
             f"side, then {poss} back, then {poss} right side, then front again. Locked-off camera, slightly "
             "elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white "

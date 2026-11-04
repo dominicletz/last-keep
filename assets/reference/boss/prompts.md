@@ -117,20 +117,12 @@ Save as `assets/reference/boss/video/turntable.mp4`. Then run `hero_sprites.py d
    "timestamp_s": 2
   },
   {
-   "image_path": "assets/reference/boss/video/views/k-NW.png",
-   "timestamp_s": 3
-  },
-  {
    "image_path": "assets/reference/boss/video/views/k-N.png",
    "timestamp_s": 4
   },
   {
    "image_path": "assets/reference/boss/video/views/k-E.png",
    "timestamp_s": 6
-  },
-  {
-   "image_path": "assets/reference/boss/video/views/k-SE.png",
-   "timestamp_s": 7
   }
  ],
  "duration": 8,
