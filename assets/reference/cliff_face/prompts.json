@@ -1,0 +1,38 @@
+{
+ "hero": "cliff_face",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the rock cliff face segment from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows no cliff: it is only the dark forest scene whose palette, evening light and voxel style the cliff must match; draw only one cliff and nothing else, no trees, no figures; use the reference rocks only for the colours of the stone. Same design: a steep wall of rough grey-brown stone in chunky blocky ledges and cracks, darker in the cracks, lighter on the lit top edge, a few tufts of dark grass on the ledges, the strip much wider than it is tall. An even, blocky face. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole rock cliff face segment from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single rock cliff face segment only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/cliff_face/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "cliff_face-a.png"
+   },
+   "save_as": "assets/reference/cliff_face/views/a.png",
+   "then": "python3 script/hero_sprites.py cliff_face build"
+  },
+  {
+   "id": "image-b",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the rock cliff face segment from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows no cliff: it is only the dark forest scene whose palette, evening light and voxel style the cliff must match; draw only one cliff and nothing else, no trees, no figures; use the reference rocks only for the colours of the stone. Same design: a steep wall of rough grey-brown stone in chunky blocky ledges and cracks, darker in the cracks, lighter on the lit top edge, a few tufts of dark grass on the ledges, the strip much wider than it is tall. A face with a deep crack and a jutting ledge. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole rock cliff face segment from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single rock cliff face segment only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/cliff_face/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "cliff_face-b.png"
+   },
+   "save_as": "assets/reference/cliff_face/views/b.png",
+   "then": "python3 script/hero_sprites.py cliff_face build"
+  }
+ ],
+ "type": "static"
+}

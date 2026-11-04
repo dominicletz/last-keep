@@ -1,0 +1,38 @@
+{
+ "hero": "stump_log",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the piece of felled pine wood from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no stump or log: it is only the dark forest scene whose palette, evening light and voxel style the stump or log must match; draw only one stump or log and nothing else, no trees, no figures; use the reference pine only for the colours of its bark and wood. Same design: dark brown pine bark with rough ridges, a pale yellow-brown cut face with rings. A short cut tree stump with a few roots, its flat cut top showing. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole piece of felled pine wood from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single piece of felled pine wood only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/stump_log/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "stump_log-a.png"
+   },
+   "save_as": "assets/reference/stump_log/views/a.png",
+   "then": "python3 script/hero_sprites.py stump_log build"
+  },
+  {
+   "id": "image-b",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the piece of felled pine wood from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no stump or log: it is only the dark forest scene whose palette, evening light and voxel style the stump or log must match; draw only one stump or log and nothing else, no trees, no figures; use the reference pine only for the colours of its bark and wood. Same design: dark brown pine bark with rough ridges, a pale yellow-brown cut face with rings. A felled log lying on its side on the ground, one cut end toward the camera. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole piece of felled pine wood from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single piece of felled pine wood only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/stump_log/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "stump_log-b.png"
+   },
+   "save_as": "assets/reference/stump_log/views/b.png",
+   "then": "python3 script/hero_sprites.py stump_log build"
+  }
+ ],
+ "type": "static"
+}

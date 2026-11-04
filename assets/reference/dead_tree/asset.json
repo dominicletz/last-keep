@@ -1,0 +1,31 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9, dead or burnt tree). The concept has no dead tree, so the box is the theme.jpg pine for its bark colours. world height 36 (99 px), a little under the pine.",
+ "type": "static",
+ "view": "front",
+ "noun": "dead tree",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   278,
+   536,
+   392,
+   720
+  ]
+ },
+ "source_note": "The reference shows no dead tree: it is only the dark forest scene whose palette, evening light and voxel style the dead tree must match; draw only one dead tree and nothing else, no trees, no figures; use the reference pine only for the colours of its bark",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a bare dead tree with a twisted grey-brown trunk and a few crooked leafless branches, cracked bark, no leaves or needles",
+ "world_height": 36,
+ "cell": [
+  112,
+  112
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "a tall trunk with three crooked branches"
+  }
+ ]
+}

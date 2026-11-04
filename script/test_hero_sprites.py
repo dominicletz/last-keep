@@ -256,6 +256,17 @@ class AssetTest(unittest.TestCase):
             self.assertIn("no antlers", text)
             self.assertNotIn("wolf", text)
         self.assertNotIn("wolf", json.dumps(hs.build_prompts(cfg)))
+        # view-S came out three-quarter twice: it names only what a square
+        # front shows, the boss's take-3 wording, and never the flank.
+        s = calls["view-S"]["args"]["description"]
+        for phrase in ("Seen exactly from the front, not three-quarter", "walking straight at you",
+                       "both of its eyes and both ears equally visible", "completely hidden straight behind the chest",
+                       "two front legs stand side by side", "hind legs only just peek out"):
+            self.assertIn(phrase, s)
+        self.assertNotIn("flank", s)
+        self.assertNotIn("all four legs visible", s)
+        for d in ("N", "W", "E"):
+            self.assertNotIn("walking straight at you", calls[f"view-{d}"]["args"]["description"])
 
     def test_goblin_config_is_a_monster_with_its_clip_kinds(self):
         cfg = hs.load_config("goblin")

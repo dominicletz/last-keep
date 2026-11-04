@@ -1,0 +1,42 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9, grass tufts). The concept box is a patch of yard grass in theme.jpg. world height 5 (14 px): small decals to be scattered by seed like the flora.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "grass tuft",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   480,
+   560,
+   620,
+   660
+  ]
+ },
+ "source_note": "The reference shows a patch of grassy ground with rocks and stones in it; draw only one small tuft of grass and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a small clump of dark green grass blades, lighter yellow-green tips on the lit side",
+ "world_height": 5,
+ "cell": [
+  40,
+  24
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "a round tuft"
+  },
+  {
+   "id": "b",
+   "note": "a tuft with a few tall blades",
+   "scale": 0.8
+  },
+  {
+   "id": "c",
+   "note": "a tiny low tuft",
+   "scale": 0.65
+  }
+ ],
+ "match": "pine"
+}

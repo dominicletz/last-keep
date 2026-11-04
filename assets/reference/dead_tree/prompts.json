@@ -1,0 +1,22 @@
+{
+ "hero": "dead_tree",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the dead tree from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows no dead tree: it is only the dark forest scene whose palette, evening light and voxel style the dead tree must match; draw only one dead tree and nothing else, no trees, no figures; use the reference pine only for the colours of its bark. Same design: a bare dead tree with a twisted grey-brown trunk and a few crooked leafless branches, cracked bark, no leaves or needles. A tall trunk with three crooked branches. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole dead tree from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single dead tree only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/dead_tree/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "dead_tree-a.png"
+   },
+   "save_as": "assets/reference/dead_tree/views/a.png",
+   "then": "python3 script/hero_sprites.py dead_tree build"
+  }
+ ],
+ "type": "static"
+}

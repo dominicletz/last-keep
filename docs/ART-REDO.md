@@ -77,6 +77,17 @@ Nothing below was changed without your OK; each item is waiting on a decision.
 13. **Deer.** The concepts have no animal, so the deer is drawn from text
    with the forest palette. Its idle uses the attack slot (grazing); a
    flee clip and the client-side animal behaviour need a design first.
+14. **Yard pieces with no concept crop.** The concepts have no chest,
+   portal or felled-wood pile, and the only keep is the tower crop the
+   `tower` sheet uses (five keep ranks also exceed the 4-variant limit).
+   Draw them from text with the theme palette, as the deer and the
+   stump are, or paint a concept for them first?
+15. **Far pines.** They need no new art: the plan is billboards of the
+   pine sheet, instanced, at most 180. That doesn't depend on the ground
+   texel. The horizon window does, since it is re-baked from the ground tiles.
+16. **Tileable strips.** The forest barrier and the cliff face should tile
+   end to end, but the static build does not check their ends. Add a seam
+   check before wiring them?
 
 ## Variants
 
@@ -168,16 +179,16 @@ baked into `tile-data.js` (2.2 MB) per phase: day, dusk and night.
 | wall | `yard_cards.js` 30×40 | card | b | S, plus an E/W side for runs | Most-built piece; must tile side by side | **built, awaiting final review** (`wall-sheet.png`, 110 px, 3/4 view; drawn by `buildingMesh` through `staticSheets`/`buildingSheet` in `yard_cards.js`; review /workspace/lk/review/wall) |
 | tower | 28×48 | card | b | S (the bow and roof read from the front) | Shots leave from its top | **built, awaiting final review** (`tower-sheet.png`, 132 px, 3/4; drawn by `buildingMesh` through `staticSheets`/`buildingSheet` in `yard_cards.js`; review /workspace/lk/review/tower) |
 | house | 56×64 plus 6 window glow sprites | card | b | S | Window glow stays a separate sprite (variant d) | **built, awaiting final review** (`house-sheet.png`, 176 px, 3/4; painted windows, no glow sprites; drawn by `buildingMesh` through `staticSheets`/`buildingSheet` in `yard_cards.js`; review /workspace/lk/review/house) |
-| keep (ranks 0–4) | `registry.js keepParts(rank)`, masonry `640,100,48,64` | box and cone meshes plus torch light | b | S per rank (5 images) | 197 px, contrast 25. `keep.scale.y` shrinks with HP: draw damage states instead? Brazier and torch stay lights | todo |
+| keep (ranks 0–4) | `registry.js keepParts(rank)`, masonry `640,100,48,64` | box and cone meshes plus torch light | b | S per rank (5 images) | 197 px, contrast 25. `keep.scale.y` shrinks with HP: draw damage states instead? Brazier and torch stay lights | blocked: the concept's only keep is the tower crop the `tower` sheet already uses, and five ranks exceed the 4-variant limit (open question 14) |
 | forge | 48×36 | card | b | S | Glow on the fire | **built, awaiting final review** (`forge-sheet.png`, 99 px, 3/4; drawn by `buildingMesh` through `staticSheets`/`buildingSheet` in `yard_cards.js`; review /workspace/lk/review/forge) |
 | mage_tower | 26×36 | card | b | S | | todo |
 | trap | 22×20 | card | b | S, armed and sprung | | **built, awaiting final review** (`trap-sheet.png`, a 55 px armed, b 33 px sprung = a squashed (`squash_of`), 3/4; drawn by `buildingMesh` through `staticSheets`/`buildingSheet` in `yard_cards.js`; review /workspace/lk/review/trap) |
-| field | 46×26, flat | card | c | top-down, plus a sown and a ripe stage | Ties to the sow and harvest actions | todo |
+| field | 46×26, flat | card | c | top-down, plus a sown and a ripe stage | Ties to the sow and harvest actions | **prompts** (`assets/reference/field/`, ripe a and sown b, 3/4; 2 calls in /workspace/lk/field-batch.json; priority 2) |
 | stone_wall | none (r 16 in `rules.ex`) | **no art**; draws the wall card | b | S | Was a latent render crash: `buildingMesh` fell to `modelParts("stone_wall")`, which throws "no model". Fixed: `cardFallback` in `yard_cards.js` draws the wall card until its own art exists, and `yard_cards.test.js` checks that every `building/1` kind in `rules.ex` has a card or a model | **built, awaiting final review** (own `stone_wall-sheet.png`, 110 px front-on, cell widened to 144; no longer the wall card; review /workspace/lk/review/stone_wall) |
-| tree | 48×40, cut | card | b | S, plus a felled stump | Today this one card is also the forest wall, the yard trees and the outer ring (`scenery.js`), so it fills most of the screen; section 9 splits it into variants | todo |
-| felled wood (scenery) | 18×30 | card | b | S | | todo |
-| chest | gold box 16×12×16 | mesh | b | S, closed and open | | todo |
-| portal / hell door | `horizon.js gateGeometry`, at most 8 instanced | two posts and a glowing plane | b | S, plus a glow layer (variant d) | Planned in the docs as hell doors | todo |
+| tree | 48×40, cut | card | b | S, plus a felled stump | Today this one card is also the forest wall, the yard trees and the outer ring (`scenery.js`), so it fills most of the screen; section 9 splits it into variants | **done**: the pine sheet (a, b at 0.85) is the tree card everywhere (`treeSheet`); the felled stump is the stump and log row (section 9) |
+| felled wood (scenery) | 18×30 | card | b | S | | blocked: no clean concept crop (only the bundle on the engineer's back); the stump and log piece may cover it (open question 14) |
+| chest | gold box 16×12×16 | mesh | b | S, closed and open | | blocked: no chest in the concepts (open question 14) |
+| portal / hell door | `horizon.js gateGeometry`, at most 8 instanced | two posts and a glowing plane | b | S, plus a glow layer (variant d) | Planned in the docs as hell doors | blocked: no portal in the concepts (open question 14) |
 | map table | box 36×8×22 plus a cloth plane at (0,160) | mesh | b | S | The chunk map stays painted on top | todo |
 
 ### 4. Points of interest and NPCs with no art yet
@@ -216,7 +227,7 @@ Blocked: waits on open question 1 (the ground texel) at the top of this file.
 | plaza disc and ring | `propCrops.path`, RingGeometry 154–164 | crop | c | todo |
 | paths NS/EW | `propCrops.path` | crop | c | todo |
 | yard edge | `dissolveYardEdge` | shader | d | keep |
-| horizon biome window | `horizon.js paintWindow` (256 texel over 6144) | painted from `biomeRgb` flat colours | c (re-bake from the new biome tiles below) | todo |
+| horizon biome window | `horizon.js paintWindow` (256 texel over 6144) | painted from `biomeRgb` flat colours | c (re-bake from the new biome tiles below) | blocked on the ground texel: it is re-baked from the biome ground tiles |
 | meadow ground | `world.ex` cell biome `:meadow` (the keep disc and open land), `horizon.js pictureCell` | yard grass / `biomeRgb` | c (seamless tile) | todo |
 | pine ground (forest floor) | biome `:pine` | `SHADE` flat colour | c (seamless tile, needles and moss) | todo |
 | ruins ground | biome `:ruins` | `ringColor` flat colour | c (seamless tile, broken flagstones) plus ruin props in section 9 | todo |
@@ -249,7 +260,7 @@ Everything above stays procedural (status **keep**) except the far pines:
 
 | Asset | Files | Current | Var | Notes | Status |
 |---|---|---|---|---|---|
-| far pines | `horizon.js pineGeometry`, `placeTrees` on `pine` cells, role `far-pine` | instanced cones, at most 180 | b | The new pine sprite (section 9) as instanced billboards, at most 180, snapped to the texel | todo |
+| far pines | `horizon.js pineGeometry`, `placeTrees` on `pine` cells, role `far-pine` | instanced cones, at most 180 | b | The new pine sprite (section 9) as instanced billboards, at most 180, snapped to the texel | ready to wire, no new art: billboards of the pine sheet; it does not depend on the ground texel (open question 15) |
 
 ### 9. Flora and natural barriers
 
@@ -263,17 +274,17 @@ exist yet; the ground only has noise flecks.
 | Asset | Used by | Current | Var | Notes | Status |
 |---|---|---|---|---|---|
 | pine | forest wall, `pine` biome, far pines (section 8) | `tree` card / cones | b (`"type": "static"`) | `assets/reference/pine/asset.json`: concept box 278,536,392,720 of theme.jpg, world height 40 (the `tree` card's), 110 px at the hero texel; cell 128×120. Variant a the full pine, b a slender pine at 0.85 (94 px). The image model drew a pair of pines twice for b's old note ("a younger, narrower pine", a contrast with a mature tree): the note now describes one tree alone, and `"pick": "right"` keeps the right-hand tree of the committed raw pair `views/b.png` (`hero_sprites.static_pick`), so the build derives b from the raw image. `pine-sheet.png` (256×120) passes every check. Client: `treeSheet`/`treeCard`/`treeVariant` in `yard_cards.js`; render.js draws the yard trees and both forest-wall rings from the sheet, alternating a and b (`treeSprite`), foot on the ground. The old `tree` card stays for its propBytes tile only. Review: /workspace/lk/review/pine | **built, awaiting final review** |
-| broadleaf tree | yard trees, `meadow` edges | `tree` card | b | S view plus a second shape | todo |
-| dead or burnt tree | `ruins` biome, night or after a fire | none | b | S view | todo |
-| dense forest barrier | `forestWall` rings | 116 single tree cards | b | A wide strip of interlocking pines (2–3 tileable segments), so the wall reads as one barrier and draws as few quads | todo |
-| stump and log | `sceneryForest` parts, felled trees | parts on the tree card | b | Shares the tree palette; ties to the felled-wood card in section 3 | todo |
+| broadleaf tree | yard trees, `meadow` edges | `tree` card | b | S view plus a second shape | **prompts** (`assets/reference/broadleaf/`, 2 shapes, matched to the pine; 2 calls in /workspace/lk/broadleaf-batch.json; priority 1) |
+| dead or burnt tree | `ruins` biome, night or after a fire | none | b | S view | **prompts** (`assets/reference/dead_tree/`, from text with the pine palette; 1 call in /workspace/lk/dead_tree-batch.json; priority 8) |
+| dense forest barrier | `forestWall` rings | 116 single tree cards | b | A wide strip of interlocking pines (2–3 tileable segments), so the wall reads as one barrier and draws as few quads | **prompts** (`assets/reference/forest_barrier/`, 256 px wide strip, 2 variants; 2 calls in /workspace/lk/forest_barrier-batch.json; priority 3; tileable ends unchecked, open question 16) |
+| stump and log | `sceneryForest` parts, felled trees | parts on the tree card | b | Shares the tree palette; ties to the felled-wood card in section 3 | **prompts** (`assets/reference/stump_log/`, a stump, b log, from text with the pine palette; 2 calls in /workspace/lk/stump_log-batch.json; priority 4) |
 | bushes | yard edge, `meadow` | none | b | 2–3 variants | **built, awaiting final review** (`bush-sheet.png`, 3 variants 38/30/25 px; `"match": "pine"` scales saturation and value to the pine sheet; scattered by `flora.js`; review /workspace/lk/review/bush/) |
 | rocks and boulders | `ruins`, `hill`, `cliff` edges; a source look for the quarry | none | b | 3 sizes; the large boulder can block like a cliff cell | **built, awaiting final review** (`rock-sheet.png`, 44/31/22 px: c is small from its scale though its view filled the frame; scattered by `flora.js`; review /workspace/lk/review/rock/) |
-| cliff face | `cliff` cells and the cliff skirt (`biomeLift` 16) | flat colour plus lift | b | Front face strip, tileable; the natural barrier the walk blocking already uses | todo |
+| cliff face | `cliff` cells and the cliff skirt (`biomeLift` 16) | flat colour plus lift | b | Front face strip, tileable; the natural barrier the walk blocking already uses | **prompts** (`assets/reference/cliff_face/`, front strip, from text with the rock palette; 2 calls in /workspace/lk/cliff_face-batch.json; priority 5; tileable ends unchecked, open question 16) |
 | ruin stones | `ruins` biome | flat colour plus lift 8 | b | Broken walls and columns, 2–3 variants | todo |
-| grass tufts | yard and `meadow` ground | ground noise | c | 3–4 small decals scattered by seed | todo |
+| grass tufts | yard and `meadow` ground | ground noise | c | 3–4 small decals scattered by seed | **prompts** (`assets/reference/grass_tufts/`, 3 sizes; 3 calls in /workspace/lk/grass_tufts-batch.json; priority 6) |
 | flowers | `meadow` ground | none | c | 2–3 small decals | **built, awaiting final review** (`flowers-sheet.png`, 2 variants 16 px; scattered by `flora.js`; review /workspace/lk/review/flowers/) |
-| reeds | `river` and `ford` banks | none | c | 2 small decals | todo |
+| reeds | `river` and `ford` banks | none | c | 2 small decals | **prompts** (`assets/reference/reeds/`, from text; 2 calls in /workspace/lk/reeds-batch.json; priority 7) |
 
 ### 10. Fauna
 
@@ -284,7 +295,7 @@ These are proposed, all purely client-side decoration with no gameplay.
 | Asset | Where | Var | Clips / views | Notes | Status |
 |---|---|---|---|---|---|
 | birds (crows) | over the forest wall and fields by day | a (small) | fly ×8 or ×4, take-off and land | Scatter when a hero walks close; gone at night | planned |
-| deer | `meadow` and `pine` edges outside the yard | a | walk ×8, idle ×4, flee ×8 | Flees from heroes and monsters. The concepts have no animal: `assets/reference/deer/` (monster pipeline, 22 world units = 60 px, 128 cell) takes only the forest palette from a theme.jpg crop and the look from its design text. Idle is the attack slot (grazing); flee has no clip kind yet (open question 13) | **prompts** (4 views in /workspace/lk/deer-batch.json) |
+| deer | `meadow` and `pine` edges outside the yard | a | walk ×8, idle ×4, flee ×8 | Flees from heroes and monsters. The concepts have no animal: `assets/reference/deer/` (monster pipeline, 22 world units = 60 px, 128 cell) takes only the forest palette from a theme.jpg crop and the look from its design text. Idle is the attack slot (grazing); flee has no clip kind yet (open question 13) | **prompts, view-S take 2** (take 1 was three-quarter twice; `view_notes.S` now uses the boss's square-front wording; 4 views in /workspace/lk/deer-batch.json, view-S first) |
 | rabbits | yard edge and fields | a (small) | hop ×8, idle ×4 | Ties to the field (sow and harvest) | planned |
 | fish or ripples | `river` and `ford` | c | 2–4 frame jump | Optional | planned |
 

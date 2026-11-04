@@ -1,0 +1,35 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 3, field). The concept box is the wheat and vegetable plots right of the keep in theme.jpg (fences, a farmer and the stone wall at its edges excluded by source_note). The field card is 46x26 and flat; three-quarter like the concept, world height 12 (33 px, the plot's depth plus the crop's height). a ripe, b sown: the sow and harvest stages.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "crop field plot",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   730,
+   300,
+   990,
+   425
+  ]
+ },
+ "source_note": "The reference shows several fenced crop plots with a farmer, a house and a stone wall at its edges; draw only one rectangular plot and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a rectangular farm plot of tilled dark brown soil in neat rows, edged by a low wooden rail fence",
+ "world_height": 12,
+ "cell": [
+  136,
+  48
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "ripe: tall golden wheat standing in dense rows"
+  },
+  {
+   "id": "b",
+   "note": "sown: short green sprouts in rows of dark soil"
+  }
+ ]
+}

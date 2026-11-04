@@ -1,0 +1,35 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9, stump and log; also the felled wood). The concept has no stump or log, so the box is the theme.jpg pine for its wood colours and source_note says so. world height 10 (28 px).",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "piece of felled pine wood",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   278,
+   536,
+   392,
+   720
+  ]
+ },
+ "source_note": "The reference shows no stump or log: it is only the dark forest scene whose palette, evening light and voxel style the stump or log must match; draw only one stump or log and nothing else, no trees, no figures; use the reference pine only for the colours of its bark and wood",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "dark brown pine bark with rough ridges, a pale yellow-brown cut face with rings",
+ "world_height": 10,
+ "cell": [
+  80,
+  40
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "a short cut tree stump with a few roots, its flat cut top showing"
+  },
+  {
+   "id": "b",
+   "note": "a felled log lying on its side on the ground, one cut end toward the camera"
+  }
+ ]
+}

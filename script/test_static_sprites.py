@@ -310,6 +310,35 @@ class StaticTest(unittest.TestCase):
             cfg = hs.load_config(name)
             self.assertEqual([n for ok, n, _ in hs.static_checks(cfg, sheet(name)) if not ok], [], name)
 
+    def test_the_terrain_and_scenery_pieces_are_set_up_and_their_prompts_are_current(self):
+        # name: (world height, variants, drawn from text with only the concept's palette)
+        want = {"broadleaf": (40, 2, False), "field": (12, 2, False), "forest_barrier": (32, 2, False),
+                "stump_log": (10, 2, True), "cliff_face": (16, 2, True), "grass_tufts": (5, 3, False),
+                "reeds": (9, 2, True), "dead_tree": (36, 1, True)}
+        for name, (wh, n, text_only) in want.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["type"], "static", name)
+            self.assertEqual((cfg["world_height"], len(cfg["variants"])), (wh, n), name)
+            self.assertLessEqual(wh, 40, name)  # no scenery piece outgrows the pine
+            self.assertGreaterEqual(cfg["cell"][1], cfg["height"] + 2 * hs.STATIC_MARGIN, name)
+            self.assertEqual(cfg["concept"]["source"], "docs/concept/theme.jpg", name)
+            box = cfg["concept"]["box"]
+            concept = np.asarray(Image.open(os.path.join(cfg["dir"], "concept.png")))
+            self.assertEqual(concept.shape[:2], (box[3] - box[1], box[2] - box[0]), name)
+            p = hs.build_prompts(cfg)
+            self.assertEqual(len(p["calls"]), n, name)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+            for c in p["calls"]:
+                d = c["args"]["description"]
+                self.assertIn(f"One single {cfg['noun']} only", d, name)
+                self.assertEqual("The reference shows no " in d, text_only, name)
+        # Greens are matched to the pine forest, as the bush is.
+        for name in ("broadleaf", "forest_barrier", "grass_tufts", "reeds"):
+            self.assertEqual(hs.load_config(name)["match"], "pine", name)
+
 
 if __name__ == "__main__":
     unittest.main()
