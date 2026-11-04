@@ -42,7 +42,10 @@ export const MONSTER_SHEETS = {
   skeleton: { cell: 88, figure: 60, footRow: 81, rows: { walk: 8, attack: 6, death: 6 } },
   wolf: { cell: 128, figure: 50, footRow: 121, rows: { walk: 8, attack: 6, death: 6 } },
   bat: { cell: 128, figure: 44, footRow: 105, rows: { walk: 8, attack: 6, death: 6 } },
-  troll: { cell: 160, figure: 94, footRow: 153, rows: { walk: 8, attack: 6, death: 6 } }
+  troll: { cell: 160, figure: 94, footRow: 153, rows: { walk: 8, attack: 6, death: 6 } },
+  // The dark rider and his horse: 94 px like the troll, in a 192 px cell for
+  // the side-on horse, the halberd chop over the helm and the horse lying flat.
+  boss: { cell: 192, figure: 94, footRow: 185, rows: { walk: 8, attack: 6, death: 6 } }
 }
 
 export function monsterSheetUrl(kind) {

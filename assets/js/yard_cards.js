@@ -46,15 +46,22 @@ export const staticSheets = {
   house: staticSheet("house", [176, 184], ["a"]),
   forge: staticSheet("forge", [152, 112], ["a"]),
   // a armed; b sprung (a squashed to 0.6). The game has no sprung state yet.
-  trap: staticSheet("trap", [80, 64], ["a", "b"])
+  trap: staticSheet("trap", [80, 64], ["a", "b"]),
+  // Flora, scattered by flora.js: b and c are smaller cuts (sizes from scale).
+  bush: staticSheet("bush", [80, 48], ["a", "b", "c"]),
+  rock: staticSheet("rock", [88, 56], ["a", "b", "c"]),
+  flowers: staticSheet("flowers", [64, 24], ["a", "b"])
 }
+
+// Static sheets that are scenery, not a building kind.
+export const floraSheets = ["bush", "rock", "flowers"]
 
 // The tree card's art is the pine sheet.
 export const treeSheet = staticSheets.pine
 
 // The static sheet a building of this kind draws, or null (its old card or model).
 export function buildingSheet(kind) {
-  return staticSheets[kind] && kind !== "pine" ? kind : null
+  return staticSheets[kind] && kind !== "pine" && !floraSheets.includes(kind) ? kind : null
 }
 
 // World size, sprite center and texture window of one variant of a sheet.

@@ -1,0 +1,71 @@
+{
+ "type": "monster",
+ "noun": "deer",
+ "possessive": "its",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   60,
+   330,
+   360,
+   560
+  ]
+ },
+ "source_note": "the reference shows no deer: it is only the dark pine forest edge whose palette and evening light the deer must match; draw one deer and nothing else, no trees, no figures",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "slender red deer doe with a warm russet-brown coat, a paler fawn belly, throat and inner legs, a cream rump patch and short white-edged tail, large dark eyes, big upright ears, a dark wet nose, thin legs with small dark hooves, no antlers",
+ "feet": "hooves",
+ "view_pose": "Whole animal from the tips of its ears down to its hooves, standing square on all four hooves in a neutral alert pose, head level, short tail held down, all four legs visible, nothing cropped; the spine points exactly along the view direction, so in a front or back view the body is foreshortened straight behind the head with the two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways",
+ "view_height": 300,
+ "gait": "Calm steady deer walk on the spot, one full stride a second: legs lifting high and delicately in turn, all four legs clearly alternating, back level, head held up and level, slight body bob; its body never moves forward",
+ "items": [],
+ "attack": "lowers its head and neck down to graze the grass right at its front hooves, nibbling, then lifts its head back up to the start pose; all four hooves stay planted on the same spot",
+ "death": "startles and drops: its legs fold under it and it sinks down onto its belly and then onto its side on the exact spot where it stood, head resting on the ground, legs stretched out; it never leaps or springs",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "sheet": {
+  "world_height": 22,
+  "height": 60,
+  "cell": 128
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "slender red deer doe with a warm russet-brown coat, a paler fawn belly, throat and inner legs, a cream rump patch and short white-edged tail, large dark eyes, big upright ears, a dark wet nose, thin legs with small dark hooves, no antlers, standing on all four hooves"
+ },
+ "death_picks": "motion",
+ "_note": "Wild animal 1 (docs/ART-REDO.md section 10): the deer. The concept paintings have no animal, so the concept crop is the theme.jpg forest edge at the lower left (palette and light only) and the source_note says so; the design text carries the look. Quadruped like the wolf, so it reuses the wolf's view_pose and turntable layout. World height 22 (ears to hooves, a little taller than the wolf's 18, under a hero's 32) is 60 px at the hero texel; side-on about 110 px nose to tail, so the 128 hero cell. Clips: walk x8, idle (the attack slot: head down grazing, back up) x8, death (flee is not a clip kind yet: open question). check anchors come after the views, from `hero_sprites.py deer colours` (the concept crop has no deer colours to anchor)."
+}

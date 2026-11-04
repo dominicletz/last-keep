@@ -12,7 +12,7 @@ import { readRgbaPng } from "./png.js"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..")
 const GOBLIN = MONSTER_SHEETS.goblin
-const SHEET_KINDS = ["goblin", "skeleton", "wolf", "bat", "troll"]
+const SHEET_KINDS = ["goblin", "skeleton", "wolf", "bat", "troll", "boss"]
 
 function sheetImage(kind) {
   return readRgbaPng(fs.readFileSync(path.join(root, "priv/static", monsterSheetUrl(kind))))
@@ -170,6 +170,16 @@ test("the troll's foot line is the walkers' line, 8 px over the cell bottom", ()
   assert.equal(SPEC.footRow, SPEC.cell - 8 + 1)
 })
 
+test("the boss's foot line is the walkers' line, 8 px over its 192 px cell bottom", () => {
+  const SPEC = MONSTER_SHEETS.boss
+  assert.deepEqual([SPEC.cell, SPEC.figure, SPEC.footRow], [192, 94, 192 - 8 + 1])
+  const image = sheetImage("boss")
+  assert.equal(image.width, 8 * SPEC.cell)
+  assert.equal(image.height, 20 * SPEC.cell)
+  // Every walk start pose stands on the foot line.
+  for (let column = 0; column < 8; column++) assert.equal(cellRows(image, SPEC.cell, column, 0)[1], SPEC.footRow)
+})
+
 test("the bat's foot line is the flier line, 24 px over the cell bottom", () => {
   // sprite_from_video.py FLIER_FOOT_MARGIN: the feet's lowest body row is
   // cell - 24 = 104, and footRow is the outline row under it, as for the
@@ -210,7 +220,7 @@ test("a goblin keeps its voxel card until its sheet loads", () => {
   assert.equal(goblin.group.userData.rim, goblin.rim)
   assert.equal(goblin.group.userData.picture.frames, 11)
   assert.equal(goblin.group.userData.hd, undefined)
-  assert.throws(() => picture.attachMonsterSheet(sheetTexture(), "boss"), /monster sheet/)
+  assert.throws(() => picture.attachMonsterSheet(sheetTexture(), "dragon"), /monster sheet/)
   assert.throws(() => picture.attachMonsterSheet(null, "goblin"), /monster sheet/)
 })
 
@@ -264,19 +274,28 @@ test("dressMonster draws each goblin from its own clone of the sheet", () => {
   assert.equal(sheetGone, false)
 })
 
-test("dress gives a sheet to goblins, skeletons, wolves, bats and trolls that spawned before it loaded, and leaves other kinds", () => {
+test("dress gives a sheet to goblins, skeletons, wolves, bats, trolls and the boss that spawned before it loaded, and leaves other kinds", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const goblin = monsterGroup("goblin")
-  const boss = monsterGroup("boss")
-  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, boss.group] })
+  const dragon = monsterGroup("dragon")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, dragon.group] })
   assert.equal(goblin.group.userData.card.isSprite, true)
   picture.attachMonsterSheet(sheetTexture(), "goblin")
-  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, boss.group] })
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, dragon.group] })
   assert.equal(goblin.group.userData.card.isMesh, true)
-  assert.equal(boss.group.userData.card, boss.sprite)
-  assert.equal(boss.group.userData.rim, boss.rim)
-  assert.equal(boss.group.userData.hd, undefined)
+  assert.equal(dragon.group.userData.card, dragon.sprite)
+  assert.equal(dragon.group.userData.rim, dragon.rim)
+  assert.equal(dragon.group.userData.hd, undefined)
+  // The boss on its 192 px cell, 94 px tall.
+  const boss = monsterGroup("boss")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [boss.group] })
+  assert.equal(boss.group.userData.card.isSprite, true)
+  picture.attachMonsterSheet(sheetTexture(), "boss")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [boss.group] })
+  assert.equal(boss.group.userData.card.isMesh, true)
+  assert.equal(boss.group.userData.hd, "boss")
+  assert.equal(boss.group.userData.picture.h, MONSTER_SHEETS.boss.figure * SHEET_TEXEL)
   // The skeleton waits for its own sheet, then draws from it.
   const skeleton = monsterGroup("skeleton")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [skeleton.group] })

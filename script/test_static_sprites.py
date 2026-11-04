@@ -249,7 +249,8 @@ class StaticTest(unittest.TestCase):
 
     def test_every_committed_static_sheet_rebuilds_byte_for_byte(self):
         views = {"pine": "front", "stone_wall": "front", "wall": "three_quarter", "tower": "three_quarter",
-                 "house": "three_quarter", "forge": "three_quarter", "trap": "three_quarter"}
+                 "house": "three_quarter", "forge": "three_quarter", "trap": "three_quarter",
+                 "bush": "three_quarter", "rock": "three_quarter", "flowers": "three_quarter"}
         for name, view in views.items():
             cfg = hs.load_config(name)
             self.assertEqual(cfg.get("view", "front"), view, name)
@@ -273,6 +274,41 @@ class StaticTest(unittest.TestCase):
             self.assertEqual(len(p["calls"]), n, name)
             with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
                 self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+
+        # Sizes come from scale, not from the generated image: rock c is drawn
+        # small though its view filled the frame like a and b.
+        rock = hs.load_config("rock")
+        hs_ = [hs.static_height(rock, v) for v in rock["variants"]]
+        self.assertEqual(hs_, sorted(hs_, reverse=True))
+        self.assertLessEqual(hs_[2], hs_[0] * 0.55)
+
+    def test_match_scales_saturation_and_value_to_the_reference_means(self):
+        rng = np.random.default_rng(3)
+        rgb = rng.integers(60, 250, (20, 20, 3), dtype=np.uint8)
+        keep = np.ones((20, 20), bool)
+        keep[:5] = False
+        target = (120.0, 50.0)
+        out = hs.match_hsv([(rgb, keep), (rgb, keep)], target)
+        s, v = hs.hsv_means(np.concatenate([o for o, _ in out]), np.concatenate([k for _, k in out]))
+        self.assertLess(abs(s - target[0]), 3)
+        self.assertLess(abs(v - target[1]), 2)
+        self.assertTrue(np.array_equal(out[0][0], hs.match_hsv([(rgb, keep)], target)[0][0]))
+        for m in ("no such", 3, "p"):  # "p" is the piece itself
+            with self.assertRaises(SystemExit, msg=m):
+                self.config(match=m)
+
+    def test_the_bush_matches_the_pine_sheet_and_the_built_flora_stands_small(self):
+        bush = hs.load_config("bush")
+        self.assertEqual(bush["match"], "pine")
+        sheet = lambda n: np.asarray(Image.open(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{n}-sheet.png")).convert("RGBA"))
+        ps, pv = hs.sheet_hsv_means(sheet("pine"))
+        bs, bv = hs.sheet_hsv_means(sheet("bush"))
+        # The palette quantize moves the means a little off the pine's.
+        self.assertLess(abs(bs - ps), 8)
+        self.assertLess(abs(bv - pv), 6)
+        for name in ("bush", "rock", "flowers"):
+            cfg = hs.load_config(name)
+            self.assertEqual([n for ok, n, _ in hs.static_checks(cfg, sheet(name)) if not ok], [], name)
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import { clockScore } from "./hd2d/score.js"
 import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
 import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
+import { floraSlots } from "./flora.js"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { mountPicture } from "./horizon.js"
@@ -377,6 +378,33 @@ export function createView(stage, picture) {
     return group
   }
 
+  // Flora: one fixed pool of sprites sharing staticMats; a new seed or
+  // attempt only moves them and swaps their material (no per-frame work).
+  const floraPool = []
+  let floraKey = null
+  function placeFlora(seed, attempt) {
+    const key = `${seed}:${attempt}`
+    if (key === floraKey) return
+    floraKey = key
+    for (const [n, slot] of floraSlots(seed, attempt).entries()) {
+      if (!floraPool[n]) {
+        const card = new THREE.Sprite(staticMats[slot.kind][slot.variant])
+        card.renderOrder = 1
+        card.castShadow = false
+        card.receiveShadow = false
+        scene.add(card)
+        floraPool[n] = card
+      }
+      const card = floraPool[n]
+      const spec = staticCard(slot.kind, slot.variant)
+      card.material = staticMats[slot.kind][slot.variant]
+      card.center.set(0.5, spec.centerY)
+      card.scale.set(spec.w, spec.h, 1)
+      card.position.set(slot.x, 0, slot.z)
+      card.userData.flora = slot.kind + "-" + slot.variant
+    }
+  }
+
   function addForestWall() {
     for (const [i, slot] of forestWallSlots().entries()) {
       const group = treeSprite(slot.scale, treeVariant(i))
@@ -409,6 +437,7 @@ export function createView(stage, picture) {
     return {
       trunks: scenerySlots().length,
       wall: forestWallSlots().length,
+      flora: floraPool.length,
       wood: look.wood,
       crowns: look.parts.includes("crown") || look.parts.includes("bough"),
       stumps: look.parts.includes("stump") && look.parts.includes("log"),
@@ -1012,6 +1041,7 @@ export function createView(stage, picture) {
       cssH: viewFrame.bufferHeight
     })
     land.sync(snap, camera, viewFrame.halfH)
+    placeFlora(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
   }
 
   function placeCamera(snap, selfId) {

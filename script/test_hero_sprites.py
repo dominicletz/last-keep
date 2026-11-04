@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hero_sprites as hs  # noqa: E402
 
 HEROES = ["engineer", "farmer", "mage", "scout", "warrior"]
-ASSETS = ["goblin", "skeleton", "wolf", "bat"]  # non-hero figures with an asset.json (docs/ART-REDO.md)
+ASSETS = ["goblin", "skeleton", "wolf", "bat", "deer"]  # non-hero figures with an asset.json (docs/ART-REDO.md)
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
             "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
             "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164},
@@ -244,6 +244,18 @@ class AssetTest(unittest.TestCase):
 
     def calls(self, a):
         return {c["id"]: c for c in hs.build_prompts(hs.load_config(a))["calls"]}
+
+    def test_the_deer_is_a_wild_animal_drawn_from_its_design_text_not_a_concept_figure(self):
+        cfg = hs.load_config("deer")
+        self.assertEqual((cfg["sheet"]["world_height"], cfg["sheet"]["height"], cfg["sheet"]["cell"]), (22, 60, 128))
+        self.assertEqual(cfg["sheet"]["height"], hs.sheet_height(22))
+        calls = self.calls("deer")
+        for d in ("S", "N", "W", "E"):
+            text = calls[f"view-{d}"]["args"]["description"]
+            self.assertIn("The reference shows no deer", text)
+            self.assertIn("no antlers", text)
+            self.assertNotIn("wolf", text)
+        self.assertNotIn("wolf", json.dumps(hs.build_prompts(cfg)))
 
     def test_goblin_config_is_a_monster_with_its_clip_kinds(self):
         cfg = hs.load_config("goblin")

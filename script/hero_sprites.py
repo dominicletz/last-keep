@@ -1061,6 +1061,10 @@ STATIC_PICK_SHARE = 0.1
 # (a sprung trap is the armed one with its spikes lowered). No prompt call.
 # A piece's "view": "front" (default) or "three_quarter" (one corner toward
 # the camera, like the concept painting the yard cards are cut from).
+# A piece's "match": "<sheet>" (another built static piece, e.g. "pine")
+# scales the saturation and value of every variant, by one factor each for
+# the whole piece, so their means over the body pixels equal that sheet's.
+# The bushes came out brighter and more yellow than the dark pine forest.
 STATIC_VIEWS = {
     "front": "seen from the front at the game's camera angle, slightly from above",
     "three_quarter": ("seen in a three-quarter view with one corner toward the camera, at the game's camera "
@@ -1092,6 +1096,9 @@ def load_static(cfg, hero, name, reference=REFERENCE):
         if src is not None and (src not in ids or src == v["id"]
                                 or next(u for u in vs if u["id"] == src).get("squash_of")):
             raise SystemExit(f"{hero}/{name}: variant {v['id']!r} squash_of is another variant with an image, got {src!r}")
+    m = cfg.get("match")
+    if m is not None and (not isinstance(m, str) or not m.isidentifier() or m == hero):
+        raise SystemExit(f"{hero}/{name}: match names another static piece's sheet, got {m!r}")
     if cfg.get("view", "front") not in STATIC_VIEWS:
         raise SystemExit(f"{hero}/{name}: view is one of {sorted(STATIC_VIEWS)}, got {cfg.get('view')!r}")
     for v in vs:
@@ -1182,7 +1189,35 @@ def static_cut(rgb, height, pick=None, width_at=None):
     return np.clip(np.round(small), 0, 255).astype(np.uint8), keep
 
 
-def static_sheet(cfg, images):
+def hsv_means(rgb, keep):
+    """Mean (saturation, value), 0..255, of the keep pixels of an RGB array."""
+    hsv = np.asarray(Image.fromarray(np.ascontiguousarray(rgb)).convert("HSV"), np.float64)
+    return hsv[keep][:, 1].mean(), hsv[keep][:, 2].mean()
+
+
+def sheet_hsv_means(sheet):
+    """hsv_means of a built RGBA sheet's body (opaque, not the outline)."""
+    keep = (sheet[..., 3] > 0) & ~np.all(sheet[..., :3] == sv.OUTLINE, axis=-1)
+    return hsv_means(sheet[..., :3], keep)
+
+
+def match_hsv(cuts, target):
+    """Scale S and V of every cut by one factor each so the cuts' mean S and V
+    over all their keep pixels equal target. Deterministic, clipped to 0..255."""
+    hsvs = [np.asarray(Image.fromarray(np.ascontiguousarray(rgb)).convert("HSV"), np.float64) for rgb, _ in cuts]
+    body = np.concatenate([h[k] for h, (_, k) in zip(hsvs, cuts)])
+    fs, fv = target[0] / max(body[:, 1].mean(), 1e-6), target[1] / max(body[:, 2].mean(), 1e-6)
+    out = []
+    for h, (_, keep) in zip(hsvs, cuts):
+        h = h.copy()
+        h[..., 1] = np.clip(np.round(h[..., 1] * fs), 0, 255)
+        h[..., 2] = np.clip(np.round(h[..., 2] * fv), 0, 255)
+        rgb = np.asarray(Image.fromarray(h.astype(np.uint8), "HSV").convert("RGB"))
+        out.append((rgb, keep))
+    return out
+
+
+def static_sheet(cfg, images, match=None):
     """images: variant id -> RGB array. Returns the RGBA sheet: one cell per
     variant in config order, each figure centred, its lowest outline row
     STATIC_MARGIN px above the cell bottom, one shared palette."""
@@ -1196,6 +1231,11 @@ def static_sheet(cfg, images):
             raise ValueError(f"{cfg['hero']} {v['id']}: {keep.shape[1] + 2} px wide with its outline, "
                              f"cell {cw} keeps {cw - 2 * STATIC_MARGIN}: widen cell, never crop")
         cuts.append((rgb, keep))
+    if cfg.get("match"):
+        if match is None:
+            path = os.path.join(ROOT, "priv/static/images/hd2d", f"{cfg['match']}-sheet.png")
+            match = sheet_hsv_means(np.asarray(Image.open(path).convert("RGBA")))
+        cuts = match_hsv(cuts, match)
     samples = np.concatenate([rgb[keep] for rgb, keep in cuts]).astype(np.float64)
     step = max(1, len(samples) // STATIC_SAMPLES)
     pal = sv.build_palette(samples[::step], k=cfg.get("colours", sv.COLOURS))
