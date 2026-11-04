@@ -463,6 +463,7 @@ class AssetTest(unittest.TestCase):
             self.assertIn("It is struck down: it startles and drops:", got[f"death-{d}"]["args"]["prompt"])
         self.assertIn("front knees buckle first", got["death-S"]["args"]["prompt"])
         self.assertIn("does not roll over or slide toward the camera", got["death-S"]["args"]["prompt"])
+        self.assertIn("droops sideways onto its own shoulder", got["death-S"]["args"]["prompt"])
 
     def test_a_bad_clip_override_is_refused(self):
         base = json.loads(read(os.path.join(hs.REFERENCE, "skeleton", "asset.json")))

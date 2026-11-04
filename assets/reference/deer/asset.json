@@ -168,12 +168,12 @@
   },
   "death-S": {
    "struck": "It is struck down where it stands: all four hooves stay planted on the ground line until the legs fold, it does not rear, hop, jump, lift its front legs or rise up at any moment;",
-   "death": "its front knees buckle first so its chest drops straight down, then its hind legs fold and it sinks onto its belly and settles there on the exact spot where it stood, lying folded with its legs tucked under it and its head resting on the ground between its front knees; it does not roll over or slide toward the camera, no part of it moves closer to the camera or below the line its hooves stood on; it only ever moves downward"
+   "death": "its front knees buckle first so its chest drops straight down, then its hind legs fold and it sinks onto its belly on the exact spot where it stood, lying folded with its legs tucked under it; its head stays up on its neck above its chest, chin level, and then slowly droops sideways onto its own shoulder, never forward and never down in front of its chest; it does not roll over or slide toward the camera, no part of it moves closer to the camera or below the line its hooves stood on; it only ever moves downward"
   },
   "death-N": {
    "struck": "It is struck down where it stands: its hooves never leave the ground, it does not rear, jump or lift its front legs;",
    "death": "its legs fold under it and it sinks down onto its belly and then onto its side on the exact spot where it stood, head resting on the ground, legs stretched out; it never leaps or springs"
   },
-  "_note": "Take 2: walk-N nodded its head down to 54 px (walk height 60+-4); death-S and death-N reared off the foot line (rows 115 / 104, limit +-3). Take 3: death-S still lifted to row 117 (limit +-3). Take 4: take 3 sank to row 125 as it rolled onto its side toward the camera; it now stays folded on its belly."
+  "_note": "Take 2: walk-N nodded its head down to 54 px (walk height 60+-4); death-S and death-N reared off the foot line (rows 115 / 104, limit +-3). Take 3: death-S still lifted to row 117 (limit +-3). Take 4: take 3 sank to row 125 as it rolled onto its side toward the camera; it now stays folded on its belly. Take 5: take 4 still reached row 125, its head resting on the ground in front of its chest (nearer the camera, so lower on screen); the head now droops onto its shoulder."
  }
 }
