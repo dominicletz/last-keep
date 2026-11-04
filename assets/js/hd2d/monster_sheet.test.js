@@ -130,8 +130,8 @@ test("the wolf sheet decodes to Pillow's sums", () => {
     opaque += 1
     ink += image.rgba[i] + image.rgba[i + 1] + image.rgba[i + 2]
   }
-  assert.equal(opaque, 206755)
-  assert.equal(ink, 28400075)
+  assert.equal(opaque, 203606)
+  assert.equal(ink, 27885119)
 })
 
 for (const kind of SHEET_KINDS) {

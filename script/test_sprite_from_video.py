@@ -207,6 +207,28 @@ class MonsterGeometryTest(unittest.TestCase):
         self.assertEqual(len(picks), 6)
 
 
+    def test_death_picks_by_motion_spread_over_the_fall_not_the_hold(self):
+        # 20 frames holding the start pose, a fall over frames 21-29, then
+        # lying still: evenly timed picks stand in the hold, motion picks fall.
+        d = [0] * 21 + [3, 7, 12, 17, 22, 26, 28, 29, 30] + [30] * 19
+        frames = frames_from([[[v]] for v in d])
+        rest, timed = sv.death_picks(frames)
+        rest_m, moved = sv.death_picks(frames, by_motion=True)
+        self.assertEqual(rest, rest_m)
+        self.assertEqual((timed[0], timed[-1]), (moved[0], moved[-1]))
+        self.assertEqual(moved[0], 0)
+        self.assertGreaterEqual(sum(1 for p in timed[1:-1] if p <= 20), 3)
+        self.assertTrue(all(21 <= p < rest for p in moved[1:-1]), moved)
+        self.assertEqual(moved, sorted(set(moved)))
+        # A clip without motion, or too short a fall, falls back to time.
+        still = frames_from([[[0]]] * 49)
+        self.assertEqual(sv.death_picks(still, by_motion=True), sv.death_picks(still))
+        # Only the wolf asks for it; nothing else changes its sheet.
+        for a in ("goblin", "skeleton", "bat", "troll", "boss"):
+            self.assertFalse(sv.sheet_spec(sv.asset_config(a)).death_by_motion, a)
+        self.assertTrue(sv.sheet_spec(sv.asset_config("wolf")).death_by_motion)
+        self.assertFalse(sv.HERO_SPEC.death_by_motion)
+
 @unittest.skipUnless(GOBLIN and os.path.exists(GOBLIN_SHEET), "goblin sheet not built")
 class MonsterCheckTest(unittest.TestCase):
     def setUp(self):

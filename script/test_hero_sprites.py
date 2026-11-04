@@ -585,16 +585,21 @@ class AssetTest(unittest.TestCase):
         for d in hs.CARDINALS:
             self.assertIn("holds the exact first-frame pose still for a moment", by[f"death-{d}"])
             self.assertIn("His body only ever moves down, never up.", by[f"death-{d}"])
-        # Take 2: death-S fell toward the camera and too slowly, the side
-        # deaths left the ground line; walk-NW crouched under 94 - 4 px.
+        # Take 2: death-S fell too slowly; take 3: a 94 px ogre lying deep on
+        # the ground ends 4-5 px under his foot line, so S, W and E topple
+        # away from the camera behind feet that stay put. walk-NW hunched
+        # under 94 - 4 px twice: an upright back.
         self.assertIn("nothing comes lower in the frame than his feet were", by["death-S"])
         self.assertIn("lying completely flat before the middle of the clip", by["death-S"])
+        for d in "SWE":
+            self.assertIn("away from the camera", by[f"death-{d}"])
+            self.assertIn("his feet staying exactly where they stood", by[f"death-{d}"])
+            self.assertIn("lies on the ground behind his feet, farther from the camera", by[f"death-{d}"])
         for d in "WE":
-            self.assertIn("never moves toward or away from the camera", by[f"death-{d}"])
-            self.assertIn("same ground line from the first frame to the last", by[f"death-{d}"])
-        self.assertNotIn("ground line", by["death-N"])
+            self.assertIn("lower in the frame than his feet were", by[f"death-{d}"])
+        self.assertNotIn("behind his feet", by["death-N"])
         self.assertIn("at his full standing height", by["walk-NW"])
-        self.assertIn("never crouching", by["walk-NW"])
+        self.assertIn("never hunched forward, bent over or crouching", by["walk-NW"])
         self.assertNotIn("never crouching", by["walk-N"])
 
     def test_boss_view_s_pins_a_square_front_view(self):
@@ -610,6 +615,15 @@ class AssetTest(unittest.TestCase):
             self.assertIn(want, s)
         for d in ("N", "W", "E"):
             self.assertNotIn("both of its eyes equally visible", calls[f"view-{d}"], d)
+        # view-N has the same symmetry from behind, the halberd on its own side.
+        n = calls["view-N"]
+        for want in ("Seen exactly from behind", "not three-quarter",
+                     "the horse's rump and long tail point straight at the camera",
+                     "square and symmetric about the image's vertical centre line",
+                     "holds the halberd upright beside his shoulder on the image-right side"):
+            self.assertIn(want, n)
+        for d in ("W", "E"):
+            self.assertNotIn("symmetric about the image's vertical centre line", calls[f"view-{d}"], d)
 
     def test_boss_is_the_dark_rider_on_his_horse_in_a_wide_cell(self):
         # monsters.js draws the boss 34 world units tall: 94 px at the hero
@@ -727,7 +741,7 @@ class AssetTest(unittest.TestCase):
                    "from the first frame to the last")
         for d in ("S", "NW", "N", "NE", "SE"):
             p = calls[f"attack-{d}"]
-            self.assertIn(spot if d != "NW" else spot.split(": its wings")[0], p, d)
+            self.assertIn(spot if d not in ("NW", "S") else spot.split(": its wings")[0], p, d)
             self.assertIn(nolunge, p, d)
             self.assertIn("keeps facing the same way and never turns", p, d)
             self.assertNotIn("lunges", p, d)
@@ -742,12 +756,13 @@ class AssetTest(unittest.TestCase):
         self.assertIn("its wings beat in full, wide strokes, from high above its back down to low below its body, bigger than its hover wingbeat",
                       calls["attack-NW"])
         self.assertNotIn("same steady wingbeat", calls["attack-NW"])
+        self.assertNotIn("same steady wingbeat", calls["attack-S"])
         for d in hs.COLUMNS:
             if d != "S":
                 self.assertNotIn("down below the camera", calls[f"attack-{d}"], d)
             if d != "N":
                 self.assertNotIn("head stays bowed forward", calls[f"attack-{d}"], d)
-            if d != "NW":
+            if d not in ("NW", "S"):
                 self.assertNotIn("full, wide strokes", calls[f"attack-{d}"], d)
         for d in ("S", "NW", "NE", "SE", "E", "W", "SW"):
             self.assertNotIn("face is never seen", calls[f"attack-{d}"], d)
@@ -949,6 +964,11 @@ class AssetTest(unittest.TestCase):
         # end on the pose moved up to the frame's vertical centre.
         bat = hs.load_config("bat")
         self.assertEqual(bat["centred_attacks"], ["S", "NW"])
+        # Take 6 held the hover; attack-S then barely moved (420 px against
+        # the walk step median 1305), so it takes NW's wide wing strokes.
+        over = bat["clip_overrides"]
+        for d in ("S", "NW"):
+            self.assertIn("its wings beat in full, wide strokes", over[f"attack-{d}"]["attack"], d)
         calls = {c["id"]: c["args"] for c in hs.build_prompts(bat)["calls"]}
         for d in hs.COLUMNS:
             want = f"assets/reference/bat/video/{'mid' if d in ('S', 'NW') else 'dirs'}/{d}.png"
@@ -984,6 +1004,20 @@ class AssetTest(unittest.TestCase):
                     hs.load_config("b", reference=tmp)
         with tempfile.TemporaryDirectory() as tmp:
             self.assertIsNone(hs.mid_start(dict(bat, video=tmp), "S", log=lambda *_: None))
+
+    def test_death_picks_is_motion_on_a_monster_or_absent(self):
+        wolf = hs.load_config("wolf")
+        self.assertEqual(wolf["death_picks"], "motion")
+        for bad in ("time", True, ["motion"]):
+            with tempfile.TemporaryDirectory() as tmp:
+                os.makedirs(os.path.join(tmp, "w"))
+                with open(os.path.join(wolf["dir"], "asset.json")) as fh:
+                    cfg = json.load(fh)
+                cfg["death_picks"] = bad
+                with open(os.path.join(tmp, "w", "asset.json"), "w") as fh:
+                    json.dump(cfg, fh)
+                with self.assertRaises(SystemExit, msg=repr(bad)):
+                    hs.load_config("w", reference=tmp)
 
     def test_views_builds_the_mirrored_view_from_its_source(self):
         # The parent's hand-made v-W (a flip of v-E) is exactly what views

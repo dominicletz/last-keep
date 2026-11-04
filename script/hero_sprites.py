@@ -161,6 +161,10 @@ def load_config(hero, reference=REFERENCE):
     # holds it in the air with its wings still (see FLIER below).
     if "flies" in cfg and (cfg["flies"] is not True or kind == "hero"):
         raise SystemExit(f"{hero}/{name}: flies is true on a monster, or absent")
+    # A death that holds the start pose and then falls fast spaces its picks
+    # by motion instead of time ("death_picks": "motion", sprite_from_video.death_picks).
+    if "death_picks" in cfg and (cfg["death_picks"] != "motion" or kind == "hero"):
+        raise SystemExit(f"{hero}/{name}: death_picks is \"motion\" on a monster, or absent")
     # A left-right symmetric figure (the bat) mirrors one side view from the
     # other instead of generating it: {"W": "E"} makes views/v-W.png the
     # horizontal flip of v-E, and prompts.json has no view-W call. Only W and

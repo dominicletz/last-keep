@@ -68,6 +68,7 @@ class Spec(NamedTuple):
     rows: tuple
     colours: int = COLOURS
     flies: bool = False  # asset.json "flies": hover anchoring (monster_anchor) and the flier checks
+    death_by_motion: bool = False  # asset.json "death_picks": "motion" (see death_picks)
 
     @property
     def fill(self):
@@ -105,7 +106,7 @@ def sheet_spec(cfg):
     rows = tuple((k, n) for k, n in MONSTER_ROWS if k in cfg["clips"])
     flies = cfg.get("flies") is True
     return Spec(cell, int(s["height"]), cell - (FLIER_FOOT_MARGIN if flies else FOOT_MARGIN), rows,
-                int(s.get("colours", COLOURS)), flies)
+                int(s.get("colours", COLOURS)), flies, cfg.get("death_picks") == "motion")
 
 
 def clip_for(clips, kind, d):
@@ -259,19 +260,35 @@ def attack_picks(frames, n=6):
     return peak, back, picks
 
 
-def death_picks(frames, n=6):
-    """n frames spread from frame 0 to the rest frame: the first frame within
-    10% of the largest change from the last frame, so the fall ends on the
-    ground and not in the long hold. Ends are exact; the rest take the
-    sharpest frame within one frame."""
+def death_picks(frames, n=6, by_motion=False):
+    """n frames from frame 0 to the rest frame: the first frame within 10%
+    of the largest change from the last frame, so the fall ends on the
+    ground and not in the long hold. The picks between are evenly timed or,
+    by_motion (asset.json "death_picks": "motion"), at equal shares of the
+    frame-to-frame change summed from frame 0 to the rest. A death holds the
+    start pose for a moment and then falls fast, and evenly timed picks can
+    spend most of the row on the hold and jump from standing to lying (the
+    wolf's death-E: four picks standing, then flat). Ends are exact; the
+    rest take the sharpest frame within one frame, each after the pick
+    before it and leaving room for the ones after."""
     gl = frames[-1]["gray"]
     dl = [float(np.abs(f["gray"] - gl).mean()) for f in frames]
     top = max(dl)
     rest = next((i for i, v in enumerate(dl) if v <= 0.1 * top), len(frames) - 1) if top > 0 else 0
-    picks = []
-    for k in range(n):
-        t = int(round(k * rest / (n - 1)))
-        picks.append(t if k in (0, n - 1) else sharpest(frames, t, 1, rest))
+    if not by_motion or rest < n - 1:
+        picks = []
+        for k in range(n):
+            t = int(round(k * rest / (n - 1)))
+            picks.append(t if k in (0, n - 1) else sharpest(frames, t, 1, rest))
+        return rest, picks
+    step = [float(np.abs(frames[i]["gray"] - frames[i - 1]["gray"]).mean()) for i in range(1, rest + 1)]
+    cum = np.concatenate([[0.0], np.cumsum(step)])
+    picks = [0]
+    for k in range(1, n - 1):
+        lo, hi = picks[-1] + 1, rest - (n - 1 - k)
+        t = int(np.searchsorted(cum, cum[-1] * k / (n - 1))) if cum[-1] > 0 else int(round(k * rest / (n - 1)))
+        picks.append(sharpest(frames, min(max(t, lo), hi), lo, hi))
+    picks.append(rest)
     return rest, picks
 
 
@@ -544,7 +561,7 @@ def monster_geometry(kind, frames, spec):
         peak, back, picks = attack_picks(frames)
         info = {"peak": peak, "recovery": back}
     else:
-        rest, picks = death_picks(frames)
+        rest, picks = death_picks(frames, by_motion=spec.death_by_motion)
         info = {"rest": rest}
     top, foot = span(frames[0]["mask"])
     h = float(foot - top + 1)
