@@ -1,5 +1,5 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 3). world_height 36 is the forge card's (yard_cards.js 48x36), 99 px at the hero texel; cell 152x112 holds its 48-unit width. The concept box is the small hut with a fire at the west of theme.jpg.",
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 36 is the forge card's (yard_cards.js 48x36), 99 px at the hero texel; cell 152x112 holds its 48-unit width. The concept box is the small hut with a fire at the west of theme.jpg. views/a.png was generated with the front wording and came out a three-quarter view (corner toward the camera), the angle of the concept painting every yard card is cut from; \"view\": \"three_quarter\" makes the prompt ask for that angle (docs/ART-REDO.md open question).",
  "type": "static",
  "noun": "forge",
  "concept": {
@@ -26,5 +26,6 @@
    "id": "a",
    "note": "seen from the front, the hearth and the anvil facing the camera"
   }
- ]
+ ],
+ "view": "three_quarter"
 }

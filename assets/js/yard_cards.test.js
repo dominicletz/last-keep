@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { buildingCard, cardFallback, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
+import { buildingCard, buildingSheet, cardFallback, sheetCard, staticSheets, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { readRgbaPng } from "./hd2d/png.js"
 import { spriteHeight } from "./pictures.js"
 import { SHEET_HERO } from "./hd2d/picture.js"
@@ -102,4 +102,54 @@ test("render.js draws the yard trees and the forest wall from the pine sheet, no
   assert.doesNotMatch(src, /sheetCard\("tree"/)
   assert.match(src, /sync\("tree", snap\.trees \|\| \[\], \(\) => treeSprite\(1\)\)/)
   assert.match(src, /treeSprite\(slot\.scale, treeVariant\(i\)\)/)
+})
+
+// [top, bottom] opaque rows of each cell of a static sheet.
+function sheetRows(name) {
+  const sheet = staticSheets[name]
+  const image = readRgbaPng(fs.readFileSync(path.join(root, "priv/static", sheet.url)))
+  const [cw, ch] = sheet.cell
+  assert.equal(image.width, cw * sheet.variants.length, name)
+  assert.equal(image.height, ch, name)
+  return sheet.variants.map((_, v) => {
+    let top = -1
+    let bottom = -1
+    for (let y = 0; y < ch; y++) {
+      for (let x = 0; x < cw; x++) {
+        if (!image.rgba[(y * image.width + v * cw + x) * 4 + 3]) continue
+        if (top < 0) top = y
+        bottom = y
+        break
+      }
+    }
+    return [top, bottom]
+  })
+}
+
+test("every building sheet matches its asset.json, stands on its foot row and is its card's height", () => {
+  const heights = { wall: [110], stone_wall: [110], tower: [132], house: [176], forge: [99], trap: [55, 33] }
+  for (const [name, want] of Object.entries(heights)) {
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, "assets/reference", name, "asset.json"), "utf8"))
+    const sheet = staticSheets[name]
+    assert.deepEqual(sheet.cell, cfg.cell, name)
+    assert.deepEqual(sheet.variants, cfg.variants.map((v) => v.id), name)
+    const rows = sheetRows(name)
+    for (const [top, bottom] of rows) assert.equal(bottom, sheet.footRow, name)
+    assert.deepEqual(rows.map(([t, b]) => b - t + 1), want, name)
+    const card = yardCards[name] || yardCards[cardFallback[name]]
+    assert.equal(Math.round((card.h * 88) / 32), want[0], `${name} is its card's height at the hero texel`)
+  }
+})
+
+test("buildings with a sheet draw it, stone_wall its own; others keep their card", () => {
+  for (const kind of ["wall", "stone_wall", "tower", "house", "forge", "trap"]) assert.equal(buildingSheet(kind), kind)
+  for (const kind of ["field", "mage_tower", "pine", "no_such_building"]) assert.equal(buildingSheet(kind), null)
+  const t = sheetCard("trap", "b")
+  assert.deepEqual([t.repeat, t.offset, t.centerY], [[0.5, 1], [0.5, 0], 4 / 64])
+  assert.ok(Math.abs(sheetCard("house", "a").h - (184 * 32) / 88) < 1e-9)
+  assert.throws(() => sheetCard("house", "b"), /no house variant b/)
+  assert.throws(() => sheetCard("castle", "a"), /no static sheet castle/)
+  const src = fs.readFileSync(path.join(root, "assets/js/render.js"), "utf8")
+  assert.match(src, /const sheetKind = buildingSheet\(row\.kind\)/)
+  assert.match(src, /new THREE\.Sprite\(staticMats\[sheetKind\]\[variant\]\)/)
 })

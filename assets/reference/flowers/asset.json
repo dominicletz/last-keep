@@ -1,0 +1,35 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9). world height 6 (16 px): a ground decal for meadow cells. The concept has no flowers, so the box (the undergrowth by the pine) is a colour and style reference only. Cell 64x24.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "flower clump",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   392,
+   620,
+   470,
+   720
+  ]
+ },
+ "source_note": "The reference shows undergrowth in a dark forest; it is a style reference only: draw one small clump of wildflowers and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a tiny clump of a few wildflowers with short green stems and leaves",
+ "world_height": 6,
+ "cell": [
+  64,
+  24
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "small white and yellow wildflowers on short green stems"
+  },
+  {
+   "id": "b",
+   "note": "small purple wildflowers on short green stems"
+  }
+ ]
+}

@@ -949,6 +949,10 @@ class AssetTest(unittest.TestCase):
         self.assertIn("keeps his back and cape to the camera the whole time", by["attack-N"])
         self.assertNotIn("keeps his back and cape to the camera", by["attack-SW"])
         self.assertIn("never sink below the ground line of the first frame", by["death-N"])
+        # Take-4/3 precheck: attack-N's level halberd showed its lit blade and
+        # brown shaft (back ceilings), death-N's hind legs reached toward the camera.
+        self.assertIn("the halberd's shaft never lies level across or over his helm", by["attack-N"])
+        self.assertIn("fold forward under the belly, they never stretch back toward the camera", by["death-N"])
 
     def test_troll_view_e_puts_the_far_hand_club_and_the_face_on_the_right(self):
         # view-E faced screen-left twice: "right side toward the camera"

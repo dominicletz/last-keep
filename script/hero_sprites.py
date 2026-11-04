@@ -1056,6 +1056,16 @@ STATIC_SCALE = (0.5, 1.0)  # a variant's "scale": its height over world_height
 # one whose centre is furthest that way. Everything else is background.
 STATIC_PICKS = ("left", "right")
 STATIC_PICK_SHARE = 0.1
+# A variant with "squash_of": "<id>" has no image of its own: the build cuts
+# that variant's image at its width and squashes it to this variant's height
+# (a sprung trap is the armed one with its spikes lowered). No prompt call.
+# A piece's "view": "front" (default) or "three_quarter" (one corner toward
+# the camera, like the concept painting the yard cards are cut from).
+STATIC_VIEWS = {
+    "front": "seen from the front at the game's camera angle, slightly from above",
+    "three_quarter": ("seen in a three-quarter view with one corner toward the camera, at the game's camera "
+                      "angle, slightly from above, like the reference image"),
+}
 
 
 def load_static(cfg, hero, name, reference=REFERENCE):
@@ -1073,10 +1083,17 @@ def load_static(cfg, hero, name, reference=REFERENCE):
     if (not isinstance(vs, list) or not 1 <= len(vs) <= STATIC_VARIANTS or len(set(ids)) != len(ids)
             or any(not isinstance(i, str) or not i.isalnum() or not i.islower() for i in ids)
             or any(not isinstance(v.get("note", ""), str) for v in vs)
-            or any(set(v) - {"id", "note", "scale", "pick"} for v in vs)
+            or any(set(v) - {"id", "note", "scale", "pick", "squash_of"} for v in vs)
             or any(v.get("pick", "left") not in STATIC_PICKS for v in vs)):
         raise SystemExit(f"{hero}/{name}: variants is 1-{STATIC_VARIANTS} entries "
                          f"{{\"id\" (lowercase letters/digits, unique), \"note\", \"scale\"?, \"pick\"? {STATIC_PICKS}}}, got {vs!r}")
+    for v in vs:
+        src = v.get("squash_of")
+        if src is not None and (src not in ids or src == v["id"]
+                                or next(u for u in vs if u["id"] == src).get("squash_of")):
+            raise SystemExit(f"{hero}/{name}: variant {v['id']!r} squash_of is another variant with an image, got {src!r}")
+    if cfg.get("view", "front") not in STATIC_VIEWS:
+        raise SystemExit(f"{hero}/{name}: view is one of {sorted(STATIC_VIEWS)}, got {cfg.get('view')!r}")
     for v in vs:
         s = v.get("scale", 1.0)
         if not isinstance(s, (int, float)) or isinstance(s, bool) or not STATIC_SCALE[0] <= s <= STATIC_SCALE[1]:
@@ -1110,9 +1127,10 @@ def static_prompts(cfg):
              if cfg.get("style_refs") else "")
     calls = []
     for v in cfg["variants"]:
+        if v.get("squash_of"):
+            continue
         note = f" {sentence(v['note'])}" if v.get("note") else ""
-        desc = (f"Game prop reference of the {noun} from the reference image, seen from the front at the game's "
-                f"camera angle, slightly from above. {sentence(source) + ' ' if source else ''}"
+        desc = (f"Game prop reference of the {noun} from the reference image, {STATIC_VIEWS[cfg.get('view', 'front')]}. {sentence(source) + ' ' if source else ''}"
                 f"Same design: {cfg['design']}.{note}{style} The whole {noun} from its top to the ground it stands "
                 f"on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no "
                 f"shadow, no text, no other objects. One single {noun} only, not a sheet of several.")
@@ -1137,7 +1155,7 @@ def static_pick(mask, side):
     return lab == keep
 
 
-def static_cut(rgb, height, pick=None):
+def static_cut(rgb, height, pick=None, width_at=None):
     """A generated image on white -> (RGB, mask) of the figure scaled so its
     opaque body is height - 2 px tall (the outline adds a row above and
     below). Background is sv.cut_out's white; the figure is its bounding box.
@@ -1152,7 +1170,7 @@ def static_cut(rgb, height, pick=None):
     ys, xs = np.nonzero(mask)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     fill = height - 2
-    w = max(1, int(round((x1 - x0) * fill / (y1 - y0))))
+    w = max(1, int(round((x1 - x0) * ((width_at or height) - 2) / (y1 - y0))))
     img = Image.fromarray(np.ascontiguousarray(rgb[y0:y1, x0:x1]))
     small = np.asarray(img.resize((w, fill), Image.BOX), np.float64)
     a = np.asarray(Image.fromarray((mask[y0:y1, x0:x1] * 255).astype(np.uint8)).resize((w, fill), Image.BOX))
@@ -1171,7 +1189,9 @@ def static_sheet(cfg, images):
     cw, ch = cfg["cell"]
     cuts = []
     for v in cfg["variants"]:
-        rgb, keep = static_cut(images[v["id"]], static_height(cfg, v), v.get("pick"))
+        src = next((u for u in cfg["variants"] if u["id"] == v.get("squash_of")), v)
+        rgb, keep = static_cut(images[src["id"]], static_height(cfg, v), src.get("pick"),
+                               static_height(cfg, src) if src is not v else None)
         if keep.shape[1] + 2 > cw - 2 * STATIC_MARGIN:
             raise ValueError(f"{cfg['hero']} {v['id']}: {keep.shape[1] + 2} px wide with its outline, "
                              f"cell {cw} keeps {cw - 2 * STATIC_MARGIN}: widen cell, never crop")
@@ -1233,6 +1253,8 @@ def static_build(cfg, out=None, approval=None, log=print):
     none fail."""
     images = {}
     for v in cfg["variants"]:
+        if v.get("squash_of"):
+            continue
         path = os.path.join(cfg["dir"], "views", f"{v['id']}.png")
         if not os.path.exists(path):
             raise SystemExit(f"no {rel(path)}: generate it first (see prompts.md)")

@@ -57,7 +57,10 @@ class StaticTest(unittest.TestCase):
                {"cell": [128]}, {"variants": []}, {"variants": [{"id": "a"}] * 2},
                {"variants": [{"id": f"v{i}"} for i in range(5)]}, {"variants": [{"id": "A"}]},
                {"variants": [{"id": "a", "scale": 0.3}]}, {"variants": [{"id": "a", "scale": 1.2}]},
-               {"variants": [{"id": "a", "colour": "red"}]}, {"variants": [{"id": "a", "pick": "middle"}]}]
+               {"variants": [{"id": "a", "colour": "red"}]}, {"variants": [{"id": "a", "pick": "middle"}]},
+               {"variants": [{"id": "a", "squash_of": "a"}]}, {"variants": [{"id": "a", "squash_of": "z"}]},
+               {"variants": [{"id": "a"}, {"id": "b", "squash_of": "a"}, {"id": "c", "squash_of": "b"}]},
+               {"view": "top"}]
         for over in bad:
             with self.assertRaises(SystemExit, msg=over):
                 self.config(**over)
@@ -224,6 +227,52 @@ class StaticTest(unittest.TestCase):
             self.assertEqual(concept.shape[:2], (box[3] - box[1], box[2] - box[0]), name)
         trap = hs.load_config("trap")
         self.assertEqual([hs.static_height(trap, v) for v in trap["variants"]], [55, 33])
+
+    def test_squash_of_builds_a_variant_from_another_without_an_image_or_a_prompt(self):
+        cfg = self.config(variants=[{"id": "a"}, {"id": "b", "squash_of": "a", "scale": 0.6}])
+        self.assertEqual([c["id"] for c in hs.static_prompts(cfg)["calls"]], ["image-a"])
+        sheet = hs.static_sheet(cfg, {"a": pine_image()})
+        self.assertEqual([n for ok, n, _ in hs.static_checks(cfg, sheet) if not ok], [])
+        a = sheet[..., 3] > 0
+        wa = np.nonzero(a[:, :128].any(0))[0]
+        wb = np.nonzero(a[:, 128:].any(0))[0]
+        self.assertEqual(len(wa), len(wb))  # same width: only the height is squashed
+        hb = np.nonzero(a[:, 128:].any(1))[0]
+        self.assertEqual(len(hb), 66)
+
+    def test_the_view_key_sets_the_camera_wording_and_front_stays_the_default(self):
+        front = hs.static_prompts(self.config())["calls"][0]["args"]["description"]
+        self.assertIn("seen from the front at the game's camera angle, slightly from above.", front)
+        tq = hs.static_prompts(self.config(view="three_quarter"))["calls"][0]["args"]["description"]
+        self.assertIn("three-quarter view with one corner toward the camera", tq)
+        self.assertNotIn("seen from the front", tq)
+
+    def test_every_committed_static_sheet_rebuilds_byte_for_byte(self):
+        views = {"pine": "front", "stone_wall": "front", "wall": "three_quarter", "tower": "three_quarter",
+                 "house": "three_quarter", "forge": "three_quarter", "trap": "three_quarter"}
+        for name, view in views.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg.get("view", "front"), view, name)
+            tmp = tempfile.mkdtemp()
+            out = os.path.join(tmp, "s.png")
+            self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None), 0, name)
+            with open(out, "rb") as a, open(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png"), "rb") as b:
+                self.assertEqual(a.read(), b.read(), name)
+        trap = hs.load_config("trap")
+        self.assertEqual(trap["variants"][1]["squash_of"], "a")
+        self.assertFalse(os.path.exists(os.path.join(trap["dir"], "views", "b.png")))
+
+    def test_the_flora_pieces_are_set_up_and_their_prompts_are_current(self):
+        want = {"bush": (14, 3), "rock": (16, 3), "flowers": (6, 2)}
+        for name, (wh, n) in want.items():
+            cfg = hs.load_config(name)
+            self.assertEqual((cfg["world_height"], len(cfg["variants"])), (wh, n), name)
+            self.assertLess(wh, 32, name)  # under a hero, so heroes read over it
+            self.assertGreaterEqual(cfg["cell"][1], cfg["height"] + 2 * hs.STATIC_MARGIN, name)
+            p = hs.build_prompts(cfg)
+            self.assertEqual(len(p["calls"]), n, name)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
 
 
 if __name__ == "__main__":

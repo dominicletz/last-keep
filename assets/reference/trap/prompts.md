@@ -9,28 +9,12 @@ Save as `assets/reference/trap/views/a.png`. Then run `python3 script/hero_sprit
 
 ```json
 {
- "description": "Game prop reference of the spike trap from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows a spiked trap on a dirt path with a campfire and figures nearby; draw only the trap and nothing else. Same design: a low square wooden frame set in the ground with rows of sharpened iron-tipped wooden spikes, dark weathered wood and dull iron. Armed: the spikes stand upright, pointing up. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole spike trap from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single spike trap only, not a sheet of several.",
+ "description": "Game prop reference of the spike trap from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows a spiked trap on a dirt path with a campfire and figures nearby; draw only the trap and nothing else. Same design: a low square wooden frame set in the ground with rows of sharpened iron-tipped wooden spikes, dark weathered wood and dull iron. Armed: the spikes stand upright, pointing up. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole spike trap from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single spike trap only, not a sheet of several.",
  "reference_image_paths": [
   "assets/reference/trap/concept.png",
   "assets/reference/engineer/video/views/v-S.png"
  ],
  "aspect_ratio": "1:1",
  "filename": "trap-a.png"
-}
-```
-
-## image-b (GenerateImage)
-
-Save as `assets/reference/trap/views/b.png`. Then run `python3 script/hero_sprites.py trap build`.
-
-```json
-{
- "description": "Game prop reference of the spike trap from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows a spiked trap on a dirt path with a campfire and figures nearby; draw only the trap and nothing else. Same design: a low square wooden frame set in the ground with rows of sharpened iron-tipped wooden spikes, dark weathered wood and dull iron. Sprung: the spikes lie flat in the frame, folded down. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole spike trap from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single spike trap only, not a sheet of several.",
- "reference_image_paths": [
-  "assets/reference/trap/concept.png",
-  "assets/reference/engineer/video/views/v-S.png"
- ],
- "aspect_ratio": "1:1",
- "filename": "trap-b.png"
 }
 ```

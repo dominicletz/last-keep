@@ -1,5 +1,5 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 3). world_height 40 and the 30-unit width are the wall card's (yard_cards.js 30x40); the concept box is the west palisade run of theme.jpg. One variant: the front-on section; an end-on view for runs that turn is left for later.",
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 40 and the 30-unit width are the wall card's (yard_cards.js 30x40); the concept box is the west palisade run of theme.jpg. One variant: the front-on section; an end-on view for runs that turn is left for later. views/a.png was generated with the front wording and came out a three-quarter view (corner toward the camera), the angle of the concept painting every yard card is cut from; \"view\": \"three_quarter\" makes the prompt ask for that angle (docs/ART-REDO.md open question).",
  "type": "static",
  "noun": "palisade wall section",
  "concept": {
@@ -26,5 +26,6 @@
    "id": "a",
    "note": "the section is about as wide as it is tall, its left and right ends cut straight so sections can stand side by side"
   }
- ]
+ ],
+ "view": "three_quarter"
 }

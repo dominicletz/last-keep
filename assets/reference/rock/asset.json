@@ -1,0 +1,41 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9). world height 16 (44 px) for the large boulder, 0.7 and 0.5 for the smaller ones (section 9: 3 sizes). The concept box is the rocks on the south path of theme.jpg. Cell 88x56.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "rock",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   620,
+   610,
+   720,
+   690
+  ]
+ },
+ "source_note": "The reference shows rocks on the forest floor with figures and trees nearby; draw only one rock and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a rough grey stone with flat chipped faces, lighter grey on the lit top, darker moss in the cracks",
+ "world_height": 16,
+ "cell": [
+  88,
+  56
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "a large rough boulder, wider than tall"
+  },
+  {
+   "id": "b",
+   "note": "a medium rock, rounded",
+   "scale": 0.7
+  },
+  {
+   "id": "c",
+   "note": "a small flat stone",
+   "scale": 0.5
+  }
+ ]
+}

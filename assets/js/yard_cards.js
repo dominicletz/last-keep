@@ -28,32 +28,55 @@ export function buildingCard(kind) {
   return other && yardCards[other] ? other : null
 }
 
-// The tree card's art: the pine sheet from script/hero_sprites.py pine build
-// (assets/reference/pine/asset.json). One row of cells, one per variant: a is
-// the full pine (110 px), b the slender one drawn at 0.85 (94 px). Each figure's
-// lowest outline row is footRow, with transparent rows under it. Drawn at the
-// hero texel (32 / 88 world units per px), like the monster sheets.
-export const treeSheet = {
-  url: "images/hd2d/pine-sheet.png",
-  cell: [128, 120],
-  footRow: 115,
-  variants: ["a", "b"],
-  texel: 32 / 88
+// Static art sheets from script/hero_sprites.py <name> build
+// (assets/reference/<name>/asset.json, "type": "static"): one row of cells,
+// one per variant, each figure's lowest outline row footRow (the cell height
+// minus hero_sprites.STATIC_MARGIN 4, minus 1), drawn at the hero texel
+// (32 / 88 world units per px) like the monster sheets.
+function staticSheet(name, cell, variants) {
+  return { url: `images/hd2d/${name}-sheet.png`, cell, footRow: cell[1] - 5, variants, texel: 32 / 88 }
 }
 
-// World size, sprite center and texture window of one pine variant.
-export function treeCard(variant) {
-  const index = treeSheet.variants.indexOf(variant)
-  if (index < 0) throw new Error(`no pine variant ${variant}`)
-  const [cw, ch] = treeSheet.cell
-  const n = treeSheet.variants.length
+export const staticSheets = {
+  // a is the full pine (110 px), b the slender one drawn at 0.85 (94 px).
+  pine: staticSheet("pine", [128, 120], ["a", "b"]),
+  wall: staticSheet("wall", [128, 120], ["a"]),
+  stone_wall: staticSheet("stone_wall", [144, 120], ["a"]),
+  tower: staticSheet("tower", [112, 144], ["a"]),
+  house: staticSheet("house", [176, 184], ["a"]),
+  forge: staticSheet("forge", [152, 112], ["a"]),
+  // a armed; b sprung (a squashed to 0.6). The game has no sprung state yet.
+  trap: staticSheet("trap", [80, 64], ["a", "b"])
+}
+
+// The tree card's art is the pine sheet.
+export const treeSheet = staticSheets.pine
+
+// The static sheet a building of this kind draws, or null (its old card or model).
+export function buildingSheet(kind) {
+  return staticSheets[kind] && kind !== "pine" ? kind : null
+}
+
+// World size, sprite center and texture window of one variant of a sheet.
+export function sheetCard(name, variant) {
+  const sheet = staticSheets[name]
+  if (!sheet) throw new Error(`no static sheet ${name}`)
+  const index = sheet.variants.indexOf(variant)
+  if (index < 0) throw new Error(`no ${name} variant ${variant}`)
+  const [cw, ch] = sheet.cell
+  const n = sheet.variants.length
   return {
-    w: cw * treeSheet.texel,
-    h: ch * treeSheet.texel,
-    centerY: (ch - 1 - treeSheet.footRow) / ch,
+    w: cw * sheet.texel,
+    h: ch * sheet.texel,
+    centerY: (ch - 1 - sheet.footRow) / ch,
     repeat: [1 / n, 1],
     offset: [index / n, 0]
   }
+}
+
+export function treeCard(variant) {
+  if (!treeSheet.variants.includes(variant)) throw new Error(`no pine variant ${variant}`)
+  return sheetCard("pine", variant)
 }
 
 // The variant the i-th tree draws: they alternate so a row does not repeat.

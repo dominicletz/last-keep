@@ -1,5 +1,5 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 3). world_height 20 is the trap card's (yard_cards.js 22x20), 55 px at the hero texel; cell 80x64. Two variants, armed and sprung (the sprung trap at 0.6, 33 px, since its spikes lie down). The concept box is the trap card's own crop of theme.jpg. The concept crop holds the trap's posts and a brazier more than a readable spike frame, so the design text carries the trap.",
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 20 is the trap card's (yard_cards.js 22x20), 55 px at the hero texel; cell 80x64. Two variants, armed and sprung (the sprung trap at 0.6, 33 px, since its spikes lie down). The concept box is the trap card's own crop of theme.jpg. The concept crop holds the trap's posts and a brazier more than a readable spike frame, so the design text carries the trap. views/a.png was generated with the front wording and came out a three-quarter view (corner toward the camera), the angle of the concept painting every yard card is cut from; \"view\": \"three_quarter\" makes the prompt ask for that angle (docs/ART-REDO.md open question). Variant b: the generated sprung image (kept in /workspace/lk/trap-b-generated.png) still had upright spikes, so b is now a squashed copy of a (\"squash_of\": \"a\"), built by script with no image of its own.",
  "type": "static",
  "noun": "spike trap",
  "concept": {
@@ -28,8 +28,10 @@
   },
   {
    "id": "b",
-   "note": "sprung: the spikes lie flat in the frame, folded down",
-   "scale": 0.6
+   "note": "sprung: the armed trap squashed to 0.6 of its height, the spikes lowered into the frame",
+   "scale": 0.6,
+   "squash_of": "a"
   }
- ]
+ ],
+ "view": "three_quarter"
 }

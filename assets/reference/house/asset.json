@@ -1,5 +1,5 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 3). world_height 64 is the house card's (yard_cards.js 56x64), 176 px at the hero texel; cell 176x184. The window glow stays a separate sprite (variant d), so the window light only needs to read, not glow. The concept box is the small house at the right of the keep in theme.jpg.",
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 64 is the house card's (yard_cards.js 56x64), 176 px at the hero texel; cell 176x184. The window glow stays a separate sprite (variant d), so the window light only needs to read, not glow. The concept box is the small house at the right of the keep in theme.jpg. views/a.png was generated with the front wording and came out a three-quarter view (corner toward the camera), the angle of the concept painting every yard card is cut from; \"view\": \"three_quarter\" makes the prompt ask for that angle (docs/ART-REDO.md open question).",
  "type": "static",
  "noun": "village house",
  "concept": {
@@ -26,5 +26,6 @@
    "id": "a",
    "note": "seen from the front, the gable end facing the camera with the door at its centre"
   }
- ]
+ ],
+ "view": "three_quarter"
 }

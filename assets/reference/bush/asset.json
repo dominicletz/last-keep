@@ -1,0 +1,41 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9). world height 14 (38 px), under a hero's 32 so heroes read over it. Three shapes; the concept box is the undergrowth at the right of the pine card. Cell 80x48.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "bush",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   392,
+   620,
+   470,
+   720
+  ]
+ },
+ "source_note": "The reference shows a bush beside a pine in a dark forest with other trees and figures at its edges; draw only the single bush and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a leafy dark green shrub of small clustered leaves, lighter yellow-green leaves on the lit top, no trunk visible",
+ "world_height": 14,
+ "cell": [
+  80,
+  48
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "a round, dense bush"
+  },
+  {
+   "id": "b",
+   "note": "a low, wide bush with a few twigs poking out",
+   "scale": 0.8
+  },
+  {
+   "id": "c",
+   "note": "a small bush with a few red berries",
+   "scale": 0.65
+  }
+ ]
+}

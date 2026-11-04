@@ -10,7 +10,7 @@ import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { mountPicture } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
-import { buildingCard, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
+import { buildingCard, buildingSheet, sheetCard as staticCard, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -238,19 +238,24 @@ export function createView(stage, picture) {
         })
       : new THREE.MeshBasicMaterial({ map, color: 0xffffff })
   }
-  // Trees draw the pine sheet (treeSheet); the texture fills in once loaded.
-  const treeMats = {}
-  const treeLoader = new THREE.TextureLoader()
-  for (const variant of treeSheet.variants) {
-    const spec = treeCard(variant)
-    const map = treeLoader.load("/" + treeSheet.url)
-    map.colorSpace = THREE.SRGBColorSpace
-    map.magFilter = THREE.NearestFilter
-    map.minFilter = THREE.NearestFilter
-    map.repeat.set(spec.repeat[0], spec.repeat[1])
-    map.offset.set(spec.offset[0], spec.offset[1])
-    treeMats[variant] = new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false, alphaTest: 0.5 })
+  // Trees and buildings with a static sheet (staticSheets) draw it; each
+  // texture fills in once loaded. name -> variant -> SpriteMaterial.
+  const staticMats = {}
+  const sheetLoader = new THREE.TextureLoader()
+  for (const [name, sheet] of Object.entries(staticSheets)) {
+    staticMats[name] = {}
+    for (const variant of sheet.variants) {
+      const spec = staticCard(name, variant)
+      const map = sheetLoader.load("/" + sheet.url)
+      map.colorSpace = THREE.SRGBColorSpace
+      map.magFilter = THREE.NearestFilter
+      map.minFilter = THREE.NearestFilter
+      map.repeat.set(spec.repeat[0], spec.repeat[1])
+      map.offset.set(spec.offset[0], spec.offset[1])
+      staticMats[name][variant] = new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false, alphaTest: 0.5 })
+    }
   }
+  const treeMats = staticMats.pine
   let treeCount = 0
   const windowMat = new THREE.SpriteMaterial({
     color: 0xeea821,
@@ -1712,10 +1717,21 @@ export function createView(stage, picture) {
   }
 
   function buildingMesh(row) {
+    const sheetKind = buildingSheet(row.kind)
     const cardKind = buildingCard(row.kind)
     const spec = cardKind ? sheetKinds[cardKind] : null
     const group = new THREE.Group()
-    if (spec?.stand) {
+    if (sheetKind) {
+      // The window light is painted into the house sheet, so no glow sprites.
+      const variant = staticSheets[sheetKind].variants[0]
+      const art = staticCard(sheetKind, variant)
+      const card = new THREE.Sprite(staticMats[sheetKind][variant])
+      card.center.set(0.5, art.centerY)
+      card.scale.set(art.w, art.h, 1)
+      card.renderOrder = 1
+      card.userData.sheet = sheetKind
+      group.add(card)
+    } else if (spec?.stand) {
       const card = new THREE.Sprite(sheetMats[cardKind])
       card.center.set(0.5, 0)
       card.scale.set(spec.w, spec.h, 1)
