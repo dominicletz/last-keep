@@ -27,3 +27,37 @@ export function buildingCard(kind) {
   const other = cardFallback[kind]
   return other && yardCards[other] ? other : null
 }
+
+// The tree card's art: the pine sheet from script/hero_sprites.py pine build
+// (assets/reference/pine/asset.json). One row of cells, one per variant: a is
+// the full pine (110 px), b the slender one drawn at 0.85 (94 px). Each figure's
+// lowest outline row is footRow, with transparent rows under it. Drawn at the
+// hero texel (32 / 88 world units per px), like the monster sheets.
+export const treeSheet = {
+  url: "images/hd2d/pine-sheet.png",
+  cell: [128, 120],
+  footRow: 115,
+  variants: ["a", "b"],
+  texel: 32 / 88
+}
+
+// World size, sprite center and texture window of one pine variant.
+export function treeCard(variant) {
+  const index = treeSheet.variants.indexOf(variant)
+  if (index < 0) throw new Error(`no pine variant ${variant}`)
+  const [cw, ch] = treeSheet.cell
+  const n = treeSheet.variants.length
+  return {
+    w: cw * treeSheet.texel,
+    h: ch * treeSheet.texel,
+    centerY: (ch - 1 - treeSheet.footRow) / ch,
+    repeat: [1 / n, 1],
+    offset: [index / n, 0]
+  }
+}
+
+// The variant the i-th tree draws: they alternate so a row does not repeat.
+export function treeVariant(i) {
+  const n = treeSheet.variants.length
+  return treeSheet.variants[((Math.trunc(i) % n) + n) % n]
+}

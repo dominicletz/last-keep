@@ -940,6 +940,15 @@ class AssetTest(unittest.TestCase):
             self.assertIn("Horse and rider only ever move down, never up.", t)
             self.assertIn("the rider never falls off", t)
             self.assertNotIn("onto its side", t)
+        # Take-3 precheck: the N clips start about 85 px off dirs/N every take
+        # (the encode), so walk-N needs big leg steps for a start limit over
+        # that, attack-N keeps his back to the camera, and death-N keeps the
+        # hooves on the ground line. No limit changes.
+        self.assertIn("each hind hoof lifts high toward the belly and steps far out to the side", by["walk-N"])
+        self.assertIn("only the legs, tail and cape move", by["walk-N"])
+        self.assertIn("keeps his back and cape to the camera the whole time", by["attack-N"])
+        self.assertNotIn("keeps his back and cape to the camera", by["attack-SW"])
+        self.assertIn("never sink below the ground line of the first frame", by["death-N"])
 
     def test_troll_view_e_puts_the_far_hand_club_and_the_face_on_the_right(self):
         # view-E faced screen-left twice: "right side toward the camera"

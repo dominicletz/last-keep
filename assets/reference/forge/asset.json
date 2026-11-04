@@ -1,0 +1,30 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 36 is the forge card's (yard_cards.js 48x36), 99 px at the hero texel; cell 152x112 holds its 48-unit width. The concept box is the small hut with a fire at the west of theme.jpg.",
+ "type": "static",
+ "noun": "forge",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   365,
+   340,
+   445,
+   425
+  ]
+ },
+ "source_note": "The reference shows a small forge hut in a village with a palisade, trees and figures nearby; draw only the single forge and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a small open-fronted blacksmith's forge: a low stone hearth with glowing orange coals, a short stone chimney, a dark wooden lean-to roof on two posts, an iron anvil on a stump in front",
+ "world_height": 36,
+ "cell": [
+  152,
+  112
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "seen from the front, the hearth and the anvil facing the camera"
+  }
+ ]
+}

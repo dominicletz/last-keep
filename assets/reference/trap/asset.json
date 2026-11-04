@@ -1,0 +1,35 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 20 is the trap card's (yard_cards.js 22x20), 55 px at the hero texel; cell 80x64. Two variants, armed and sprung (the sprung trap at 0.6, 33 px, since its spikes lie down). The concept box is the trap card's own crop of theme.jpg. The concept crop holds the trap's posts and a brazier more than a readable spike frame, so the design text carries the trap.",
+ "type": "static",
+ "noun": "spike trap",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   519,
+   488,
+   619,
+   581
+  ]
+ },
+ "source_note": "The reference shows a spiked trap on a dirt path with a campfire and figures nearby; draw only the trap and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a low square wooden frame set in the ground with rows of sharpened iron-tipped wooden spikes, dark weathered wood and dull iron",
+ "world_height": 20,
+ "cell": [
+  80,
+  64
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "armed: the spikes stand upright, pointing up"
+  },
+  {
+   "id": "b",
+   "note": "sprung: the spikes lie flat in the frame, folded down",
+   "scale": 0.6
+  }
+ ]
+}

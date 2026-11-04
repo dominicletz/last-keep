@@ -1,0 +1,30 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 64 is the house card's (yard_cards.js 56x64), 176 px at the hero texel; cell 176x184. The window glow stays a separate sprite (variant d), so the window light only needs to read, not glow. The concept box is the small house at the right of the keep in theme.jpg.",
+ "type": "static",
+ "noun": "village house",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   740,
+   220,
+   840,
+   315
+  ]
+ },
+ "source_note": "The reference shows a small house in a village with other buildings, fields, trees and figures nearby; draw only the single house and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a small medieval village house with walls of dark timber framing and plastered stone, a steep dark grey shingle gable roof, a stone chimney, a wooden door and small square windows with warm yellow light inside",
+ "world_height": 64,
+ "cell": [
+  176,
+  184
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "seen from the front, the gable end facing the camera with the door at its centre"
+  }
+ ]
+}

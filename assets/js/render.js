@@ -10,7 +10,7 @@ import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { mountPicture } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
-import { buildingCard, stoneRepeat, yardCards } from "./yard_cards.js"
+import { buildingCard, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -238,6 +238,20 @@ export function createView(stage, picture) {
         })
       : new THREE.MeshBasicMaterial({ map, color: 0xffffff })
   }
+  // Trees draw the pine sheet (treeSheet); the texture fills in once loaded.
+  const treeMats = {}
+  const treeLoader = new THREE.TextureLoader()
+  for (const variant of treeSheet.variants) {
+    const spec = treeCard(variant)
+    const map = treeLoader.load("/" + treeSheet.url)
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.repeat.set(spec.repeat[0], spec.repeat[1])
+    map.offset.set(spec.offset[0], spec.offset[1])
+    treeMats[variant] = new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false, alphaTest: 0.5 })
+  }
+  let treeCount = 0
   const windowMat = new THREE.SpriteMaterial({
     color: 0xeea821,
     depthTest: true,
@@ -346,9 +360,21 @@ export function createView(stage, picture) {
     return group
   }
 
+  function treeSprite(scale = 1, variant = treeVariant(treeCount++)) {
+    const spec = treeCard(variant)
+    const group = new THREE.Group()
+    const card = new THREE.Sprite(treeMats[variant])
+    card.center.set(0.5, spec.centerY)
+    card.scale.set(spec.w * scale, spec.h * scale, 1)
+    card.renderOrder = 1
+    card.userData.treeVariant = variant
+    group.add(card)
+    return group
+  }
+
   function addForestWall() {
-    for (const slot of forestWallSlots()) {
-      const group = sheetCard("tree", slot.scale, false)
+    for (const [i, slot] of forestWallSlots().entries()) {
+      const group = treeSprite(slot.scale, treeVariant(i))
       group.position.set(slot.x, 0, slot.z)
       group.traverse((child) => {
         child.castShadow = false
@@ -679,7 +705,7 @@ export function createView(stage, picture) {
 
       sync("building", drawn.buildings, (row) => buildingMesh(row))
 
-      sync("tree", snap.trees || [], () => sheetCard("tree", 1, false))
+      sync("tree", snap.trees || [], () => treeSprite(1))
 
       paintMapCloth(mapCloth, clothMarks, snap.map)
       sync("chest", snap.chests || [], () => {

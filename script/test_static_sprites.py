@@ -57,7 +57,7 @@ class StaticTest(unittest.TestCase):
                {"cell": [128]}, {"variants": []}, {"variants": [{"id": "a"}] * 2},
                {"variants": [{"id": f"v{i}"} for i in range(5)]}, {"variants": [{"id": "A"}]},
                {"variants": [{"id": "a", "scale": 0.3}]}, {"variants": [{"id": "a", "scale": 1.2}]},
-               {"variants": [{"id": "a", "colour": "red"}]}]
+               {"variants": [{"id": "a", "colour": "red"}]}, {"variants": [{"id": "a", "pick": "middle"}]}]
         for over in bad:
             with self.assertRaises(SystemExit, msg=over):
                 self.config(**over)
@@ -89,6 +89,42 @@ class StaticTest(unittest.TestCase):
         body = {tuple(c) for c in sheet[a][:, :3].tolist()} - {sv.OUTLINE}
         self.assertLessEqual(len(body), sv.COLOURS)
         self.assertIn(sv.OUTLINE, {tuple(c) for c in sheet[a][:, :3].tolist()})
+
+    def test_pick_keeps_one_figure_of_a_pair_and_drops_specks(self):
+        big = pine_image(half=120)
+        small = pine_image(top=300, half=70, seed=2)
+        pair = np.full((720, 1440, 3), 255, np.uint8)
+        pair[:, :720], pair[:, 720:] = big, small
+        pair[20:24, 1400:1404] = 0  # a speck at the far right is not a figure
+        cfg = self.config(variants=[{"id": "a", "pick": "left"}, {"id": "b", "pick": "right"}])
+        _, left = hs.static_cut(pair, 110, "left")
+        _, right = hs.static_cut(pair, 110, "right")
+        _, alone = hs.static_cut(small, 110)
+        self.assertEqual(right.shape, alone.shape)  # the right tree, cut as if it were alone
+        self.assertEqual(left.shape, hs.static_cut(big, 110)[1].shape)
+        sheet = hs.static_sheet(cfg, {"a": pair, "b": pair})
+        self.assertEqual([n for ok, n, _ in hs.static_checks(cfg, sheet) if not ok], [])
+        # Without a pick the pair is two pieces and too wide for the cell.
+        with self.assertRaises(ValueError):
+            hs.static_sheet(self.config(), {"a": pair, "b": pair})
+
+    def test_the_pine_b_variant_is_picked_from_the_committed_pair(self):
+        cfg = hs.load_config("pine")
+        b = cfg["variants"][1]
+        self.assertEqual((b["id"], b["pick"], b["scale"]), ("b", "right", 0.85))
+        for word in ("younger", "narrower"):  # contrast wording made the model draw pairs
+            self.assertNotIn(word, b["note"])
+        from scipy import ndimage
+        raw = np.asarray(Image.open(os.path.join(cfg["dir"], "views", "b.png")).convert("RGB"))
+        self.assertGreaterEqual(ndimage.label(sv.cut_out(raw))[1], 2)  # the raw pair, not a hand crop
+        with open(os.path.join(hs.ROOT, "priv/static/images/hd2d/pine-sheet.png"), "rb") as fh:
+            committed = fh.read()
+        tmp = tempfile.mkdtemp()
+        out = os.path.join(tmp, "s.png")
+        bad = hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None)
+        self.assertEqual(bad, 0)
+        with open(out, "rb") as fh:
+            self.assertEqual(fh.read(), committed)
 
     def test_the_build_is_deterministic(self):
         cfg = self.config()
@@ -160,6 +196,34 @@ class StaticTest(unittest.TestCase):
                 self.assertIn(phrase, d)
         concept = np.asarray(Image.open(os.path.join(cfg["dir"], "concept.png")))
         self.assertEqual(concept.shape[:2], (720 - 536, 392 - 278))
+
+    def test_the_building_pieces_match_their_cards_and_their_prompts_are_current(self):
+        import re
+        with open(os.path.join(hs.ROOT, "assets/js/yard_cards.js")) as fh:
+            cards = {k: (int(w), int(h)) for k, w, h in re.findall(r"(\w+): \{ w: (\d+), h: (\d+),", fh.read())}
+        want = {"wall": 40, "stone_wall": 40, "tower": 48, "house": 64, "forge": 36, "trap": 20}
+        for name, wh in want.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["type"], "static", name)
+            self.assertEqual(cfg["world_height"], wh, name)
+            if name in cards:  # stone_wall has no card: it falls back to the wall's 40
+                self.assertEqual(cards[name][1], wh, name)
+            self.assertEqual(cfg["height"], hs.sheet_height(wh), name)
+            # The cell holds the card's width at the hero texel with the margins.
+            w = cards.get(name, cards["wall"])[0]
+            self.assertGreaterEqual(cfg["cell"][0], hs.sheet_height(w) + 2 * hs.STATIC_MARGIN, name)
+            p = hs.build_prompts(cfg)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+            for c in p["calls"]:
+                self.assertIn(f"One single {cfg['noun']} only", c["args"]["description"], name)
+            box = cfg["concept"]["box"]
+            concept = np.asarray(Image.open(os.path.join(cfg["dir"], "concept.png")))
+            self.assertEqual(concept.shape[:2], (box[3] - box[1], box[2] - box[0]), name)
+        trap = hs.load_config("trap")
+        self.assertEqual([hs.static_height(trap, v) for v in trap["variants"]], [55, 33])
 
 
 if __name__ == "__main__":

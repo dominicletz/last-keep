@@ -1050,6 +1050,12 @@ STATIC_VARIANTS = 4    # most variants per piece
 STATIC_MARGIN = 4      # transparent rows/columns kept around the figure in its cell
 STATIC_SAMPLES = 60000  # palette samples, every n-th body pixel in variant order
 STATIC_SCALE = (0.5, 1.0)  # a variant's "scale": its height over world_height
+# A variant's "pick": the image model sometimes draws several figures despite
+# "one single ... only". "left"/"right" keep the leftmost/rightmost figure:
+# among the connected parts at least STATIC_PICK_SHARE of the largest, the
+# one whose centre is furthest that way. Everything else is background.
+STATIC_PICKS = ("left", "right")
+STATIC_PICK_SHARE = 0.1
 
 
 def load_static(cfg, hero, name, reference=REFERENCE):
@@ -1067,9 +1073,10 @@ def load_static(cfg, hero, name, reference=REFERENCE):
     if (not isinstance(vs, list) or not 1 <= len(vs) <= STATIC_VARIANTS or len(set(ids)) != len(ids)
             or any(not isinstance(i, str) or not i.isalnum() or not i.islower() for i in ids)
             or any(not isinstance(v.get("note", ""), str) for v in vs)
-            or any(set(v) - {"id", "note", "scale"} for v in vs)):
+            or any(set(v) - {"id", "note", "scale", "pick"} for v in vs)
+            or any(v.get("pick", "left") not in STATIC_PICKS for v in vs)):
         raise SystemExit(f"{hero}/{name}: variants is 1-{STATIC_VARIANTS} entries "
-                         f"{{\"id\" (lowercase letters/digits, unique), \"note\", \"scale\"?}}, got {vs!r}")
+                         f"{{\"id\" (lowercase letters/digits, unique), \"note\", \"scale\"?, \"pick\"? {STATIC_PICKS}}}, got {vs!r}")
     for v in vs:
         s = v.get("scale", 1.0)
         if not isinstance(s, (int, float)) or isinstance(s, bool) or not STATIC_SCALE[0] <= s <= STATIC_SCALE[1]:
@@ -1117,13 +1124,31 @@ def static_prompts(cfg):
     return {"hero": h, "calls": calls, "type": "static"}
 
 
-def static_cut(rgb, height):
+def static_pick(mask, side):
+    """Keep only the leftmost/rightmost figure of mask (see STATIC_PICKS)."""
+    lab, n = ndimage.label(mask)
+    if n <= 1:
+        return mask
+    ids = np.arange(1, n + 1)
+    area = ndimage.sum(mask, lab, ids)
+    big = ids[area >= STATIC_PICK_SHARE * area.max()]
+    cx = [ndimage.center_of_mass(mask, lab, int(i))[1] for i in big]
+    keep = big[int(np.argmax(cx) if side == "right" else np.argmin(cx))]
+    return lab == keep
+
+
+def static_cut(rgb, height, pick=None):
     """A generated image on white -> (RGB, mask) of the figure scaled so its
     opaque body is height - 2 px tall (the outline adds a row above and
-    below). Background is sv.cut_out's white; the figure is its bounding box."""
+    below). Background is sv.cut_out's white; the figure is its bounding box.
+    pick ("left"/"right") keeps one figure of several (static_pick); the rest
+    turns white."""
     mask = sv.cut_out(rgb)
     if not mask.any():
         raise ValueError("no figure on the image")
+    if pick:
+        mask = static_pick(mask, pick)
+        rgb = np.where(mask[..., None], rgb, 255).astype(np.uint8)
     ys, xs = np.nonzero(mask)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     fill = height - 2
@@ -1146,7 +1171,7 @@ def static_sheet(cfg, images):
     cw, ch = cfg["cell"]
     cuts = []
     for v in cfg["variants"]:
-        rgb, keep = static_cut(images[v["id"]], static_height(cfg, v))
+        rgb, keep = static_cut(images[v["id"]], static_height(cfg, v), v.get("pick"))
         if keep.shape[1] + 2 > cw - 2 * STATIC_MARGIN:
             raise ValueError(f"{cfg['hero']} {v['id']}: {keep.shape[1] + 2} px wide with its outline, "
                              f"cell {cw} keeps {cw - 2 * STATIC_MARGIN}: widen cell, never crop")
