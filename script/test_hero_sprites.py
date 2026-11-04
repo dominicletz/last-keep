@@ -621,6 +621,12 @@ class AssetTest(unittest.TestCase):
                      "his legs never sliding toward the camera", "not his feet, his legs and not the club"):
             self.assertIn(want, by["death-S"])
         self.assertNotIn("topples straight backward", by["death-S"])
+        # Take 5: he lay flat in time; only the dropped club's head rolled
+        # 1 px past the line (row 157, limit 156).
+        self.assertIn("where it lands flat right next to his foot and lies still", by["death-S"])
+        self.assertIn("it never rolls, bounces or tips toward the camera", by["death-S"])
+        for d in "WEN":
+            self.assertNotIn("never rolls, bounces", by[f"death-{d}"], d)
         self.assertIn("his head stays at exactly the same height in every frame, with no bob and no dip", by["walk-NW"])
         # The dip is the knee bend in each step (four takes at 89 px).
         self.assertIn("his knees stay almost straight", by["walk-NW"])
@@ -671,6 +677,13 @@ class AssetTest(unittest.TestCase):
         flipped = int((e != w[:, ::-1]).sum())
         self.assertLess(flipped, int((e != w).sum()))
         self.assertGreater(flipped, 0.1 * int(e.sum()))
+        # Turntable take 1 lost the halberd around NW (behind his back) and SE
+        # (faded while it jumped sides): the turn keeps it in view.
+        turn = [c for c in hs.build_prompts(hs.load_config("boss"))["calls"] if c["id"] == "turntable"][0]["args"]["prompt"]
+        for want in ("held upright in his right hand the whole time", "its axe blade stands high above his helm",
+                     "shows in every frame of the turn", "never hidden behind his body or cape",
+                     "never fading out and never changing hands"):
+            self.assertIn(want, turn)
 
     def test_boss_is_the_dark_rider_on_his_horse_in_a_wide_cell(self):
         # monsters.js draws the boss 34 world units tall: 94 px at the hero
