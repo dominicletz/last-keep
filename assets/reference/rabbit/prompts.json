@@ -1,0 +1,395 @@
+{
+ "hero": "rabbit",
+ "paths": "relative to the repository root",
+ "calls": [
+  {
+   "id": "view-S",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the rabbit from the reference image, front view, facing the camera. The reference shows no rabbit: it is only the yard's tilled field and grass whose palette and evening light the rabbit must match; draw one rabbit and nothing else, no field, no fences, no figures. Same design exactly: small wild brown rabbit with a soft grey-brown coat, a paler buff belly and chest, a white fluffy tail, long upright ears with dark tips, large dark eyes, a pink-brown nose, short front legs and long hind feet. Seen exactly from the front, not three-quarter like a rabbit sitting side-on: like looking at a rabbit hopping straight at you, its head points straight at the camera with both of its eyes and both ears equally visible, and the face, neck and chest are square and symmetric about the image's vertical centre line. Only the front of the face, the throat and the chest show; the body is completely hidden straight behind the chest. The two front paws stand side by side, symmetric, and the two hind feet only just peek out behind them. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its design. Whole animal from the tips of its ears down to its paws, sitting up on all four paws in a neutral alert pose, head level, ears upright, nothing cropped; the spine points exactly along the view direction, so in a front or back view the body is foreshortened straight behind the head with the two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/rabbit/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "rabbit-v-S.png"
+   },
+   "save_as": "assets/reference/rabbit/video/views/v-S.png"
+  },
+  {
+   "id": "view-N",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the rabbit from the reference image, back view, seen from directly behind, back to the camera. The reference shows no rabbit: it is only the yard's tilled field and grass whose palette and evening light the rabbit must match; draw one rabbit and nothing else, no field, no fences, no figures. Same design exactly: small wild brown rabbit with a soft grey-brown coat, a paler buff belly and chest, a white fluffy tail, long upright ears with dark tips, large dark eyes, a pink-brown nose, short front legs and long hind feet. Whole animal from the tips of its ears down to its paws, sitting up on all four paws in a neutral alert pose, head level, ears upright, nothing cropped; the spine points exactly along the view direction, so in a front or back view the body is foreshortened straight behind the head with the two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/rabbit/concept.png",
+     "assets/reference/rabbit/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "rabbit-v-N.png"
+   },
+   "save_as": "assets/reference/rabbit/video/views/v-N.png"
+  },
+  {
+   "id": "view-W",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the rabbit from the reference image, left profile view, facing screen-left, its left side toward the camera. The reference shows no rabbit: it is only the yard's tilled field and grass whose palette and evening light the rabbit must match; draw one rabbit and nothing else, no field, no fences, no figures. Same design exactly: small wild brown rabbit with a soft grey-brown coat, a paler buff belly and chest, a white fluffy tail, long upright ears with dark tips, large dark eyes, a pink-brown nose, short front legs and long hind feet. Whole animal from the tips of its ears down to its paws, sitting up on all four paws in a neutral alert pose, head level, ears upright, nothing cropped; the spine points exactly along the view direction, so in a front or back view the body is foreshortened straight behind the head with the two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/rabbit/concept.png",
+     "assets/reference/rabbit/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "rabbit-v-W.png"
+   },
+   "save_as": "assets/reference/rabbit/video/views/v-W.png"
+  },
+  {
+   "id": "view-E",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the rabbit from the reference image, right profile view, facing screen-right, its right side toward the camera. The reference shows no rabbit: it is only the yard's tilled field and grass whose palette and evening light the rabbit must match; draw one rabbit and nothing else, no field, no fences, no figures. Same design exactly: small wild brown rabbit with a soft grey-brown coat, a paler buff belly and chest, a white fluffy tail, long upright ears with dark tips, large dark eyes, a pink-brown nose, short front legs and long hind feet. Whole animal from the tips of its ears down to its paws, sitting up on all four paws in a neutral alert pose, head level, ears upright, nothing cropped; the spine points exactly along the view direction, so in a front or back view the body is foreshortened straight behind the head with the two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/rabbit/concept.png",
+     "assets/reference/rabbit/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "rabbit-v-E.png"
+   },
+   "save_as": "assets/reference/rabbit/video/views/v-E.png",
+   "then": "hero_sprites.py views"
+  },
+  {
+   "id": "turntable",
+   "step": "dirs",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game character turnaround reference. The rabbit stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show its left side, then its back, then its right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: small wild brown rabbit with a soft grey-brown coat, a paler buff belly and chest, a white fluffy tail, long upright ears with dark tips, large dark eyes, a pink-brown nose, short front legs and long hind feet, sitting on all four paws. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.",
+    "image_path": "assets/reference/rabbit/video/views/k-S.png",
+    "last_frame_path": "assets/reference/rabbit/video/views/k-S.png",
+    "keyframes": [
+     {
+      "image_path": "assets/reference/rabbit/video/views/k-W.png",
+      "timestamp_s": 2
+     },
+     {
+      "image_path": "assets/reference/rabbit/video/views/k-N.png",
+      "timestamp_s": 4
+     },
+     {
+      "image_path": "assets/reference/rabbit/video/views/k-E.png",
+      "timestamp_s": 6
+     }
+    ],
+    "duration": 8,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-turntable.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/turntable.mp4",
+   "then": "hero_sprites.py dirs"
+  },
+  {
+   "id": "walk-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/S.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-S.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-S.mp4"
+  },
+  {
+   "id": "attack-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (facing the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/S.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-S.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-S.mp4"
+  },
+  {
+   "id": "death-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The rabbit starts exactly in the pose and facing of the first frame (facing the camera). It is struck down: it startles and drops: its legs give way and it sinks down onto its belly and then onto its side on the exact spot where it sat, ears flat on the ground; it never leaps or springs. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/rabbit/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-death-S.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/death-S.mp4"
+  },
+  {
+   "id": "walk-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-SW.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-SW.mp4"
+  },
+  {
+   "id": "attack-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-SW.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-SW.mp4"
+  },
+  {
+   "id": "walk-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-left, its left side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/W.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-W.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-W.mp4"
+  },
+  {
+   "id": "attack-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (facing screen-left, its left side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/W.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-W.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-W.mp4"
+  },
+  {
+   "id": "death-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The rabbit starts exactly in the pose and facing of the first frame (facing screen-left, its left side toward the camera). It is struck down: it startles and drops: its legs give way and it sinks down onto its belly and then onto its side on the exact spot where it sat, ears flat on the ground; it never leaps or springs. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/rabbit/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-death-W.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/death-W.mp4"
+  },
+  {
+   "id": "walk-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-NW.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-NW.mp4"
+  },
+  {
+   "id": "attack-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-NW.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-NW.mp4"
+  },
+  {
+   "id": "walk-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from directly behind, back to the camera). Holding exactly the body angle of the first frame: torso does not twist. Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/N.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-N.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-N.mp4"
+  },
+  {
+   "id": "attack-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (seen from directly behind, back to the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/N.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-N.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-N.mp4"
+  },
+  {
+   "id": "death-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The rabbit starts exactly in the pose and facing of the first frame (seen from directly behind, back to the camera). It is struck down: it startles and drops: its legs give way and it sinks down onto its belly and then onto its side on the exact spot where it sat, ears flat on the ground; it never leaps or springs. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/rabbit/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-death-N.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/death-N.mp4"
+  },
+  {
+   "id": "walk-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-NE.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-NE.mp4"
+  },
+  {
+   "id": "attack-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-NE.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-NE.mp4"
+  },
+  {
+   "id": "walk-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-right, its right side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/E.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-E.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-E.mp4"
+  },
+  {
+   "id": "attack-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (facing screen-right, its right side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/E.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-E.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-E.mp4"
+  },
+  {
+   "id": "death-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The rabbit starts exactly in the pose and facing of the first frame (facing screen-right, its right side toward the camera). It is struck down: it startles and drops: its legs give way and it sinks down onto its belly and then onto its side on the exact spot where it sat, ears flat on the ground; it never leaps or springs. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/rabbit/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-death-E.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/death-E.mp4"
+  },
+  {
+   "id": "walk-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-SE.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-SE.mp4"
+  },
+  {
+   "id": "attack-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-SE.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-SE.mp4",
+   "then": "hero_sprites.py precheck"
+  }
+ ],
+ "type": "monster"
+}

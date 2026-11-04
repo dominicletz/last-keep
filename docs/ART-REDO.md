@@ -311,7 +311,7 @@ These are proposed, all purely client-side decoration with no gameplay.
 |---|---|---|---|---|---|
 | birds (crows) | over the forest wall and fields by day | a (small) | fly ×8 or ×4, take-off and land | Scatter when a hero walks close; gone at night | planned |
 | deer | `meadow` and `pine` edges outside the yard | a | walk ×8, idle ×4, flee ×8 | Flees from heroes and monsters. The concepts have no animal: `assets/reference/deer/` (monster pipeline, 22 world units = 60 px, 128 cell) takes only the forest palette from a theme.jpg crop and the look from its design text. Idle is the attack slot (grazing); flee has no clip kind yet (open question 13) | **clips next** (views and turntable done; `deer dirs` picked SW 28, NW 82, NE 115, SE 171, each facing its way by eye; 20 calls in /workspace/lk/deer-clips-batch.json; the views look smoother than voxel, open question 19) |
-| rabbits | yard edge and fields | a (small) | hop ×8, idle ×4 | Ties to the field (sow and harvest). assets/reference/rabbit: 10 world, 28 px, cell 64; views batch /workspace/lk/rabbit-batch.json | views |
+| rabbits | yard edge and fields | a (small) | hop ×8, idle ×4 | Ties to the field (sow and harvest). assets/reference/rabbit: 10 world, 28 px, cell 64; views done (W/E profiles turn slightly three-quarter, accepted); turntable batch /workspace/lk/rabbit-turntable-batch.json | turntable |
 | fish or ripples | `river` and `ford` | c | 2–4 frame jump | Optional | planned |
 
 ## Why the goblin is first

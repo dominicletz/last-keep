@@ -1,0 +1,74 @@
+{
+ "type": "monster",
+ "noun": "rabbit",
+ "possessive": "its",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   740,
+   300,
+   990,
+   440
+  ]
+ },
+ "source_note": "the reference shows no rabbit: it is only the yard's tilled field and grass whose palette and evening light the rabbit must match; draw one rabbit and nothing else, no field, no fences, no figures",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "small wild brown rabbit with a soft grey-brown coat, a paler buff belly and chest, a white fluffy tail, long upright ears with dark tips, large dark eyes, a pink-brown nose, short front legs and long hind feet",
+ "feet": "paws",
+ "view_pose": "Whole animal from the tips of its ears down to its paws, sitting up on all four paws in a neutral alert pose, head level, ears upright, nothing cropped; the spine points exactly along the view direction, so in a front or back view the body is foreshortened straight behind the head with the two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways",
+ "view_height": 300,
+ "gait": "Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward",
+ "items": [],
+ "attack": "lowers its head to nibble the grass right at its front paws, nose twitching, then sits back up to the start pose; all four paws stay on the same spot",
+ "death": "startles and drops: its legs give way and it sinks down onto its belly and then onto its side on the exact spot where it sat, ears flat on the ground; it never leaps or springs",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "sheet": {
+  "world_height": 10,
+  "height": 28,
+  "cell": 64
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "small wild brown rabbit with a soft grey-brown coat, a paler buff belly and chest, a white fluffy tail, long upright ears with dark tips, large dark eyes, a pink-brown nose, short front legs and long hind feet, sitting on all four paws"
+ },
+ "death_picks": "motion",
+ "_note": "Wild animal 2 (docs/ART-REDO.md section 10, planned for the yard edge and fields): the rabbit, following the deer's flow. The concept paintings have no animal, so the concept crop is the theme.jpg field (the propCrops field window, palette and light only) and the source_note says so. Quadruped, so it reuses the deer's view_pose, view_notes S wording and turntable layout. World height 10 (ears to paws) is 28 px at the hero texel; side-on about 40 px, so a 64 px cell. Clips: hop in the walk slot x8, nibble (the attack slot) x8, death x4. check anchors come after the views, from `hero_sprites.py rabbit colours`.",
+ "view_notes": {
+  "S": "Seen exactly from the front, not three-quarter like a rabbit sitting side-on: like looking at a rabbit hopping straight at you, its head points straight at the camera with both of its eyes and both ears equally visible, and the face, neck and chest are square and symmetric about the image's vertical centre line. Only the front of the face, the throat and the chest show; the body is completely hidden straight behind the chest. The two front paws stand side by side, symmetric, and the two hind feet only just peek out behind them"
+ }
+}
