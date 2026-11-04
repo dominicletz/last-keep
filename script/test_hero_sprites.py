@@ -245,6 +245,20 @@ class AssetTest(unittest.TestCase):
     def calls(self, a):
         return {c["id"]: c for c in hs.build_prompts(hs.load_config(a))["calls"]}
 
+    def test_the_rabbit_is_a_wild_animal_with_the_deers_square_front_wording(self):
+        cfg = hs.load_config("rabbit")
+        self.assertEqual((cfg["sheet"]["world_height"], cfg["sheet"]["height"], cfg["sheet"]["cell"]), (10, 28, 64))
+        self.assertEqual(cfg["sheet"]["height"], hs.sheet_height(10))
+        calls = self.calls("rabbit")
+        for d in ("S", "N", "W", "E"):
+            text = calls[f"view-{d}"]["args"]["description"]
+            self.assertIn("The reference shows no rabbit", text)
+            self.assertNotIn("deer", text)
+            self.assertNotIn("hoove", text)
+        self.assertNotIn("deer", json.dumps(hs.build_prompts(cfg)))
+        self.assertIn("Seen exactly from the front, not three-quarter", calls["view-S"]["args"]["description"])
+        self.assertIn("hop", calls["walk-S"]["args"]["prompt"])
+
     def test_the_deer_is_a_wild_animal_drawn_from_its_design_text_not_a_concept_figure(self):
         cfg = hs.load_config("deer")
         self.assertEqual((cfg["sheet"]["world_height"], cfg["sheet"]["height"], cfg["sheet"]["cell"]), (22, 60, 128))
@@ -448,6 +462,7 @@ class AssetTest(unittest.TestCase):
         for d in ("W", "E"):
             self.assertIn("It is struck down: it startles and drops:", got[f"death-{d}"]["args"]["prompt"])
         self.assertIn("front knees buckle first", got["death-S"]["args"]["prompt"])
+        self.assertIn("does not roll over or slide toward the camera", got["death-S"]["args"]["prompt"])
 
     def test_a_bad_clip_override_is_refused(self):
         base = json.loads(read(os.path.join(hs.REFERENCE, "skeleton", "asset.json")))

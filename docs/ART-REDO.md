@@ -101,7 +101,8 @@ Nothing below was changed without your OK; each item is waiting on a decision.
 20. **Flora counts.** Grass tufts, stumps and two broadleaf trees joined
    the seeded scatter; to stay at 64 sprites, bushes went 22 -> 18 and
    flowers 24 -> 16.
-21. **Deer view checks are weak.** The grazing idle (attack rows) breaks every colour split between front and back: head down, S hides its pale throat and N lifts its cream rump into view. The profile's bounds (N head-band pale at most 17, S pale at least 4) pass every frame but would catch little. Options: a separate graze row kind exempt from view checks, or a shape-based front/back test. Deer take 1 also failed two build checks (walk-N height 54, death-S/N off the foot line); retakes are in /workspace/lk/deer-retake-batch.json. Take 2 fixed walk-N and death-N; death-S still lifts to row 117, so take 3 is in /workspace/lk/deer-retake2-batch.json (asset.json clip_overrides carry every retake prompt).
+21. **Deer view checks are weak.** The grazing idle (attack rows) breaks every colour split between front and back: head down, S hides its pale throat and N lifts its cream rump into view. The profile's bounds (N head-band pale at most 17, S pale at least 4) pass every frame but would catch little. Options: a separate graze row kind exempt from view checks, or a shape-based front/back test. Deer take 1 also failed two build checks (walk-N height 54, death-S/N off the foot line); retakes are in /workspace/lk/deer-retake-batch.json. Take 2 fixed walk-N and death-N; death-S still lifts to row 117, so take 3 is in /workspace/lk/deer-retake2-batch.json; take 3 sank to rows 120..125 (rolling onto its side toward the camera), take 4 (folds onto its belly and stays) is in /workspace/lk/deer-retake3-batch.json (asset.json clip_overrides carry every retake prompt).
+22. **mage_tower has no concept crop.** `propCrops.mage_tower` (470,330 160×140 on theme.jpg) frames the blue mage figure with his staff, not a tower; there is no mage tower anywhere in the concepts. It joins question 14: design text only, or a crop from elsewhere?
 
 ## Variants
 
@@ -310,7 +311,7 @@ These are proposed, all purely client-side decoration with no gameplay.
 |---|---|---|---|---|---|
 | birds (crows) | over the forest wall and fields by day | a (small) | fly ×8 or ×4, take-off and land | Scatter when a hero walks close; gone at night | planned |
 | deer | `meadow` and `pine` edges outside the yard | a | walk ×8, idle ×4, flee ×8 | Flees from heroes and monsters. The concepts have no animal: `assets/reference/deer/` (monster pipeline, 22 world units = 60 px, 128 cell) takes only the forest palette from a theme.jpg crop and the look from its design text. Idle is the attack slot (grazing); flee has no clip kind yet (open question 13) | **clips next** (views and turntable done; `deer dirs` picked SW 28, NW 82, NE 115, SE 171, each facing its way by eye; 20 calls in /workspace/lk/deer-clips-batch.json; the views look smoother than voxel, open question 19) |
-| rabbits | yard edge and fields | a (small) | hop ×8, idle ×4 | Ties to the field (sow and harvest) | planned |
+| rabbits | yard edge and fields | a (small) | hop ×8, idle ×4 | Ties to the field (sow and harvest). assets/reference/rabbit: 10 world, 28 px, cell 64; views batch /workspace/lk/rabbit-batch.json | views |
 | fish or ripples | `river` and `ford` | c | 2–4 frame jump | Optional | planned |
 
 ## Why the goblin is first
