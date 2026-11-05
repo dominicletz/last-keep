@@ -4,7 +4,8 @@ import { ELITE_MARK_CELL, ELITE_MARKS, ELITE_MARK_SHEET, eliteMark } from "./eli
 import { SHEET_TEXEL } from "./hd2d/picture.js"
 import { cameraFocus, drawDue, frameFor, paintGap } from "./frame"
 import { clockScore } from "./hd2d/score.js"
-import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
+import { geometryCensus, giveBurst, releaseGeometries, takeBurst, trackGeometry } from "./meshes"
+import { arrowFrame, fireFrame, shotArt, shotScale, SHOT_URL } from "./shots.js"
 import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { floraSlots } from "./flora.js"
@@ -316,6 +317,21 @@ export function createView(stage, picture) {
   scene.add(keep)
 
   const meshes = new Map()
+  const shotSources = {}
+  function loadShotSheet(name, url) {
+    sheetLoader.load(url, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.magFilter = THREE.NearestFilter
+      tex.minFilter = THREE.NearestFilter
+      tex.generateMipmaps = false
+      tex.needsUpdate = true
+      shotSources[name] = tex
+      for (const mesh of meshes.values()) {
+        if (mesh.userData.shotSheet === name) bindShotMap(mesh, tex)
+      }
+    })
+  }
+  for (const [name, url] of Object.entries(SHOT_URL)) loadShotSheet(name, url)
   const ghost = new THREE.Mesh(
     new THREE.BoxGeometry(30, 22, 12),
     new THREE.MeshBasicMaterial({ color: 0x7ea35a, transparent: true, opacity: 0.55 })
@@ -603,6 +619,10 @@ export function createView(stage, picture) {
         mesh.userData.fade = Number.isFinite(row.opacity) ? row.opacity : 1
       }
       remember(key, row.x, row.y)
+      if (kind === "shot") {
+        mesh.userData.vx = row.vx || 0
+        mesh.userData.vy = row.vy || 0
+      }
       aimFacing(mesh, row.facing)
       if (kind === "hero") notePose(mesh, row.cds?.attack || 0, row.alive === false)
       if (kind === "monster") notePose(mesh, row.attack_cd || 0, false)
@@ -616,7 +636,7 @@ export function createView(stage, picture) {
       if (key.startsWith(`${kind}:`) && !seen.has(key)) {
         if (kind === "monster" && holdMonsterDeath(key, mesh)) continue
         scene.remove(mesh)
-        if (mesh.userData.role !== "shot") releaseGeometries(mesh)
+        releaseGeometries(mesh)
         meshes.delete(key)
         tracks.delete(key)
       }
@@ -871,15 +891,7 @@ export function createView(stage, picture) {
         return mesh
       })
 
-      sync("shot", snap.projectiles || [], (row) => {
-        const fire = row.kind === "fireball" || row.kind === "meteor"
-        const color = fire ? 0xff7a2a : 0xf2e2b0
-        const size = row.kind === "fireball" ? 11 : row.kind === "meteor" ? 14 : 6
-        const mesh = new THREE.Mesh(shotSphere(size), mat(color, color))
-        mesh.userData.lift = row.kind === "meteor" ? 28 : row.kind === "fireball" ? 18 : 12
-        mesh.userData.role = "shot"
-        return mesh
-      })
+      sync("shot", snap.projectiles || [], (row) => shotSprite(row))
 
       if (snap.tick !== lastTick) {
         lastTick = snap.tick
@@ -1736,6 +1748,64 @@ export function createView(stage, picture) {
     group.visible = true
   }
 
+  const flightFrom = new THREE.Vector3()
+  const flightTo = new THREE.Vector3()
+
+  function bindShotMap(mesh, source) {
+    if (!source || !source.image) return
+    const map = source.clone()
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.generateMipmaps = false
+    map.wrapS = THREE.ClampToEdgeWrapping
+    map.wrapT = THREE.ClampToEdgeWrapping
+    map.needsUpdate = true
+    if (mesh.material.map) mesh.material.map.dispose()
+    mesh.material.map = map
+    aimShot(mesh)
+  }
+
+  function shotSprite(row) {
+    const art = shotArt(row.kind)
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.4, depthWrite: false })
+    )
+    sprite.center.set(0.5, 0.5)
+    const world = shotScale(art, SHEET_TEXEL)
+    sprite.scale.set(world, world, 1)
+    sprite.userData.role = "shot"
+    sprite.userData.art = art
+    sprite.userData.shotSheet = art.sheet
+    sprite.userData.lift = row.kind === "meteor" ? 28 : row.kind === "fireball" ? 18 : 12
+    sprite.userData.vx = row.vx || 0
+    sprite.userData.vy = row.vy || 0
+    const source = shotSources[art.sheet]
+    if (source) bindShotMap(sprite, source)
+    return sprite
+  }
+
+  function aimShot(mesh) {
+    const art = mesh.userData.art
+    const map = mesh.material && mesh.material.map
+    if (!art || !map) return
+    let column = 0
+    if (art.sheet === "arrow") {
+      flightFrom.copy(mesh.position)
+      flightTo.copy(mesh.position)
+      flightTo.x += mesh.userData.vx || 0
+      flightTo.z += mesh.userData.vy || 0
+      flightFrom.project(camera)
+      flightTo.project(camera)
+      column = arrowFrame(flightTo.x - flightFrom.x, flightTo.y - flightFrom.y)
+    } else if (art.frames > 1) {
+      column = fireFrame(performance.now())
+    }
+    const cell = cellOffset(column, 0, art.frames, 1)
+    map.repeat.set(cell.repeatX, cell.repeatY)
+    map.offset.set(cell.x, cell.y)
+  }
+
   function placeMesh(key, mesh) {
     const pose = smoothed(key)
     const spread = mesh.userData.spread || { x: 0, z: 0 }
@@ -1745,6 +1815,10 @@ export function createView(stage, picture) {
     mesh.position.set(snapWorld(pose.x + spread.x, step), lift, snapWorld(pose.z + spread.z, step))
     // A flier's shadow stays on the ground under it.
     if (mesh.userData.shadow) mesh.userData.shadow.position.y = 0.46 - lift
+    if (mesh.userData.role === "shot") {
+      aimShot(mesh)
+      return
+    }
     const card = mesh.userData.card
     if (!card) return
     const viewYaw = Math.atan2(camera.position.x - mesh.position.x, camera.position.z - mesh.position.z)
@@ -2042,6 +2116,8 @@ export function createView(stage, picture) {
     if (mark) {
       const icon = new THREE.Sprite(eliteMarkMats[mark.look])
       icon.center.set(0.5, 0)
+      // 24 px cell. The figure's larger side is at most 20, so a lean chevron
+      // stays inside a goblin's width.
       icon.scale.set(ELITE_MARK_CELL.w * SHEET_TEXEL, ELITE_MARK_CELL.h * SHEET_TEXEL, 1)
       icon.position.y = picture.h + 6
       mesh.add(icon)

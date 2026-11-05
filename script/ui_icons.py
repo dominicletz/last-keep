@@ -16,9 +16,8 @@ import sprite_from_video as sv
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 ELITE_MARKS = ("plated", "lean", "spiked")
-ELITE_CELL_W = 86
-ELITE_CELL_H = 24
-ELITE_HEIGHT = 20
+ELITE_CELL = 24
+ELITE_MAX = 20
 ELITE_SHEET = os.path.join(ROOT, "priv/static/images/hd2d/elite-marks.png")
 
 RESOURCES = ("wood", "food", "gold")
@@ -99,23 +98,23 @@ def place(canvas, icon, ox, oy):
 
 
 def elite_icon(name):
-    """Height is 20. The lean chevron is wide, so the cell is wide enough for it."""
+    """The larger side is at most 20 px, so the wide lean chevron stays in the cell."""
     rgb, mask = cut_figure(view_path("elite_marks", name))
-    rgb, alpha = scale_figure(rgb, mask, ELITE_HEIGHT, ELITE_CELL_W - 2)
-    if not 16 <= int(alpha.sum(1).astype(bool).sum()) <= 24:
-        raise RuntimeError(f"{name} ink is not 16–24 px tall")
-    if alpha.shape[1] > ELITE_CELL_W - 2:
-        raise RuntimeError(f"{name} is {alpha.shape[1]} px wide")
+    rgb, alpha = scale_figure(rgb, mask, ELITE_MAX, ELITE_MAX)
+    span = max(int(alpha.any(0).sum()), int(alpha.any(1).sum()))
+    if span > ELITE_MAX or span < 8:
+        raise RuntimeError(f"{name} spans {span} px")
     return snap(rgb, alpha, ELITE_PALETTE[name])
 
 
 def elite_sheet():
-    """One row: plated, lean, spiked. Each cell is 86×24."""
-    sheet = np.zeros((ELITE_CELL_H, ELITE_CELL_W * len(ELITE_MARKS), 4), np.uint8)
+    """One row: plated, lean, spiked. Each cell is 24×24."""
+    cell = ELITE_CELL
+    sheet = np.zeros((cell, cell * len(ELITE_MARKS), 4), np.uint8)
     for index, name in enumerate(ELITE_MARKS):
         icon = elite_icon(name)
-        y = (ELITE_CELL_H - icon.shape[0]) // 2
-        x = index * ELITE_CELL_W + (ELITE_CELL_W - icon.shape[1]) // 2
+        y = (cell - icon.shape[0]) // 2
+        x = index * cell + (cell - icon.shape[1]) // 2
         place(sheet, icon, x, y)
     return sheet
 

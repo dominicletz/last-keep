@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
-import { ELITE_MARKS, ELITE_MARK_SHEET, eliteLook, eliteMark } from "./elite.js"
+import { ELITE_MARKS, ELITE_MARK_CELL, ELITE_MARK_SHEET, eliteLook, eliteMark } from "./elite.js"
 
 test("a boss, an armored elite, a fast elite, and an enraged elite do not share a look", () => {
   const looks = [
@@ -23,6 +23,7 @@ test("only plated, lean, and spiked get a mark, and it is the matching cell", ()
   assert.equal(eliteMark({ kind: "boss" }), null)
   assert.equal(eliteMark({ kind: "boss", elite: "armored" }), null)
   assert.deepEqual(ELITE_MARKS, ["plated", "lean", "spiked"])
+  assert.deepEqual(ELITE_MARK_CELL, { w: 24, h: 24 })
 })
 
 test("the renderer draws the mark sheet above the bar and not the old box", () => {

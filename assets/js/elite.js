@@ -1,7 +1,7 @@
 export const ELITE_MARKS = ["plated", "lean", "spiked"]
 export const ELITE_MARK_SHEET = "/images/hd2d/elite-marks.png"
-// The lean chevron is 83 px wide at 20 px tall, so the shared cell is 86×24.
-export const ELITE_MARK_CELL = { w: 86, h: 24 }
+// Each mark fits in one cell. The lean chevron's long side is at most 20 px.
+export const ELITE_MARK_CELL = { w: 24, h: 24 }
 
 export function eliteLook(row) {
   if (row?.kind === "boss") return "horned"

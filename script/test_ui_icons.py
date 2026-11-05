@@ -18,12 +18,17 @@ def load(path):
 class IconTest(unittest.TestCase):
     def test_the_elite_sheet_is_three_cells_and_matches_a_rebuild(self):
         image = load(ui.ELITE_SHEET)
-        self.assertEqual(image.shape, (ui.ELITE_CELL_H, ui.ELITE_CELL_W * 3, 4))
+        self.assertEqual(image.shape, (ui.ELITE_CELL, ui.ELITE_CELL * 3, 4))
         self.assertTrue(np.array_equal(image, ui.elite_sheet()))
         cells = {
-            name: image[:, index * ui.ELITE_CELL_W : (index + 1) * ui.ELITE_CELL_W]
+            name: image[:, index * ui.ELITE_CELL : (index + 1) * ui.ELITE_CELL]
             for index, name in enumerate(ui.ELITE_MARKS)
         }
+        for name, cell in cells.items():
+            ink = cell[:, :, 3] > 0
+            span = max(int(ink.any(0).sum()), int(ink.any(1).sum()))
+            self.assertLessEqual(span, ui.ELITE_MAX, name)
+            self.assertGreaterEqual(span, 8, name)
         for name in ("plated", "lean"):
             used = self.colours(cells[name])
             self.assertTrue(used <= set(ui.STEEL), name)
