@@ -143,6 +143,21 @@ test("every building sheet matches its asset.json, stands on its foot row and is
   }
 })
 
+test("the ruin stones and the map table stand on their foot rows", () => {
+  const want = { ruin_stones: [55, 30, 28], map_table: [44] }
+  for (const [name, heights] of Object.entries(want)) {
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, "assets/reference", name, "asset.json"), "utf8"))
+    const sheet = staticSheets[name]
+    assert.deepEqual(sheet.cell, cfg.cell, name)
+    assert.deepEqual(sheet.variants, cfg.variants.map((v) => v.id), name)
+    const rows = sheetRows(name)
+    for (const [, bottom] of rows) assert.equal(bottom, sheet.footRow, name)
+    assert.deepEqual(rows.map(([t, b]) => b - t + 1), heights, name)
+  }
+  assert.equal(buildingSheet("ruin_stones"), "ruin_stones")
+  assert.equal(buildingSheet("map_table"), "map_table")
+})
+
 test("buildings with a sheet draw it, stone_wall its own; others keep their card", () => {
   for (const kind of ["wall", "stone_wall", "tower", "house", "forge", "trap"]) assert.equal(buildingSheet(kind), kind)
   for (const kind of ["field", "mage_tower", "pine", "no_such_building"]) assert.equal(buildingSheet(kind), null)

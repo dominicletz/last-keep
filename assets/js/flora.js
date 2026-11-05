@@ -1,5 +1,5 @@
 import { PLAZA_SPAN } from "./ground.js"
-import { phash2 } from "./horizon.js"
+import { phash2, pictureCell } from "./horizon.js"
 import { forestWall } from "./scenery.js"
 
 // Bushes, rocks and flowers scattered over the yard (between the plaza and the
@@ -83,3 +83,43 @@ function offRoad(angle, dist) {
 }
 
 export const floraCount = KINDS.reduce((sum, kind) => sum + floraLook[kind].yard + floraLook[kind].edge, 0)
+
+// Ruin stones sit on ruins-biome cells, the same picture the horizon paints.
+// The yard pool stays the rings above. A camera window, capped, so the stones
+// stay where that biome is and do not grow with the whole map. y is the
+// ruins lift (horizon biomeLift).
+const RUIN_CELL = 36
+const RUIN_YARD = 380
+export const RUIN_CAP = 24
+const RUIN_VARIANTS = ["a", "b", "c"]
+const RUIN_LIFT = 8
+
+function ruinRange(origin, reach) {
+  const min = Math.floor((origin - reach) / RUIN_CELL) - 1
+  const max = Math.ceil((origin + reach) / RUIN_CELL) + 1
+  return [min, max]
+}
+
+export function ruinSlots(seed = 1, attempt = 0, camX = 0, camZ = 0, reach = 2400) {
+  const [i0, i1] = ruinRange(camX, reach)
+  const [j0, j1] = ruinRange(camZ, reach)
+  const found = []
+  for (let j = j0; j <= j1; j++) {
+    for (let i = i0; i <= i1; i++) {
+      const x = i * RUIN_CELL
+      const z = j * RUIN_CELL
+      if (Math.abs(x) < RUIN_YARD && Math.abs(z) < RUIN_YARD) continue
+      if (Math.hypot(x - camX, z - camZ) > reach) continue
+      if (pictureCell(seed, attempt, x, z) !== "ruins") continue
+      found.push({ x, z, hash: phash2([seed, i, j, attempt]) })
+    }
+  }
+  found.sort((a, b) => a.hash - b.hash || a.x - b.x || a.z - b.z)
+  return found.slice(0, RUIN_CAP).map((row) => ({
+    kind: "ruin_stones",
+    variant: RUIN_VARIANTS[row.hash % RUIN_VARIANTS.length],
+    x: row.x,
+    z: row.z,
+    y: RUIN_LIFT
+  }))
+}

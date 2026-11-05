@@ -253,7 +253,9 @@ class StaticTest(unittest.TestCase):
                  "bush": "three_quarter", "rock": "three_quarter", "flowers": "three_quarter",
                  "broadleaf": "front", "field": "three_quarter", "forest_barrier": "front",
                  "stump_log": "three_quarter", "cliff_face": "front", "grass_tufts": "three_quarter",
-                 "reeds": "three_quarter", "dead_tree": "front"}
+                 "reeds": "three_quarter", "dead_tree": "front",
+                 "ruin_stones": "three_quarter", "map_table": "three_quarter",
+                 "quarry": "three_quarter", "camp": "three_quarter", "shrine": "three_quarter"}
         for name, view in views.items():
             cfg = hs.load_config(name)
             self.assertEqual(cfg.get("view", "front"), view, name)
@@ -418,7 +420,7 @@ def unbuilt_batch():
 
 
 class UnbuiltStaticTest(unittest.TestCase):
-    def test_the_remaining_static_pieces_are_prepped_and_not_built(self):
+    def test_the_remaining_static_pieces_keep_their_prompts(self):
         style = ["assets/reference/engineer/video/views/v-S.png"]
         for name, want in UNBUILT.items():
             cfg = hs.load_config(name)
@@ -446,7 +448,8 @@ class UnbuiltStaticTest(unittest.TestCase):
                 self.assertEqual(call["save_as"], f"assets/reference/{name}/views/{vid}.png", name)
                 self.assertIn(f"One single {cfg['noun']} only", call["args"]["description"], name)
                 self.assertIn("The reference shows no ", call["args"]["description"], name)
-            self.assertFalse(os.path.exists(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")), name)
+            sheet = os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")
+            self.assertTrue(os.path.exists(sheet), name)
 
         ruin = hs.load_config("ruin_stones")
         self.assertEqual([v.get("scale", 1) for v in ruin["variants"]], [1, 0.55, 0.5])

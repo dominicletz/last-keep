@@ -1,7 +1,8 @@
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
-import { floraBands, floraCount, floraFree, floraLook, floraSlots } from "./flora.js"
+import { floraBands, floraCount, floraFree, floraLook, floraSlots, RUIN_CAP, ruinSlots } from "./flora.js"
+import { pictureCell } from "./horizon.js"
 import { staticSheets, buildingSheet, floraSheets } from "./yard_cards.js"
 
 test("the ring hash stays on the committed scatter", () => {
@@ -48,6 +49,41 @@ test("each kind uses every variant over a few seeds", () => {
   const seen = new Set()
   for (let seed = 0; seed < 12; seed++) for (const s of floraSlots(seed, 0)) seen.add(`${s.kind}-${s.variant}`)
   assert.equal(seen.size, Object.values(floraLook).reduce((n, look) => n + look.variants.length, 0))
+})
+
+test("ruin stones sit on ruins cells outside the yard and stay capped", () => {
+  const slots = ruinSlots(7, 0, 0, 0, 2400)
+  assert.equal(RUIN_CAP, 24)
+  assert.ok(slots.length > 0 && slots.length <= RUIN_CAP)
+  const variants = new Set()
+  for (const slot of slots) {
+    assert.equal(slot.kind, "ruin_stones")
+    assert.equal(slot.y, 8)
+    assert.ok(!(Math.abs(slot.x) < 380 && Math.abs(slot.z) < 380))
+    assert.ok(Math.hypot(slot.x, slot.z) <= 2400)
+    assert.equal(pictureCell(7, 0, slot.x, slot.z), "ruins")
+    assert.ok(["a", "b", "c"].includes(slot.variant))
+    variants.add(slot.variant)
+  }
+  assert.equal(variants.size, 3)
+  assert.deepEqual(ruinSlots(7, 0, 0, 0, 2400), slots)
+  assert.notDeepEqual(ruinSlots(8, 0, 0, 0, 2400), slots)
+  assert.equal(floraCount, 64)
+})
+
+test("the yard draws ruin stones from their sheet and the map table is a sprite under the cloth", () => {
+  const src = fs.readFileSync(new URL("./render.js", import.meta.url), "utf8")
+  assert.match(src, /placeRuins\(Number\.isInteger\(snap && snap\.seed\)/)
+  assert.match(src, /staticMats\.ruin_stones\[slot\.variant\]/)
+  assert.match(src, /staticCard\("map_table", "a"\)/)
+  assert.match(src, /new THREE\.Sprite\(staticMats\.map_table\.a\)/)
+  assert.match(src, /mapTable\.position\.set\(0, 0, 160\)/)
+  assert.match(src, /mapCloth\.position\.set\(0, 13\.2, 160\)/)
+  assert.match(src, /paintMapCloth\(mapCloth/)
+  assert.doesNotMatch(src, /BoxGeometry\(36, 8, 22\)/)
+  for (const name of ["quarry", "camp", "shrine"]) {
+    assert.doesNotMatch(src, new RegExp(`staticMats\\.${name}`))
+  }
 })
 
 test("flora draws its static sheets from a pooled set of sprites, not buildings", () => {

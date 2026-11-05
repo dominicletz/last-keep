@@ -9,7 +9,7 @@ import { arrowFrame, fireFrame, shotArt, shotScale, SHOT_URL } from "./shots.js"
 import { BURST_CELL, BURST_FRAMES, BURST_MS, BURST_SHEET, burstFrame, burstRow } from "./bursts.js"
 import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
-import { floraSlots } from "./flora.js"
+import { floraSlots, ruinSlots, RUIN_CAP } from "./flora.js"
 import { deerAt, deerSheetUrl, deerSlots, DEER_SHEET } from "./wildlife.js"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
@@ -153,12 +153,6 @@ export function createView(stage, picture) {
   ground.receiveShadow = false
   ground.visible = false
   scene.add(ground)
-  const mapTable = new THREE.Mesh(
-    trackGeometry(new THREE.BoxGeometry(36, 8, 22)),
-    mat(0x43382e)
-  )
-  mapTable.position.set(0, 8, 160)
-  mapTable.userData.role = "table"
   const mapCloth = new THREE.Group()
   mapCloth.rotation.x = -Math.PI / 2
   mapCloth.position.set(0, 13.2, 160)
@@ -174,7 +168,7 @@ export function createView(stage, picture) {
   clothMarks.frustumCulled = false
   clothMarks.userData.dummy = new THREE.Object3D()
   mapCloth.add(clothBoard, clothMarks)
-  scene.add(mapTable, mapCloth)
+  scene.add(mapCloth)
   const groundBytes = groundPixels("day")
   const groundMap = new THREE.DataTexture(groundBytes, GROUND_TEX, GROUND_TEX)
   groundMap.colorSpace = THREE.SRGBColorSpace
@@ -276,6 +270,14 @@ export function createView(stage, picture) {
     }
   }
   const treeMats = staticMats.pine
+  const tableArt = staticCard("map_table", "a")
+  const mapTable = new THREE.Sprite(staticMats.map_table.a)
+  mapTable.center.set(0.5, tableArt.centerY)
+  mapTable.scale.set(tableArt.w, tableArt.h, 1)
+  mapTable.position.set(0, 0, 160)
+  mapTable.renderOrder = 1
+  mapTable.userData.role = "table"
+  scene.add(mapTable)
   let treeCount = 0
   const windowMat = new THREE.SpriteMaterial({
     color: 0xeea821,
@@ -375,6 +377,8 @@ export function createView(stage, picture) {
   // in the temporal dead zone here, and the census reads both pools.
   const floraPool = []
   let floraKey = null
+  const ruinPool = []
+  let ruinKey = null
   const deerPool = []
   let deerKey = null
   let deerSource = null
@@ -458,6 +462,41 @@ export function createView(stage, picture) {
       card.position.set(slot.x, 0, slot.z)
       card.userData.flora = slot.kind + "-" + slot.variant
     }
+  }
+
+  // Ruin stones: the ruins-biome cells in the camera window, one sprite a
+  // slot, the same sheet the yard flora uses. A new chunk only moves them.
+  function placeRuins(seed, attempt) {
+    const reach = (viewFrame.halfH / Math.tan(THREE.MathUtils.degToRad(7.5))) * 1.42
+    const key = `${seed}:${attempt}:${Math.floor(camera.position.x / 512)}:${Math.floor(camera.position.z / 512)}:${Math.round(reach)}`
+    if (key === ruinKey) return
+    ruinKey = key
+    const slots = ruinSlots(seed, attempt, camera.position.x, camera.position.z, reach)
+    for (let n = 0; n < RUIN_CAP; n++) {
+      const slot = slots[n]
+      if (!slot) {
+        if (ruinPool[n]) ruinPool[n].visible = false
+        continue
+      }
+      if (!ruinPool[n]) {
+        const card = new THREE.Sprite(staticMats.ruin_stones[slot.variant])
+        card.renderOrder = 1
+        card.castShadow = false
+        card.receiveShadow = false
+        card.userData.role = "ruin"
+        scene.add(card)
+        ruinPool[n] = card
+      }
+      const card = ruinPool[n]
+      const spec = staticCard("ruin_stones", slot.variant)
+      card.material = staticMats.ruin_stones[slot.variant]
+      card.center.set(0.5, spec.centerY)
+      card.scale.set(spec.w, spec.h, 1)
+      card.position.set(slot.x, slot.y, slot.z)
+      card.visible = true
+      card.userData.flora = "ruin_stones-" + slot.variant
+    }
+    forestLook.ruins = slots.length
   }
 
   // Deer: one pool of sheet cards. A new seed only moves their homes. Each
@@ -1192,6 +1231,7 @@ export function createView(stage, picture) {
     })
     land.sync(snap, camera, viewFrame.halfH)
     placeFlora(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+    placeRuins(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
     placeDeer(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
     noteDeerClock(snap)
   }
