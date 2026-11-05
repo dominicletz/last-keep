@@ -207,18 +207,18 @@ baked into `tile-data.js` (2.2 MB) per phase: day, dusk and night.
 | portal / hell door | `horizon.js gateGeometry`, at most 8 instanced | two posts and a glowing plane | b | S, plus a glow layer (variant d) | Planned in the docs as hell doors | blocked: no portal in the concepts (open question 14) |
 | map table | `priv/static/images/hd2d/map_table-sheet.png` | sprite at (0, 160), cloth plane at y 13.2 | b | 3/4, one variant | 44 px. The box is gone. The cloth stays where it was, and the chunk map is still painted on it. | **built, awaiting final review** |
 
-### 4. Points of interest and NPCs with no art yet
+### 4. Points of interest and NPCs
 
-These are in the snapshot but `render.js` never draws them. `WORLD.md` says:
-"Terrain and these points of interest will be drawn by the pixel-art lane".
+The sim places the quarries, camps and shrines. The snapshot sends the ones whose chunk is already discovered, the same filter as a chest, and `render.js` draws the built sheet on that spot. A camp or a shrine leaves the list when the sim removes it. The merchant and the hermit are not sent. A vagrant is already an entity in the snapshot and still has no sheet.
 
 | Asset | Var | Notes | Status |
 |---|---|---|---|
-| quarry | b | Stone source. `quarry-sheet.png`, 88 px, two variants (a cut face, b a stepped mound). The sim places quarries. The snapshot does not send them, and the client has no mesh to replace, so the sheet stays unwired. | **built, not wired** |
-| camp | b | `camp-sheet.png`, 77 px, one lean-to and a fire. Same as the quarry: the sim has camps, the client is not given their spots. | **built, not wired** |
-| shrine | b | Relics are HUD text only; a relic icon could come with it (variant c), and that icon is not a variant here. `shrine-sheet.png`, 66 px, empty niche. Same as the quarry: no client spot. | **built, not wired** |
-| vagrant (NPC) | a | idle ×4, walk ×8 | todo |
-| merchant, hermit (planned) | a | idle ×4 | todo |
+| quarry | b | Stone source. `quarry-sheet.png`, 88 px. Variant a or b by `spotVariant` on the poi id. Feet on the ground. | **built, awaiting final review** |
+| camp | b | `camp-sheet.png`, 77 px, one lean-to and a fire. One variant. | **built, awaiting final review** |
+| shrine | b | Relics are HUD text only; a relic icon could come with it (variant c), and that icon is not a variant here. `shrine-sheet.png`, 66 px, empty niche. | **built, awaiting final review** |
+| vagrant (NPC) | a | idle ×4, walk ×8. No vagrant on the concept sheets, so the crop is the theme.jpg timber house for cloak colours (`source_note`). Views only: `assets/reference/npc-views-batch.json`. No sheet. | **prepped** |
+| merchant (planned) | a | idle ×4. No merchant on the concept sheets, so the crop is the theme.jpg wheat and stone for the sack colours (`source_note`). Same views batch. No sheet. | **prepped** |
+| hermit (planned) | a | idle ×4 | todo |
 
 ### 5. Projectiles and effects
 

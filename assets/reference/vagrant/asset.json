@@ -1,0 +1,27 @@
+{
+  "_note": "NPC (docs/ART-REDO.md section 4). The concept sheets have no vagrant, so the box is the theme.jpg timber house for its brown and cream, and the source_note says so. The design text carries the look. type is monster because a figure that is not a seated hero is asset.json on that path. World height 32 is a person, the hero's height, 88 px; the cell is 128 so the cloak has room past the 104 px minimum. Clips are the later plan (idle on the four views, walk on eight directions) and are not in the views batch. No views and no sheet image yet.",
+  "type": "monster",
+  "noun": "vagrant",
+  "possessive": "his",
+  "concept": {
+    "source": "docs/concept/theme.jpg",
+    "box": [740, 220, 840, 315]
+  },
+  "source_note": "The reference shows no vagrant: it is a thatched timber house; draw one vagrant and nothing else, no house and no trees; use the reference only for the colours of the cloak and the tunic",
+  "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+  "design": "a travel-worn vagrant with a short brown beard, a patched grey-brown hooded cloak the colour of weathered timber, a faded cream tunic, a frayed rope belt, scuffed brown boots, empty hands, no weapon",
+  "feet": "boots",
+  "sheet": {"world_height": 32, "height": 88, "cell": 128},
+  "gait": "Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little",
+  "items": [],
+  "clips": {
+    "walk": ["S", "SW", "W", "NW", "N", "NE", "E", "SE"],
+    "idle": ["S", "W", "N", "E"]
+  },
+  "turntable": {
+    "seconds": 8,
+    "fps": 24,
+    "keyframes": {"W": 2, "N": 4, "E": 6},
+    "design": "a travel-worn vagrant with a short brown beard, a patched grey-brown hooded cloak the colour of weathered timber, a faded cream tunic, a frayed rope belt, scuffed brown boots, empty hands, no weapon"
+  }
+}

@@ -81,9 +81,10 @@ test("the yard draws ruin stones from their sheet and the map table is a sprite 
   assert.match(src, /mapCloth\.position\.set\(0, 13\.2, 160\)/)
   assert.match(src, /paintMapCloth\(mapCloth/)
   assert.doesNotMatch(src, /BoxGeometry\(36, 8, 22\)/)
-  for (const name of ["quarry", "camp", "shrine"]) {
-    assert.doesNotMatch(src, new RegExp(`staticMats\\.${name}`))
-  }
+  assert.match(src, /sync\("spot", snap\.pois \|\| \[\]/)
+  assert.match(src, /spotVariant\(row\.kind, row\.id\)/)
+  assert.match(src, /new THREE\.Sprite\(staticMats\[row\.kind\]\[variant\]\)/)
+  assert.match(src, /mesh\.center\.set\(0\.5, art\.centerY\)/)
 })
 
 test("flora draws its static sheets from a pooled set of sprites, not buildings", () => {

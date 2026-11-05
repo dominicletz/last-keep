@@ -3,7 +3,7 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { buildingCard, buildingSheet, cardFallback, sheetCard, staticSheets, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
+import { buildingCard, buildingSheet, cardFallback, sheetCard, spotVariant, staticSheets, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { readRgbaPng } from "./hd2d/png.js"
 import { spriteHeight } from "./pictures.js"
 import { SHEET_HERO } from "./hd2d/picture.js"
@@ -156,6 +156,27 @@ test("the ruin stones and the map table stand on their foot rows", () => {
   }
   assert.equal(buildingSheet("ruin_stones"), "ruin_stones")
   assert.equal(buildingSheet("map_table"), "map_table")
+})
+
+test("the quarry, the camp and the shrine stand on their foot rows", () => {
+  const want = { quarry: [88, 88], camp: [77], shrine: [66] }
+  for (const [name, heights] of Object.entries(want)) {
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, "assets/reference", name, "asset.json"), "utf8"))
+    const sheet = staticSheets[name]
+    assert.deepEqual(sheet.cell, cfg.cell, name)
+    assert.deepEqual(sheet.variants, cfg.variants.map((v) => v.id), name)
+    const rows = sheetRows(name)
+    for (const [, bottom] of rows) assert.equal(bottom, sheet.footRow, name)
+    assert.deepEqual(rows.map(([t, b]) => b - t + 1), heights, name)
+  }
+  assert.equal(spotVariant("quarry", 1), "b")
+  assert.equal(spotVariant("quarry", 2), "a")
+  assert.equal(spotVariant("quarry", -1), "b")
+  assert.equal(spotVariant("camp", 5), "a")
+  assert.equal(spotVariant("shrine", 2), "a")
+  const quarry = sheetCard("quarry", "b")
+  assert.equal(quarry.centerY, 4 / 96)
+  assert.equal(quarry.w, (176 * 32) / 88)
 })
 
 test("buildings with a sheet draw it, stone_wall its own; others keep their card", () => {

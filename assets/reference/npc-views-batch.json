@@ -1,0 +1,125 @@
+{
+ "_note": "GenerateImage calls for the vagrant and the merchant, four views each (front S, back N, left W, right E). Paths are absolute under /workspace/lk-art-redo. save_as is the file `hero_sprites.py <name> views` reads. The front view uses the engineer style reference; the other three use that front view. No video.",
+ "calls": [
+  {
+   "id": "vagrant-view-S",
+   "asset": "vagrant",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the vagrant from the reference image, front view, facing the camera. The reference shows no vagrant: it is a thatched timber house; draw one vagrant and nothing else, no house and no trees; use the reference only for the colours of the cloak and the tunic. Same design exactly: a travel-worn vagrant with a short brown beard, a patched grey-brown hooded cloak the colour of weathered timber, a faded cream tunic, a frayed rope belt, scuffed brown boots, empty hands, no weapon. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its design. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/vagrant/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "vagrant-v-S.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/v-S.png"
+  },
+  {
+   "id": "vagrant-view-N",
+   "asset": "vagrant",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the vagrant from the reference image, back view, seen from directly behind, back to the camera. The reference shows no vagrant: it is a thatched timber house; draw one vagrant and nothing else, no house and no trees; use the reference only for the colours of the cloak and the tunic. Same design exactly: a travel-worn vagrant with a short brown beard, a patched grey-brown hooded cloak the colour of weathered timber, a faded cream tunic, a frayed rope belt, scuffed brown boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/vagrant/concept.png",
+     "/workspace/lk-art-redo/assets/reference/vagrant/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "vagrant-v-N.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/v-N.png"
+  },
+  {
+   "id": "vagrant-view-W",
+   "asset": "vagrant",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the vagrant from the reference image, left profile view, facing screen-left, his left side toward the camera. The reference shows no vagrant: it is a thatched timber house; draw one vagrant and nothing else, no house and no trees; use the reference only for the colours of the cloak and the tunic. Same design exactly: a travel-worn vagrant with a short brown beard, a patched grey-brown hooded cloak the colour of weathered timber, a faded cream tunic, a frayed rope belt, scuffed brown boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/vagrant/concept.png",
+     "/workspace/lk-art-redo/assets/reference/vagrant/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "vagrant-v-W.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/v-W.png"
+  },
+  {
+   "id": "vagrant-view-E",
+   "asset": "vagrant",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the vagrant from the reference image, right profile view, facing screen-right, his right side toward the camera. The reference shows no vagrant: it is a thatched timber house; draw one vagrant and nothing else, no house and no trees; use the reference only for the colours of the cloak and the tunic. Same design exactly: a travel-worn vagrant with a short brown beard, a patched grey-brown hooded cloak the colour of weathered timber, a faded cream tunic, a frayed rope belt, scuffed brown boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/vagrant/concept.png",
+     "/workspace/lk-art-redo/assets/reference/vagrant/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "vagrant-v-E.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/v-E.png"
+  },
+  {
+   "id": "merchant-view-S",
+   "asset": "merchant",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the merchant from the reference image, front view, facing the camera. The reference shows no merchant: it is wheat and a stone wall; draw one merchant and nothing else, no wheat, no wall and no torch; use the reference only for the colours of the sacks and the coat. Same design exactly: a traveling merchant with a short brown beard, a warm brown hooded coat the colour of ripe wheat, a leather satchel of tied grain sacks at the hip, a small coin pouch on the belt, brown boots, empty hands, no weapon. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its design. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/merchant/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "merchant-v-S.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/views/v-S.png"
+  },
+  {
+   "id": "merchant-view-N",
+   "asset": "merchant",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the merchant from the reference image, back view, seen from directly behind, back to the camera. The reference shows no merchant: it is wheat and a stone wall; draw one merchant and nothing else, no wheat, no wall and no torch; use the reference only for the colours of the sacks and the coat. Same design exactly: a traveling merchant with a short brown beard, a warm brown hooded coat the colour of ripe wheat, a leather satchel of tied grain sacks at the hip, a small coin pouch on the belt, brown boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/merchant/concept.png",
+     "/workspace/lk-art-redo/assets/reference/merchant/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "merchant-v-N.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/views/v-N.png"
+  },
+  {
+   "id": "merchant-view-W",
+   "asset": "merchant",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the merchant from the reference image, left profile view, facing screen-left, his left side toward the camera. The reference shows no merchant: it is wheat and a stone wall; draw one merchant and nothing else, no wheat, no wall and no torch; use the reference only for the colours of the sacks and the coat. Same design exactly: a traveling merchant with a short brown beard, a warm brown hooded coat the colour of ripe wheat, a leather satchel of tied grain sacks at the hip, a small coin pouch on the belt, brown boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/merchant/concept.png",
+     "/workspace/lk-art-redo/assets/reference/merchant/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "merchant-v-W.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/views/v-W.png"
+  },
+  {
+   "id": "merchant-view-E",
+   "asset": "merchant",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the merchant from the reference image, right profile view, facing screen-right, his right side toward the camera. The reference shows no merchant: it is wheat and a stone wall; draw one merchant and nothing else, no wheat, no wall and no torch; use the reference only for the colours of the sacks and the coat. Same design exactly: a traveling merchant with a short brown beard, a warm brown hooded coat the colour of ripe wheat, a leather satchel of tied grain sacks at the hip, a small coin pouch on the belt, brown boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/merchant/concept.png",
+     "/workspace/lk-art-redo/assets/reference/merchant/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "merchant-v-E.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/views/v-E.png"
+  }
+ ]
+}

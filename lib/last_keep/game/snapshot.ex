@@ -11,6 +11,7 @@ defmodule LastKeep.Game.Snapshot do
     |> render()
     |> Map.put(:chests, Enum.map(visible(state.world.chests, state), &chest_view/1))
     |> Map.put(:portals, Enum.map(visible(state.world.portals, state), &portal_view/1))
+    |> Map.put(:pois, Enum.map(visible(world_pois(state.world), state), &poi_view/1))
     |> Map.put(:views, views(state))
   end
 
@@ -54,6 +55,7 @@ defmodule LastKeep.Game.Snapshot do
       attempt: World.generate(state.world.seed).attempt,
       chests: Enum.map(state.world.chests, &chest_view/1),
       portals: Enum.map(state.world.portals, &portal_view/1),
+      pois: Enum.map(world_pois(state.world), &poi_view/1),
       events: Enum.map(Enum.reverse(state.events), &event/1)
     }
   end
@@ -240,6 +242,17 @@ defmodule LastKeep.Game.Snapshot do
 
   defp chest_view(chest) do
     %{id: chest.id, x: round1(chest.x), y: round1(chest.y), gold: chest.gold}
+  end
+
+  # Quarry, camp and shrine. The same discovered-chunk filter as a chest.
+  # A camp or shrine leaves this list when the sim removes it. The merchant
+  # and the hermit stay off it.
+  defp world_pois(world) do
+    world.quarries ++ world.camps ++ world.shrines
+  end
+
+  defp poi_view(poi) do
+    %{id: poi.id, kind: Atom.to_string(poi.kind), x: round1(poi.x), y: round1(poi.y)}
   end
 
   defp portal_view(portal) do

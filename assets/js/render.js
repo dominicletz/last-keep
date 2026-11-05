@@ -15,7 +15,7 @@ import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { mountPicture } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
-import { buildingCard, buildingSheet, sheetCard as staticCard, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
+import { buildingCard, buildingSheet, sheetCard as staticCard, spotVariant, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -943,6 +943,16 @@ export function createView(stage, picture) {
         const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(16, 12, 16)), mat(0xf0c14a, 0xc9a227))
         mesh.userData.lift = 8
         mesh.userData.role = "chest"
+        return mesh
+      })
+
+      sync("spot", snap.pois || [], (row) => {
+        const variant = spotVariant(row.kind, row.id)
+        const art = staticCard(row.kind, variant)
+        const mesh = new THREE.Sprite(staticMats[row.kind][variant])
+        mesh.center.set(0.5, art.centerY)
+        mesh.scale.set(art.w, art.h, 1)
+        mesh.userData.role = row.kind
         return mesh
       })
 

@@ -58,7 +58,11 @@ export const staticSheets = {
   // Ruins-biome scatter (flora.js ruinSlots). Not a building.
   ruin_stones: staticSheet("ruin_stones", [200, 64], ["a", "b", "c"]),
   // The yard table at (0, 160). The chunk map stays a separate cloth.
-  map_table: staticSheet("map_table", [160, 56], ["a"])
+  map_table: staticSheet("map_table", [160, 56], ["a"]),
+  // Sim points of interest (snapshot pois). Not a building.
+  quarry: staticSheet("quarry", [176, 96], ["a", "b"]),
+  camp: staticSheet("camp", [160, 88], ["a"]),
+  shrine: staticSheet("shrine", [96, 80], ["a"])
 }
 
 // Static sheets that are scenery, not a building kind.
@@ -98,4 +102,12 @@ export function treeCard(variant) {
 export function treeVariant(i) {
   const n = treeSheet.variants.length
   return treeSheet.variants[((Math.trunc(i) % n) + n) % n]
+}
+
+// The variant a quarry, camp or shrine of this id draws. One variant stays
+// that variant. Two alternate, so both quarry frames appear.
+export function spotVariant(kind, id) {
+  const variants = staticSheets[kind].variants
+  const n = variants.length
+  return variants[((Math.trunc(id) % n) + n) % n]
 }

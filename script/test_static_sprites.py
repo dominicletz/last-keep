@@ -477,5 +477,76 @@ class UnbuiltStaticTest(unittest.TestCase):
             self.assertTrue(call["save_as"].endswith(".png"))
 
 
+NPCS = ("vagrant", "merchant")
+
+
+def npc_views_batch():
+    """The four views of the vagrant and the merchant. Paths are absolute
+    under ART_ROOT. save_as is the file `hero_sprites.py <name> views` reads.
+    The front view (S) takes the engineer style reference. The other three
+    take that front view, which is what build_prompts emits. No video."""
+    calls = []
+    for name in NPCS:
+        for call in hs.build_prompts(hs.load_config(name))["calls"]:
+            if call["tool"] != "GenerateImage":
+                continue
+            args = json.loads(json.dumps(call["args"]))
+            args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
+            calls.append({"id": f"{name}-{call['id']}", "asset": name, "tool": "GenerateImage",
+                          "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])})
+    return {"_note": "GenerateImage calls for the vagrant and the merchant, four views each "
+            "(front S, back N, left W, right E). Paths are absolute under /workspace/lk-art-redo. "
+            "save_as is the file `hero_sprites.py <name> views` reads. The front view uses the "
+            "engineer style reference; the other three use that front view. No video.",
+            "calls": calls}
+
+
+class NpcViewsTest(unittest.TestCase):
+    def test_the_vagrant_and_the_merchant_are_palette_crops_and_the_views_batch(self):
+        boxes = {"vagrant": [740, 220, 840, 315], "merchant": [840, 320, 1020, 450]}
+        style = ["assets/reference/engineer/video/views/v-S.png"]
+        for name in NPCS:
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["type"], "monster", name)
+            self.assertEqual(cfg["concept"]["source"], "docs/concept/theme.jpg", name)
+            self.assertEqual(cfg["concept"]["box"], boxes[name], name)
+            self.assertTrue(cfg["source_note"].startswith("The reference shows no "), name)
+            self.assertEqual(cfg["style_refs"], style, name)
+            self.assertEqual(cfg["items"], [], name)
+            self.assertEqual(cfg["sheet"]["world_height"], 32, name)
+            self.assertEqual(cfg["sheet"]["height"], hs.sheet_height(32), name)
+            self.assertEqual(cfg["sheet"]["cell"], 128, name)
+            with Image.open(os.path.join(cfg["dir"], "concept.png")) as image:
+                concept = np.asarray(image)
+            box = boxes[name]
+            self.assertEqual(list(concept.shape[:2]), [box[3] - box[1], box[2] - box[0]], name)
+            views = [c for c in hs.build_prompts(cfg)["calls"] if c["id"].startswith("view-")]
+            self.assertEqual([c["id"] for c in views], ["view-S", "view-N", "view-W", "view-E"], name)
+            self.assertEqual(views[0]["args"]["reference_image_paths"][1], style[0], name)
+            for call in views[1:]:
+                self.assertEqual(call["args"]["reference_image_paths"][1],
+                                 f"assets/reference/{name}/video/views/v-S.png", name)
+            self.assertIn("The reference shows no ", views[0]["args"]["description"], name)
+        self.assertEqual(hs.load_config("vagrant")["clips"]["walk"],
+                         ["S", "SW", "W", "NW", "N", "NE", "E", "SE"])
+        self.assertEqual(sorted(hs.load_config("vagrant")["clips"]), ["idle", "walk"])
+        self.assertEqual(hs.load_config("merchant")["clips"], {"idle": ["S", "W", "N", "E"]})
+        path = os.path.join(hs.ROOT, "assets/reference/npc-views-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_views_batch())
+        self.assertEqual(len(batch["calls"]), 8)
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateImage")
+            self.assertNotIn("GenerateVideo", json.dumps(call))
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/assets/reference/"))
+            self.assertTrue(call["save_as"].endswith(".png"))
+            front = call["id"].endswith("-view-S")
+            for ref in call["args"]["reference_image_paths"]:
+                self.assertTrue(ref.startswith(ART_ROOT + "/"), ref)
+                if front or not ref.endswith("/video/views/v-S.png"):
+                    self.assertTrue(os.path.exists(os.path.join(hs.ROOT, ref[len(ART_ROOT) + 1:])), ref)
+
+
 if __name__ == "__main__":
     unittest.main()
