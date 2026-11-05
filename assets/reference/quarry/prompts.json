@@ -1,0 +1,38 @@
+{
+ "hero": "quarry",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the stone quarry from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no quarry: it is only rocks on the forest floor whose palette the quarry must match; draw only one stone quarry and nothing else, no trees, no figures; use the reference rocks only for the colours of the stone. Same design: a worked face of rough grey stone with tool marks, a cut ledge, and loose blocks of the same stone at its foot. A sheer cut face with one straight ledge and a few loose blocks along its foot. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole stone quarry from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single stone quarry only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/quarry/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "quarry-a.png"
+   },
+   "save_as": "assets/reference/quarry/views/a.png",
+   "then": "python3 script/hero_sprites.py quarry build"
+  },
+  {
+   "id": "image-b",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the stone quarry from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no quarry: it is only rocks on the forest floor whose palette the quarry must match; draw only one stone quarry and nothing else, no trees, no figures; use the reference rocks only for the colours of the stone. Same design: a worked face of rough grey stone with tool marks, a cut ledge, and loose blocks of the same stone at its foot. A rough pit, the face stepped, with a heap of cut blocks in front of the face. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole stone quarry from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single stone quarry only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/quarry/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "quarry-b.png"
+   },
+   "save_as": "assets/reference/quarry/views/b.png",
+   "then": "python3 script/hero_sprites.py quarry build"
+  }
+ ],
+ "type": "static"
+}

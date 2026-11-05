@@ -205,7 +205,7 @@ baked into `tile-data.js` (2.2 MB) per phase: day, dusk and night.
 | felled wood (scenery) | 18×30 | card | b | S | | blocked: no clean concept crop (only the bundle on the engineer's back); the stump and log piece may cover it (open question 14) |
 | chest | gold box 16×12×16 | mesh | b | S, closed and open | | blocked: no chest in the concepts (open question 14) |
 | portal / hell door | `horizon.js gateGeometry`, at most 8 instanced | two posts and a glowing plane | b | S, plus a glow layer (variant d) | Planned in the docs as hell doors | blocked: no portal in the concepts (open question 14) |
-| map table | box 36×8×22 plus a cloth plane at (0,160) | mesh | b | S | The chunk map stays painted on top | todo |
+| map table | `assets/reference/map_table/` | box 36×8×22, cloth plane at y 13.2 | b | 3/4, one variant | world height 16 (44 px), cell 160×56. The cloth is blank. The chunk map stays painted on top in the engine. Prompts written; no image yet. | **prepped, not built** |
 
 ### 4. Points of interest and NPCs with no art yet
 
@@ -214,9 +214,9 @@ These are in the snapshot but `render.js` never draws them. `WORLD.md` says:
 
 | Asset | Var | Notes | Status |
 |---|---|---|---|
-| quarry | b | Stone source | todo |
-| camp | b | | todo |
-| shrine | b | Relics are HUD text only; a relic icon could come with it (variant c) | todo |
+| quarry | b | Stone source. `assets/reference/quarry/`: world height 32 (88 px), two variants, cell 176×96, 3/4. Prompts written; no image yet. | **prepped, not built** |
+| camp | b | `assets/reference/camp/`: one lean-to and a fire, world height 28 (77 px), cell 160×88, 3/4. Prompts written; no image yet. | **prepped, not built** |
+| shrine | b | Relics are HUD text only; a relic icon could come with it (variant c), and that icon is not a variant here. `assets/reference/shrine/`: world height 24 (66 px), cell 96×80, 3/4, empty niche. Prompts written; no image yet. | **prepped, not built** |
 | vagrant (NPC) | a | idle ×4, walk ×8 | todo |
 | merchant, hermit (planned) | a | idle ×4 | todo |
 
@@ -297,7 +297,7 @@ exist yet; the ground only has noise flecks.
 | bushes | yard edge, `meadow` | none | b | 2–3 variants | **built, awaiting final review** (`bush-sheet.png`, 3 variants 38/30/25 px; `"match": "pine"` scales saturation and value to the pine sheet; scattered by `flora.js`; review /workspace/lk/review/bush/) |
 | rocks and boulders | `ruins`, `hill`, `cliff` edges; a source look for the quarry | none | b | 3 sizes; the large boulder can block like a cliff cell | **built, awaiting final review** (`rock-sheet.png`, 44/31/22 px: c is small from its scale though its view filled the frame; scattered by `flora.js`; review /workspace/lk/review/rock/) |
 | cliff face | `cliff` cells and the cliff skirt (`biomeLift` 16) | flat colour plus lift | b | Front face strip, tileable; the natural barrier the walk blocking already uses | **built, not wired** (`cliff_face-sheet.png`, a 51×44 block, b 35×44 pillar: not the wide strip asked for; open question 16; review /workspace/lk/review/cliff_face/) |
-| ruin stones | `ruins` biome | flat colour plus lift 8 | b | Broken walls and columns, 2–3 variants | todo |
+| ruin stones | `ruins` biome | flat colour plus lift 8 | b | `assets/reference/ruin_stones/`: a wall stub at world height 20 (55 px), a fallen column at 0.55, a rubble pile at 0.5, cell 200×64. Palette is the masonry crop 640,100,48,64. Prompts written; no image yet. | **prepped, not built** |
 | grass tufts | yard and `meadow` ground | ground noise | c | 3–4 small decals scattered by seed | **built, awaiting final review** (`grass_tufts-sheet.png`, 14/11/9 px, matched to the pine; 10 per seed by `flora.js`; review /workspace/lk/review/grass_tufts/) |
 | flowers | `meadow` ground | none | c | 2–3 small decals | **built, awaiting final review** (`flowers-sheet.png`, 2 variants 16 px; scattered by `flora.js`; review /workspace/lk/review/flowers/) |
 | reeds | `river` and `ford` banks | none | c | 2 small decals | **built, not wired** (`reeds-sheet.png`, 25 and 20 px; b is upright like a, not leaning; no river in the yard to place them by; review /workspace/lk/review/reeds/) |

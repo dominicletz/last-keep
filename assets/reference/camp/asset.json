@@ -1,0 +1,31 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 4, camp). The concept has no tent, so the box is the theme.jpg campfire by the palisade for its fire colours. world height 28 (77 px) is under the forge (36) and under a hero (32), so a small tent is not the house card (64) the docs used as a placeholder. Cell 160x88 holds the tent and the fire side by side.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "campsite",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   519,
+   488,
+   619,
+   581
+  ]
+ },
+ "source_note": "The reference shows no tent and no camp: it is a campfire beside a palisade; draw only one campsite and nothing else, no palisade, no figures; use the reference only for the colours of the fire",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a small camp of one low canvas lean-to on two timber poles, a bedroll under it, and a small campfire of orange flame on a ring of stones in front",
+ "world_height": 28,
+ "cell": [
+  160,
+  88
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "the lean-to open toward the camera, the campfire in front of the opening"
+  }
+ ]
+}

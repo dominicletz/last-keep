@@ -1,0 +1,31 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 3, map table). The concept has no table, so the box is the theme.jpg house for its timber colours. The live mesh is a box 36x8x22 centred at y=8, so the top is near y=12, and the cloth plane sits at y=13.2. world height 16 (44 px) is that top plus a little of the tabletop in a three-quarter view: half a hero (32), under the trap (20) and the forge (36). Cell 160x56 holds a table about three times as wide as it is tall, the 40-wide cloth. The cloth is blank. The chunk map stays painted on top in the engine.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "wooden table",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   740,
+   220,
+   840,
+   315
+  ]
+ },
+ "source_note": "The reference shows no table: it is a village house; draw only one wooden table and nothing else, no house, no figures; use the reference only for the colours of its timber",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a low rectangular table of dark timber with four square legs and a plain warm-brown cloth draped over the top, the cloth blank, with no map, no marks, no writing and no symbols",
+ "world_height": 16,
+ "cell": [
+  160,
+  56
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "the long side and one end toward the camera, the cloth hanging a little over the near edge, the top of the cloth empty"
+  }
+ ]
+}

@@ -1,0 +1,42 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9, ruin stones). The concept has no ruin, so the box is the theme.jpg masonry crop (registry masonryCrop 640,100,48,64) for its stone colours. world height 20 (55 px) is the wall stub, about half the stone wall's 40, so a broken stub stays under a wall and under a hero (32). The fallen column is scale 0.55 and the rubble pile is scale 0.5, the lowest the pipeline allows. Cell 200x64 is wide so the lying column can be several times longer than it is tall.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "ruin",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   640,
+   100,
+   688,
+   164
+  ]
+ },
+ "source_note": "The reference shows no ruin: it is only a patch of keep masonry whose palette the ruin must match; draw only one ruin and nothing else, no tower, no figures; use the reference only for the colours of the stone",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "broken grey-brown masonry of large dressed stone blocks, the same courses as a keep wall, darker in the cracks and lighter on the lit faces",
+ "world_height": 20,
+ "cell": [
+  200,
+  64
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "a short broken wall stub, about as tall as it is wide, a few courses of stone with a jagged broken top"
+  },
+  {
+   "id": "b",
+   "note": "one fallen stone column on its side, round drums still readable, no wall behind it",
+   "scale": 0.55,
+   "framing": "the whole column lying flat along the ground, much longer than it is tall, centred, nothing cropped; it is not standing upright and it is not a wall"
+  },
+  {
+   "id": "c",
+   "note": "a low pile of a few broken stone blocks, heaped, with no wall and no column",
+   "scale": 0.5
+  }
+ ]
+}

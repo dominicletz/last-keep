@@ -1,0 +1,125 @@
+{
+ "_note": "GenerateImage calls for the unbuilt static pieces. Paths are absolute under /workspace/lk-art-redo. save_as is the file `hero_sprites.py <asset> build` reads.",
+ "calls": [
+  {
+   "id": "ruin_stones-image-a",
+   "asset": "ruin_stones",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the ruin from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no ruin: it is only a patch of keep masonry whose palette the ruin must match; draw only one ruin and nothing else, no tower, no figures; use the reference only for the colours of the stone. Same design: broken grey-brown masonry of large dressed stone blocks, the same courses as a keep wall, darker in the cracks and lighter on the lit faces. A short broken wall stub, about as tall as it is wide, a few courses of stone with a jagged broken top. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole ruin from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single ruin only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/ruin_stones/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "ruin_stones-a.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/ruin_stones/views/a.png"
+  },
+  {
+   "id": "ruin_stones-image-b",
+   "asset": "ruin_stones",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the ruin from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no ruin: it is only a patch of keep masonry whose palette the ruin must match; draw only one ruin and nothing else, no tower, no figures; use the reference only for the colours of the stone. Same design: broken grey-brown masonry of large dressed stone blocks, the same courses as a keep wall, darker in the cracks and lighter on the lit faces. One fallen stone column on its side, round drums still readable, no wall behind it. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole column lying flat along the ground, much longer than it is tall, centred, nothing cropped; it is not standing upright and it is not a wall. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single ruin only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/ruin_stones/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "ruin_stones-b.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/ruin_stones/views/b.png"
+  },
+  {
+   "id": "ruin_stones-image-c",
+   "asset": "ruin_stones",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the ruin from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no ruin: it is only a patch of keep masonry whose palette the ruin must match; draw only one ruin and nothing else, no tower, no figures; use the reference only for the colours of the stone. Same design: broken grey-brown masonry of large dressed stone blocks, the same courses as a keep wall, darker in the cracks and lighter on the lit faces. A low pile of a few broken stone blocks, heaped, with no wall and no column. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole ruin from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single ruin only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/ruin_stones/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "ruin_stones-c.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/ruin_stones/views/c.png"
+  },
+  {
+   "id": "map_table-image-a",
+   "asset": "map_table",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the wooden table from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no table: it is a village house; draw only one wooden table and nothing else, no house, no figures; use the reference only for the colours of its timber. Same design: a low rectangular table of dark timber with four square legs and a plain warm-brown cloth draped over the top, the cloth blank, with no map, no marks, no writing and no symbols. The long side and one end toward the camera, the cloth hanging a little over the near edge, the top of the cloth empty. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole wooden table from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single wooden table only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/map_table/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "map_table-a.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/map_table/views/a.png"
+  },
+  {
+   "id": "quarry-image-a",
+   "asset": "quarry",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the stone quarry from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no quarry: it is only rocks on the forest floor whose palette the quarry must match; draw only one stone quarry and nothing else, no trees, no figures; use the reference rocks only for the colours of the stone. Same design: a worked face of rough grey stone with tool marks, a cut ledge, and loose blocks of the same stone at its foot. A sheer cut face with one straight ledge and a few loose blocks along its foot. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole stone quarry from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single stone quarry only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/quarry/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "quarry-a.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/quarry/views/a.png"
+  },
+  {
+   "id": "quarry-image-b",
+   "asset": "quarry",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the stone quarry from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no quarry: it is only rocks on the forest floor whose palette the quarry must match; draw only one stone quarry and nothing else, no trees, no figures; use the reference rocks only for the colours of the stone. Same design: a worked face of rough grey stone with tool marks, a cut ledge, and loose blocks of the same stone at its foot. A rough pit, the face stepped, with a heap of cut blocks in front of the face. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole stone quarry from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single stone quarry only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/quarry/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "quarry-b.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/quarry/views/b.png"
+  },
+  {
+   "id": "camp-image-a",
+   "asset": "camp",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the campsite from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no tent and no camp: it is a campfire beside a palisade; draw only one campsite and nothing else, no palisade, no figures; use the reference only for the colours of the fire. Same design: a small camp of one low canvas lean-to on two timber poles, a bedroll under it, and a small campfire of orange flame on a ring of stones in front. The lean-to open toward the camera, the campfire in front of the opening. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole campsite from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single campsite only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/camp/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "camp-a.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/camp/views/a.png"
+  },
+  {
+   "id": "shrine-image-a",
+   "asset": "shrine",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the wayside shrine from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no shrine: it is only a patch of keep masonry; draw only one wayside shrine and nothing else, no tower, no figures; use the reference only for the colours of the stone. Same design: a small wayside shrine of grey stone blocks, a squat pillar with a little peaked stone roof and one shallow empty niche, no relic, no statue and no banner. The niche facing the camera, the peaked roof above it, the niche empty. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole wayside shrine from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single wayside shrine only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/shrine/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "shrine-a.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/shrine/views/a.png"
+  }
+ ]
+}

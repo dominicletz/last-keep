@@ -385,5 +385,94 @@ class StaticTest(unittest.TestCase):
             self.assertEqual([n for ok, n, _ in hs.static_checks(built, sheet) if not ok], [], name)
 
 
+# Pieces prepped with no generated image yet. Heights are the world units in
+# asset.json; the batch lists every GenerateImage call for them.
+UNBUILT = {
+    "ruin_stones": {"world_height": 20, "cell": [200, 64], "variants": ["a", "b", "c"],
+                    "box": [640, 100, 688, 164]},
+    "map_table": {"world_height": 16, "cell": [160, 56], "variants": ["a"],
+                  "box": [740, 220, 840, 315]},
+    "quarry": {"world_height": 32, "cell": [176, 96], "variants": ["a", "b"],
+               "box": [620, 610, 720, 690]},
+    "camp": {"world_height": 28, "cell": [160, 88], "variants": ["a"],
+             "box": [519, 488, 619, 581]},
+    "shrine": {"world_height": 24, "cell": [96, 80], "variants": ["a"],
+               "box": [640, 100, 688, 164]},
+}
+ART_ROOT = "/workspace/lk-art-redo"
+
+
+def unbuilt_batch():
+    """The combined GenerateImage list. Paths are absolute under ART_ROOT,
+    and save_as is the file the build reads."""
+    calls = []
+    for name in UNBUILT:
+        for call in hs.static_prompts(hs.load_config(name))["calls"]:
+            args = json.loads(json.dumps(call["args"]))
+            args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
+            calls.append({"id": f"{name}-{call['id']}", "asset": name, "tool": "GenerateImage",
+                          "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])})
+    return {"_note": "GenerateImage calls for the unbuilt static pieces. Paths are absolute under "
+            "/workspace/lk-art-redo. save_as is the file `hero_sprites.py <asset> build` reads.",
+            "calls": calls}
+
+
+class UnbuiltStaticTest(unittest.TestCase):
+    def test_the_remaining_static_pieces_are_prepped_and_not_built(self):
+        style = ["assets/reference/engineer/video/views/v-S.png"]
+        for name, want in UNBUILT.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["type"], "static", name)
+            self.assertEqual(cfg.get("view"), "three_quarter", name)
+            self.assertEqual(cfg["world_height"], want["world_height"], name)
+            self.assertEqual(cfg["height"], hs.sheet_height(want["world_height"]), name)
+            self.assertEqual(cfg["cell"], want["cell"], name)
+            self.assertEqual([v["id"] for v in cfg["variants"]], want["variants"], name)
+            self.assertEqual(cfg["concept"]["box"], want["box"], name)
+            self.assertEqual(cfg["concept"]["source"], "docs/concept/theme.jpg", name)
+            self.assertEqual(cfg["style_refs"], style, name)
+            self.assertTrue(cfg["source_note"].startswith("The reference shows no "), name)
+            with Image.open(os.path.join(cfg["dir"], "concept.png")) as image:
+                concept = np.asarray(image)
+            box = want["box"]
+            self.assertEqual(concept.shape[:2], (box[3] - box[1], box[2] - box[0]), name)
+            p = hs.build_prompts(cfg)
+            self.assertEqual(len(p["calls"]), len(want["variants"]), name)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+            for call, vid in zip(p["calls"], want["variants"]):
+                self.assertEqual(call["save_as"], f"assets/reference/{name}/views/{vid}.png", name)
+                self.assertIn(f"One single {cfg['noun']} only", call["args"]["description"], name)
+                self.assertIn("The reference shows no ", call["args"]["description"], name)
+            self.assertFalse(os.path.exists(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")), name)
+
+        ruin = hs.load_config("ruin_stones")
+        self.assertEqual([v.get("scale", 1) for v in ruin["variants"]], [1, 0.55, 0.5])
+        column = hs.static_prompts(ruin)["calls"][1]["args"]["description"]
+        self.assertIn("lying flat along the ground", column)
+        self.assertNotIn("upright, centred", column)
+        table = hs.static_prompts(hs.load_config("map_table"))["calls"][0]["args"]["description"]
+        self.assertIn("no map", table)
+        shrine = hs.static_prompts(hs.load_config("shrine"))["calls"][0]["args"]["description"]
+        self.assertIn("no relic", shrine)
+
+    def test_the_static_batch_lists_every_call_with_absolute_paths(self):
+        path = os.path.join(hs.ROOT, "assets/reference/static-batch-2.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        want = unbuilt_batch()
+        self.assertEqual(batch, want)
+        self.assertEqual(len(batch["calls"]), 8)
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateImage")
+            for ref in call["args"]["reference_image_paths"]:
+                self.assertTrue(ref.startswith(ART_ROOT + "/"), ref)
+                self.assertTrue(os.path.exists(os.path.join(hs.ROOT, ref[len(ART_ROOT) + 1:])), ref)
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/assets/reference/"))
+            self.assertTrue(call["save_as"].endswith(".png"))
+
+
 if __name__ == "__main__":
     unittest.main()
