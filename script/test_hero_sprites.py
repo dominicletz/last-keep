@@ -259,6 +259,18 @@ class AssetTest(unittest.TestCase):
         self.assertIn("Seen exactly from the front, not three-quarter", calls["view-S"]["args"]["description"])
         self.assertIn("hop", calls["walk-S"]["args"]["prompt"])
 
+    def test_the_rabbit_clips_batch_is_the_video_calls_without_the_turntable(self):
+        cfg = hs.load_config("rabbit")
+        batch = json.loads(read(os.path.join(cfg["dir"], "clips-batch.json")))
+        self.assertEqual(batch, hs.clip_batch(cfg))
+        self.assertEqual(len(batch["calls"]), 20)
+        ids = [call["id"] for call in batch["calls"]]
+        self.assertEqual(ids[:3], ["walk-S", "attack-S", "death-S"])
+        self.assertNotIn("turntable", ids)
+        self.assertTrue(all(call["tool"] == "GenerateVideo" for call in batch["calls"]))
+        self.assertTrue(all(set(call) == {"id", "tool", "args", "save_as"} for call in batch["calls"]))
+        self.assertTrue(all(call["save_as"].startswith("assets/reference/rabbit/video/") for call in batch["calls"]))
+
     def test_the_deer_is_a_wild_animal_drawn_from_its_design_text_not_a_concept_figure(self):
         cfg = hs.load_config("deer")
         self.assertEqual((cfg["sheet"]["world_height"], cfg["sheet"]["height"], cfg["sheet"]["cell"]), (22, 60, 128))

@@ -756,6 +756,21 @@ def build_prompts(cfg):
     return out
 
 
+def clip_batch(cfg):
+    """The GenerateVideo clip calls (walk, attack, death), without the turntable.
+
+    The shape is what a parent feeds to GenerateVideo: each call has id, tool,
+    args and save_as. Paths stay relative to the repository root, as in
+    prompts.json. `python3 -c` over this function writes
+    assets/reference/<asset>/clips-batch.json."""
+    calls = []
+    for call in build_prompts(cfg)["calls"]:
+        if call.get("tool") != "GenerateVideo" or call["id"] == "turntable":
+            continue
+        calls.append({key: call[key] for key in ("id", "tool", "args", "save_as")})
+    return {"calls": calls}
+
+
 def absolute(prompts, root=ROOT):
     def fix(v, key=""):
         if isinstance(v, dict):
