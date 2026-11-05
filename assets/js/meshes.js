@@ -4,7 +4,6 @@ const spheres = new Map()
 const burstPool = []
 const tracked = new Set()
 const flightRoles = new Set(["shot", "burst", "spawn"])
-let burstGeometry = null
 
 export function trackGeometry(geometry) {
   if (!geometry || tracked.has(geometry)) return geometry
@@ -82,28 +81,19 @@ export function shotSphere(radius) {
   return geometry
 }
 
-function burstSphere() {
-  if (!burstGeometry) {
-    burstGeometry = trackGeometry(new THREE.SphereGeometry(8, 6, 5))
-    burstGeometry.userData.pooled = true
-  }
-  return burstGeometry
-}
-
-export function takeBurst(color) {
+export function takeBurst(kind) {
   let mesh = burstPool.pop()
   if (mesh) {
-    mesh.material.color.set(color)
-    mesh.material.opacity = 0.9
-    mesh.scale.setScalar(1)
+    mesh.userData.kind = kind
     mesh.visible = true
   } else {
-    mesh = new THREE.Mesh(
-      burstSphere(),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
+    mesh = new THREE.Sprite(
+      new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.4, depthWrite: false })
     )
+    mesh.center.set(0.5, 0.5)
+    mesh.userData.role = "burst"
+    mesh.userData.kind = kind
   }
-  mesh.userData.role = "burst"
   return mesh
 }
 

@@ -68,15 +68,12 @@ class ProjectileTest(unittest.TestCase):
         self.assertLessEqual(span, pj.FROST_LONG)
         self.assertGreaterEqual(span, 8)
 
-    def test_the_art_redo_rows_and_the_bursts_stay_open(self):
+    def test_the_art_redo_rows_are_built(self):
         with open(os.path.join(pj.ROOT, "docs/ART-REDO.md"), encoding="utf-8") as handle:
             text = handle.read()
-        for name in ("arrow-sheet.png", "fire-sheet.png", "frost.png"):
+        for name in ("arrow-sheet.png", "fire-sheet.png", "frost.png", "burst-sheet.png"):
             row = text.split(name, 1)[1].split("\n", 1)[0]
             self.assertIn("built, awaiting final review", row, name)
-        bursts = text.split("bursts: boom, death, slam", 1)[1].split("\n", 1)[0]
-        self.assertIn("todo", bursts)
-        self.assertNotIn("built, awaiting final review", bursts)
 
 
 if __name__ == "__main__":

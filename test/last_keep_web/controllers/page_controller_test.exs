@@ -27,6 +27,7 @@ defmodule LastKeepWeb.PageControllerTest do
     conn = get(conn, ~p"/")
     body = html_response(conn, 200)
     assert body =~ "Last Keep"
+    assert body =~ "/images/hd2d/title.png"
     assert body =~ "start-button"
     assert body =~ "Create"
   end

@@ -227,7 +227,7 @@ These are in the snapshot but `render.js` never draws them. `WORLD.md` says:
 | arrow, bolt, volley | `priv/static/images/hd2d/arrow-sheet.png` | c | 18 px arrow, 8 frames turned in pixel space (0°, 45°, …). `arrowFrame` picks the nearest screen direction. The sprite is not rotated. Bolt and volley use the same sheet; a volley is several `arrow` shots. | **built, awaiting final review** |
 | fireball, meteor | `priv/static/images/hd2d/fire-sheet.png` | c | 14 px fireball, 4 frames (palette shift and a 1 px row shear). A meteor draws the same sheet at 18 px. The core stays above the bloom gate. | **built, awaiting final review** |
 | frost | `priv/static/images/hd2d/frost.png` | c | 12 px shard, one frame. The sim's frost is still an instant slow, so nothing flies until a shot of kind `frost` exists; that shot draws this sprite. | **built, awaiting final review** |
-| bursts: boom, death, slam | expanding spheres over 520 ms | c or d | A pixel burst flipbook (4–6 frames) per event; or keep the spheres, snapped | todo |
+| bursts: boom, death, slam | `priv/static/images/hd2d/burst-sheet.png` | c | Six 32 px frames per event, played across the same 520 ms. Boom uses the fireball oranges, death a grey-violet puff, slam a brown ring. Billboard, position snapped to the texel. | **built, awaiting final review** |
 | nova, guard, mark, dash, barricade | rings or tints | d | Keep as shapes, snapped to the texel | keep |
 | ghost placement, range ring | green box, gold ring | d | | keep |
 | hero and monster rims | BackSide shell, rim card | d | | keep |
@@ -261,8 +261,8 @@ Blocked: waits on open question 1 (the ground texel) at the top of this file.
 |---|---|---|---|---|---|
 | resource icons: wood, food, gold | `priv/static/images/ui/{wood,food,gold}.png` | pixel sacks | c | 24 px squares, figure about 20 px tall. `sackLine` still returns the count and `SACK_SPOT`. | **built, awaiting final review** |
 | build buttons ×6 | `hud.js` `BUILD_FACE` | icon plus the label | c | Wall, tower, trap, field, and forge are 28 px crops of variant a on each kind's own sheet. The mage tower has no sheet (open question 22), so its face stays text. | **built, awaiting final review** |
-| start-screen title and landscape | `start_screen.ex`, `start.js`, `START-SCREEN.md` | 3D yard at dusk plus text | c | A pixel title or logo; the backdrop stays the live yard | todo |
-| logo, favicon | `logo.svg`, `favicon.ico` | vector | c | From the pixel title | todo |
+| start-screen title and landscape | `priv/static/images/hd2d/title.png`, `start_screen.ex` | pixel wordmark over the live yard | c | 382×83, black dropped out. The dusk yard stays the backdrop. | **built, awaiting final review** |
+| logo, favicon | `priv/static/images/logo.png`, `favicon.ico` | the keep between the words | c | 32 px mark. The favicon holds that square and a 16 px reduction. | **built, awaiting final review** |
 | rotate-device icon | inline SVG in `room.html.heex` | SVG | — | Keep | keep |
 | floaters, beacons, hint arrows | DOM and CSS | CSS | d | Pixel font later | keep |
 

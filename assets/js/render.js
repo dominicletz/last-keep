@@ -6,6 +6,7 @@ import { cameraFocus, drawDue, frameFor, paintGap } from "./frame"
 import { clockScore } from "./hd2d/score.js"
 import { geometryCensus, giveBurst, releaseGeometries, takeBurst, trackGeometry } from "./meshes"
 import { arrowFrame, fireFrame, shotArt, shotScale, SHOT_URL } from "./shots.js"
+import { BURST_CELL, BURST_FRAMES, BURST_MS, BURST_SHEET, burstFrame, burstRow } from "./bursts.js"
 import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { floraSlots } from "./flora.js"
@@ -332,6 +333,16 @@ export function createView(stage, picture) {
     })
   }
   for (const [name, url] of Object.entries(SHOT_URL)) loadShotSheet(name, url)
+  let burstSource = null
+  sheetLoader.load(BURST_SHEET, (tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.magFilter = THREE.NearestFilter
+    tex.minFilter = THREE.NearestFilter
+    tex.generateMipmaps = false
+    tex.needsUpdate = true
+    burstSource = tex
+    for (const burst of bursts) dressBurst(burst.mesh)
+  })
   const ghost = new THREE.Mesh(
     new THREE.BoxGeometry(30, 22, 12),
     new THREE.MeshBasicMaterial({ color: 0x7ea35a, transparent: true, opacity: 0.55 })
@@ -744,14 +755,19 @@ export function createView(stage, picture) {
     stepDeer(deerMillis())
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
       const burst = bursts[i]
-      const age = (now - burst.at) / 520
-      if (age >= 1) {
+      const ageMs = now - burst.at
+      if (ageMs >= BURST_MS) {
         scene.remove(burst.mesh)
         giveBurst(burst.mesh)
         bursts.splice(i, 1)
       } else {
-        burst.mesh.scale.setScalar(1 + age * 3.2)
-        burst.mesh.material.opacity = 1 - age
+        const map = burst.mesh.material.map
+        const row = burstRow(burst.kind)
+        if (map && row != null) {
+          const cell = cellOffset(burstFrame(ageMs), row, BURST_FRAMES, 3)
+          map.repeat.set(cell.repeatX, cell.repeatY)
+          map.offset.set(cell.x, cell.y)
+        }
       }
     }
     const heroMesh = heroKey ? meshes.get(heroKey) : null
@@ -896,9 +912,9 @@ export function createView(stage, picture) {
       if (snap.tick !== lastTick) {
         lastTick = snap.tick
         for (const ev of snap.events || []) {
-          if (ev.type === "boom") addBurst(ev.x, ev.y, 0xff7a2a)
-          if (ev.type === "death") addBurst(ev.x, ev.y, 0xffe08a)
-          if (ev.type === "slam") addBurst(ev.x, ev.y, 0xc45cff)
+          if (ev.type === "boom") addBurst(ev.x, ev.y, "boom")
+          if (ev.type === "death") addBurst(ev.x, ev.y, "death")
+          if (ev.type === "slam") addBurst(ev.x, ev.y, "slam")
         }
       }
 
@@ -2076,11 +2092,29 @@ export function createView(stage, picture) {
     if (perf.paints.length > 400) perf.paints.shift()
   }
 
-  function addBurst(x, z, color) {
-    const mesh = takeBurst(color)
-    mesh.position.set(x, 18, z)
+  function dressBurst(mesh) {
+    if (!burstSource || !burstSource.image || mesh.userData.bound) return
+    const map = burstSource.clone()
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.generateMipmaps = false
+    map.wrapS = THREE.ClampToEdgeWrapping
+    map.wrapT = THREE.ClampToEdgeWrapping
+    map.needsUpdate = true
+    mesh.material.map = map
+    mesh.userData.bound = true
+  }
+
+  function addBurst(x, z, kind) {
+    const mesh = takeBurst(kind)
+    const step = worldStep()
+    const world = BURST_CELL * SHEET_TEXEL
+    mesh.scale.set(world, world, 1)
+    mesh.position.set(snapWorld(x, step), 18, snapWorld(z, step))
+    dressBurst(mesh)
     scene.add(mesh)
-    bursts.push({ mesh, at: performance.now() })
+    bursts.push({ mesh, at: performance.now(), kind })
   }
 
   function monsterMesh(row) {

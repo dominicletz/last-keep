@@ -83,7 +83,7 @@ test("an in-flight effect stays out of the settled count and a leaked mesh break
   assert.equal(earlier.settled, 1)
   assert.equal(earlier.orphans, 0)
 
-  scene.add(takeBurst(0xffcc66))
+  scene.add(takeBurst("boom"))
   const spawn = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(1, 1, 1)))
   spawn.userData.role = "spawn"
   scene.add(spawn)
@@ -124,12 +124,13 @@ test("a portal batch counts each living door", () => {
   assert.equal(live.settled, 3)
 })
 
-test("a burst sphere is reused and takes the next color", () => {
-  const first = takeBurst(0xff0000)
+test("a burst sprite is reused and takes the next event", () => {
+  const first = takeBurst("boom")
+  assert.equal(first.isSprite, true)
+  assert.equal(first.userData.role, "burst")
   giveBurst(first)
-  const second = takeBurst(0x00ff00)
+  const second = takeBurst("slam")
   assert.equal(second, first)
-  assert.equal(second.material.color.getHex(), 0x00ff00)
-  assert.equal(second.material.opacity, 0.9)
+  assert.equal(second.userData.kind, "slam")
   assert.equal(second.visible, true)
 })
