@@ -70,5 +70,33 @@
  "_note": "Wild animal 2 (docs/ART-REDO.md section 10, planned for the yard edge and fields): the rabbit, following the deer's flow. The concept paintings have no animal, so the concept crop is the theme.jpg field (the propCrops field window, palette and light only) and the source_note says so. Quadruped, so it reuses the deer's view_pose, view_notes S wording and turntable layout. World height 10 (ears to paws) is 28 px at the hero texel; side-on about 40 px, so a 64 px cell. Clips: hop in the walk slot x8, nibble (the attack slot) x8, death x4. check anchors come after the views, from `hero_sprites.py rabbit colours`.",
  "view_notes": {
   "S": "Seen exactly from the front, not three-quarter like a rabbit sitting side-on: like looking at a rabbit hopping straight at you, its head points straight at the camera with both of its eyes and both ears equally visible, and the face, neck and chest are square and symmetric about the image's vertical centre line. Only the front of the face, the throat and the chest show; the body is completely hidden straight behind the chest. The two front paws stand side by side, symmetric, and the two hind feet only just peek out behind them"
+ },
+ "clip_overrides": {
+  "walk-S": {
+   "gait": "Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line"
+  },
+  "walk-NW": {
+   "gait": "Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line"
+  },
+  "walk-N": {
+   "gait": "Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line"
+  },
+  "walk-NE": {
+   "gait": "Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line"
+  },
+  "walk-E": {
+   "gait": "Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line"
+  },
+  "walk-SE": {
+   "gait": "Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line"
+  },
+  "death-S": {
+   "struck": "It is struck down where it sits: all four paws stay planted on the ground line, it does not startle-hop, rear, leap, spring or lift any paw;",
+   "death": "its legs give way and it sinks straight down onto its belly and then onto its side on the exact spot where it sat, ears folding down onto the ground; the lowest point of its body stays on the ground line its paws stood on, no part of it rises, floats or bounces, and it only ever moves downward"
+  },
+  "attack-W": {
+   "attack": "bows into a deep nibble, both ears swinging all the way down until they lie flat along its back and its nose touches the ground well in front of its front paws, a change of outline as large as one full hop"
+  },
+  "_note": "Take 1, limits not loosened. Sheet 512x1280, figure 28 px, foot outline row 57. Clip precheck passed all 20 (loop and start pose). rabbit build refuses: no check profile, and none was added because the sheet is not accepted (front pale count reaches 0, so a colour floor would test nothing). Sheet checks failed 3: walk height 28+-4 is min 23 max 40 on walk-S (37,33,33,33), walk-NW (36,33,36,34), walk-N (38,35,37,34), walk-NE (36,40,37,36), walk-E (23), walk-SE (35); walk-SW and walk-W stay inside 24-32. death-S feet rows 57,55,51,55,56,56 against target 57 +-3 (death-SW and death-SE reuse that clip). attack-W silhouette change 154 px under its walk step median 208."
  }
 }

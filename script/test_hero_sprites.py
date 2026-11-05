@@ -261,8 +261,12 @@ class AssetTest(unittest.TestCase):
 
     def test_the_rabbit_clips_batch_is_the_video_calls_without_the_turntable(self):
         cfg = hs.load_config("rabbit")
+        # clips-batch.json is take 1. clip_overrides are the retake, so the
+        # first batch is the calls with those overrides removed.
+        first = dict(cfg)
+        first.pop("clip_overrides", None)
         batch = json.loads(read(os.path.join(cfg["dir"], "clips-batch.json")))
-        self.assertEqual(batch, hs.clip_batch(cfg))
+        self.assertEqual(batch, hs.clip_batch(first))
         self.assertEqual(len(batch["calls"]), 20)
         ids = [call["id"] for call in batch["calls"]]
         self.assertEqual(ids[:3], ["walk-S", "attack-S", "death-S"])
@@ -270,6 +274,27 @@ class AssetTest(unittest.TestCase):
         self.assertTrue(all(call["tool"] == "GenerateVideo" for call in batch["calls"]))
         self.assertTrue(all(set(call) == {"id", "tool", "args", "save_as"} for call in batch["calls"]))
         self.assertTrue(all(call["save_as"].startswith("assets/reference/rabbit/video/") for call in batch["calls"]))
+
+    def test_the_rabbit_retake_batch_is_the_eight_clips_the_sheet_rejected(self):
+        cfg = hs.load_config("rabbit")
+        want = ["walk-S", "death-S", "attack-W", "walk-NW", "walk-N", "walk-NE", "walk-E", "walk-SE"]
+        calls = [c for c in hs.clip_batch(cfg)["calls"] if c["id"] in set(want)]
+        retake = json.loads(read(os.path.join(cfg["dir"], "retake-batch.json")))
+        self.assertEqual(retake, {"calls": calls})
+        self.assertEqual([c["id"] for c in calls], want)
+        first = {c["id"]: c for c in json.loads(read(os.path.join(cfg["dir"], "clips-batch.json")))["calls"]}
+        for call in calls:
+            self.assertNotEqual(call["args"]["prompt"], first[call["id"]]["args"]["prompt"])
+            self.assertEqual(set(call), {"id", "tool", "args", "save_as"})
+        for call in calls:
+            if call["id"].startswith("walk"):
+                self.assertIn("exactly the same height as the first frame", call["args"]["prompt"])
+                self.assertNotIn("back arching and stretching", call["args"]["prompt"])
+        death = next(c for c in calls if c["id"] == "death-S")
+        self.assertIn("ground line its paws stood on", death["args"]["prompt"])
+        self.assertIn("does not startle-hop", death["args"]["prompt"])
+        attack = next(c for c in calls if c["id"] == "attack-W")
+        self.assertIn("lie flat along its back", attack["args"]["prompt"])
 
     def test_the_deer_is_a_wild_animal_drawn_from_its_design_text_not_a_concept_figure(self):
         cfg = hs.load_config("deer")
