@@ -275,10 +275,9 @@ input[type="text"], input:not([type="radio"]) {
 .sack {
   position: absolute;
   transform: translate(-50%, -100%);
-  width: 5.6rem;
-  min-height: 4.4rem;
+  width: 4.2rem;
   box-sizing: border-box;
-  padding: 1.35rem 0.25rem 0.4rem;
+  padding: 0 0.15rem 0.15rem;
   text-align: center;
   color: #f6e6c4;
   font-size: 0.62rem;
@@ -287,14 +286,17 @@ input[type="text"], input:not([type="radio"]) {
   line-height: 1.15;
   white-space: pre-line;
   text-shadow: 1px 1px 0 #1a1008;
-  background-color: transparent;
+  background: transparent;
   border: 0;
-  border-radius: 46% 46% 42% 42%;
-  background-image:
-    radial-gradient(ellipse 34% 18% at 50% 14%, #f0d7a4 0 46%, #6b4424 50% 70%, transparent 74%),
-    radial-gradient(ellipse 86% 70% at 50% 68%, #e0b070 0 18%, #a56b38 42%, #6a4124 78%, #3d2616 100%);
-  box-shadow: 0 3px 0 #2a1810;
 }
+.sack img, #hud .build img {
+  display: block;
+  margin: 0 auto 0.05rem;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.sack img { width: 24px; height: 24px; }
+#hud .build img { width: 28px; height: 28px; }
 .hint-arrow.beacon { color: #f0d090; }
 .roster {
   flex-direction: column;

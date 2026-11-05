@@ -1,6 +1,7 @@
 import * as THREE from "three"
 import { present } from "./present"
-import { eliteLook } from "./elite"
+import { ELITE_MARK_CELL, ELITE_MARKS, ELITE_MARK_SHEET, eliteMark } from "./elite"
+import { SHEET_TEXEL } from "./hd2d/picture.js"
 import { cameraFocus, drawDue, frameFor, paintGap } from "./frame"
 import { clockScore } from "./hd2d/score.js"
 import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
@@ -244,6 +245,21 @@ export function createView(stage, picture) {
   // texture fills in once loaded. name -> variant -> SpriteMaterial.
   const staticMats = {}
   const sheetLoader = new THREE.TextureLoader()
+  const eliteMarkMats = {}
+  for (let index = 0; index < ELITE_MARKS.length; index += 1) {
+    const map = sheetLoader.load(ELITE_MARK_SHEET)
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.repeat.set(1 / ELITE_MARKS.length, 1)
+    map.offset.set(index / ELITE_MARKS.length, 0)
+    eliteMarkMats[ELITE_MARKS[index]] = new THREE.SpriteMaterial({
+      map,
+      transparent: true,
+      alphaTest: 0.4,
+      depthWrite: false
+    })
+  }
   for (const [name, sheet] of Object.entries(staticSheets)) {
     staticMats[name] = {}
     for (const variant of sheet.variants) {
@@ -2022,15 +2038,14 @@ export function createView(stage, picture) {
     mesh.add(plate, fill)
     mesh.userData.hp = fill
     mesh.userData.bar = plate
-    const look = eliteLook(row)
-    if (look === "plated" || look === "lean" || look === "spiked") {
-      const markColor = look === "spiked" ? 0xf5751e : 0xd8cfc3
-      const mark = new THREE.Mesh(
-        trackGeometry(new THREE.BoxGeometry(5, 8, 5)),
-        litTokens.has(markColor) ? new THREE.MeshBasicMaterial({ color: markColor }) : mat(markColor)
-      )
-      mark.position.y = picture.h + 10
-      mesh.add(mark)
+    const mark = eliteMark(row)
+    if (mark) {
+      const icon = new THREE.Sprite(eliteMarkMats[mark.look])
+      icon.center.set(0.5, 0)
+      icon.scale.set(ELITE_MARK_CELL.w * SHEET_TEXEL, ELITE_MARK_CELL.h * SHEET_TEXEL, 1)
+      icon.position.y = picture.h + 6
+      mesh.add(icon)
+      mesh.userData.mark = icon
     }
     const spread = monsterSpread(row.id)
     mesh.userData.spread = spread
@@ -2040,6 +2055,7 @@ export function createView(stage, picture) {
     if (spread.bar && mesh.userData.hp && mesh.userData.bar) {
       mesh.userData.hp.position.y += spread.bar
       mesh.userData.bar.position.y += spread.bar
+      if (mesh.userData.mark) mesh.userData.mark.position.y += spread.bar
     }
     return mesh
   }
