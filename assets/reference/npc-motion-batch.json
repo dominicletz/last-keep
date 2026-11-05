@@ -1,0 +1,303 @@
+{
+ "_note": "GenerateVideo calls for the vagrant and the merchant. The vagrant is a turntable, idle on S W N E and walk on eight directions. The merchant is a turntable and idle on S W N E. No attack and no death. Paths are absolute under /workspace/lk-art-redo. save_as is the file the next pipeline step reads. The turntable reads video/views/k-<DIR>.png. A clip reads video/dirs/<DIR>.png, which `hero_sprites.py <name> dirs` writes after the turntable.",
+ "calls": [
+  {
+   "id": "vagrant-turntable",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game character turnaround reference. The vagrant stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show his left side, then his back, then his right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: a travel-worn vagrant with a short brown beard, a patched grey-brown hooded cloak the colour of weathered timber, a faded cream tunic, a frayed rope belt, scuffed brown boots, empty hands, no weapon. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/k-S.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/k-S.png",
+    "keyframes": [
+     {
+      "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/k-W.png",
+      "timestamp_s": 2
+     },
+     {
+      "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/k-N.png",
+      "timestamp_s": 4
+     },
+     {
+      "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/views/k-E.png",
+      "timestamp_s": 6
+     }
+    ],
+    "duration": 8,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-turntable.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/turntable.mp4"
+  },
+  {
+   "id": "vagrant-walk-S",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The vagrant walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little. The vagrant stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/S.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-walk-S.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/walk-S.mp4"
+  },
+  {
+   "id": "vagrant-idle-S",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The vagrant holds exactly the pose, angle and facing of the first frame (facing the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/S.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-idle-S.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/idle-S.mp4"
+  },
+  {
+   "id": "vagrant-walk-SW",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The vagrant walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little. The vagrant stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/SW.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-walk-SW.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/walk-SW.mp4"
+  },
+  {
+   "id": "vagrant-walk-W",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The vagrant walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-left, his left side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little. The vagrant stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/W.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-walk-W.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/walk-W.mp4"
+  },
+  {
+   "id": "vagrant-idle-W",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The vagrant holds exactly the pose, angle and facing of the first frame (facing screen-left, his left side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/W.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-idle-W.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/idle-W.mp4"
+  },
+  {
+   "id": "vagrant-walk-NW",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The vagrant walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little. The vagrant stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/NW.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-walk-NW.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/walk-NW.mp4"
+  },
+  {
+   "id": "vagrant-walk-N",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The vagrant walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from directly behind, back to the camera). Holding exactly the body angle of the first frame: torso does not twist. Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little. The vagrant stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/N.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-walk-N.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/walk-N.mp4"
+  },
+  {
+   "id": "vagrant-idle-N",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The vagrant holds exactly the pose, angle and facing of the first frame (seen from directly behind, back to the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/N.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-idle-N.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/idle-N.mp4"
+  },
+  {
+   "id": "vagrant-walk-NE",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The vagrant walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little. The vagrant stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/NE.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-walk-NE.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/walk-NE.mp4"
+  },
+  {
+   "id": "vagrant-walk-E",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The vagrant walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-right, his right side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little. The vagrant stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/E.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-walk-E.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/walk-E.mp4"
+  },
+  {
+   "id": "vagrant-idle-E",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The vagrant holds exactly the pose, angle and facing of the first frame (facing screen-right, his right side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/E.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-idle-E.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/idle-E.mp4"
+  },
+  {
+   "id": "vagrant-walk-SE",
+   "asset": "vagrant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The vagrant walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Tired steady walk: legs alternating clearly, slight body bob, cloak swaying a little. The vagrant stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/SE.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/vagrant/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "vagrant-walk-SE.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/vagrant/video/walk-SE.mp4"
+  },
+  {
+   "id": "merchant-turntable",
+   "asset": "merchant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game character turnaround reference. The merchant stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show his left side, then his back, then his right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: a traveling merchant with a short brown beard, a warm brown hooded coat the colour of ripe wheat, a leather satchel of tied grain sacks at the hip, a small coin pouch on the belt, brown boots, empty hands, no weapon. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/views/k-S.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/merchant/video/views/k-S.png",
+    "keyframes": [
+     {
+      "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/views/k-W.png",
+      "timestamp_s": 2
+     },
+     {
+      "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/views/k-N.png",
+      "timestamp_s": 4
+     },
+     {
+      "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/views/k-E.png",
+      "timestamp_s": 6
+     }
+    ],
+    "duration": 8,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "merchant-turntable.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/turntable.mp4"
+  },
+  {
+   "id": "merchant-idle-S",
+   "asset": "merchant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The merchant holds exactly the pose, angle and facing of the first frame (facing the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/S.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "merchant-idle-S.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/idle-S.mp4"
+  },
+  {
+   "id": "merchant-idle-W",
+   "asset": "merchant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The merchant holds exactly the pose, angle and facing of the first frame (facing screen-left, his left side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/W.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "merchant-idle-W.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/idle-W.mp4"
+  },
+  {
+   "id": "merchant-idle-N",
+   "asset": "merchant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The merchant holds exactly the pose, angle and facing of the first frame (seen from directly behind, back to the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/N.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "merchant-idle-N.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/idle-N.mp4"
+  },
+  {
+   "id": "merchant-idle-E",
+   "asset": "merchant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The merchant holds exactly the pose, angle and facing of the first frame (facing screen-right, his right side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/E.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "merchant-idle-E.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/idle-E.mp4"
+  }
+ ]
+}

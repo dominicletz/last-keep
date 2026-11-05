@@ -216,8 +216,8 @@ The sim places the quarries, camps and shrines. The snapshot sends the ones whos
 | quarry | b | Stone source. `quarry-sheet.png`, 88 px. Variant a or b by `spotVariant` on the poi id. Feet on the ground. | **built, awaiting final review** |
 | camp | b | `camp-sheet.png`, 77 px, one lean-to and a fire. One variant. | **built, awaiting final review** |
 | shrine | b | Relics are HUD text only; a relic icon could come with it (variant c), and that icon is not a variant here. `shrine-sheet.png`, 66 px, empty niche. | **built, awaiting final review** |
-| vagrant (NPC) | a | idle ×4, walk ×8. No vagrant on the concept sheets, so the crop is the theme.jpg timber house for cloak colours (`source_note`). Views only: `assets/reference/npc-views-batch.json`. No sheet. | **prepped** |
-| merchant (planned) | a | idle ×4. No merchant on the concept sheets, so the crop is the theme.jpg wheat and stone for the sack colours (`source_note`). Same views batch. No sheet. | **prepped** |
+| vagrant (NPC) | a | idle ×4, walk ×8. No vagrant on the concept sheets, so the crop is the theme.jpg timber house for cloak colours (`source_note`). The four views are in, and `views` wrote `k-S/N/W/E.png`. v-S is a slight three-quarter; `views` only scales the figure, and there is no check profile, so nothing rejects that facing. Motion calls, not generated: `assets/reference/npc-motion-batch.json`. No sheet, not wired. | **views in** |
+| merchant (planned) | a | idle ×4, no walk. No merchant on the concept sheets, so the crop is the theme.jpg wheat and stone for the sack colours (`source_note`). Same views and the same motion batch (turntable and four idles). v-S is a slight three-quarter, accepted the same way. No sheet, not wired. | **views in** |
 | hermit (planned) | a | idle ×4 | todo |
 
 ### 5. Projectiles and effects

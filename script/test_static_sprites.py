@@ -501,6 +501,33 @@ def npc_views_batch():
             "calls": calls}
 
 
+def npc_motion_batch():
+    """Turntable plus the clips ART-REDO lists for these two NPCs.
+
+    The vagrant gets idle on S W N E and walk on eight directions. The
+    merchant gets idle on S W N E and no walk. Neither gets an attack or a
+    death. Paths are absolute under ART_ROOT. save_as is the file the next
+    pipeline step reads."""
+    calls = []
+    for name in NPCS:
+        for call in hs.build_prompts(hs.load_config(name))["calls"]:
+            if call.get("tool") != "GenerateVideo":
+                continue
+            kind = call["id"].split("-", 1)[0]
+            if kind not in ("turntable", "idle", "walk"):
+                continue
+            fixed = hs.absolute({"calls": [{key: call[key] for key in ("id", "tool", "args", "save_as")}]},
+                                root=ART_ROOT)["calls"][0]
+            calls.append({"id": f"{name}-{call['id']}", "asset": name, "tool": "GenerateVideo",
+                          "args": fixed["args"], "save_as": fixed["save_as"]})
+    return {"_note": "GenerateVideo calls for the vagrant and the merchant. The vagrant is a turntable, "
+            "idle on S W N E and walk on eight directions. The merchant is a turntable and idle on S W N E. "
+            "No attack and no death. Paths are absolute under /workspace/lk-art-redo. save_as is the file "
+            "the next pipeline step reads. The turntable reads video/views/k-<DIR>.png. A clip reads "
+            "video/dirs/<DIR>.png, which `hero_sprites.py <name> dirs` writes after the turntable.",
+            "calls": calls}
+
+
 class NpcViewsTest(unittest.TestCase):
     def test_the_vagrant_and_the_merchant_are_palette_crops_and_the_views_batch(self):
         boxes = {"vagrant": [740, 220, 840, 315], "merchant": [840, 320, 1020, 450]}
@@ -546,6 +573,54 @@ class NpcViewsTest(unittest.TestCase):
                 self.assertTrue(ref.startswith(ART_ROOT + "/"), ref)
                 if front or not ref.endswith("/video/views/v-S.png"):
                     self.assertTrue(os.path.exists(os.path.join(hs.ROOT, ref[len(ART_ROOT) + 1:])), ref)
+
+    def test_the_motion_batch_is_the_turntable_and_the_listed_clips(self):
+        want = {
+            "vagrant": ["turntable"] + [f"{k}-{d}" for d in hs.COLUMNS for k in ("walk", "idle")
+                                        if d in hs.load_config("vagrant")["clips"].get(k, ())],
+            "merchant": ["turntable", "idle-S", "idle-W", "idle-N", "idle-E"],
+        }
+        for name, ids in want.items():
+            cfg = hs.load_config(name)
+            p = hs.build_prompts(cfg)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+            kinds = {c["id"].split("-", 1)[0] for c in p["calls"] if c["tool"] == "GenerateVideo"}
+            self.assertEqual(kinds, set(i.split("-", 1)[0] for i in ids), name)
+            for d in "SNWE":
+                with Image.open(os.path.join(cfg["video"], "views", f"k-{d}.png")) as image:
+                    self.assertEqual(image.size, (720, 720), f"{name} k-{d}")
+        path = os.path.join(hs.ROOT, "assets/reference/npc-motion-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_motion_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]],
+                         [f"{name}-{i}" for name, ids in want.items() for i in ids])
+        self.assertEqual(len(batch["calls"]), 18)
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateVideo")
+            self.assertNotIn("attack", call["id"])
+            self.assertNotIn("death", call["id"])
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/assets/reference/"))
+            self.assertTrue(call["save_as"].endswith(".mp4"))
+            args = call["args"]
+            for key in ("image_path", "last_frame_path"):
+                if key in args:
+                    self.assertTrue(args[key].startswith(ART_ROOT + "/"), args[key])
+            if call["id"].endswith("-turntable"):
+                self.assertEqual(args["duration"], 8)
+                self.assertTrue(args["image_path"].endswith("/video/views/k-S.png"))
+                self.assertEqual(args["last_frame_path"], args["image_path"])
+                for frame in args["keyframes"]:
+                    self.assertTrue(frame["image_path"].startswith(ART_ROOT + "/"), frame["image_path"])
+                    self.assertTrue(os.path.exists(os.path.join(
+                        hs.ROOT, frame["image_path"][len(ART_ROOT) + 1:])), frame["image_path"])
+            else:
+                self.assertEqual(args["duration"], 2)
+                self.assertIn("/video/dirs/", args["image_path"])
+                self.assertEqual(args["last_frame_path"], args["image_path"])
 
 
 if __name__ == "__main__":
