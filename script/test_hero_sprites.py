@@ -322,6 +322,16 @@ class AssetTest(unittest.TestCase):
         self.assertIn("half the height of the first frame", attack["args"]["prompt"])
         self.assertIn("larger than one hop", attack["args"]["prompt"])
 
+    def test_the_rabbit_take_3_stops_on_walk_nw_and_writes_no_further_retake(self):
+        cfg = hs.load_config("rabbit")
+        note = cfg["clip_overrides"]["_note"]
+        self.assertIn("Take 3", note)
+        self.assertIn("walk-NW still fails", note)
+        self.assertIn("38, 34, 35", note)
+        self.assertIn("272 px", note)
+        self.assertIn("leave the rabbits unwired", note)
+        self.assertFalse(os.path.exists(os.path.join(cfg["dir"], "retake3-batch.json")))
+
     def test_the_deer_is_a_wild_animal_drawn_from_its_design_text_not_a_concept_figure(self):
         cfg = hs.load_config("deer")
         self.assertEqual((cfg["sheet"]["world_height"], cfg["sheet"]["height"], cfg["sheet"]["cell"]), (22, 60, 128))
