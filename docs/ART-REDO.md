@@ -177,7 +177,7 @@ HP bar.
 
 | Asset | Files | Current | Var | Clips / views | Notes | Status |
 |---|---|---|---|---|---|---|
-| hero portraits ×5 | `priv/static/images/portraits/<hero>.png` (76×96) | old voxel close-ups (6c36e1e) | c | 1 bust each | Used in the HUD (`play.js:740`) and the touch thumb (`play.js:888`). They clash with the new sheets. Cheap: crop each new `v-S.png` to a bust, then pixelize to 76×96 with the sheet palette. No generation needed | todo |
+| hero portraits ×5 | `priv/static/images/portraits/<hero>.png` (76×96) | old voxel close-ups (6c36e1e) | c | 1 bust each | Used in the HUD (`play.js:740`) and the touch thumb (`play.js:888`). `script/hero_portraits.py` crops the top 0.42 of the figure, a 76:96 window on the head, and pixelizes it with that hero's `*-walk.png` palette onto black. Sources are `views/v-S.png` or `v-S.jpg`. The warrior has no `v-S` in the repo, so its portrait uses `video/dirs/S.png`, the front the clips start from. | **built** (`script/test_hero_portraits.py`: each file is 76×96 and matches a rebuild) |
 | hero attack and death clips | `hero.json` clips | sheets have walk and idle only | a | attack ×8, death ×4 per hero | The same script path as the goblin, once the builder takes attack and death rows | todo |
 
 ### 3. Yard buildings and props (variant b unless noted)
