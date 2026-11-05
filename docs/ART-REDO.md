@@ -303,14 +303,14 @@ exist yet; the ground only has noise flecks.
 
 ### 10. Fauna
 
-The game has no ambient animals today: nothing in `assets/js` or `lib`
-draws or simulates wildlife (the wolf and the bat are enemies, section 1).
-These are proposed, all purely client-side decoration with no gameplay.
+Wildlife is client-side decoration with no gameplay, and nothing in `lib`
+simulates it (the wolf and the bat are enemies, section 1). `wildlife.js`
+scatters the deer. The other animals here are still proposed.
 
 | Asset | Where | Var | Clips / views | Notes | Status |
 |---|---|---|---|---|---|
 | birds (crows) | over the forest wall and fields by day | a (small) | fly ×8 or ×4, take-off and land | Scatter when a hero walks close; gone at night | planned |
-| deer | `meadow` and `pine` edges outside the yard | a | walk ×8, idle ×4, flee ×8 | Flees from heroes and monsters. The concepts have no animal: `assets/reference/deer/` (monster pipeline, 22 world units = 60 px, 128 cell) takes only the forest palette from a theme.jpg crop and the look from its design text. Idle is the attack slot (grazing); flee has no clip kind yet (open question 13) | **clips next** (views and turntable done; `deer dirs` picked SW 28, NW 82, NE 115, SE 171, each facing its way by eye; 20 calls in /workspace/lk/deer-clips-batch.json; the views look smoother than voxel, open question 19) |
+| deer | `meadow` and `pine` edges outside the yard | a | walk ×8, idle ×4, flee ×8 | Flees from heroes and monsters. The concepts have no animal: `assets/reference/deer/` (monster pipeline, 22 world units = 60 px, 128 cell) takes only the forest palette from a theme.jpg crop and the look from its design text. Idle is the attack slot (grazing); flee has no clip kind yet (open question 13) | **wired, awaiting final review** (`deer-sheet.png` 1024×2560, 60 px, foot row 121. `wildlife.js` places 4 deer on `floraBands.edge`, 205–290, off the roads. They walk an arc on that ring and graze; the graze loops the attack rows. Sim time is the server tick, so every client draws the same deer. Flee is still open question 13. The views look smoother than voxel, open question 19) |
 | rabbits | yard edge and fields | a (small) | hop ×8, idle ×4 | Ties to the field (sow and harvest). assets/reference/rabbit: 10 world, 28 px, cell 64; views done (W/E profiles turn slightly three-quarter, accepted); turntable batch /workspace/lk/rabbit-turntable-batch.json | turntable |
 | fish or ripples | `river` and `ford` | c | 2–4 frame jump | Optional | planned |
 

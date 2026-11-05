@@ -4,6 +4,13 @@ import test from "node:test"
 import { floraBands, floraCount, floraFree, floraLook, floraSlots } from "./flora.js"
 import { staticSheets, buildingSheet, floraSheets } from "./yard_cards.js"
 
+test("the ring hash stays on the committed scatter", () => {
+  const first = floraSlots(0, 0)[0]
+  assert.equal(first.kind, "bush")
+  assert.ok(Math.abs(first.x - -76.56991260891466) < 1e-9)
+  assert.ok(Math.abs(first.z - 188.6532459516072) < 1e-9)
+})
+
 test("flora is the same for a seed and attempt, and moves with either", () => {
   assert.deepEqual(floraSlots(7, 0), floraSlots(7, 0))
   assert.notDeepEqual(floraSlots(7, 0), floraSlots(8, 0))

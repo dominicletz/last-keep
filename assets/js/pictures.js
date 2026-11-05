@@ -299,6 +299,11 @@ export function sheetRow(picture, pose, now) {
     return walk + index
   }
   if (pose.moving) return Math.floor(now / 160) % walk
+  // A graze has no idle row. It loops the attack rows (the deer's head-down clip).
+  if (pose.graze && attack) {
+    const spun = Math.floor(now / 140) % attack
+    return walk + ((spun % attack) + attack) % attack
+  }
   if (picture.idle) return walk + attack + death + (Math.floor(now / 320) % picture.idle)
   return 0
 }

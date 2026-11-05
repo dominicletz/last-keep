@@ -7,6 +7,7 @@ import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, tr
 import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
 import { floraSlots } from "./flora.js"
+import { deerAt, deerSheetUrl, deerSlots, DEER_SHEET } from "./wildlife.js"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { mountPicture } from "./horizon.js"
@@ -18,7 +19,7 @@ import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
 import { SHEET_HEROES, cellOffset, flierLift, pictureColumn, sheetRow } from "./pictures.js"
-import { sheetHeroSize } from "./hd2d/picture.js"
+import { monsterSheetPicture, sheetCardGeometry, sheetHeroSize } from "./hd2d/picture.js"
 import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
 import { keepParts, modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
@@ -327,6 +328,19 @@ export function createView(stage, picture) {
   applyFrame()
   window.addEventListener("resize", applyFrame)
 
+  // Declared before forestState() runs. A const later in the function is still
+  // in the temporal dead zone here, and the census reads both pools.
+  const floraPool = []
+  let floraKey = null
+  const deerPool = []
+  let deerKey = null
+  let deerSource = null
+  let deerTick = 0
+  let deerTickAt = performance.now()
+  const deerLayout = monsterSheetPicture(DEER_SHEET)
+  const deerGeometry = sheetCardGeometry(DEER_SHEET.cell, DEER_SHEET.footRow)
+  const deerPos = new THREE.Vector3()
+
   const forestLook = forestState()
 
   function contactTexture() {
@@ -380,8 +394,6 @@ export function createView(stage, picture) {
 
   // Flora: one fixed pool of sprites sharing staticMats; a new seed or
   // attempt only moves them and swaps their material (no per-frame work).
-  const floraPool = []
-  let floraKey = null
   function placeFlora(seed, attempt) {
     const key = `${seed}:${attempt}`
     if (key === floraKey) return
@@ -404,6 +416,98 @@ export function createView(stage, picture) {
       card.userData.flora = slot.kind + "-" + slot.variant
     }
   }
+
+  // Deer: one pool of sheet cards. A new seed only moves their homes. Each
+  // frame steps them on sim time, walk while they travel and attack (graze)
+  // while they stand. The sheet is one image; each card clones it for its frame.
+  function faceDeer(_renderer, _scene, camera) {
+    this.getWorldPosition(deerPos)
+    this.rotation.x = 0
+    this.rotation.z = 0
+    this.rotation.y = Math.atan2(camera.position.x - deerPos.x, camera.position.z - deerPos.z)
+    this.updateMatrix()
+    if (this.parent) this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix)
+  }
+
+  function giveDeerMap(mesh) {
+    if (!deerSource || mesh.material.map) return
+    const map = deerSource.clone()
+    map.repeat.set(1 / deerLayout.directions, 1 / deerLayout.frames)
+    map.needsUpdate = true
+    mesh.material.map = map
+    mesh.material.needsUpdate = true
+    mesh.userData.ownsMap = true
+    mesh.visible = true
+  }
+
+  function placeDeer(seed, attempt) {
+    const key = `${seed}:${attempt}`
+    if (key === deerKey) return
+    deerKey = key
+    for (const [n, slot] of deerSlots(seed, attempt).entries()) {
+      if (!deerPool[n]) {
+        const mesh = new THREE.Mesh(
+          deerGeometry,
+          new THREE.MeshBasicMaterial({ alphaTest: 0.4, transparent: true })
+        )
+        mesh.castShadow = false
+        mesh.receiveShadow = false
+        mesh.visible = false
+        mesh.onBeforeRender = faceDeer
+        mesh.userData.role = "deer"
+        mesh.renderOrder = 1
+        scene.add(mesh)
+        deerPool[n] = mesh
+        giveDeerMap(mesh)
+      }
+      deerPool[n].userData.home = slot
+    }
+    forestLook.deer = deerPool.length
+  }
+
+  function deerMillis() {
+    return (deerTick + (performance.now() - deerTickAt) / 50) * 50
+  }
+
+  function noteDeerClock(snap) {
+    deerTick = snap && Number.isFinite(snap.tick) ? snap.tick : 0
+    deerTickAt = performance.now()
+  }
+
+  function stepDeer(now) {
+    for (const mesh of deerPool) {
+      const home = mesh.userData.home
+      if (!home) continue
+      const pose = deerAt(home, now)
+      mesh.position.set(pose.x, 0, pose.z)
+      const viewYaw = Math.atan2(camera.position.x - pose.x, camera.position.z - pose.z)
+      const column = pictureColumn(viewYaw, pose.facing)
+      const frame = sheetRow(deerLayout, { moving: pose.moving, graze: pose.graze }, now)
+      const row = Math.min(deerLayout.frames - 1, Math.max(0, frame))
+      const cell = cellOffset(column, row, deerLayout.directions, deerLayout.frames)
+      if (mesh.material.map) mesh.material.map.offset.set(cell.x, cell.y)
+      mesh.userData.deer = pose.moving ? "walk" : "graze"
+    }
+  }
+
+  const deerLoader = new THREE.TextureLoader()
+  deerLoader.load(
+    "/" + deerSheetUrl(),
+    (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.magFilter = THREE.NearestFilter
+      tex.minFilter = THREE.NearestFilter
+      tex.flipY = true
+      tex.wrapS = THREE.ClampToEdgeWrapping
+      tex.wrapT = THREE.ClampToEdgeWrapping
+      tex.generateMipmaps = false
+      tex.needsUpdate = true
+      deerSource = tex
+      for (const mesh of deerPool) giveDeerMap(mesh)
+    },
+    undefined,
+    (err) => console.error(err)
+  )
 
   function addForestWall() {
     for (const [i, slot] of forestWallSlots().entries()) {
@@ -438,6 +542,7 @@ export function createView(stage, picture) {
       trunks: scenerySlots().length,
       wall: forestWallSlots().length,
       flora: floraPool.length,
+      deer: deerPool.length,
       wood: look.wood,
       crowns: look.parts.includes("crown") || look.parts.includes("bough"),
       stumps: look.parts.includes("stump") && look.parts.includes("log"),
@@ -600,6 +705,7 @@ export function createView(stage, picture) {
     if (pending && (window.__lastKeepArrive || boundLook())) placeCamera(pending.snap, pending.selfId)
     for (const [, mesh] of meshes) stepFacing(mesh)
     for (const [key, mesh] of meshes) placeMesh(key, mesh)
+    stepDeer(deerMillis())
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
       const burst = bursts[i]
       const age = (now - burst.at) / 520
@@ -1042,6 +1148,8 @@ export function createView(stage, picture) {
     })
     land.sync(snap, camera, viewFrame.halfH)
     placeFlora(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+    placeDeer(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+    noteDeerClock(snap)
   }
 
   function placeCamera(snap, selfId) {

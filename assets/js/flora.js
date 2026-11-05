@@ -9,7 +9,7 @@ import { forestWall } from "./scenery.js"
 // the renderer keeps one pool of sprites and only moves them on a new seed.
 const ROADS = [0, Math.PI / 2, Math.PI, -Math.PI / 2]
 const PLAZA_HALF = PLAZA_SPAN / 2 + 8
-const TRIES = 12
+export const floraTries = 12
 
 // count per band; dist ranges in world units from the keep.
 export const floraLook = {
@@ -32,8 +32,15 @@ function angleGap(left, right) {
   return Math.min(span, Math.PI * 2 - span)
 }
 
-function unit(values) {
+export function floraUnit(values) {
   return phash2(values) / 0x08000000
+}
+
+// One candidate on a ring. The deer scatter uses the same hash.
+export function bandPoint(seed, attempt, k, b, n, t, near, far) {
+  const angle = floraUnit([seed, attempt, k, b, n, t, 0]) * Math.PI * 2
+  const dist = near + floraUnit([seed, attempt, k, b, n, t, 1]) * (far - near)
+  return { x: Math.cos(angle) * dist, z: Math.sin(angle) * dist, angle, dist }
 }
 
 // Whether (x, z) is free for flora: off the plaza and off the four roads.
@@ -51,14 +58,11 @@ export function floraSlots(seed = 1, attempt = 0) {
     for (const [b, band] of Object.keys(floraBands).entries()) {
       const { near, far } = floraBands[band]
       for (let n = 0; n < look[band]; n++) {
-        for (let t = 0; t < TRIES; t++) {
-          const angle = unit([seed, attempt, k, b, n, t, 0]) * Math.PI * 2
-          const dist = near + unit([seed, attempt, k, b, n, t, 1]) * (far - near)
-          const x = Math.cos(angle) * dist
-          const z = Math.sin(angle) * dist
-          if (!floraFree(x, z) && t < TRIES - 1) continue
+        for (let t = 0; t < floraTries; t++) {
+          const point = bandPoint(seed, attempt, k, b, n, t, near, far)
+          if (!floraFree(point.x, point.z) && t < floraTries - 1) continue
           // The last try always lands: pushed out of the road onto its edge.
-          const free = floraFree(x, z) ? { x, z } : offRoad(angle, dist)
+          const free = floraFree(point.x, point.z) ? point : offRoad(point.angle, point.dist)
           const variant = look.variants[phash2([seed, attempt, k, b, n, 2]) % look.variants.length]
           slots.push({ kind, variant, x: free.x, z: free.z })
           break
