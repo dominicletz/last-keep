@@ -276,25 +276,51 @@ class AssetTest(unittest.TestCase):
         self.assertTrue(all(call["save_as"].startswith("assets/reference/rabbit/video/") for call in batch["calls"]))
 
     def test_the_rabbit_retake_batch_is_the_eight_clips_the_sheet_rejected(self):
+        # retake-batch.json is take 2, the prompts that were sent. Take 3
+        # changes four walks and attack-W, so this file is no longer clip_batch.
         cfg = hs.load_config("rabbit")
         want = ["walk-S", "death-S", "attack-W", "walk-NW", "walk-N", "walk-NE", "walk-E", "walk-SE"]
-        calls = [c for c in hs.clip_batch(cfg)["calls"] if c["id"] in set(want)]
         retake = json.loads(read(os.path.join(cfg["dir"], "retake-batch.json")))
-        self.assertEqual(retake, {"calls": calls})
+        calls = retake["calls"]
         self.assertEqual([c["id"] for c in calls], want)
         first = {c["id"]: c for c in json.loads(read(os.path.join(cfg["dir"], "clips-batch.json")))["calls"]}
+        live = {c["id"]: c for c in hs.clip_batch(cfg)["calls"]}
         for call in calls:
             self.assertNotEqual(call["args"]["prompt"], first[call["id"]]["args"]["prompt"])
             self.assertEqual(set(call), {"id", "tool", "args", "save_as"})
+            self.assertTrue(call["save_as"].startswith("assets/reference/rabbit/video/"))
         for call in calls:
             if call["id"].startswith("walk"):
                 self.assertIn("exactly the same height as the first frame", call["args"]["prompt"])
                 self.assertNotIn("back arching and stretching", call["args"]["prompt"])
+        # Take 2 fixed these three, so their overrides stay and still match the file.
+        for cid in ("walk-S", "death-S", "walk-SE"):
+            self.assertEqual(live[cid]["args"]["prompt"], next(c for c in calls if c["id"] == cid)["args"]["prompt"])
         death = next(c for c in calls if c["id"] == "death-S")
         self.assertIn("ground line its paws stood on", death["args"]["prompt"])
         self.assertIn("does not startle-hop", death["args"]["prompt"])
         attack = next(c for c in calls if c["id"] == "attack-W")
         self.assertIn("lie flat along its back", attack["args"]["prompt"])
+
+    def test_the_rabbit_retake2_batch_is_the_five_clips_take_2_still_failed(self):
+        cfg = hs.load_config("rabbit")
+        want = ["attack-W", "walk-NW", "walk-N", "walk-NE", "walk-E"]
+        calls = [c for c in hs.clip_batch(cfg)["calls"] if c["id"] in set(want)]
+        retake2 = json.loads(read(os.path.join(cfg["dir"], "retake2-batch.json")))
+        self.assertEqual(retake2, {"calls": calls})
+        self.assertEqual([c["id"] for c in calls], want)
+        sent = {c["id"]: c for c in json.loads(read(os.path.join(cfg["dir"], "retake-batch.json")))["calls"]}
+        for call in calls:
+            self.assertNotEqual(call["args"]["prompt"], sent[call["id"]]["args"]["prompt"])
+            self.assertEqual(set(call), {"id", "tool", "args", "save_as"})
+        for call in calls:
+            if call["id"].startswith("walk"):
+                self.assertIn("does not rear onto its hind legs", call["args"]["prompt"])
+                self.assertIn("ears stay rigid", call["args"]["prompt"])
+                self.assertNotIn("back arching only slightly", call["args"]["prompt"])
+        attack = next(c for c in calls if c["id"] == "attack-W")
+        self.assertIn("half the height of the first frame", attack["args"]["prompt"])
+        self.assertIn("larger than one hop", attack["args"]["prompt"])
 
     def test_the_deer_is_a_wild_animal_drawn_from_its_design_text_not_a_concept_figure(self):
         cfg = hs.load_config("deer")
