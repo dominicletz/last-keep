@@ -330,7 +330,11 @@ class AssetTest(unittest.TestCase):
         self.assertIn("38, 34, 35", note)
         self.assertIn("272 px", note)
         self.assertIn("leave the rabbits unwired", note)
+        self.assertIn("Take 4", note)
+        self.assertIn("28, 33, 36, 39, 37, 35, 30, 28", note)
+        self.assertIn("No retake4-batch.json", note)
         self.assertFalse(os.path.exists(os.path.join(cfg["dir"], "retake3-batch.json")))
+        self.assertFalse(os.path.exists(os.path.join(cfg["dir"], "retake4-batch.json")))
 
     def test_the_deer_is_a_wild_animal_drawn_from_its_design_text_not_a_concept_figure(self):
         cfg = hs.load_config("deer")
