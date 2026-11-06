@@ -209,16 +209,16 @@ baked into `tile-data.js` (2.2 MB) per phase: day, dusk and night.
 
 ### 4. Points of interest and NPCs
 
-The sim places the quarries, camps and shrines. The snapshot sends the ones whose chunk is already discovered, the same filter as a chest, and `render.js` draws the built sheet on that spot. A camp or a shrine leaves the list when the sim removes it. The merchant and the hermit are not sent. A vagrant is already an entity in the snapshot. Its clips are in, and the sheet stays off the client until walk-W passes the height check.
+The sim places the quarries, camps and shrines. The snapshot sends the ones whose chunk is already discovered, the same filter as a chest, and `render.js` draws the built sheet on that spot. A camp or a shrine leaves the list when the sim removes it. The merchant and the hermit are not sent. A vagrant is already an entity in the snapshot. Its clips are in. The walk-W retake still fails the hero walk height, 88 ±4, so the sheet stays off the client. The merchant and the hermit are not sent.
 
 | Asset | Var | Notes | Status |
 |---|---|---|---|
 | quarry | b | Stone source. `quarry-sheet.png`, 88 px. Variant a or b by `spotVariant` on the poi id. Feet on the ground. | **built, awaiting final review** |
 | camp | b | `camp-sheet.png`, 77 px, one lean-to and a fire. One variant. | **built, awaiting final review** |
 | shrine | b | Relics are HUD text only; a relic icon could come with it (variant c), and that icon is not a variant here. `shrine-sheet.png`, 66 px, empty niche. | **built, awaiting final review** |
-| vagrant (NPC) | a | idle ×4, walk ×8. No vagrant on the concept sheets, so the crop is the theme.jpg timber house for cloak colours (`source_note`). The four views, the turntable, the eight dirs and the clips are in. v-S is a slight three-quarter, recorded for the final review: `views` only scales the figure. Clip precheck passed. The sheet failed walk height 88 ±4 on walk-W (min 83). `hero_sprites.py vagrant build` still refuses without a check profile, and a profile would not pass that height check. The snapshot already lists vagrants. The sheet stays unwired. Retake: `assets/reference/npc-retake-batch.json`. | **clips in, sheet refused** |
-| merchant (planned) | a | idle ×4, no walk. No merchant on the concept sheets, so the crop is the theme.jpg wheat and stone for the sack colours (`source_note`). Same views, turntable and dirs. v-S is a slight three-quarter, recorded for the final review the same way. Precheck fails the start pose on idle-W, idle-N and idle-E. idle-S passed. No sheet. The snapshot does not send a merchant, so it stays unwired. Same retake batch. | **precheck failed, unwired** |
-| hermit (planned) | a | idle ×4. No hermit on the concept sheets, so the crop is the theme.jpg night pines for the cloak colour (`source_note`). The sim stores one hermit and does not send it. Settings and the four view calls are in `assets/reference/hermit/asset.json` and `assets/reference/hermit-views-batch.json`. No video, no sheet, not wired. | **views prepped** |
+| vagrant (NPC) | a | idle ×4, walk ×8. No vagrant on the concept sheets, so the crop is the theme.jpg timber house for cloak colours (`source_note`). The four views, the turntable, the eight dirs and the clips are in. v-S is a slight three-quarter, recorded for the final review: `views` only scales the figure. Clip precheck passed again, including the walk-W retake. The sheet still fails walk height 88 ±4 on walk-W (frame 1 is 83 px; min 83, max 89). That is the hero walk check. The hero check profiles exist, and a vagrant profile would not pass this check, so none was added and the sheet is not committed. The snapshot already lists vagrants. The sheet stays unwired. Next retake: `assets/reference/npc-retake2-batch.json`. | **walk-W still short, unwired** |
+| merchant (planned) | a | idle ×4, no walk. No merchant on the concept sheets, so the crop is the theme.jpg wheat and stone for the sack colours (`source_note`). Same views, turntable and dirs. v-S is a slight three-quarter, recorded for the final review the same way. idle-S and idle-N pass the start pose. idle-W is 5 px against a limit of 0, and idle-E is 5 px against a limit of 0. No sheet. The snapshot does not send a merchant, so it stays unwired. Same retake batch. | **precheck failed, unwired** |
+| hermit (planned) | a | idle ×4. No hermit on the concept sheets, so the crop is the theme.jpg night pines for the cloak colour (`source_note`). The sim stores one hermit and does not send it. `mirror_views` is `{"E": "W"}`: v-E is the horizontal flip of v-W, and the views batch no longer has a view-E call. The four normalized views are in. Turntable and idle calls: `assets/reference/hermit-motion-batch.json`. No sheet, not wired. | **views in, motion batch ready** |
 
 ### 5. Projectiles and effects
 
@@ -378,7 +378,11 @@ scatters the deer. The other animals here are still proposed.
     bat is left-right symmetric and its view-W came out three-quarter
     twice, so `views` builds `v-W.png` as the exact horizontal flip of
     `v-E` and `prompts.json` drops the view-W call (the bat has 24 calls).
-    The flip is deterministic: the views step rebuilds the same pixels.
+    The hermit's view-E faced screen-left on two takes, so it sets
+    `{"E": "W"}` and `views` overwrites `v-E.png` with the flip of
+    `v-W.png` before it normalizes. The belt pouch changes side. No other
+    asset sets it. The flip is deterministic: the views step rebuilds the
+    same pixels.
   - In the check profile, `"prop": null` says the figure holds nothing. The
     monster checks then skip only the prop checks; `prop_dirs` and
     `prop_side_below` are refused with it, and a hero cannot have it.

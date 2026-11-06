@@ -1,5 +1,5 @@
 {
-  "_note": "NPC (docs/ART-REDO.md section 4). The concept sheets have no hermit, so the box is the theme.jpg night pines for the cloak colour, and the source_note says so. The sim stores one hermit point of interest and does not send it. Idle on the four views. No video and no sheet yet. Not wired.",
+  "_note": "NPC (docs/ART-REDO.md section 4). The concept sheets have no hermit, so the box is the theme.jpg night pines for the cloak colour, and the source_note says so. The sim stores one hermit point of interest and does not send it, so the sheet stays unwired. Idle on the four views. view-E faced screen-left on two takes, so mirror_views writes v-E.png as the horizontal flip of v-W.png before views normalizes. The belt pouch changes side with that flip. No other person uses mirror_views.",
   "type": "monster",
   "noun": "hermit",
   "possessive": "his",
@@ -13,6 +13,7 @@
   "feet": "boots",
   "sheet": {"world_height": 32, "height": 88, "cell": 128},
   "items": [],
+  "mirror_views": {"E": "W"},
   "clips": {
     "idle": ["S", "W", "N", "E"]
   },

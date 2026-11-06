@@ -649,21 +649,78 @@ class NpcViewsTest(unittest.TestCase):
         self.assertEqual(cfg["sheet"]["height"], hs.sheet_height(32))
         with Image.open(os.path.join(cfg["dir"], "concept.png")) as image:
             self.assertEqual(list(np.asarray(image).shape[:2]), [box[3] - box[1], box[2] - box[0]])
+        self.assertEqual(cfg["mirror_views"], {"E": "W"})
+        for name in NPCS:
+            self.assertNotIn("mirror_views", hs.load_config(name), name)
         prompts = hs.build_prompts(cfg)["calls"]
         views = [c for c in prompts if c["id"].startswith("view-")]
-        self.assertEqual([c["id"] for c in views], ["view-S", "view-N", "view-W", "view-E"])
+        self.assertEqual([c["id"] for c in views], ["view-S", "view-N", "view-W"])
+        self.assertEqual(views[-1]["then"], "hero_sprites.py views")
         video = [c for c in prompts if c["tool"] == "GenerateVideo"]
         self.assertEqual({c["id"].split("-", 1)[0] for c in video}, {"turntable", "idle"})
+        px = lambda path: np.asarray(Image.open(path).convert("RGB"))
+        views_dir = os.path.join(cfg["video"], "views")
+        self.assertTrue(np.array_equal(px(os.path.join(views_dir, "v-E.png")),
+                                       px(os.path.join(views_dir, "v-W.png"))[:, ::-1]))
+        for d in "SNWE":
+            with Image.open(os.path.join(views_dir, f"k-{d}.png")) as image:
+                self.assertEqual(image.size, (720, 720), f"hermit k-{d}")
         path = os.path.join(hs.ROOT, "assets/reference/hermit-views-batch.json")
         with open(path) as fh:
             batch = json.load(fh)
         self.assertEqual(batch, hermit_views_batch())
-        self.assertEqual(len(batch["calls"]), 4)
+        self.assertEqual([c["id"] for c in batch["calls"]],
+                         ["hermit-view-S", "hermit-view-N", "hermit-view-W"])
         self.assertTrue(all(c["tool"] == "GenerateImage" for c in batch["calls"]))
+        self.assertNotIn("view-E", json.dumps(batch["calls"]))
         self.assertNotIn("GenerateVideo", json.dumps(batch["calls"]))
+
+    def test_the_second_retake_is_only_the_clips_that_still_fail(self):
+        path = os.path.join(hs.ROOT, "assets/reference/npc-retake2-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_retake2_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]], list(RETAKE2_IDS))
+        motion = {c["id"]: c for c in npc_motion_batch()["calls"]}
+        for call in batch["calls"]:
+            self.assertEqual(call, motion[call["id"]])
+
+    def test_the_hermit_motion_batch_is_the_turntable_and_four_idles(self):
+        cfg = hs.load_config("hermit")
+        p = hs.build_prompts(cfg)
+        with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+            self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n")
+        with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+            self.assertEqual(fh.read(), hs.prompts_markdown(p))
+        path = os.path.join(hs.ROOT, "assets/reference/hermit-motion-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, hermit_motion_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]],
+                         ["hermit-turntable", "hermit-idle-S", "hermit-idle-W", "hermit-idle-N", "hermit-idle-E"])
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateVideo")
+            self.assertNotIn("attack", call["id"])
+            self.assertNotIn("death", call["id"])
+            self.assertNotIn("walk", call["id"])
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/assets/reference/hermit/"))
+            self.assertTrue(call["save_as"].endswith(".mp4"))
+            args = call["args"]
+            if call["id"].endswith("-turntable"):
+                self.assertEqual(args["duration"], 8)
+                self.assertTrue(args["image_path"].endswith("/video/views/k-S.png"))
+                self.assertEqual(args["last_frame_path"], args["image_path"])
+                for frame in args["keyframes"]:
+                    self.assertTrue(os.path.exists(os.path.join(
+                        hs.ROOT, frame["image_path"][len(ART_ROOT) + 1:])), frame["image_path"])
+            else:
+                self.assertEqual(args["duration"], 2)
+                self.assertIn("/video/dirs/", args["image_path"])
+                self.assertEqual(args["last_frame_path"], args["image_path"])
 
 
 RETAKE_IDS = ("vagrant-walk-W", "merchant-idle-W", "merchant-idle-N", "merchant-idle-E")
+RETAKE2_IDS = ("vagrant-walk-W", "merchant-idle-W", "merchant-idle-E")
 
 
 def npc_retake_batch():
@@ -680,9 +737,23 @@ def npc_retake_batch():
             "calls": [by_id[i] for i in RETAKE_IDS]}
 
 
+def npc_retake2_batch():
+    """The clips that still fail after the first retake, copied from the motion batch.
+
+    walk-W is still short of the hero walk height. idle-N now passes, so it
+    is not here. Prompts and save_as are the motion-batch calls."""
+    by_id = {c["id"]: c for c in npc_motion_batch()["calls"]}
+    return {"_note": "The clips that still fail, copied from npc-motion-batch.json. "
+            "Prompts and save_as are unchanged. vagrant-walk-W still fails the sheet walk height "
+            "88 ±4 (frame 1 is 83 px). merchant idle-W and idle-E still fail the start pose "
+            "(5 px, limit 0). idle-N now passes and is not here. Paths are absolute under "
+            "/workspace/lk-art-redo.",
+            "calls": [by_id[i] for i in RETAKE2_IDS]}
+
+
 def hermit_views_batch():
-    """The hermit's four views. Same shape as the vagrant and merchant views.
-    No video. Paths are absolute under ART_ROOT."""
+    """The hermit's generated views. view-E is not a call: mirror_views writes
+    it as the flip of v-W. No video. Paths are absolute under ART_ROOT."""
     calls = []
     for call in hs.build_prompts(hs.load_config("hermit"))["calls"]:
         if call["tool"] != "GenerateImage":
@@ -691,10 +762,35 @@ def hermit_views_batch():
         args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
         calls.append({"id": f"hermit-{call['id']}", "asset": "hermit", "tool": "GenerateImage",
                       "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])})
-    return {"_note": "GenerateImage calls for the hermit, four views (front S, back N, left W, right E). "
-            "Paths are absolute under /workspace/lk-art-redo. save_as is the file "
-            "`hero_sprites.py hermit views` reads. The front view uses the engineer style reference; "
-            "the other three use that front view. No video. The sim stores one hermit and does not send it.",
+    return {"_note": "GenerateImage calls for the hermit: front S, back N, left W. "
+            "view-E is not a call. mirror_views {\"E\": \"W\"} writes v-E.png as the horizontal "
+            "flip of v-W.png, and views normalizes that. Paths are absolute under "
+            "/workspace/lk-art-redo. save_as is the file `hero_sprites.py hermit views` reads. "
+            "The front view uses the engineer style reference; the other two use that front view. "
+            "No video. The sim stores one hermit and does not send it.",
+            "calls": calls}
+
+
+def hermit_motion_batch():
+    """Turntable plus idle on S W N E. No walk, attack or death. Paths are
+    absolute under ART_ROOT. save_as is the file the next pipeline step reads."""
+    calls = []
+    for call in hs.build_prompts(hs.load_config("hermit"))["calls"]:
+        if call.get("tool") != "GenerateVideo":
+            continue
+        kind = call["id"].split("-", 1)[0]
+        if kind not in ("turntable", "idle"):
+            continue
+        fixed = hs.absolute({"calls": [{key: call[key] for key in ("id", "tool", "args", "save_as")}]},
+                            root=ART_ROOT)["calls"][0]
+        calls.append({"id": f"hermit-{call['id']}", "asset": "hermit", "tool": "GenerateVideo",
+                      "args": fixed["args"], "save_as": fixed["save_as"]})
+    return {"_note": "GenerateVideo calls for the hermit: a turntable and idle on S W N E. "
+            "No walk, no attack and no death. Paths are absolute under /workspace/lk-art-redo. "
+            "save_as is the file the next pipeline step reads. The turntable reads "
+            "video/views/k-<DIR>.png. A clip reads video/dirs/<DIR>.png, which "
+            "`hero_sprites.py hermit dirs` writes after the turntable. view-E is the flip of "
+            "view-W, so k-E and dirs/E.png come from that flip.",
             "calls": calls}
 
 
