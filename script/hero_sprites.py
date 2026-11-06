@@ -911,6 +911,73 @@ def pose_alpha(path, frame=None):
     return ndimage.binary_dilation(a, CROSS)
 
 
+def normalize_death_frames(frames):
+    """Map a death clip that is longer than 2 s onto CLIP_FRAMES without
+    dropping the fall or inventing a hold.
+
+    The last half second of the result is a nearest-frame sample of the
+    clip's own still tail: the longest suffix whose placed silhouette stays
+    within the largest difference already present in the source's last half
+    second. The frames before that are a nearest-frame sample of the whole
+    fall, from frame 0 through the first frame of that tail. Endpoints are
+    exact source frames. Nothing is blended, frozen from a moving frame, or
+    cut off the front or the back. A clip that is already CLIP_FRAMES long
+    is returned unchanged. A clip with no fall, or a still tail shorter than
+    half a second, is refused."""
+    n = len(frames)
+    if n == CLIP_FRAMES:
+        return list(frames)
+    if n < CLIP_FRAMES:
+        raise ValueError(f"death clip has {n} frames, under {CLIP_FRAMES}: a short clip is not stretched")
+    half = CLIP_FPS // 2
+    top, foot = sv.span(frames[0]["mask"])
+    scale = sv.FILL / float(foot - top + 1)
+    x0 = sv.head_centre(frames[0]["mask"])
+
+    def placed(i):
+        f = frames[i]
+        return sv.place(f, scale, x0, sv.span(f["mask"])[1])
+
+    last = ndimage.binary_dilation(placed(n - 1)[1], CROSS)
+    deltas = [int((ndimage.binary_dilation(placed(i)[1], CROSS) != last).sum()) for i in range(n)]
+    bound = max(deltas[-half:])
+    if deltas[0] <= bound:
+        raise ValueError("death clip never leaves the last pose, so there is no fall to keep")
+    tail = n - half
+    while tail > 0 and deltas[tail - 1] <= bound:
+        tail -= 1
+    if n - tail < half:
+        raise ValueError(f"still tail is {n - tail} frames, under the last half second ({half})")
+    motion_n = CLIP_FRAMES - half
+    out = []
+    for k in range(motion_n):
+        src = int(round(k * tail / (motion_n - 1)))
+        out.append(frames[src])
+    last_i = n - 1
+    for k in range(half):
+        src = tail + int(round(k * (last_i - tail) / (half - 1)))
+        out.append(frames[src])
+    if len(out) != CLIP_FRAMES or out[0] is not frames[0] or out[-1] is not frames[-1]:
+        raise ValueError("normalized death clip lost an endpoint")
+    if out[motion_n - 1] is not frames[tail]:
+        raise ValueError("normalized death clip did not land the fall on the still tail")
+    return out
+
+
+def write_clip(path, frames, fps=CLIP_FPS):
+    """Write RGB frames as a lossless rgb24 mp4 at fps. The decoded frames
+    match the arrays that were written."""
+    h, w = frames[0].shape[:2]
+    if any(f.shape != (h, w, 3) for f in frames):
+        raise ValueError(f"clip frames are not all {w}x{h}")
+    raw = b"".join(np.ascontiguousarray(f, dtype=np.uint8).tobytes() for f in frames)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+         "-s", f"{w}x{h}", "-r", str(fps), "-i", "pipe:0",
+         "-c:v", "libx264rgb", "-qp", "0", "-pix_fmt", "rgb24", path],
+        input=raw, check=True)
+
+
 def clip_format(path):
     out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
                           "stream=width,height,r_frame_rate", "-of", "json", path],

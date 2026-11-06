@@ -1779,5 +1779,53 @@ class MonsterPrecheckTest(unittest.TestCase):
             self.assertEqual(problems, {"death-N.mp4": ["missing"]})
 
 
+class DeathNormalizeTest(unittest.TestCase):
+    def frame(self, height, mark):
+        import sprite_from_video as sv
+        rgb = np.full((96, 96, 3), 255, np.uint8)
+        top = 80 - height
+        rgb[top:80, 38:58] = (40, 30, 20)
+        rgb[top + 1, 40] = mark
+        mask = sv.cut_out(rgb)
+        return {"rgb": rgb, "mask": mask}
+
+    def test_a_long_death_keeps_the_whole_fall_and_the_real_still_end(self):
+        fall = [self.frame(50 - i, i) for i in range(40)]
+        still = [self.frame(10, 0) for _ in range(20)]
+        frames = fall + still
+        out = hs.normalize_death_frames(frames)
+        self.assertEqual(len(out), hs.CLIP_FRAMES)
+        self.assertIs(out[0], frames[0])
+        self.assertIs(out[-1], frames[-1])
+        # The fall lands on the first still frame, not on a cut of the first 37.
+        self.assertIs(out[hs.CLIP_FRAMES - hs.CLIP_FPS // 2 - 1], frames[40])
+        self.assertIsNot(out[36], frames[36])
+        tail = {id(f) for f in still}
+        for frame in out[-(hs.CLIP_FPS // 2):]:
+            self.assertIn(id(frame), tail)
+        # Already the format: unchanged, and not a copy of a prefix.
+        same = hs.normalize_death_frames(frames[:hs.CLIP_FRAMES])
+        self.assertEqual([id(f) for f in same], [id(f) for f in frames[:hs.CLIP_FRAMES]])
+        with self.assertRaises(ValueError):
+            hs.normalize_death_frames(still)
+        with self.assertRaises(ValueError):
+            hs.normalize_death_frames(fall[:10])
+
+    def test_write_clip_round_trips_rgb(self):
+        frames = [np.full((16, 16, 3), c, np.uint8) for c in (10, 20, 30)]
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "a.mp4")
+            hs.write_clip(path, frames)
+            back = sv_frames(path)
+        self.assertEqual(len(back), 3)
+        for got, want in zip(back, frames):
+            self.assertTrue(np.array_equal(got, want))
+
+
+def sv_frames(path):
+    import sprite_from_video as sv
+    return sv.run_ffmpeg_frames(path)
+
+
 if __name__ == "__main__":
     unittest.main()

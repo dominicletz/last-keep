@@ -613,10 +613,10 @@ def _stamp(height, foot=117, touch=False):
 
 
 class HeroActionRowsTest(unittest.TestCase):
-    def test_scout_death_n_is_longer_than_a_clip_so_the_sheet_stays_twelve_rows(self):
-        # The still-hold retake freezes the last half second and the hold
-        # passes. The file is 73 frames, not CLIP_FRAMES 49, so precheck
-        # fails the format gate and the 12-row sheet is not rebuilt.
+    def test_scout_death_n_is_a_normalized_two_second_clip(self):
+        # The delivered fall was 73 frames. normalize_death_frames resampled
+        # the whole fall and the real still tail onto 49 frames. The format
+        # gate is unchanged, and the sheet is the 24-row action sheet.
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         probe = subprocess.run(
             ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
@@ -624,23 +624,18 @@ class HeroActionRowsTest(unittest.TestCase):
              os.path.join(root, "assets/reference/scout/video/death-N.mp4")],
             check=True, capture_output=True, text=True)
         stream = json.loads(probe.stdout)["streams"][0]
-        self.assertEqual(stream["nb_frames"], "73")
+        self.assertEqual(stream["nb_frames"], "49")
         self.assertEqual(stream["r_frame_rate"], "24/1")
         self.assertEqual((stream["width"], stream["height"]), (960, 960))
-        self.assertNotEqual(int(stream["nb_frames"]), 49)
         with Image.open(os.path.join(root, "priv/static/images/hd2d/scout-walk.png")) as im:
-            self.assertEqual(im.size, (sv.CELL * 8, sv.CELL * 12))
+            self.assertEqual(im.size, (sv.CELL * 8, sv.CELL * 24))
 
-    def test_missing_action_clips_leave_the_twelve_row_sheet(self):
+    def test_passing_action_clips_are_twenty_four_row_sheets(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        # Take 1 put every clip on disk. The checks failed, so the committed
-        # sheets stay 8 by 12. A partial directory still does not count.
         for hero in ("warrior", "mage", "scout", "farmer", "engineer"):
             self.assertTrue(sv.actions_complete(os.path.join(root, "assets/reference", hero, "video")), hero)
             with Image.open(os.path.join(root, "priv/static/images/hd2d", f"{hero}-walk.png")) as im:
-                # Only a hero whose attack and death rows pass is a 24-row sheet.
-                height = sv.CELL * (24 if hero == "engineer" else 12)
-                self.assertEqual(im.size, (sv.CELL * 8, height), hero)
+                self.assertEqual(im.size, (sv.CELL * 8, sv.CELL * 24), hero)
         bands = sv.hero_bands(sv.CELL * 12)
         self.assertEqual(list(bands["walk"]), list(range(8)))
         self.assertEqual(list(bands["attack"]), [])

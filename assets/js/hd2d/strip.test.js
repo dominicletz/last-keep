@@ -93,8 +93,8 @@ const CELL = 128
 const DIRS = 8
 const WALK = 8
 const ROWS = 12
-// The engineer passed precheck, so his committed sheet has the attack and death rows.
-const ACTION_HEROES = new Set(["engineer"])
+// Every hero's clips passed precheck, so each committed sheet has the attack and death rows.
+const ACTION_HEROES = new Set(["warrior", "mage", "scout", "farmer", "engineer"])
 const HERO = 88
 const FOOT = 117
 const OUTLINE = "24,24,24"
@@ -413,11 +413,13 @@ for (const hero of SHEET_HEROES) {
     const layout = heroSheetLayout(sheet.height)
     assert.equal(layout.frames, rowCount(hero))
     const standing = layout.attack ? [0, 1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 23] : [...Array(ROWS).keys()]
-    const attackRows = layout.attack ? [8, 9, 10, 11, 12, 13] : []
+    // Q24: attack frames 0 and last stay 88±2. A lunge between them may leave 88.
+    const attackStanding = layout.attack ? [8, 13] : []
+    const attackMid = layout.attack ? [9, 10, 11, 12] : []
     const deathStart = layout.death ? [14] : []
     const deathRest = layout.death ? [15, 16, 17, 18, 19] : []
     const idleRows = layout.idle ? (layout.attack ? [20, 21, 22, 23] : [8, 9, 10, 11]) : []
-    const heldTall = new Set([...standing, ...attackRows, ...deathStart])
+    const heldTall = new Set([...standing, ...attackStanding, ...deathStart])
     const colours = new Set()
     const blobs = []
     for (let column = 0; column < DIRS; column++) {
@@ -428,6 +430,9 @@ for (const hero of SHEET_HEROES) {
         if (heldTall.has(row)) {
           assert.ok(Math.abs(height - HERO) <= 2, `height ${height} column ${column} row ${row}`)
           assert.ok(Math.abs(foot - FOOT) <= 1, `foot ${foot} column ${column} row ${row}`)
+        } else if (attackMid.includes(row)) {
+          assert.ok(Math.abs(foot - FOOT) <= 1, `attack foot ${foot} column ${column} row ${row}`)
+          assert.equal(borderTouch(pix), false, `attack touches the border column ${column} row ${row}`)
         } else if (deathRest.includes(row)) {
           // A lying frame is not held to the standing height. Its lowest pixel
           // stays on the foot line and the body stays inside the cell.
