@@ -706,7 +706,9 @@ function createHdPicture(env) {
   // card stays unlit like the voxel sprite it replaces, and drops the rim: the
   // sheet draws its own outline. Without a sheet the voxel card stays.
   function dressMonster(mesh) {
-    if (!mesh || !mesh.userData || mesh.userData.role !== "monster" || mesh.userData.hd) return false
+    if (!mesh || !mesh.userData || mesh.userData.hd) return false
+    const role = mesh.userData.role
+    if (role !== "monster" && role !== "vagrant") return false
     const kind = mesh.userData.kind
     const spec = MONSTER_SHEETS[kind]
     const source = monsterSheets.get(kind)

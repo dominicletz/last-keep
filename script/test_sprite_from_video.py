@@ -375,7 +375,7 @@ class MonsterCheckTest(unittest.TestCase):
 
 class AssetProfileTest(unittest.TestCase):
     def test_goblin_roles(self):
-        self.assertEqual(sorted(cs.ASSETS), ["bat", "boss", "deer", "goblin", "skeleton", "troll", "wolf"])
+        self.assertEqual(sorted(cs.ASSETS), ["bat", "boss", "deer", "goblin", "skeleton", "troll", "vagrant", "wolf"])
         table = cs.ASSETS["goblin"]["profile"]["roles"]
         self.assertEqual(cs.role((142, 136, 134), table), "iron")
         self.assertEqual(cs.role((56, 39, 27), table), "leather")
@@ -554,6 +554,22 @@ class SheetBuildTest(unittest.TestCase):
         rep = cs.run_monster_checks(cs.ASSETS["wolf"], sheet,
                                     os.path.join(root, "assets/reference/wolf/video/dirs"), quiet=True)
         self.assertEqual([name for ok, name, _, _ in rep.results if not ok], [])
+
+    def test_the_committed_vagrant_sheet_passes_its_checks(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sheet = np.asarray(Image.open(os.path.join(root, "priv/static/images/hd2d/vagrant-sheet.png")).convert("RGBA"))
+        self.assertEqual(sheet.shape, (12 * 128, 8 * 128, 4))
+        rep = cs.run_monster_checks(cs.ASSETS["vagrant"], sheet,
+                                    os.path.join(root, "assets/reference/vagrant/video/dirs"), quiet=True)
+        self.assertEqual([name for ok, name, _, _ in rep.results if not ok], [])
+        heights = []
+        for column in range(8):
+            for row in range(8):
+                cell = sheet[row * 128:(row + 1) * 128, column * 128:(column + 1) * 128]
+                ys = np.where(cell[:, :, 3] > 0)[0]
+                heights.append(int(ys.max() - ys.min() + 1))
+        self.assertGreaterEqual(min(heights), 84)
+        self.assertLessEqual(max(heights), 92)
 
     def test_the_committed_skeleton_sheet_passes_its_checks(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

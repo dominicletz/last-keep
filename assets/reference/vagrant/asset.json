@@ -1,5 +1,5 @@
 {
-  "_note": "NPC (docs/ART-REDO.md section 4). The concept sheets have no vagrant, so the box is the theme.jpg timber house for its brown and cream, and the source_note says so. type is monster because a figure that is not a seated hero is asset.json on that path. World height 32 is a person, the hero's height, 88 px; the cell is 128. Clips are idle on S W N E and walk on eight directions. v-S is a slight three-quarter turn, recorded for the final review: views only scales the figure, so that facing is not a retake. dirs/W.png is 518 px tall, the same as dirs/S, dirs/N and dirs/E, and k-W matches it. Sheet row 0, the start pose, is 88 px. The short cell is sheet row 1, clip frame 6: the source figure is 490 px tall and 328 px wide against the start pose's 518 by 172. The walk leaves the profile, so the locked scale draws that frame at 83 px (limit 84). The 88 ±4 check stays. No profile was added. The snapshot already lists vagrants. The sheet stays unwired until a walk-W clip holds the profile height.",
+  "_note": "NPC (docs/ART-REDO.md section 4). The concept sheets have no vagrant, so the box is the theme.jpg timber house for its brown and cream, and the source_note says so. type is monster because a figure that is not a seated hero is asset.json on that path. World height 32 is a person, the hero's height, 88 px; the cell is 128. Clips are idle on S W N E and walk on eight directions. v-S is a slight three-quarter turn, recorded for the final review: views only scales the figure, so that facing is not a retake. The third walk-W holds the profile. Every walk frame is 84 to 89 px, every start pose is 88, and the feet sit on outline row 121. The check profile uses the sheet's own colours. The front floor is 0.64 times the S start pose's cream count (304 to 194). The back ceiling is half that floor (97), and the top 30% of N has no cream (measured 0, ceiling 2). The snapshot lists vagrants and the client draws this sheet.",
   "type": "monster",
   "noun": "vagrant",
   "possessive": "his",
@@ -23,5 +23,35 @@
     "fps": 24,
     "keyframes": {"W": 2, "N": 4, "E": 6},
     "design": "a travel-worn vagrant with a short brown beard, a patched grey-brown hooded cloak the colour of weathered timber, a faded cream tunic, a frayed rope belt, scuffed brown boots, empty hands, no weapon"
+  },
+  "check": {
+    "_note": "No vagrant on the concept sheets, so the anchors are colours of the built sheet, not a crop. Cream is the faded tunic (lightness over 0.45), and it needs a neutral twin because the tunic greys sit under chroma 0.12. Cloak is everything else, with the same neutral twin. prop is null: the hands are empty. The front floor is 0.64 times the S start pose's cream count (304 to 194). The back ceiling is half that floor (97). N's head cream is 0, and the ceiling is 2, the same margin the wolf gives a pair of eyes.",
+    "anchors": {
+      "cloak": [86, 67, 52],
+      "cloak shade": [65, 50, 39],
+      "dark": [39, 28, 18],
+      "tunic": [181, 148, 115],
+      "tunic light": [202, 169, 134]
+    },
+    "roles": [
+      {"name": "tunic", "light_gt": 0.45},
+      {"name": "tunic", "neutral": true, "light_gt": 0.45},
+      {"name": "cloak"},
+      {"name": "cloak", "neutral": true}
+    ],
+    "prop": null,
+    "back": {
+      "title": "back view N hides the tunic",
+      "bounds": [
+        ["tunic", ["head", "tunic"], null, 2],
+        ["tunic", ["count", "tunic"], null, 97]
+      ]
+    },
+    "front": {
+      "title": "front view S shows the cream tunic",
+      "bounds": [
+        ["tunic", ["count", "tunic"], 194, null]
+      ]
+    }
   }
 }

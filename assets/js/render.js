@@ -21,7 +21,7 @@ import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
-import { SHEET_HEROES, cellOffset, flierLift, pictureColumn, sheetRow } from "./pictures.js"
+import { MONSTER_SHEETS, SHEET_HEROES, cellOffset, flierLift, pictureColumn, sheetRow } from "./pictures.js"
 import { monsterSheetPicture, sheetCardGeometry, sheetHeroSize } from "./hd2d/picture.js"
 import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
 import { keepParts, modelParts } from "../models/registry.js"
@@ -925,7 +925,9 @@ export function createView(stage, picture) {
       sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
 
       const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
-      const monsterCards = [...meshes.values()].filter((mesh) => mesh.userData.role === "monster")
+      const monsterCards = [...meshes.values()].filter(
+        (mesh) => mesh.userData.role === "monster" || mesh.userData.role === "vagrant"
+      )
       picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes, monsters: monsterCards })
       dissolveYardEdge(yard)
       picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
@@ -933,6 +935,7 @@ export function createView(stage, picture) {
       liveMonsters = snap.monsters || []
 
       sync("monster", drawn.monsters, (row) => monsterMesh(row))
+      sync("vagrant", drawn.vagrants, (row) => vagrantMesh(row))
 
       sync("building", drawn.buildings, (row) => buildingMesh(row))
 
@@ -1892,7 +1895,7 @@ export function createView(stage, picture) {
     const column = pictureColumn(viewYaw, facing)
     const track = tracks.get(key)
     const travel = track ? Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ) : 0
-    if (mesh.userData.role === "monster" && track && travel > 0.4) {
+    if ((mesh.userData.role === "monster" || mesh.userData.role === "vagrant") && track && travel > 0.4) {
       aimFacing(mesh, Math.atan2(track.toZ - track.fromZ, track.toX - track.fromX))
     }
     const anim = mesh.userData.pose || {}
@@ -2216,6 +2219,41 @@ export function createView(stage, picture) {
       mesh.userData.hp.position.y += spread.bar
       mesh.userData.bar.position.y += spread.bar
       if (mesh.userData.mark) mesh.userData.mark.position.y += spread.bar
+    }
+    return mesh
+  }
+
+  function vagrantMesh(row) {
+    const spec = MONSTER_SHEETS.vagrant
+    const picture = { ...monsterSheetPicture(spec), w: 12, h: spec.figure * SHEET_TEXEL, d: 6, y: 0 }
+    const map = new THREE.DataTexture(new Uint8Array(4), 1, 1)
+    map.needsUpdate = true
+    const card = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 }))
+    card.center.set(0.5, 0)
+    card.scale.set(picture.w, picture.h, 1)
+    const mesh = new THREE.Group()
+    mesh.add(card)
+    mesh.userData.card = card
+    mesh.userData.picture = picture
+    mesh.userData.parts = picture.directions * picture.frames
+    mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: 0, height: picture.h }
+    mesh.userData.face = true
+    const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(22, 4, 2)), mat(0x1a100c))
+    const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(20, 3, 2)), mat(0x7ea35a))
+    plate.position.y = picture.h + 4
+    fill.position.set(0, picture.h + 4, 1.2)
+    mesh.add(plate, fill)
+    mesh.userData.hp = fill
+    mesh.userData.bar = plate
+    const spread = monsterSpread(row.id)
+    mesh.userData.spread = spread
+    mesh.userData.role = "vagrant"
+    mesh.userData.kind = "vagrant"
+    mesh.userData.hero = row.hero
+    dressMonster(mesh)
+    if (spread.bar) {
+      mesh.userData.hp.position.y += spread.bar
+      mesh.userData.bar.position.y += spread.bar
     }
     return mesh
   }

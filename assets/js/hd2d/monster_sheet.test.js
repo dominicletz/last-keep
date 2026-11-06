@@ -382,6 +382,70 @@ test("a goblin walks while moving, strikes on an attack, and falls on a kill", (
   assert.deepEqual(fall, [14, 15, 16, 17, 18, 19, 19])
 })
 
+test("the vagrant sheet is a person at the hero height", () => {
+  const SPEC = MONSTER_SHEETS.vagrant
+  const layout = monsterSheetPicture(SPEC)
+  assert.deepEqual(layout, { directions: 8, frames: 12, walk: 8, attack: 0, death: 0, idle: 4 })
+  assert.equal(SPEC.figure * SHEET_TEXEL, spriteHeight)
+  const image = sheetImage("vagrant")
+  assert.equal(image.width, 8 * SPEC.cell)
+  assert.equal(image.height, layout.frames * SPEC.cell)
+  const asset = JSON.parse(fs.readFileSync(path.join(root, "assets/reference/vagrant/asset.json"), "utf8"))
+  assert.equal(asset.sheet.cell, SPEC.cell)
+  assert.equal(asset.sheet.height, SPEC.figure)
+  assert.equal(asset.sheet.world_height, spriteHeight)
+  let opaque = 0
+  let ink = 0
+  for (let i = 0; i < image.rgba.length; i += 4) {
+    if (!image.rgba[i + 3]) continue
+    opaque += 1
+    ink += image.rgba[i] + image.rgba[i + 1] + image.rgba[i + 2]
+  }
+  assert.equal(opaque, 224989)
+  assert.equal(ink, 39765720)
+  for (let column = 0; column < 8; column++) {
+    const start = cellRows(image, SPEC.cell, column, 0)
+    assert.equal(start[1], SPEC.footRow, `column ${column}`)
+    assert.ok(Math.abs(start[1] - start[0] + 1 - SPEC.figure) <= 1, `start ${column}`)
+    for (let row = 0; row < layout.walk; row++) {
+      const rows = cellRows(image, SPEC.cell, column, row)
+      const height = rows[1] - rows[0] + 1
+      assert.ok(Math.abs(height - SPEC.figure) <= 4, `walk ${column},${row} is ${height}`)
+      assert.equal(rows[1], SPEC.footRow, `walk ${column},${row}`)
+    }
+    for (let row = layout.walk; row < layout.frames; row++) {
+      assert.ok(cellRows(image, SPEC.cell, column, row), `idle ${column},${row} is empty`)
+    }
+  }
+  assert.equal(sheetRow(layout, { moving: false }, 0), 8)
+  assert.equal(sheetRow(layout, { moving: true }, 0), 0)
+})
+
+test("dressMonster draws a vagrant from the vagrant sheet", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const group = new THREE.Group()
+  const map = new THREE.DataTexture(new Uint8Array(4), 1, 1)
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map }))
+  group.add(sprite)
+  const spec = MONSTER_SHEETS.vagrant
+  Object.assign(group.userData, {
+    role: "vagrant",
+    kind: "vagrant",
+    card: sprite,
+    picture: monsterSheetPicture(spec)
+  })
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [group] })
+  assert.equal(group.userData.card.isSprite, true)
+  picture.attachMonsterSheet(sheetTexture(), "vagrant")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [group] })
+  assert.equal(group.userData.card.isMesh, true)
+  assert.equal(group.userData.hd, "vagrant")
+  assert.equal(group.userData.picture.h, spec.figure * SHEET_TEXEL)
+  assert.equal(group.userData.parts, 8 * 12)
+  assert.equal(group.userData.role, "vagrant")
+})
+
 test("a sheet missing a clip kind falls back to the kinds it has", () => {
   const noAttack = monsterSheetPicture({ ...GOBLIN, rows: { walk: 8, death: 6 } })
   assert.equal(noAttack.frames, 14)

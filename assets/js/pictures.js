@@ -45,7 +45,10 @@ export const MONSTER_SHEETS = {
   troll: { cell: 160, figure: 94, footRow: 153, rows: { walk: 8, attack: 6, death: 6 } },
   // The dark rider and his horse: 94 px like the troll, in a 192 px cell for
   // the side-on horse, the halberd chop over the helm and the horse lying flat.
-  boss: { cell: 192, figure: 94, footRow: 185, rows: { walk: 8, attack: 6, death: 6 } }
+  boss: { cell: 192, figure: 94, footRow: 185, rows: { walk: 8, attack: 6, death: 6 } },
+  // A person at the hero height. Walk on eight directions, idle on the four
+  // cardinals. The snapshot sends vagrants; render.js draws this sheet.
+  vagrant: { cell: 128, figure: 88, footRow: 121, rows: { walk: 8, idle: 4 } }
 }
 
 export function monsterSheetUrl(kind) {
