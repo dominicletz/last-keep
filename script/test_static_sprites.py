@@ -524,15 +524,18 @@ class StaticTest(unittest.TestCase):
                 self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
             with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
                 self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
-        # The hell door has no sim entity. The sheet stays off the client.
+        # The hell door is the glowing door at each portal. The blue portal crop stays unbuilt.
         with open(os.path.join(hs.ROOT, "assets/js/yard_cards.js")) as fh:
             cards = fh.read()
-        self.assertNotIn("hell_door", cards)
+        self.assertIn("hell_door", cards)
         with open(os.path.join(hs.ROOT, "assets/js/render.js")) as fh:
             page = fh.read()
-        self.assertNotIn("hell_door", page)
+        self.assertIn('staticCard("hell_door", "a")', page)
+        self.assertIn('sync("portal", (snap.portals || []).slice(0, 8)', page)
         self.assertIn('staticCard("chest", "closed")', page)
         self.assertIn("buildingSheet(row.kind)", page)
+        with open(os.path.join(hs.ROOT, "assets/js/horizon.js")) as fh:
+            self.assertNotIn("gateGeometry", fh.read())
 
     def test_keep_and_the_portal_stay_unbuilt_when_the_view_misses_the_crop(self):
         # Ranks 0 and 1 are a different silhouette from their crops, and the

@@ -1002,6 +1002,15 @@ export function createView(stage, picture) {
       sync("tree", snap.trees || [], (row) => treeSprite(1, pineVariant(row.x, row.y)))
 
       paintMapCloth(mapCloth, clothMarks, snap.map)
+      sync("portal", (snap.portals || []).slice(0, 8), () => {
+        const art = staticCard("hell_door", "a")
+        const geometry = trackGeometry(new THREE.PlaneGeometry(art.w, art.h))
+        geometry.translate(0, art.h / 2 - art.centerY * art.h, 0)
+        const mesh = new THREE.Mesh(geometry, staticMats.hell_door.a)
+        mesh.userData.role = "portal"
+        return mesh
+      })
+
       sync("chest", snap.chests || [], () => {
         const art = staticCard("chest", "closed")
         const mesh = new THREE.Sprite(staticMats.chest.closed)
@@ -1955,6 +1964,10 @@ export function createView(stage, picture) {
     const card = mesh.userData.card
     if (!card) return
     const viewYaw = Math.atan2(camera.position.x - mesh.position.x, camera.position.z - mesh.position.z)
+    if (mesh.userData.role === "portal") {
+      mesh.rotation.y = viewYaw
+      return
+    }
     const facing = Number.isFinite(mesh.rotation.y) ? -mesh.rotation.y : 0
     const column = pictureColumn(viewYaw, facing)
     const track = tracks.get(key)

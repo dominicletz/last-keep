@@ -223,33 +223,6 @@ export function farPines(seed, attempt, camX, camZ, reach) {
 
 export const FAR_PINE_CAP = TREE_CAP
 
-function gateGeometry() {
-  const positions = []
-  const colors = []
-  const box = (w, h, d, x, y, z, color) => {
-    const source = new THREE.BoxGeometry(w, h, d)
-    const pos = source.getAttribute("position")
-    const index = source.getIndex()
-    for (let i = 0; i < index.count; i++) {
-      const v = index.getX(i)
-      positions.push(pos.getX(v) + x, pos.getY(v) + y, pos.getZ(v) + z)
-      colors.push(color[0], color[1], color[2])
-    }
-    source.dispose()
-  }
-  const stoneDark = [0.18, 0.12, 0.1]
-  const glow = [1, 0.28, 0.04]
-  box(12, 56, 12, -22, 28, 0, stoneDark)
-  box(12, 56, 12, 22, 28, 0, stoneDark)
-  box(56, 12, 12, 0, 56, 0, stoneDark)
-  box(28, 36, 6, 0, 26, -4, glow)
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3))
-  geometry.computeVertexNormals()
-  return trackGeometry(geometry)
-}
-
 // The yard tile already covers ±380. Shading the horizon under that square
 // doubled the ground fill on the software rasterizer and pushed the night
 // smoke past its cap. The hole stops at 300 so the stippled yard edge still
@@ -388,19 +361,6 @@ export function mountPicture(scene, options = {}) {
     trees[variant] = mesh
   }
 
-  const gateMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    vertexColors: true,
-    fog: false
-  })
-  const gate = new THREE.InstancedMesh(gateGeometry(), gateMaterial, 8)
-  gate.count = 0
-  gate.frustumCulled = false
-  gate.castShadow = false
-  gate.receiveShadow = false
-  gate.userData.role = "portal"
-  scene.add(gate)
-
   const dummy = new THREE.Object3D()
   const ahead = new THREE.Vector3()
   let windowKey = ""
@@ -478,20 +438,6 @@ export function mountPicture(scene, options = {}) {
     for (const mesh of Object.values(trees)) mesh.instanceMatrix.needsUpdate = true
   }
 
-  function placeGates(portals) {
-    const rows = (portals || []).slice(0, gate.instanceMatrix.count)
-    gate.count = rows.length
-    for (let n = 0; n < rows.length; n++) {
-      const row = rows[n]
-      dummy.position.set(row.x, 0, row.y)
-      dummy.lookAt(0, 0, 0)
-      dummy.scale.set(1, 1, 1)
-      dummy.updateMatrix()
-      gate.setMatrixAt(n, dummy.matrix)
-    }
-    gate.instanceMatrix.needsUpdate = true
-  }
-
   return {
     sync(snap, camera, halfH) {
       const seeded = Number.isInteger(snap && snap.seed)
@@ -503,7 +449,6 @@ export function mountPicture(scene, options = {}) {
       horizonFogNear.value = span * 1.15
       horizonFogFar.value = span * 2.2
       if (camera) placeTrees(camera, seed, attempt, halfH || 168)
-      placeGates(seeded ? snap.portals : [])
     }
   }
 }

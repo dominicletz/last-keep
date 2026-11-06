@@ -71,7 +71,9 @@ export const staticSheets = {
   // Closed is the live chest (the sim removes it when opened). Open stays on the sheet.
   chest: staticSheet("chest", [48, 56], ["closed", "open"]),
   // Standing sprite. Replaces the voxel mage tower.
-  mage_tower: staticSheet("mage_tower", [96, 112], ["a"])
+  mage_tower: staticSheet("mage_tower", [96, 112], ["a"]),
+  // The glowing door monsters come through. Drawn at each portal.
+  hell_door: staticSheet("hell_door", [144, 168], ["a"])
 }
 
 // Static sheets that are scenery, not a building kind.
