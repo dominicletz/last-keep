@@ -724,7 +724,8 @@ function start(code, seat, ui) {
       muted: prefs.muted,
       volume: prefs.volume,
       unlocked: prefs.unlocked,
-      loop: prefs.loop
+      loop: prefs.loop,
+      bed: prefs.bed
     }
   }
 

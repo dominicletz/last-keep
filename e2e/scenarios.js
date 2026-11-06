@@ -1018,6 +1018,9 @@ async function assertNightAudio(page) {
   expect(audio.cues).toContain("night")
   expect(audio.unlocked).toBe(true)
   expect(audio.loop).toBe("night")
+  expect(audio.bed).toBe("/audio/night.mp3")
+  const bed = await page.request.get("/audio/night.mp3")
+  expect(bed.status()).toBe(200)
 }
 
 async function assertWaveClear(page) {

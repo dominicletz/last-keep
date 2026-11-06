@@ -173,7 +173,7 @@ Wave 1 is two slower, softer goblins, spawned about 620 to 659 units from the or
 
 On screen the five heroes do not share a body. A warrior reads as broad shoulders and a shield, a mage as a robe, hat, and staff, a scout as a hood and a bow, a farmer as a straw brim and a fork, and an engineer as an apron and a hammer. Two monsters drawn on the same ground step apart, each with its own outline and bar, so a pair at the door is two bodies.
 
-The night has its own sound. Day and building play one loop, the wave plays another, a horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. Nothing is loaded from another host.
+The night has its own sound. Day and building play `/audio/day.mp3`. The wave plays `/audio/night.mp3`. A horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. The loops are files on this host. Nothing is loaded from another host.
 
 ## Session
 
