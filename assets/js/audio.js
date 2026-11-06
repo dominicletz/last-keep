@@ -1,6 +1,12 @@
-// Synthesized in the browser with WebAudio. No samples and no remote hosts.
+// Day and night are local loop files. Short cues are synthesized here. No remote host.
 
 const KEY = "last-keep-audio"
+const BED_GAIN = 0.42
+
+export const loopFiles = {
+  day: "/audio/day.mp3",
+  night: "/audio/night.mp3"
+}
 
 export function readAudioPrefs(storage) {
   const fallback = { muted: false, volume: 0.7 }
@@ -56,16 +62,20 @@ export function cuesFrom(prev, next) {
 export function createConductor(options) {
   const storage = options && options.storage
   const contextFactory = options && options.contextFactory
+  const loadLoop = options && options.loadLoop
   let prefs = readAudioPrefs(storage)
   let ctx = null
   let master = null
   let unlocked = false
   let prev = null
   let loop = "silent"
+  let loopToken = 0
   const heard = []
   const latched = []
   const latchNames = new Set(["day", "night", "horn", "sting", "kill", "build", "fall"])
-  let loopNodes = []
+  const buffers = new Map()
+  const loading = new Map()
+  let beds = []
 
   function ensure() {
     if (ctx) return ctx
@@ -78,34 +88,76 @@ export function createConductor(options) {
     return ctx
   }
 
+  function canPlay(name) {
+    return !!(ctx && unlocked && master && !prefs.muted && loopFiles[name])
+  }
+
+  function fetchLoop(name) {
+    const audio = ensure()
+    if (!audio || !audio.decodeAudioData || !globalThis.fetch) return Promise.reject(new Error("audio"))
+    return fetch(loopFiles[name]).then((res) => {
+      if (!res.ok) throw new Error(String(res.status))
+      return res.arrayBuffer()
+    }).then((raw) => audio.decodeAudioData(raw.slice(0)))
+  }
+
+  function bedBuffer(name) {
+    if (buffers.has(name)) return Promise.resolve(buffers.get(name))
+    if (loading.has(name)) return loading.get(name)
+    const job = Promise.resolve(loadLoop ? loadLoop(name, loopFiles[name]) : fetchLoop(name))
+      .then((buffer) => {
+        buffers.set(name, buffer)
+        loading.delete(name)
+        return buffer
+      })
+      .catch((err) => {
+        loading.delete(name)
+        throw err
+      })
+    loading.set(name, job)
+    return job
+  }
+
   function stopLoop() {
-    for (const node of loopNodes) {
+    loopToken += 1
+    const playing = beds
+    beds = []
+    const t = ctx && Number.isFinite(ctx.currentTime) ? ctx.currentTime : 0
+    for (const bed of playing) {
       try {
-        node.stop()
+        const param = bed.gain && bed.gain.gain
+        if (param && param.setValueAtTime) {
+          param.cancelScheduledValues(t)
+          param.setValueAtTime(Math.max(0.001, param.value || 0.001), t)
+          param.exponentialRampToValueAtTime(0.001, t + 0.2)
+        }
+        bed.source.stop(t + 0.22)
       } catch (_err) {
         /* already stopped */
       }
     }
-    loopNodes = []
   }
 
   function startLoop(name) {
     stopLoop()
-    if (!ctx || !unlocked || !master || prefs.muted || (name !== "day" && name !== "night")) return
-    const pair = name === "night" ? [146.8, 174.6] : [196, 293.7]
-    const type = name === "night" ? "square" : "sine"
-    const level = name === "night" ? 0.028 : 0.04
-    for (const freq of pair) {
-      const osc = ctx.createOscillator()
-      const amp = ctx.createGain()
-      osc.type = type
-      osc.frequency.value = freq
-      amp.gain.value = level
-      osc.connect(amp)
-      amp.connect(master)
-      osc.start()
-      loopNodes.push(osc)
-    }
+    const token = loopToken
+    if (!canPlay(name) || loop !== name) return
+    bedBuffer(name)
+      .then((buffer) => {
+        if (token !== loopToken || loop !== name || !canPlay(name)) return
+        const source = ctx.createBufferSource()
+        const amp = ctx.createGain()
+        source.buffer = buffer
+        source.loop = true
+        const t = Number.isFinite(ctx.currentTime) ? ctx.currentTime : 0
+        amp.gain.setValueAtTime(0.001, t)
+        amp.gain.exponentialRampToValueAtTime(BED_GAIN, t + 0.35)
+        source.connect(amp)
+        amp.connect(master)
+        source.start(t)
+        beds.push({ source, gain: amp })
+      })
+      .catch(() => {})
   }
 
   function blip(freq, type, dur, gain, slide) {
@@ -163,7 +215,13 @@ export function createConductor(options) {
 
   return {
     prefs() {
-      return { muted: prefs.muted, volume: prefs.volume, unlocked, loop }
+      return {
+        muted: prefs.muted,
+        volume: prefs.volume,
+        unlocked,
+        loop,
+        bed: loopFiles[loop] || null
+      }
     },
     heard() {
       const recent = heard.filter((cue) => !latched.includes(cue))
@@ -174,6 +232,9 @@ export function createConductor(options) {
       unlocked = true
       ensure()
       if (ctx && ctx.state === "suspended" && ctx.resume) ctx.resume()
+      if (ctx) {
+        for (const name of Object.keys(loopFiles)) bedBuffer(name).catch(() => {})
+      }
       if (first) startLoop(loop)
     },
     setMuted(muted) {
@@ -194,7 +255,10 @@ export function createConductor(options) {
       prev = snap
         ? { tick: snap.tick, phase: snap.phase, keep: snap.keep ? { hp: snap.keep.hp } : null }
         : null
-      loop = loopFor(snap)
+      const nextLoop = loopFor(snap)
+      const loopChanged = nextLoop !== loop
+      loop = nextLoop
+      if (loopChanged && loop === "silent") stopLoop()
       for (const cue of cues) {
         heard.push(cue)
         if (heard.length > 64) heard.shift()

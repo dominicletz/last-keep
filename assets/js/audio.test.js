@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
+import { readFileSync } from "node:fs"
 import test from "node:test"
-import { createConductor, cuesFrom, readAudioPrefs, writeAudioPrefs } from "./audio.js"
+import { createConductor, cuesFrom, loopFiles, readAudioPrefs, writeAudioPrefs } from "./audio.js"
 
 function memory() {
   const bag = new Map()
@@ -75,4 +76,74 @@ test("mute and volume stay in storage, and the bus records cues while muted", ()
   assert.ok(kept.includes("horn"))
   assert.ok(kept.includes("day"))
   assert.ok(kept.includes("night"))
+})
+
+test("day and night beds are local files on this host", () => {
+  assert.deepEqual(loopFiles, { day: "/audio/day.mp3", night: "/audio/night.mp3" })
+  for (const src of Object.values(loopFiles)) {
+    assert.equal(src.includes("://"), false)
+    const bytes = readFileSync(new URL(`../../priv/static${src}`, import.meta.url))
+    assert.ok(bytes.length > 100_000)
+    assert.equal(bytes.subarray(0, 3).toString(), "ID3")
+  }
+})
+
+test("the day loop plays the local file", async () => {
+  const started = []
+  let tones = 0
+  const ctx = {
+    state: "running",
+    currentTime: 0,
+    destination: {},
+    resume() {},
+    createGain() {
+      return {
+        gain: {
+          value: 1,
+          setValueAtTime(v) {
+            this.value = v
+          },
+          exponentialRampToValueAtTime(v) {
+            this.value = v
+          },
+          cancelScheduledValues() {}
+        },
+        connect() {}
+      }
+    },
+    createBufferSource() {
+      return {
+        buffer: null,
+        loop: false,
+        connect() {},
+        start() {
+          started.push(this)
+        },
+        stop() {}
+      }
+    },
+    createOscillator() {
+      tones += 1
+      return {
+        type: "",
+        frequency: { value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+        connect() {},
+        start() {},
+        stop() {}
+      }
+    }
+  }
+  const bus = createConductor({
+    storage: memory(),
+    contextFactory: () => ctx,
+    loadLoop: async () => ({ duration: 48 })
+  })
+  bus.unlock()
+  assert.deepEqual(bus.hear(day), ["day"])
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(started.length, 1)
+  assert.equal(started[0].loop, true)
+  assert.equal(started[0].buffer.duration, 48)
+  assert.equal(tones, 0)
+  assert.equal(bus.prefs().bed, "/audio/day.mp3")
 })
