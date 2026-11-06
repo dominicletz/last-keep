@@ -1,5 +1,5 @@
 {
- "_note": "Built. The view is a grounded arch on its steps (mask IoU 0.929 against the crop). World height 56 is the portal gate post. snap.portals keep drawing the hell door, so this sheet is not placed.",
+ "_note": "Approved unused variant. The view is a grounded arch on its steps (mask IoU 0.929 against the crop). World height 56 is the portal gate post. The spawn stays the hell door. There is no second portal entity and no closed state on the snapshot.",
  "type": "static",
  "noun": "portal",
  "concept": {

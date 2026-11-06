@@ -16,7 +16,7 @@ import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixe
 import { loadGroundTilesInBrowser, onGroundTiles } from "./seam_tiles.js"
 import { mountPicture, pineVariant } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
-import { buildingCard, buildingSheet, sheetCard as staticCard, spotVariant, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
+import { buildingCard, buildingSheet, keepCardDrop, sheetCard as staticCard, spotVariant, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
@@ -25,7 +25,7 @@ import { monsterParts } from "./monsters.js"
 import { MONSTER_SHEETS, SHEET_HEROES, cellOffset, flierLift, pictureColumn, sheetRow } from "./pictures.js"
 import { monsterSheetPicture, sheetCardGeometry, sheetHeroSize } from "./hd2d/picture.js"
 import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
-import { keepParts, modelParts } from "../models/registry.js"
+import { modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint.js"
@@ -696,12 +696,27 @@ export function createView(stage, picture) {
     const group = new THREE.Group()
     group.userData.rank = rank
     group.userData.role = "keep"
-    for (const piece of keepParts(rank)) group.add(pieceMesh(piece))
+    const variant = String(Math.max(0, Math.min(4, rank | 0)))
+    const art = staticCard("keep", variant)
+    const card = new THREE.Sprite(staticMats.keep[variant])
+    card.center.set(0.5, art.centerY)
+    card.scale.set(art.w, art.h, 1)
+    card.position.y = -keepCardDrop(viewFrame.halfH, viewFrame.bufferHeight)
+    card.userData.sheet = "keep"
+    group.add(card)
+    group.userData.card = card
     const torch = new THREE.PointLight(0xeea821, 8, 220)
     torch.position.set(22, 40, 22)
     torch.layers.set(1)
     group.add(torch)
     group.userData.torch = torch
+    // The brazier stays a light. The sheet paints the bowl.
+    const brazier = new THREE.PointLight(0xeea821, 2200, 40, 2)
+    brazier.position.set(26, 42, 26)
+    brazier.castShadow = false
+    brazier.layers.set(1)
+    group.add(brazier)
+    group.userData.brazier = brazier
     return group
   }
 
@@ -976,6 +991,9 @@ export function createView(stage, picture) {
         scene.add(keep)
       }
       keep.scale.y = 1
+      if (keep.userData.card) {
+        keep.userData.card.position.y = -keepCardDrop(viewFrame.halfH, viewFrame.bufferHeight)
+      }
 
       const drawn = present(snap)
 
@@ -1158,8 +1176,10 @@ export function createView(stage, picture) {
         smoothing: true,
         townLook: {
           rank: townRank,
-          keep: keepParts(townRank).map((part) => part.name),
-          keepColors: [...new Set(keepParts(townRank).map((part) => part.color))],
+          keep: ["sheet"],
+          keepSheet: String(townRank),
+          torch: true,
+          brazier: true,
           plaza: plazaColor,
           plazaSides,
           path: true,

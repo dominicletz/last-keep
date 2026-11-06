@@ -1,5 +1,5 @@
 {
- "_note": "Built at the live keep tops. The views match crops keep-0 through keep-4 (mask IoU 0.934, 0.976, 0.964, 0.982, 0.952). Rank 0 is scale 165/235, inside the 0.5 floor. The crop height ratios are under that floor, so they are not the sheet heights. The game keep stays keepParts: the torch, the brazier and the 197 px read sit on that mesh.",
+ "_note": "Built at the live keep tops. The views match crops keep-0 through keep-4 (mask IoU 0.934, 0.976, 0.964, 0.982, 0.952). Rank 0 is scale 165/235, inside the 0.5 floor. The crop height ratios are under that floor, so they are not the sheet heights. The live keep is this sheet. The card sits half a screen pixel lower than the foot line so the rank-0 ink is 197 px. The torch stays at (22, 40, 22) and the brazier stays a light at (26, 42, 26). keep.scale.y stays 1. The gallery mesh is still keepParts.",
  "type": "static",
  "noun": "keep",
  "concept": {

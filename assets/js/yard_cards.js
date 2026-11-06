@@ -73,7 +73,20 @@ export const staticSheets = {
   // Standing sprite. Replaces the voxel mage tower.
   mage_tower: staticSheet("mage_tower", [96, 112], ["a"]),
   // The glowing door monsters come through. Drawn at each portal.
-  hell_door: staticSheet("hell_door", [144, 168], ["a"])
+  hell_door: staticSheet("hell_door", [144, 168], ["a"]),
+  // Ranks 0–4. The live keep draws this. It is not a placed building.
+  keep: staticSheet("keep", [648, 656], ["0", "1", "2", "3", "4"])
+}
+
+// Half a screen pixel. On the rank-0 frustum (half-height 168, buffer 400)
+// that is 0.42 world units. The facing card's ink is 196 px when the foot
+// sits on the pixel, and 197 px when the card sits this far lower. The
+// silhouette and the world height do not change.
+export const keepCardDropPx = 0.5
+
+export function keepCardDrop(halfH, bufferHeight) {
+  const height = Number(bufferHeight) || 1
+  return (keepCardDropPx * 2 * halfH) / height
 }
 
 // Static sheets that are scenery, not a building kind.
@@ -84,7 +97,7 @@ export const treeSheet = staticSheets.pine
 
 // The static sheet a building of this kind draws, or null (its old card or model).
 export function buildingSheet(kind) {
-  return staticSheets[kind] && kind !== "pine" && !floraSheets.includes(kind) ? kind : null
+  return staticSheets[kind] && kind !== "pine" && kind !== "keep" && !floraSheets.includes(kind) ? kind : null
 }
 
 // World size, sprite center and texture window of one variant of a sheet.

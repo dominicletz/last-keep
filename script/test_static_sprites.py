@@ -540,7 +540,7 @@ class StaticTest(unittest.TestCase):
             page = fh.read()
         self.assertIn('staticCard("hell_door", "a")', page)
         self.assertNotIn('staticCard("portal"', page)
-        self.assertNotIn('staticCard("keep"', page)
+        self.assertIn('staticCard("keep", variant)', page)
         self.assertIn('sync("portal", (snap.portals || []).slice(0, 8)', page)
         self.assertIn('staticCard("chest", "closed")', page)
         self.assertIn("buildingSheet(row.kind)", page)
@@ -580,8 +580,9 @@ class StaticTest(unittest.TestCase):
         self.assertEqual(open(out, "rb").read(), before)
         with open(os.path.join(hs.ROOT, "assets/js/render.js")) as fh:
             page = fh.read()
-        self.assertIn("keepParts(rank)", page)
+        self.assertIn('staticCard("keep", variant)', page)
         self.assertIn("keep.scale.y = 1", page)
+        self.assertNotIn("keepParts(rank)", page)
 
 
 # Pieces prepped with no generated image yet. Heights are the world units in
@@ -1406,9 +1407,9 @@ class NextArtBatchTest(unittest.TestCase):
         self.assertEqual(set(save_as), set(batch))
         for name, src in save_as.items():
             self.assertEqual(batch[name]["save_as"], src)
-        # River passed the seam and is water, so it is installed. The keep and
-        # portal sheets passed and are not drawn. The other ground tiles failed
-        # and stay in the provenance pack.
+        # River, ford, dirt, hill and mountain are installed. The keep sheet is
+        # the live keep. The portal sheet is an approved variant that is not
+        # drawn: the spawn stays the hell door. Plaza and path are not tiles.
         for dest in (
             "priv/static/images/hd2d/ground-river.png",
             "priv/static/images/hd2d/ground-ford.png",
@@ -1526,6 +1527,30 @@ class NextArtBatchTest(unittest.TestCase):
         self.assertNotIn("Plain flat white background", ready["calls"][1]["args"]["description"])
         self.assertIn("left column of pixels continues the right column", ready["calls"][1]["args"]["description"])
         self.assertIn("single pixel-wide column", ready["calls"][2]["args"]["description"])
+
+    def test_the_four_call_results_stay_unwired(self):
+        # Plaza columns pass and the disc spread clears 8. Three rows wrap at
+        # 100 against an interior of 96, so the tile does not. The barrier
+        # edges are not both tree. The reeds still merge at 25 px. None of
+        # these files is a live source, and the edges are not rewritten.
+        root = os.path.join(hs.ROOT, "assets/reference/next-art-output/final-four")
+        plaza = np.asarray(Image.open(os.path.join(root, "ground/plaza.png")).convert("RGB"))
+        self.assertTrue(hs.seam_holds(plaza))
+        row_interior = int(np.abs(plaza[1:].astype(int) - plaza[:-1].astype(int)).max())
+        row_wrap = int(np.abs(plaza[:1].astype(int) - plaza[-1:].astype(int)).max())
+        self.assertEqual(row_interior, 96)
+        self.assertEqual(row_wrap, 100)
+        self.assertGreater(row_wrap, row_interior)
+        with open(os.path.join(hs.ROOT, "assets/js/seam_tiles.js")) as fh:
+            tiles = fh.read()
+        self.assertNotIn("plaza", tiles)
+        barrier = json.load(open(os.path.join(hs.ROOT, "assets/reference/forest_barrier/asset.json")))
+        self.assertEqual([v["id"] for v in barrier["variants"]], ["a", "b"])
+        self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "assets/reference/forest_barrier/views/d.png")))
+        self.assertTrue(os.path.exists(os.path.join(root, "forest_barrier/views/d.png")))
+        self.assertTrue(os.path.exists(os.path.join(root, "reeds/views/thin-a.png")))
+        self.assertTrue(os.path.exists(os.path.join(hs.ROOT, "assets/reference/reeds/views/a.png")))
+        self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "priv/static/images/hd2d/ground-plaza.png")))
 
 
 if __name__ == "__main__":

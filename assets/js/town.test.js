@@ -1,10 +1,12 @@
 import assert from "node:assert/strict"
+import fs from "node:fs"
 import test from "node:test"
 import { fitSlack, horizontalRadius, houseParts, houseVariant, keepParts, modelParts, models } from "../models/registry.js"
 import { gameFrame, renderParts } from "../models/raster.js"
 import { keepReadabilityFloor, readability } from "./art_score.js"
 import { SHEET_TEXEL } from "./hd2d/picture.js"
-import fs from "node:fs"
+import { readRgbaPng } from "./hd2d/png.js"
+import { keepCardDrop, keepCardDropPx, sheetCard } from "./yard_cards.js"
 import { groundPixels } from "./ground.js"
 import { cameraDistance, dirtRadius, viewScale, zoomFor } from "./town.js"
 import { groundUnderMask } from "./yard_sample.js"
@@ -41,23 +43,76 @@ function keepTop(rank) {
   return Math.max(...keepParts(rank).map((part) => part.y + part.h / 2))
 }
 
-test("a facing keep card at the live rank-0 height is under the 197 px floor", () => {
-  // The sheet's rank-0 figure is 454 px at the hero texel, 165.09 world units.
-  // On the rank-0 gameplay frustum that is 196.54 internal pixels. The mesh
-  // measures 197. The floor stays 197, so the card is not drawn.
-  const { frame } = gameFrame(0)
-  assert.equal(frame.halfH, 168)
-  assert.equal(frame.bufferHeight, 400)
-  const world = 454 * SHEET_TEXEL
-  const screen = (world / (2 * frame.halfH)) * frame.bufferHeight
-  assert.ok(Math.abs(world - 165.09) < 0.01, `world ${world}`)
-  assert.ok(Math.abs(screen - 196.54) < 0.02, `screen ${screen}`)
-  assert.ok(screen < keepReadabilityFloor.height)
-  assert.equal(keepReadabilityFloor.height, 197)
+function facingKeep(rank, dropPx) {
+  const sheet = readRgbaPng(fs.readFileSync(new URL("../../priv/static/images/hd2d/keep-sheet.png", import.meta.url)))
+  const cellW = 648
+  const cellH = 656
+  const rgb = new Uint8Array(cellW * cellH * 3)
+  const mask = new Uint8Array(cellW * cellH)
+  const x0 = rank * cellW
+  for (let y = 0; y < cellH; y++) {
+    for (let x = 0; x < cellW; x++) {
+      const p = y * sheet.width + x0 + x
+      const d = y * cellW + x
+      if (sheet.rgba[p * 4 + 3] === 0) continue
+      mask[d] = 1
+      rgb[d * 3] = sheet.rgba[p * 4]
+      rgb[d * 3 + 1] = sheet.rgba[p * 4 + 1]
+      rgb[d * 3 + 2] = sheet.rgba[p * 4 + 2]
+    }
+  }
+  const { frame, camera } = gameFrame(rank)
+  const worldH = cellH * SHEET_TEXEL
+  const pxH = (worldH / (frame.top - frame.bottom)) * frame.bufferHeight
+  const pxW = (pxH * cellW) / cellH
+  const centerY = 4 / cellH
+  const y0 = frame.bufferHeight / 2 - (1 - centerY) * pxH + dropPx
+  const x0s = frame.bufferWidth / 2 - pxW / 2
+  const out = new Uint8Array(frame.bufferWidth * frame.bufferHeight * 3)
+  const ink = new Uint8Array(frame.bufferWidth * frame.bufferHeight)
+  for (let y = Math.floor(y0); y < Math.ceil(y0 + pxH); y++) {
+    if (y < 0 || y >= frame.bufferHeight) continue
+    const sy = Math.min(cellH - 1, Math.max(0, Math.floor(((y + 0.5 - y0) * cellH) / pxH)))
+    for (let x = Math.floor(x0s); x < Math.ceil(x0s + pxW); x++) {
+      if (x < 0 || x >= frame.bufferWidth) continue
+      const sx = Math.min(cellW - 1, Math.max(0, Math.floor(((x + 0.5 - x0s) * cellW) / pxW)))
+      if (!mask[sy * cellW + sx]) continue
+      const d = y * frame.bufferWidth + x
+      ink[d] = 1
+      const s = (sy * cellW + sx) * 3
+      out[d * 3] = rgb[s]
+      out[d * 3 + 1] = rgb[s + 1]
+      out[d * 3 + 2] = rgb[s + 2]
+    }
+  }
+  return { rgb: out, mask: ink, width: frame.bufferWidth, height: frame.bufferHeight, frame, camera }
+}
+
+test("the live keep card clears 197 px a half pixel below the foot line", () => {
+  assert.equal(keepCardDropPx, 0.5)
+  assert.equal(keepCardDrop(168, 400), 0.42)
+  const art = sheetCard("keep", "0")
+  assert.ok(Math.abs(art.h - 656 * SHEET_TEXEL) < 1e-9)
+  assert.ok(Math.abs(art.w - 648 * SHEET_TEXEL) < 1e-9)
+  const grounds = {}
+  for (const phase of ["day", "dusk", "night"]) grounds[phase] = groundPixels(phase)
+  for (const rank of [0, 1, 2, 3, 4]) {
+    for (const light of ["day", "dusk", "night"]) {
+      const image = facingKeep(rank, keepCardDropPx)
+      const { frame, camera } = image
+      const rgb = groundUnderMask(image, camera, frame, grounds[light])
+      const read = readability(image, { rgb, width: image.width, height: image.height })
+      assert.ok(read.contrast >= keepReadabilityFloor.contrast, `rank ${rank} ${light} contrast ${read.contrast}`)
+      if (rank === 0) assert.ok(read.height >= keepReadabilityFloor.height, `${light} card is ${read.height}px`)
+    }
+  }
   const src = fs.readFileSync(new URL("./render.js", import.meta.url), "utf8")
-  assert.match(src, /keepParts\(rank\)/)
+  assert.match(src, /staticCard\("keep", variant\)/)
   assert.match(src, /keep\.scale\.y = 1/)
-  assert.doesNotMatch(src, /staticCard\("keep"/)
+  assert.match(src, /torch\.position\.set\(22, 40, 22\)/)
+  assert.match(src, /brazier\.position\.set\(26, 42, 26\)/)
+  assert.match(src, /staticCard\("hell_door", "a"\)/)
+  assert.doesNotMatch(src, /for \(const piece of keepParts\(rank\)\)/)
 })
 
 test("the keep tower grows a course of stone at each rank", () => {
