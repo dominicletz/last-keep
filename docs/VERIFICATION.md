@@ -609,3 +609,7 @@ Raising the keep stakes four timber houses on the new ring. The wood and gold of
 ## 2026-11-06 local music loops
 
 - Day and night no longer use two oscillators. `loopFiles` is `/audio/day.mp3` and `/audio/night.mp3`. `the day loop plays the local file` requires a looping buffer and no tone. `day and night beds are local files on this host` requires both files under `priv/static/audio` and no host in the path. `assertNightAudio` requires `bed` to be `/audio/night.mp3` and that file to return 200. Short cues stay synthesized. The mixer still starts on the first click or key. Nothing is loaded from another host. This does not change the simulation. The coverage floor stays 77.
+
+## 2026-11-06 a hermit reveals the next chunk ring
+
+- A hero within chest reach of the hermit reveals Chebyshev ring 2 around that chunk on the shared discovered set. A warrior who has not reached it does not. A second tick does not open ring 3, and a scout standing there reveals the same extra ring and no third. The hermit stays. `a hermit reveals the next chunk ring and a scout does not add another` stands on the seed-5 hermit at (-5724, -648), chunk (-12, -2), and reads chunk (-14, -2). Chunk (-12, 1) stays hidden. `meetTheHermit` walks there and reads that western chunk. The walk stays 120 seconds. Night 1 stays two goblins. The glass count stays 10. No new mesh. The merchant stays planned. The coverage floor stays 77.
