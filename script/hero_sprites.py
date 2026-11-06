@@ -1291,14 +1291,14 @@ def load_static(cfg, hero, name, reference=REFERENCE):
     vs = cfg["variants"]
     ids = [v.get("id") for v in vs] if isinstance(vs, list) else []
     if (not isinstance(vs, list) or not 1 <= len(vs) <= cap or len(set(ids)) != len(ids)
-            or any(not isinstance(i, str) or not i.isalnum() or not i.islower() for i in ids)
+            or any(not isinstance(i, str) or not i.isalnum() or i != i.lower() for i in ids)
             or any(not isinstance(v.get("note", ""), str) for v in vs)
             or any(set(v) - {"id", "note", "scale", "pick", "squash_of", "framing", "pending"} for v in vs)
             or any(not isinstance(v.get("framing", ""), str) or v.get("pending", False) not in (True, False) for v in vs)
             or all(v.get("pending") for v in vs)
             or any(v.get("pick", "left") not in STATIC_PICKS for v in vs)):
         raise SystemExit(f"{hero}/{name}: variants is 1-{cap} entries "
-                         f"{{\"id\" (lowercase letters/digits, unique), \"note\", \"scale\"?, \"pick\"? {STATIC_PICKS}}}, got {vs!r}")
+                         f"{{\"id\" (lowercase letters or digits, unique), \"note\", \"scale\"?, \"pick\"? {STATIC_PICKS}}}, got {vs!r}")
     for v in vs:
         src = v.get("squash_of")
         if src is not None and (src not in ids or src == v["id"]

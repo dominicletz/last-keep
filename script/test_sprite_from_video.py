@@ -4,6 +4,7 @@
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -612,6 +613,24 @@ def _stamp(height, foot=117, touch=False):
 
 
 class HeroActionRowsTest(unittest.TestCase):
+    def test_scout_death_n_is_longer_than_a_clip_so_the_sheet_stays_twelve_rows(self):
+        # The still-hold retake freezes the last half second and the hold
+        # passes. The file is 73 frames, not CLIP_FRAMES 49, so precheck
+        # fails the format gate and the 12-row sheet is not rebuilt.
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+             "stream=nb_frames,r_frame_rate,width,height", "-of", "json",
+             os.path.join(root, "assets/reference/scout/video/death-N.mp4")],
+            check=True, capture_output=True, text=True)
+        stream = json.loads(probe.stdout)["streams"][0]
+        self.assertEqual(stream["nb_frames"], "73")
+        self.assertEqual(stream["r_frame_rate"], "24/1")
+        self.assertEqual((stream["width"], stream["height"]), (960, 960))
+        self.assertNotEqual(int(stream["nb_frames"]), 49)
+        with Image.open(os.path.join(root, "priv/static/images/hd2d/scout-walk.png")) as im:
+            self.assertEqual(im.size, (sv.CELL * 8, sv.CELL * 12))
+
     def test_missing_action_clips_leave_the_twelve_row_sheet(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         # Take 1 put every clip on disk. The checks failed, so the committed

@@ -31,31 +31,33 @@ test("pictureCell matches the committed fixture", () => {
   assert.ok(rows.some((row) => row.seed === 1 && Math.hypot(row.x, row.y) > 7200))
 })
 
-test("meadow and ruins sample the passing tiles; pine and cliff stay flat", () => {
+test("meadow, ruins, pine and cliff sample the passing tiles; the river stays flat", () => {
   const root = new URL("../..", import.meta.url)
   const read = (rel) => readRgbaPng(fs.readFileSync(new URL(rel, root)))
   for (const rel of [
     "priv/static/images/hd2d/ground-yard-grass.png",
     "priv/static/images/hd2d/ground-meadow.png",
-    "priv/static/images/hd2d/ground-ruins.png"
+    "priv/static/images/hd2d/ground-ruins.png",
+    "priv/static/images/hd2d/ground-pine.png",
+    "priv/static/images/hd2d/ground-cliff.png"
   ]) {
     const image = read(rel)
     assert.equal(seamHolds(image.rgba, image.width, image.height), true, rel)
   }
-  for (const rel of ["assets/reference/ground/pine.png", "assets/reference/cliff_face/views/c.png"]) {
-    const image = read(rel)
-    assert.equal(seamHolds(image.rgba, image.width, image.height), false, rel)
-  }
   const meadow = sampleGroundTile("meadow", 800, 0)
   const ruins = sampleGroundTile("ruins", 2000, 0)
+  const pine = sampleGroundTile("pine", 0, 0)
+  const cliff = sampleGroundTile("cliff", 0, 0)
   assert.ok(meadow)
   assert.ok(ruins)
+  assert.ok(pine)
+  assert.ok(cliff)
   assert.deepEqual(biomeColor("meadow", 800, 0), meadow)
   assert.deepEqual(biomeColor("ford", 432, 0), sampleGroundTile("meadow", 432, 0))
   assert.deepEqual(biomeColor("ruins", 2000, 0), ruins)
-  assert.deepEqual(biomeColor("pine", 0, 0), [0x2c, 0x34, 0x16])
+  assert.deepEqual(biomeColor("pine", 120, 40), sampleGroundTile("pine", 120, 40))
+  assert.deepEqual(biomeColor("cliff", 80, 20), sampleGroundTile("cliff", 80, 20))
   assert.deepEqual(biomeColor("river", 0, 0), [0x2c, 0x34, 0x16])
-  assert.deepEqual(biomeColor("cliff", 0, 0), [0x4b, 0x3c, 0x33])
   assert.equal(pictureCell(1, 0, 0, 0), "meadow")
 })
 

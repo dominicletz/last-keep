@@ -129,8 +129,8 @@ function rgb(hex) {
   return [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]
 }
 
-// Meadow and ruins sample the tiles that passed the column seam. Pine and
-// cliff failed it, so those cells stay the flat shade and the ring stone.
+// Meadow, ruins, pine and cliff sample the tiles that passed the column seam.
+// The ford uses the meadow tile. The river stays the flat shade.
 export function biomeColor(name, worldX = 0, worldZ = 0) {
   if (name === "meadow" || name === "ford") {
     const sample = sampleGroundTile("meadow", worldX, worldZ)
@@ -140,7 +140,15 @@ export function biomeColor(name, worldX = 0, worldZ = 0) {
     const sample = sampleGroundTile("ruins", worldX, worldZ)
     if (sample) return sample
   }
-  if (name === "pine" || name === "river") return rgb(SHADE)
+  if (name === "pine") {
+    const sample = sampleGroundTile("pine", worldX, worldZ)
+    if (sample) return sample
+  }
+  if (name === "cliff") {
+    const sample = sampleGroundTile("cliff", worldX, worldZ)
+    if (sample) return sample
+  }
+  if (name === "river" || name === "pine") return rgb(SHADE)
   if (name === "cliff") return rgb(ringColor)
   if (name === "hill") return rgb(sunsetColor)
   if (name === "mountain") return rgb(horizonColor)

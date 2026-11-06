@@ -1,0 +1,22 @@
+{
+ "hero": "mage_tower",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the mage tower from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The crop is yard-concept/crops/mage-tower.png (the yard-concept sheet, 4 px pad). Tight sheet box [657, 623, 976, 1005]. World height 36 is the mage_tower yard card. Same design: a tall stone tower with a purple crystal roof, a glowing crystal in the wall, and smaller crystals floating beside it. The mage tower. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole mage tower from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single mage tower only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/mage_tower/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "mage_tower-a.png"
+   },
+   "save_as": "assets/reference/mage_tower/views/a.png",
+   "then": "python3 script/hero_sprites.py mage_tower build"
+  }
+ ],
+ "type": "static"
+}

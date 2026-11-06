@@ -1002,8 +1002,10 @@ export function createView(stage, picture) {
 
       paintMapCloth(mapCloth, clothMarks, snap.map)
       sync("chest", snap.chests || [], () => {
-        const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(16, 12, 16)), mat(0xf0c14a, 0xc9a227))
-        mesh.userData.lift = 8
+        const art = staticCard("chest", "closed")
+        const mesh = new THREE.Sprite(staticMats.chest.closed)
+        mesh.center.set(0.5, art.centerY)
+        mesh.scale.set(art.w, art.h, 1)
         mesh.userData.role = "chest"
         return mesh
       })

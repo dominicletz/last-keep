@@ -1,0 +1,38 @@
+{
+ "hero": "chest",
+ "calls": [
+  {
+   "id": "image-closed",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the chest from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The closed and open crops are yard-concept/crops/chest-closed.png and chest-open.png (the yard-concept sheet, 4 px pad). The closed crop is the concept. Tight sheet boxes: closed [38, 114, 238, 294], open [270, 75, 480, 305]. World height 15 is the open lid; the closed chest is scale 0.8 so it stays 12, the gold box it replaces. The live chest is always closed (the sim removes it when it is opened). The open cell stays on the sheet. Same design: a wooden chest bound in dark iron bands, with a lock on the front and a curved lid. The lid shut, world height 12. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole chest from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single chest only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/chest/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "chest-closed.png"
+   },
+   "save_as": "assets/reference/chest/views/closed.png",
+   "then": "python3 script/hero_sprites.py chest build"
+  },
+  {
+   "id": "image-open",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the chest from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The closed and open crops are yard-concept/crops/chest-closed.png and chest-open.png (the yard-concept sheet, 4 px pad). The closed crop is the concept. Tight sheet boxes: closed [38, 114, 238, 294], open [270, 75, 480, 305]. World height 15 is the open lid; the closed chest is scale 0.8 so it stays 12, the gold box it replaces. The live chest is always closed (the sim removes it when it is opened). The open cell stays on the sheet. Same design: a wooden chest bound in dark iron bands, with a lock on the front and a curved lid. The same chest with the lid raised. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole chest from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single chest only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/chest/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "chest-open.png"
+   },
+   "save_as": "assets/reference/chest/views/open.png",
+   "then": "python3 script/hero_sprites.py chest build"
+  }
+ ],
+ "type": "static"
+}

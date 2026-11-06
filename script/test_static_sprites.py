@@ -397,7 +397,7 @@ class StaticTest(unittest.TestCase):
         self.assertEqual(open(live, "rb").read(), before)
         self.assertEqual(open(out, "rb").read(), before)
         cliff = hs.load_config("cliff_face")
-        self.assertTrue(cliff["variants"][-1]["pending"])
+        self.assertNotIn("pending", cliff["variants"][-1])
         self.assertIn("seamless tiling", cliff["variants"][-1]["framing"])
         broad = hs.load_config("broadleaf")
         self.assertEqual(broad["shape_iou"], 0.85)
@@ -424,8 +424,10 @@ class StaticTest(unittest.TestCase):
         out = os.path.join(tmp, "s.png")
         self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "x"), log=lambda *a, **k: None), 0)
         self.assertEqual(Image.open(out).size, (128, 120))
+        rank = self.config(variants=[{"id": "0"}, {"id": "a"}])
+        self.assertEqual([v["id"] for v in rank["variants"]], ["0", "a"])
         for bad in ([{"id": "a", "pending": True}], [{"id": "a", "pending": "yes"}], [{"id": "a", "framing": 3}],
-                    [{"id": "a", "pending": True}, {"id": "b", "squash_of": "a"}]):
+                    [{"id": "a", "pending": True}, {"id": "b", "squash_of": "a"}], [{"id": "A"}]):
             with self.assertRaises(SystemExit, msg=bad):
                 self.config(variants=bad)
 
@@ -437,7 +439,7 @@ class StaticTest(unittest.TestCase):
         self.assertIn("lying flat along the ground, much longer than it is tall", d)
         self.assertNotIn("upright, centred", d)
         sizes = {"broadleaf": [110, 94], "forest_barrier": [88, 88], "stump_log": [28, 28],
-                 "cliff_face": [44, 44], "grass_tufts": [14, 11, 9], "reeds": [25, 20], "dead_tree": [99]}
+                 "cliff_face": [44, 44, 44], "grass_tufts": [14, 11, 9], "reeds": [25, 20], "dead_tree": [99]}
         for name, want in sizes.items():
             cfg = hs.load_config(name)
             sheet = np.asarray(Image.open(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")).convert("RGBA"))
@@ -451,6 +453,12 @@ class StaticTest(unittest.TestCase):
             self.assertEqual(got, want, name)
             built = dict(cfg, variants=[v for v in cfg["variants"] if not v.get("pending")])
             self.assertEqual([n for ok, n, _ in hs.static_checks(built, sheet) if not ok], [], name)
+        cliff_sheet = np.asarray(Image.open(os.path.join(hs.ROOT, "priv/static/images/hd2d/cliff_face-sheet.png")).convert("RGBA"))
+        cliff_w = []
+        for i, cw in enumerate((128, 128, 128)):
+            cols = np.nonzero((cliff_sheet[:, i * cw:(i + 1) * cw, 3] > 0).any(0))[0]
+            cliff_w.append(int(cols[-1] - cols[0] + 1))
+        self.assertEqual(cliff_w, [51, 35, 44])  # a block, b pillar, c the downscaled tile
         field_sheet = np.asarray(Image.open(os.path.join(hs.ROOT, "priv/static/images/hd2d/field-sheet.png")).convert("RGBA"))
         self.assertEqual(field_sheet.shape[:2], (80, 272))
         field_cfg = hs.load_config("field")
@@ -466,9 +474,9 @@ class StaticTest(unittest.TestCase):
         want = {
             "ground/yard-grass.png": (102, 147, True),
             "ground/meadow.png": (65, 123, True),
-            "ground/pine.png": (146, 129, False),
+            "ground/pine.png": (94, 104, True),
             "ground/ruins.png": (148, 156, True),
-            "cliff_face/views/c.png": (151, 128, False),
+            "cliff_face/views/c.png": (129, 169, True),
         }
         for name, (wrap, interior, holds) in want.items():
             rgb = np.asarray(Image.open(os.path.join(hs.ROOT, "assets/reference", name)).convert("RGB"))
@@ -476,7 +484,89 @@ class StaticTest(unittest.TestCase):
             got_w = int(np.abs(rgb[:, :1].astype(int) - rgb[:, -1:].astype(int)).max())
             self.assertEqual((got_w, got_i, hs.seam_holds(rgb)), (wrap, interior, holds), name)
         cliff = hs.load_config("cliff_face")
-        self.assertTrue(cliff["variants"][-1]["pending"])
+        self.assertNotIn("pending", cliff["variants"][-1])
+
+    def test_the_yard_pieces_whose_views_match_their_crops_rebuild(self):
+        built = {
+            "chest": {"cell": [48, 56], "heights": [33, 41], "variants": ["closed", "open"],
+                      "crop": "assets/reference/yard-concept/crops/chest-closed.png"},
+            "hell_door": {"cell": [144, 168], "heights": [154], "variants": ["a"],
+                          "crop": "assets/reference/yard-concept/crops/hell-door.png"},
+            "mage_tower": {"cell": [96, 112], "heights": [99], "variants": ["a"],
+                           "crop": "assets/reference/yard-concept/crops/mage-tower.png"},
+        }
+        for name, want in built.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["cell"], want["cell"], name)
+            self.assertEqual([v["id"] for v in cfg["variants"]], want["variants"], name)
+            with open(os.path.join(cfg["dir"], "concept.png"), "rb") as fh:
+                concept = fh.read()
+            with open(os.path.join(hs.ROOT, want["crop"]), "rb") as fh:
+                self.assertEqual(concept, fh.read(), name)
+            sheet_path = os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")
+            before = open(sheet_path, "rb").read()
+            tmp = tempfile.mkdtemp()
+            out = os.path.join(tmp, "s.png")
+            self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None), 0, name)
+            self.assertEqual(open(sheet_path, "rb").read(), before, name)
+            self.assertEqual(open(out, "rb").read(), before, name)
+            sheet = np.asarray(Image.open(sheet_path).convert("RGBA"))
+            cw, ch = want["cell"]
+            self.assertEqual(sheet.shape[:2], (ch, cw * len(want["heights"])), name)
+            got = []
+            for i in range(len(want["heights"])):
+                rows = np.nonzero((sheet[:, i * cw:(i + 1) * cw, 3] > 0).any(1))[0]
+                self.assertEqual(int(rows[-1]), ch - 1 - hs.STATIC_MARGIN, name)
+                got.append(int(rows[-1] - rows[0] + 1))
+            self.assertEqual(got, want["heights"], name)
+            p = hs.build_prompts(cfg)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+        # The hell door has no sim entity. The sheet stays off the client.
+        with open(os.path.join(hs.ROOT, "assets/js/yard_cards.js")) as fh:
+            cards = fh.read()
+        self.assertNotIn("hell_door", cards)
+        with open(os.path.join(hs.ROOT, "assets/js/render.js")) as fh:
+            page = fh.read()
+        self.assertNotIn("hell_door", page)
+        self.assertIn('staticCard("chest", "closed")', page)
+        self.assertIn("buildingSheet(row.kind)", page)
+
+    def test_keep_and_the_portal_stay_unbuilt_when_the_view_misses_the_crop(self):
+        # Ranks 0 and 1 are a different silhouette from their crops, and the
+        # portal view is a floating ring where the crop is a grounded arch.
+        # No asset.json, so a build cannot write those sheets.
+        root = os.path.join(hs.ROOT, "assets/reference")
+        for name in ("keep", "portal"):
+            self.assertFalse(os.path.exists(os.path.join(root, name, "asset.json")), name)
+            self.assertFalse(os.path.exists(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")), name)
+
+        def aspect(rel):
+            mask = sv.cut_out(np.asarray(Image.open(os.path.join(root, rel)).convert("RGB")))
+            ys, xs = np.nonzero(mask)
+            return (int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1))
+
+        def hole(rel):
+            from scipy import ndimage
+            mask = sv.cut_out(np.asarray(Image.open(os.path.join(root, rel)).convert("RGB")))
+            lab, n = ndimage.label(~mask)
+            edge = {int(v) for v in np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))}
+            return max((int((lab == i).sum()) for i in range(1, n + 1) if i not in edge), default=0)
+
+        k0v, k0c = aspect("keep/views/0.png"), aspect("yard-concept/crops/keep-0.png")
+        self.assertEqual(k0v, (788, 447))
+        self.assertEqual(k0c, (60, 46))
+        k1v, k1c = aspect("keep/views/1.png"), aspect("yard-concept/crops/keep-1.png")
+        self.assertEqual(k1v, (571, 883))
+        self.assertEqual(k1c, (128, 103))
+        self.assertGreater(k0v[0] / k0v[1], 1.6)
+        self.assertLess(k0c[0] / k0c[1], 1.4)
+        self.assertLess(k1v[0] / k1v[1], 0.7)
+        self.assertGreater(k1c[0] / k1c[1], 1.1)
+        self.assertGreater(hole("portal/views/a.png"), 50000)
+        self.assertLess(hole("yard-concept/crops/portal.png"), 5000)
 
 
 # Pieces prepped with no generated image yet. Heights are the world units in

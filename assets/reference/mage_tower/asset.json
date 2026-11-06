@@ -1,0 +1,18 @@
+{
+ "type": "static",
+ "noun": "mage tower",
+ "concept": {
+  "source": "assets/reference/yard-concept/crops/mage-tower.png",
+  "box": [0, 0, 406, 406]
+ },
+ "source_note": "The crop is yard-concept/crops/mage-tower.png (the yard-concept sheet, 4 px pad). Tight sheet box [657, 623, 976, 1005]. World height 36 is the mage_tower yard card.",
+ "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+ "design": "a tall stone tower with a purple crystal roof, a glowing crystal in the wall, and smaller crystals floating beside it",
+ "world_height": 36,
+ "cell": [96, 112],
+ "variants": [
+  {"id": "a", "note": "the mage tower"}
+ ],
+ "view": "three_quarter",
+ "_note": "Static piece from the yard-concept sheet. The view matches the crop (purple crystal tower, floating shards, aspect 0.97 of the crop)."
+}

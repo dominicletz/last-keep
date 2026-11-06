@@ -1,11 +1,12 @@
 import { SHEET_TEXEL } from "./hd2d/picture.js"
 
-// Passing seamless tiles (seamHolds: column wrap ≤ interior). Pine and the
-// cliff face failed that gate and are not in this table.
+// Passing seamless tiles (seamHolds: column wrap ≤ interior).
 export const GROUND_TILE_URLS = {
   yard: "/images/hd2d/ground-yard-grass.png",
   meadow: "/images/hd2d/ground-meadow.png",
-  ruins: "/images/hd2d/ground-ruins.png"
+  ruins: "/images/hd2d/ground-ruins.png",
+  pine: "/images/hd2d/ground-pine.png",
+  cliff: "/images/hd2d/ground-cliff.png"
 }
 
 const tiles = {}

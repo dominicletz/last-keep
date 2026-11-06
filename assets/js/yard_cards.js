@@ -67,7 +67,11 @@ export const staticSheets = {
   // Sim points of interest (snapshot pois). Not a building.
   quarry: staticSheet("quarry", [176, 96], ["a", "b"]),
   camp: staticSheet("camp", [160, 88], ["a"]),
-  shrine: staticSheet("shrine", [96, 80], ["a"])
+  shrine: staticSheet("shrine", [96, 80], ["a"]),
+  // Closed is the live chest (the sim removes it when opened). Open stays on the sheet.
+  chest: staticSheet("chest", [48, 56], ["closed", "open"]),
+  // Standing sprite. Replaces the voxel mage tower.
+  mage_tower: staticSheet("mage_tower", [96, 112], ["a"])
 }
 
 // Static sheets that are scenery, not a building kind.

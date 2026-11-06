@@ -1,5 +1,5 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 9, cliff face). The concept has no cliff, so the box is the theme.jpg rocks at the south road for their stone colours. World height 16 (44 px), the biomeLift step. a and b are the committed block and pillar and stay in the sheet. c is the approved retake: a seamless tiling rock texture for that 44 px step, pending so the committed sheet is not rewritten.",
+ "_note": "Static piece (docs/ART-REDO.md section 9, cliff face). The concept has no cliff, so the box is the theme.jpg rocks at the south road for their stone colours. World height 16 (44 px), the biomeLift step. a and b are the committed block and pillar and stay in the sheet. c is the seamless tiling rock texture for that 44 px step. The column seam on the 1024 tile is wrap 129, interior 169.",
  "type": "static",
  "view": "front",
  "noun": "rock cliff face segment",
@@ -33,7 +33,6 @@
   },
   {
    "id": "c",
-   "pending": true,
    "note": "a seamless tiling rock texture for one 44 px cliff step",
    "framing": "A seamless tiling rock texture for one 44 px step of the cliff. The left edge continues the right edge and the top edge continues the bottom. Not a freestanding block and not a pillar"
   }

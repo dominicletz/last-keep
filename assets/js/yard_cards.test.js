@@ -138,7 +138,7 @@ function sheetRows(name) {
 }
 
 test("every building sheet matches its asset.json, stands on its foot row and is its card's height", () => {
-  const heights = { wall: [110], stone_wall: [110], tower: [132], house: [176], forge: [99], trap: [55, 33], field: [72, 72] }
+  const heights = { wall: [110], stone_wall: [110], tower: [132], house: [176], forge: [99], trap: [55, 33], field: [72, 72], mage_tower: [99] }
   const flora = { bush: [38, 30, 25], rock: [44, 31, 22], flowers: [16, 16], grass_tufts: [14, 11, 9], stump_log: [28, 28], broadleaf: [110, 94] }
   for (const [name, want] of Object.entries({ ...heights, ...flora })) {
     const cfg = JSON.parse(fs.readFileSync(path.join(root, "assets/reference", name, "asset.json"), "utf8"))
@@ -194,7 +194,8 @@ test("the quarry, the camp and the shrine stand on their foot rows", () => {
 
 test("buildings with a sheet draw it, stone_wall its own; others keep their card", () => {
   for (const kind of ["wall", "stone_wall", "tower", "house", "forge", "trap"]) assert.equal(buildingSheet(kind), kind)
-  for (const kind of ["mage_tower", "pine", "no_such_building"]) assert.equal(buildingSheet(kind), null)
+  for (const kind of ["pine", "no_such_building"]) assert.equal(buildingSheet(kind), null)
+  assert.equal(buildingSheet("mage_tower"), "mage_tower")
   assert.equal(buildingSheet("field"), "field")
   const field = staticSheets.field
   const fieldImage = readRgbaPng(fs.readFileSync(path.join(root, "priv/static", field.url)))
@@ -228,4 +229,13 @@ test("buildings with a sheet draw it, stone_wall its own; others keep their card
   const src = fs.readFileSync(path.join(root, "assets/js/render.js"), "utf8")
   assert.match(src, /const sheetKind = buildingSheet\(row\.kind\)/)
   assert.match(src, /new THREE\.Sprite\(staticMats\[sheetKind\]\[variant\]\)/)
+  assert.match(src, /staticCard\("chest", "closed"\)/)
+  assert.match(src, /new THREE\.Sprite\(staticMats\.chest\.closed\)/)
+  assert.doesNotMatch(src, /BoxGeometry\(16, 12, 16\)/)
+  const chest = staticSheets.chest
+  assert.deepEqual(chest.cell, [48, 56])
+  assert.deepEqual(chest.variants, ["closed", "open"])
+  assert.deepEqual(sheetRows("chest").map(([t, b]) => b - t + 1), [33, 41])
+  const mage = sheetCard("mage_tower", "a")
+  assert.equal(mage.h, (112 * 32) / 88)
 })
