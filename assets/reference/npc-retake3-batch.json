@@ -1,0 +1,35 @@
+{
+ "_note": "Merchant idles that still fail the start pose, copied from npc-motion-batch.json. Prompts and save_as are unchanged. idle-W is 5 px against a limit of 0. idle-E is 4 px against a limit of 0. idle-S and idle-N pass and are not here. The vagrant walk-W fault is the clip leaving its profile, not dirs/W.png, so it is not in this list. Paths are absolute under /workspace/lk-art-redo.",
+ "calls": [
+  {
+   "id": "merchant-idle-W",
+   "asset": "merchant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The merchant holds exactly the pose, angle and facing of the first frame (facing screen-left, his left side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/W.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "merchant-idle-W.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/idle-W.mp4"
+  },
+  {
+   "id": "merchant-idle-E",
+   "asset": "merchant",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The merchant holds exactly the pose, angle and facing of the first frame (facing screen-right, his right side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/E.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/merchant/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "merchant-idle-E.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/merchant/video/idle-E.mp4"
+  }
+ ]
+}

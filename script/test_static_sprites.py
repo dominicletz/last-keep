@@ -685,6 +685,26 @@ class NpcViewsTest(unittest.TestCase):
         for call in batch["calls"]:
             self.assertEqual(call, motion[call["id"]])
 
+    def test_the_third_retake_is_the_merchant_idles_that_still_fail(self):
+        path = os.path.join(hs.ROOT, "assets/reference/npc-retake3-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_retake3_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]], list(RETAKE3_IDS))
+        motion = {c["id"]: c for c in npc_motion_batch()["calls"]}
+        for call in batch["calls"]:
+            self.assertEqual(call, motion[call["id"]])
+
+    def test_the_hermit_retake_is_the_idles_that_miss_the_start_pose(self):
+        path = os.path.join(hs.ROOT, "assets/reference/hermit-retake-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, hermit_retake_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]], list(HERMIT_RETAKE_IDS))
+        motion = {c["id"]: c for c in hermit_motion_batch()["calls"]}
+        for call in batch["calls"]:
+            self.assertEqual(call, motion[call["id"]])
+
     def test_the_hermit_motion_batch_is_the_turntable_and_four_idles(self):
         cfg = hs.load_config("hermit")
         p = hs.build_prompts(cfg)
@@ -721,6 +741,8 @@ class NpcViewsTest(unittest.TestCase):
 
 RETAKE_IDS = ("vagrant-walk-W", "merchant-idle-W", "merchant-idle-N", "merchant-idle-E")
 RETAKE2_IDS = ("vagrant-walk-W", "merchant-idle-W", "merchant-idle-E")
+RETAKE3_IDS = ("merchant-idle-W", "merchant-idle-E")
+HERMIT_RETAKE_IDS = ("hermit-idle-W", "hermit-idle-N")
 
 
 def npc_retake_batch():
@@ -749,6 +771,27 @@ def npc_retake2_batch():
             "(5 px, limit 0). idle-N now passes and is not here. Paths are absolute under "
             "/workspace/lk-art-redo.",
             "calls": [by_id[i] for i in RETAKE2_IDS]}
+
+
+def npc_retake3_batch():
+    """Merchant idles that still miss the start pose, copied from the motion batch."""
+    by_id = {c["id"]: c for c in npc_motion_batch()["calls"]}
+    return {"_note": "Merchant idles that still fail the start pose, copied from npc-motion-batch.json. "
+            "Prompts and save_as are unchanged. idle-W is 5 px against a limit of 0. idle-E is 4 px "
+            "against a limit of 0. idle-S and idle-N pass and are not here. The vagrant walk-W fault "
+            "is the clip leaving its profile, not dirs/W.png, so it is not in this list. Paths are "
+            "absolute under /workspace/lk-art-redo.",
+            "calls": [by_id[i] for i in RETAKE3_IDS]}
+
+
+def hermit_retake_batch():
+    """Hermit idles that miss the start pose, copied from the hermit motion batch."""
+    by_id = {c["id"]: c for c in hermit_motion_batch()["calls"]}
+    return {"_note": "Hermit idles that fail the start pose, copied from hermit-motion-batch.json. "
+            "Prompts and save_as are unchanged. idle-W is 6 px against a limit of 2. idle-N is 2 px "
+            "against a limit of 0. idle-S and idle-E pass and are not here. Paths are absolute under "
+            "/workspace/lk-art-redo.",
+            "calls": [by_id[i] for i in HERMIT_RETAKE_IDS]}
 
 
 def hermit_views_batch():
