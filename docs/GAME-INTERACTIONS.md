@@ -4,6 +4,10 @@ This is the source of truth for how roles touch each other. The machine-readable
 
 [`CONCEPT.md`](../CONCEPT.md) is the original pitch. Where this page and the concept disagree, the concept line is an edge marked `planned` in the JSON, and the gap is in [`playtests/BACKLOG.md`](../playtests/BACKLOG.md).
 
+## Picture
+
+The browser has one picture. It is the HD-2D camera: perspective, field of view 15, buffer the size of the window. There is no palette renderer and no flag that selects one. High, phone, and low tiers keep that picture and only spend less on the shadow map, bloom, and depth of field. `?perf=1` draws a timing line and does not change the picture. The join body stays name, hero, and token.
+
 ## Graph
 
 ```mermaid
@@ -68,6 +72,7 @@ flowchart LR
   monsters -->|bodies block| monsters
   warrior -->|dash passes through| monsters
   keep -->|solid obstacle| warrior
+  keep -->|returns a downed hero| warrior
   wood -->|upgrade the keep| keep
   gold -->|upgrade the keep| keep
   keep -->|wider town and camera| wall
@@ -143,6 +148,8 @@ The keep is the loss condition. Monsters bite it when they are closer to it than
 
 The keep is solid. A hero stops at the wall. A monster stops at the edge and bites from there. A monster that is already inside still bites.
 
+A downed hero returns at full kit health on the spawn ring. During a wave that wait is 160 ticks. During the day it is 40. The fallen phase does not respawn.
+
 Clearing a wave pays the gold the next raise costs. At rank 0 that is 8 gold, on top of the kill bounties. A later clear pays the next rank's gold, and a keep at rank 4 pays nothing. Raising the keep spends wood and gold, and only while the hero stands inside radius 100 of the keep. Outside that radius the button stays on the bar, disabled, and a hover, a click, or a tap says "Walk to the keep". The phone context button does the same. The server refuses an out-of-range raise with those words. There is no card pick. Rank 0 costs 24 wood and 8 gold. Each rank adds 12 wood and 6 gold, and the keep stops at rank 4. The build radius becomes the wider of the hero's kit range and 180 plus 48 per rank. The camera pulls back by 36 per rank, the dirt disc grows by 40, and the view scale grows by 0.12.
 
 Raising the keep stakes four timber houses on the new ring, paid by the wood and gold already spent. Each full ring of four mints one gold on the field-gold beat. A farmer's sow, harvest, or a four-second work pulse banks labor, and each point spends 1 wood to stake a wheat croft. No farmer, no croft. Rank 0 stakes nothing.
@@ -160,13 +167,19 @@ Raising the keep stakes four timber houses on the new ring, paid by the wood and
 
 ### Monsters, elites, bosses, relics
 
-Goblins, skeletons, wolves, and trolls walk at the keep or at the nearest hero and bite. Elites change that body: fast lunges, armored hits take less, enraged bites harder and sooner. A boss slams the keep harder. Killing any monster pays gold. Killing a boss also grants one relic the party does not hold: heartwood, whetstone, swiftness, banner, or granary.
+From wave 2, a monster inside strike reach draws that hero's swing, aimed at the monster. Melee uses the weapon range. A bolt uses 200. Night 1 leaves its two goblins for the players. The held attack button still aims where the player aimed. A drawn swing does not fire during the build. Dominic kept this swing. Heroes do not walk themselves out to the spawn. A party that only stands on the join ring still clears waves 4 and 5 on that swing, and does most of the killing on wave 6. Making waves 4 to 6 demand a step, Q, E, R, a wall, or a raise is planned. That demand does not change the swing. Goblins, skeletons, wolves, and trolls walk at the keep or at the nearest hero and bite. Elites change that body: fast lunges, armored hits take less, enraged bites harder and sooner. A boss slams the keep harder. Killing any monster pays gold. Killing a boss also grants one relic the party does not hold: heartwood, whetstone, swiftness, banner, or granary.
 
-Wave 1 is two slower, softer goblins, spawned about 620 to 659 units from the origin. Their bearings are the two nearest portals that still stand. Later nights spawn farther, about 760 to 839, and split that same count across the living portals. Heroes stand near radius 120. The map clamps at 7200. A wave-1 goblin still has time to reach the keep inside the minute. The rest of that land is [`concepts/WORLD.md`](concepts/WORLD.md).
+Wave 1 is two slower, softer goblins, spawned about 620 to 659 units from the origin. Their bearings are the two nearest portals that still stand. From wave 2, each monster steps 40 units toward the origin from a living portal, so the first position is within 80 of that door. Heroes stand near radius 120. A hero stops on the first cell outside the 7200 disc. `Rules.walk_backstop/0` is 9600. A wave-1 goblin still has time to reach the keep inside the minute. The rest of that land is [`concepts/WORLD.md`](concepts/WORLD.md).
 
 On screen the five heroes do not share a body. A warrior reads as broad shoulders and a shield, a mage as a robe, hat, and staff, a scout as a hood and a bow, a farmer as a straw brim and a fork, and an engineer as an apron and a hammer. Two monsters drawn on the same ground step apart, each with its own outline and bar, so a pair at the door is two bodies.
 
-The night has its own sound. Day and building play one loop, the wave plays another, a horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. Nothing is loaded from another host.
+The night has its own sound. Day and building play `/audio/day.mp3`. The wave plays `/audio/night.mp3`. A horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. The loops are files on this host. Nothing is loaded from another host.
+
+## Session
+
+The door is the yard at dusk. The camera sits low and close on the hero, with the keep, the trees, and the sky behind, and it glides to the yard camera once the seat is taken. Left and right change the class. Create and Join are that same screen, described in [concepts/START-SCREEN.md](concepts/START-SCREEN.md). A stored seat sits down without showing it, and a lost seat uses the saved name and class again. Sitting down, the host starting the night, the horn, a frenzy, a cleared night, a raise, a downed hero, a fallen keep, and a friend joining or leaving are [concepts/statechart/chart.mmd](concepts/statechart/chart.mmd). The model is [concepts/statechart/LastKeep.tla](concepts/statechart/LastKeep.tla). TLC's report is [concepts/statechart/report.md](concepts/statechart/report.md). The chart still calls that first sit `you sit down`.
+
+Create turns the door into the room without loading a new page. The address becomes `/r/CODE`, the yard keeps its picture and moves to the device's detail tier, and the hero sits down. While Create waits on the server the door holds still: it paints nothing and loads no monster art until the room's first frame, so a slow machine spends its time on the new room, even when the hero art finishes loading during the wait. The door's first frame shows the hero and the ground under him before any hero art has loaded, and a window or layout change seats the camera again. If Create fails, the door moves again with the error under the button. A reload of `/r/CODE` sits down in the same seat, a shared link still opens the join card, and Back loads the door again. The picture paints whenever something on it moves, at the display's rate, and rests while nothing does. The captions over the yard are seated again only when the scene, the camera, or the window changes. That work is measured by `script/perf_probe.cjs`, and `e2e/perf.spec.js` holds its budget.
 
 ## Empty roles
 

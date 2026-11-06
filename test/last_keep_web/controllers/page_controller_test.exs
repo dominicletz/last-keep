@@ -23,11 +23,20 @@ defmodule LastKeepWeb.PageControllerTest do
     assert json_response(conn, 200) == %{"ok" => true}
   end
 
+  test "the home page carries the room layers hidden, so Create needs no reload", %{conn: conn} do
+    body = conn |> get(~p"/") |> html_response(200)
+    assert body =~ ~s(<div id="turn" hidden>)
+    assert body =~ "Rotate your device"
+    assert body =~ ~s(<div id="hud" hidden>)
+    assert body =~ ~s(id="overlay")
+  end
+
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
     body = html_response(conn, 200)
     assert body =~ "Last Keep"
-    assert body =~ "Create game"
+    assert body =~ "start-button"
+    assert body =~ "Create"
   end
 
   test "create, invite, join, and reconnect", %{conn: conn} do
@@ -48,7 +57,10 @@ defmodule LastKeepWeb.PageControllerTest do
     assert path == "/r/#{code}"
 
     conn = get(build_conn(), path)
-    assert html_response(conn, 200) =~ "Join the keep"
+    body = html_response(conn, 200)
+    assert body =~ "start-screen"
+    assert body =~ "hidden"
+    assert body =~ "Join"
 
     conn = get(build_conn(), ~p"/api/rooms/#{code}")
     assert %{"players" => 1, "phase" => "build"} = json_response(conn, 200)

@@ -1,0 +1,154 @@
+{
+ "_note": "Approved 2026-11-01 (PR #156). The view stills were not kept: dirs/S, W, N, E are the committed poses.",
+ "noun": "armored knight",
+ "possessive": "his",
+ "concept": {
+  "file": "assets/reference/warrior/concept.png"
+ },
+ "design": "open steel helmet, short brown beard, grey plate armour, red cape",
+ "items": [
+  {
+   "name": "sword",
+   "at": "right hand",
+   "walk": "sword held low in his right hand",
+   "still": "sword"
+  },
+  {
+   "name": "blue kite shield with a gold cross",
+   "at": "left arm",
+   "walk": "shield steady on his left arm",
+   "still": "shield"
+  },
+  {
+   "name": "red cape",
+   "at": "back",
+   "walk": "cape swaying",
+   "idle": "cape edge moves very slightly"
+  }
+ ],
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  }
+ },
+ "diagonals": {
+  "SW": 20,
+  "NW": 74,
+  "NE": 122,
+  "SE": 166
+ },
+ "check": {
+  "anchors": {
+   "shield blue": [
+    32,
+    56,
+    82
+   ],
+   "gold cross": [
+    170,
+    122,
+    65
+   ],
+   "skin": [
+    152,
+    103,
+    61
+   ],
+   "red cape": [
+    67,
+    21,
+    17
+   ]
+  },
+  "roles": [
+   {
+    "name": "blue",
+    "hue": [
+     195,
+     245
+    ]
+   },
+   {
+    "name": "red",
+    "hue": [
+     340,
+     12
+    ],
+    "light_lt": 0.45
+   },
+   {
+    "name": "warm",
+    "hue": [
+     14,
+     50
+    ],
+    "chroma_gt": 0.2,
+    "light_gt": 0.25
+   }
+  ],
+  "prop": [
+   "shield",
+   "blue"
+  ],
+  "back": {
+   "title": "back view N shows cape, no face",
+   "bounds": [
+    [
+     "face",
+     [
+      "head",
+      "warm"
+     ],
+     null,
+     6
+    ],
+    [
+     "cape",
+     [
+      "count",
+      "red"
+     ],
+     201,
+     null
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view keeps shield blue, gold cross, face",
+   "bounds": [
+    [
+     "blue",
+     [
+      "count",
+      "blue"
+     ],
+     60,
+     null
+    ],
+    [
+     "cross",
+     [
+      "inside",
+      "warm",
+      "blue"
+     ],
+     8,
+     null
+    ],
+    [
+     "face",
+     [
+      "head",
+      "warm"
+     ],
+     8,
+     null
+    ]
+   ]
+  }
+ }
+}

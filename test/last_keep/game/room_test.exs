@@ -33,6 +33,44 @@ defmodule LastKeep.Game.RoomTest do
     assert length(back.players) == 1
   end
 
+  test "rooms keep their world layout in their own process and free it when they stop" do
+    before = :persistent_term.info().count
+    seeds = Enum.to_list(301..308)
+
+    rooms =
+      for seed <- seeds do
+        {:ok, code} = Rooms.create(auto_tick: false, seed: seed)
+        [{pid, _}] = Registry.lookup(LastKeep.Game.Registry, code)
+        {seed, code, pid}
+      end
+
+    assert :persistent_term.info().count == before
+
+    for {seed, code, pid} <- rooms do
+      {:dictionary, dict} = Process.info(pid, :dictionary)
+      layout = :proplists.get_value({LastKeep.Game.World, seed}, dict)
+      assert %{seed: ^seed, pois: pois} = layout
+      assert length(pois) == 25
+      refute Map.has_key?(layout, :chunks)
+      assert Room.snapshot(code).seed == seed
+    end
+
+    # The same seed in a fresh process lays the same world.
+    {seed, _code, pid} = hd(rooms)
+    {:dictionary, dict} = Process.info(pid, :dictionary)
+    stored = :proplists.get_value({LastKeep.Game.World, seed}, dict)
+    assert stored == Task.await(Task.async(fn -> LastKeep.Game.World.generate(seed) end), 30_000)
+
+    for {_seed, _code, pid} <- rooms do
+      ref = Process.monitor(pid)
+      :ok = DynamicSupervisor.terminate_child(LastKeep.Game.Supervisor, pid)
+      assert_receive {:DOWN, ^ref, :process, ^pid, _}, 5_000
+      assert Process.info(pid, :dictionary) == nil
+    end
+
+    assert :persistent_term.info().count == before
+  end
+
   test "two rooms do not share a wave" do
     {:ok, left} = Rooms.create(auto_tick: false, seed: 1, build_ticks: 1, hold: false)
     {:ok, right} = Rooms.create(auto_tick: false, seed: 9, build_ticks: 50)
@@ -86,6 +124,26 @@ defmodule LastKeep.Game.RoomTest do
 
     Enum.each(1..3, fn _ -> Room.step(code) end)
     assert length(Highscores.list()) == 1
+  end
+
+  test "a seat that has not connected keeps the lobby wait" do
+    {:ok, code} = Rooms.create(idle_ms: 200, lobby_ms: 4_000, seed: 9)
+
+    {:ok, token, _id, _snap} =
+      Rooms.enlist(code, %{name: "Ada", hero: :scout, token: "token-token-token"})
+
+    Process.sleep(500)
+    assert Rooms.exists?(code)
+    assert length(Room.snapshot(code).players) == 1
+
+    assert Room.forget(code, token) == :ok
+    assert Room.snapshot(code).players == []
+
+    {:ok, ^token, "p1", back} =
+      Rooms.enlist(code, %{name: "Ada", hero: :scout, token: token})
+
+    assert length(back.players) == 1
+    assert hd(back.players).hero == "scout"
   end
 
   test "a stale tick does not start a second clock" do

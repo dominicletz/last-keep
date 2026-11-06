@@ -245,6 +245,15 @@ export function keysAround(x, y, goalX, goalY) {
   return keysClearOfKeep(x, y, goalX, goalY)
 }
 
+// A guest walking to the host. The straight eight-way line can run through
+// the keep, and a guest on the far face then holds into the wall for the
+// whole night, out of the host's camera. Around the keep, then stop inside
+// the same 42 the old line used.
+export function followKeys(me, host, slack = 42) {
+  if (Math.hypot(host.x - me.x, host.y - me.y) <= slack) return []
+  return keysAround(me.x, me.y, host.x, host.y)
+}
+
 export function axes(keys) {
   // The camera sits on the +x +z diagonal, so W moves toward the top of the screen.
   const f = Math.SQRT1_2

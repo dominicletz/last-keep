@@ -1,0 +1,186 @@
+{
+ "_note": "Approved 2026-11-01 (PR #157). SW and SE are pinned to the hand-picked turntable frames 46 and 156 (the 1 s and 7 s frames looked straight-on); NW and NE are the frames the old sharpest-near-45-degrees rule picked.",
+ "noun": "mage",
+ "possessive": "their",
+ "concept": {
+  "source": "docs/concept/heroes.jpg",
+  "box": [
+   294,
+   112,
+   538,
+   575
+  ]
+ },
+ "design": "deep blue hooded robe with gold trim, face half shadowed by the hood, brown leather belt with pouches, brown boots",
+ "items": [
+  {
+   "name": "wooden staff topped with a cyan crystal",
+   "at": "right hand",
+   "walk": "staff held upright in their right hand",
+   "still": "staff",
+   "glows": "the cyan crystal",
+   "sides": {
+    "S": "image-left",
+    "SW": "image-left",
+    "W": "image-left",
+    "NW": "image-left",
+    "N": "image-right",
+    "NE": "image-right",
+    "E": "image-right",
+    "SE": "image-right"
+   }
+  },
+  {
+   "name": "blue robe",
+   "at": "body",
+   "walk": "robe hem swaying",
+   "idle": "robe hem moves very slightly"
+  }
+ ],
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  }
+ },
+ "diagonals": {
+  "SW": 46,
+  "NW": 67,
+  "NE": 122,
+  "SE": 156
+ },
+ "check": {
+  "anchors": {
+   "crystal cyan": [
+    7,
+    147,
+    195
+   ],
+   "skin": [
+    209,
+    148,
+    99
+   ],
+   "robe blue": [
+    36,
+    64,
+    98
+   ],
+   "gold trim": [
+    198,
+    151,
+    79
+   ],
+   "staff brown": [
+    78,
+    48,
+    24
+   ]
+  },
+  "roles": [
+   {
+    "name": "crystal",
+    "hue": [
+     180,
+     200
+    ],
+    "chroma_gt": 0.5
+   },
+   {
+    "name": "blue",
+    "hue": [
+     205,
+     235
+    ]
+   },
+   {
+    "name": "warm",
+    "hue": [
+     14,
+     50
+    ],
+    "chroma_gt": 0.2,
+    "light_gt": 0.25
+   }
+  ],
+  "prop": [
+   "staff crystal",
+   "crystal"
+  ],
+  "back": {
+   "title": "back view N shows hood, no face",
+   "bounds": [
+    [
+     "face",
+     [
+      "head",
+      "warm",
+      [
+       54,
+       74
+      ]
+     ],
+     null,
+     10
+    ],
+    [
+     "robe",
+     [
+      "count",
+      "blue"
+     ],
+     1001,
+     null
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view keeps robe blue, gold trim, crystal, face",
+   "bounds": [
+    [
+     "blue",
+     [
+      "count",
+      "blue"
+     ],
+     600,
+     null
+    ],
+    [
+     "trim",
+     [
+      "count",
+      "warm"
+     ],
+     150,
+     null
+    ],
+    [
+     "crystal",
+     [
+      "count",
+      "crystal"
+     ],
+     40,
+     null
+    ],
+    [
+     "face",
+     [
+      "head",
+      "warm",
+      [
+       54,
+       74
+      ]
+     ],
+     30,
+     null
+    ]
+   ]
+  }
+ }
+}

@@ -5,13 +5,13 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/architect/SKILL.md",
-      "computedHash": "c612169c7bd393cdc4241aab808b97abf7a1840b936fa3cdc153e8636d4c6adc"
+      "computedHash": "ff100f5de1c7aeb6f067180a284323547f2bdef18f7682c34854eb142eecf12a"
     },
     "arena": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/arena/SKILL.md",
-      "computedHash": "cc84f6192303ae3ee047b4fd200db747cb688eb4a185fd1f61e906b09d47fdff"
+      "computedHash": "7348b463937b1f97eb233c40a63b523874c986fe466d597cf9bf0d150071e6fd"
     },
     "automate-me": {
       "source": "backnotprop/pstack",
@@ -43,6 +43,12 @@
       "skillPath": "skills/correct/SKILL.md",
       "computedHash": "b7e0850f6e5370007dd560aca2a728b49891208b8782da67212b49638105827e"
     },
+    "create-formal-verification-skill": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/create-formal-verification-skill/SKILL.md",
+      "computedHash": "ecccfa683447517ba3ebcfbd3099e1f8b05b4b41875a0194942182564d553997"
+    },
     "create-verification-skill": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
@@ -59,7 +65,7 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/how/SKILL.md",
-      "computedHash": "eac057f89d0e10493067e5d00e4302630a051699eec596ceeefbff6c567c1d2e"
+      "computedHash": "c57eb504d823e8f92567a6102ed06fa2ba6a71a3e1d549399fc8e505a97257a9"
     },
     "in-your-own-words": {
       "source": "backnotprop/pstack",
@@ -71,13 +77,25 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/interrogate/SKILL.md",
-      "computedHash": "d163f328afdabd5129d6243f41efee8bb426d45bfc42c5443e232a32bd63a429"
+      "computedHash": "22196060d287d22ff588b8f16a332cabd09d7d930de258f305a3ca5a2f91cd54"
     },
     "ketchup": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/ketchup/SKILL.md",
-      "computedHash": "279499e6469b9851f4315655fcf14966103e65454eb629f3346a930f63badcc8"
+      "computedHash": "86eec3b151613e07bce8aded37dab8436cc20a9f3de7ae106f37ad05ad80554f"
+    },
+    "ketchup-video": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/ketchup-video/SKILL.md",
+      "computedHash": "6e463e2914d3a592a0cbca5b32cd079cef6d5bca964a5c5ab485629fc4f54280"
+    },
+    "maintain-formal-verification-skill": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/maintain-formal-verification-skill/SKILL.md",
+      "computedHash": "a41b8cffadbd598e4e06dbe57e0ee5c4307f3252814257ccaef198363b359d6c"
     },
     "maintain-verification-skill": {
       "source": "backnotprop/pstack",
@@ -95,19 +113,19 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/no-comments/SKILL.md",
-      "computedHash": "f702d0e730547283a9119a933b420289c1df5e6357453cb20b3de486114d09b3"
+      "computedHash": "6d138f53a3980ef7028665ff131b9b773c110b23f032d2a1ab4a8708f40750ac"
     },
     "poteto-help": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/poteto-help/SKILL.md",
-      "computedHash": "875ef997a1b677022939391f8498d51e2ee0c2d0e482900fbdfd2ad2db222e42"
+      "computedHash": "630571f514898eaab374bb14de39195cdb8f3ac6853b899c4065968a44277e57"
     },
     "poteto-mode": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/poteto-mode/SKILL.md",
-      "computedHash": "3f4cf6e7cb2d3b29844eb41134c1a2680e22f408ac2b89cb771c8dd17e150c99"
+      "computedHash": "011155f1c2f56ba4ac78da587d0ce2f54c205b1915254bc9fac29d35fa6930e4"
     },
     "principle-attack-the-premise": {
       "source": "backnotprop/pstack",
@@ -149,7 +167,7 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/principle-explain-the-number/SKILL.md",
-      "computedHash": "a266874f779972670f2cc9e0ed49d868eae06c301207c6deb80a90f205d12d61"
+      "computedHash": "ef44a4df7e5ac3d87c20bf4c2e2e930ec81dc852a0e210342e6050ab7cf0027a"
     },
     "principle-fix-root-causes": {
       "source": "backnotprop/pstack",
@@ -185,7 +203,7 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md",
-      "computedHash": "fc645cc45560cb8e0fd655759a9d11553605942c014910e33a3c2182da276e96"
+      "computedHash": "78cd7712383c2d891c614d68eb7f9b2ed2cd11f34928a947b458325549b0c423"
     },
     "principle-minimize-reader-load": {
       "source": "backnotprop/pstack",
@@ -251,7 +269,7 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/principle-type-system-discipline/SKILL.md",
-      "computedHash": "a0efd185c16f93ebf7e592e322b191a3dbf982525944ed392df0bc0e7d5e785a"
+      "computedHash": "3d9cd69afc4b41f99dd94b3dc169942995e721a73318f55412a858f9a66658fb"
     },
     "recall": {
       "source": "backnotprop/pstack",
@@ -263,19 +281,19 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/reflect/SKILL.md",
-      "computedHash": "38e65ee5943073ad626e434eaf53e9ff44ded64e53f1a956c361391df07594c1"
+      "computedHash": "a536b17500cdf0d2b0a515f0aed3395b0e734c02916a41cf36dc255b5ce336a7"
     },
     "setup-pstack": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/setup-pstack/SKILL.md",
-      "computedHash": "2e1fbd88efe2092e66a305a7ccea0bffda74e8d08265547c0aec7bd84cb7480f"
+      "computedHash": "0b89a122e633fe7e2c585368d0e324de1f116cc47c306fea0872b9e7f5175ad9"
     },
     "sharpen": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/sharpen/SKILL.md",
-      "computedHash": "03d475e8a89cc9e1f92356571bf33a661be2a4ee76fda782ea741d33bd89322f"
+      "computedHash": "ea086554887a219066acf376daa032377f95645c62d691fdc91130d0961cc34f"
     },
     "show-me-your-work": {
       "source": "backnotprop/pstack",
@@ -283,11 +301,17 @@
       "skillPath": "skills/show-me-your-work/SKILL.md",
       "computedHash": "b48816ead05b0d940fb0c18331c9921354db87cbc83bca95ee3ab3307ba396d7"
     },
+    "statechart": {
+      "source": "backnotprop/pstack",
+      "sourceType": "github",
+      "skillPath": "skills/statechart/SKILL.md",
+      "computedHash": "ab7f305663449c2f6d832cd273879cee3caeebd65536fa525ccaf03eb6963374"
+    },
     "swarm": {
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/swarm/SKILL.md",
-      "computedHash": "fd2387f8ea19d9117e886ccfcba6c61c416ae1202f5b9e1ca99c97f55149b384"
+      "computedHash": "bad0578b2b18b3bc9088b2e3388c858e67f922acc9706f5beeac82d01a406c1b"
     },
     "tdd": {
       "source": "backnotprop/pstack",
@@ -311,7 +335,7 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/typescript-best-practices/SKILL.md",
-      "computedHash": "155a44ac5f8cc9254dfccf27e6c9c9c6dd964b25bf7cb299c8f9e9c53127efe1"
+      "computedHash": "2ef9e9307b23e38676b122330079a68315f87182e7fc308e263e3d2381090cb3"
     },
     "unslop": {
       "source": "backnotprop/pstack",
@@ -323,7 +347,7 @@
       "source": "backnotprop/pstack",
       "sourceType": "github",
       "skillPath": "skills/why/SKILL.md",
-      "computedHash": "7d6791c541adbff1fe59f66ec77b4e6f3c63f2f0186af7957b0968b8475e13ca"
+      "computedHash": "cb17951d059c299bd83faa1bc3f78bcd2f06365d03a4932192409736c97707d3"
     }
   }
 }

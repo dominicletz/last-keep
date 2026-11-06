@@ -3,15 +3,20 @@ defmodule LastKeep.Game.WorldTest do
 
   alias LastKeep.Game.Rules
   alias LastKeep.Game.Sim
+  alias LastKeep.Game.Snapshot
   alias LastKeep.Game.World
+
+  @picture_fixture Path.expand("../../fixtures/horizon_picture.json", __DIR__)
 
   test "the same seed returns the same world" do
     first = World.generate(3)
     second = World.generate(3)
 
     assert first == second
-    assert World.chunk(3, 0, 0) == first.chunks[{0, 0}]
-    assert World.chunk(3, -2, 4) == first.chunks[{-2, 4}]
+    refute Map.has_key?(first, :chunks)
+    assert World.chunk(3, 0, 0) == World.chunk(3, 0, 0)
+    assert World.chunk(3, -2, 4) == fresh(fn -> World.chunk(3, -2, 4) end)
+    assert first == fresh(fn -> World.generate(3) end)
 
     assert counts(first) == %{
              portal: 6,
@@ -22,6 +27,23 @@ defmodule LastKeep.Game.WorldTest do
              merchant: 1,
              hermit: 1
            }
+  end
+
+  # The fingerprints were taken from the world before it was laid out lazily
+  # per room, so a seed still makes the same map it always made.
+  test "a seed lays out the same map it made before the lazy world" do
+    fingerprints =
+      for seed <- [3, 77, 123_456], into: %{} do
+        world = fresh(fn -> World.generate(seed) end)
+
+        {seed,
+         :erlang.phash2(
+           {world.attempt, world.pois, World.chunk(seed, 0, 0), World.chunk(seed, -2, 4),
+            World.chunk(seed, 9, -11)}
+         )}
+      end
+
+    assert fingerprints == %{3 => 92_055_555, 77 => 3_496_929, 123_456 => 37_097_763}
   end
 
   test "the keep disc stays clear" do
@@ -81,6 +103,68 @@ defmodule LastKeep.Game.WorldTest do
     end
   end
 
+  test "the same seed paints the same picture" do
+    first = World.picture(1, 432, 0)
+    second = World.picture(1, 432, 0)
+    assert first == second
+    assert first.biome == World.biome(1, 432, 0)
+
+    skirt = World.picture(1, 7308, 0)
+    assert skirt == World.picture(1, 7308, 0)
+    assert skirt.blocked
+    assert skirt.biome in [:pine, :cliff, :hill, :mountain]
+  end
+
+  test "in-disc pictures match the biome and the skirt is closed" do
+    for x <- [-360, 0, 432, 800, 2000, 4140, 7308, 8000], y <- [0, -72, 216] do
+      biome = World.biome(1, x, y)
+      picture = World.picture(1, x, y)
+
+      if biome == :void do
+        assert World.biome(1, x, y) == :void
+        assert picture.biome in [:pine, :cliff, :hill, :mountain]
+        assert picture.blocked
+        refute World.open?(x, y)
+        assert hypot({x, y}) > 7200 or not World.open?(x, y)
+      else
+        assert picture.biome == biome
+        assert World.open?(x, y)
+      end
+    end
+
+    assert World.picture(5, 432, 0).biome == :pine
+    assert World.open?(0, 0)
+    refute World.open?(7308, 0)
+  end
+
+  test "the picture fixture is the client contract" do
+    rows = @picture_fixture |> File.read!() |> Jason.decode!()
+    assert rows != []
+
+    for row <- rows do
+      picture = World.picture(row["seed"], row["x"], row["y"])
+      assert picture.biome == String.to_atom(row["biome"])
+      assert World.generate(row["seed"]).attempt == row["attempt"]
+    end
+
+    wanted = [{0, 0}, {432, 0}, {800, 0}, {2000, 0}]
+
+    for {x, y} <- wanted do
+      assert Enum.any?(rows, &(&1["seed"] == 1 and &1["x"] == x and &1["y"] == y))
+    end
+
+    assert Enum.any?(rows, fn row ->
+             row["seed"] == 1 and not World.open?(row["x"], row["y"])
+           end)
+  end
+
+  test "the snapshot carries the seed and the layout attempt" do
+    state = Sim.new("PIC01", seed: 1)
+    snap = Snapshot.render(state)
+    assert snap.seed == 1
+    assert snap.attempt == 0
+  end
+
   test "twenty ticks with fifteen heroes leave the generator count put" do
     seed = 89
 
@@ -121,9 +205,18 @@ defmodule LastKeep.Game.WorldTest do
   end
 
   defp cells(world) do
-    for {_id, %{cells: chunk}} <- world.chunks, {{i, j}, cell} <- chunk, into: %{} do
+    for cx <- -14..14,
+        cy <- -14..14,
+        %{cells: chunk} <- [World.chunk(world.seed, cx, cy)],
+        {{i, j}, cell} <- chunk,
+        into: %{} do
       {{i * 36, j * 36}, cell}
     end
+  end
+
+  # Runs fun in a fresh process, so nothing memoized here is reused.
+  defp fresh(fun) do
+    fun |> Task.async() |> Task.await(30_000)
   end
 
   defp flood(stored) do

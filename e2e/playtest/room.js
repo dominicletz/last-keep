@@ -17,6 +17,9 @@ async function openParty(browser, options = {}) {
   const seats = [{ ...players[0], page: host.page, context: host.context }]
   for (const player of players.slice(1)) {
     const seat = await joinQuery(browser, code, player.name, player.hero)
+    // Five presenting pages stall the socket, and the roster text never lands.
+    // The host keeps painting. A later check can wake the seat it has to read.
+    await seat.page.evaluate(() => window.__lastKeepTest.quiet())
     seats.push({ ...player, page: seat.page, context: seat.context })
   }
   const names = players.map((player) => player.name)
@@ -60,8 +63,21 @@ async function readState(page) {
       waveLabel: text("[data-wave]"),
       score: game.score ?? null,
       wood: game.wood ?? null,
+      gold: game.gold ?? null,
+      tick: game.tick ?? null,
+      town: game.town ?? null,
       keep: game.keep || null,
       self: game.self || null,
+      seats: game.seats || [],
+      structures: game.structures || [],
+      portals: game.portals || [],
+      chests: game.chests || [],
+      chunks: (game.chunks || []).length,
+      map: game.map || null,
+      land: game.land || [],
+      table: game.table || null,
+      calls: [...document.querySelectorAll(".hint-arrow")].map((node) => (node.textContent || "").trim()),
+      reason: (document.querySelector("[data-build-reason]")?.textContent || "").trim(),
       monsters: (game.monsters || []).length,
       monsterBodies: (game.monsters || []).map((monster) => ({
         id: monster.id,
@@ -123,6 +139,10 @@ async function act(page, command = {}) {
       await keyInPage(page, `Digit${command.build}`, false)
     }
     for (const key of keys) await keyInPage(page, key, true)
+    if (command.aim && Number.isFinite(command.aim.x) && Number.isFinite(command.aim.y)) {
+      const point = await page.evaluate((aim) => window.__lastKeep.toClient(aim.x, aim.y), command.aim)
+      if (point) await page.mouse.click(point.x, point.y)
+    }
     if (command.click && Number.isFinite(command.click.x) && Number.isFinite(command.click.y)) {
       await page.mouse.click(command.click.x, command.click.y)
     }

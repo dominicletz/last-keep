@@ -105,6 +105,25 @@ test("an in-flight effect stays out of the settled count and a leaked mesh break
   releaseGeometries(spawn)
 })
 
+test("a portal batch counts each living door", () => {
+  const scene = new THREE.Scene()
+  const mesh = new THREE.InstancedMesh(
+    trackGeometry(new THREE.BoxGeometry(1, 1, 1)),
+    new THREE.MeshBasicMaterial(),
+    4
+  )
+  mesh.userData.role = "portal"
+  mesh.count = 0
+  scene.add(mesh)
+  const empty = geometryCensus(scene)
+  assert.equal(empty.byRole.portal || 0, 0)
+  assert.equal(empty.settled, 0)
+  mesh.count = 3
+  const live = geometryCensus(scene)
+  assert.equal(live.byRole.portal, 3)
+  assert.equal(live.settled, 3)
+})
+
 test("a burst sphere is reused and takes the next color", () => {
   const first = takeBurst(0xff0000)
   giveBurst(first)

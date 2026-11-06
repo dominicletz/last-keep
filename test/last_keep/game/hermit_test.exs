@@ -6,9 +6,13 @@ defmodule LastKeep.Game.HermitTest do
   test "a hermit reveals the next chunk ring and a scout does not add another" do
     state = stand("ada", :warrior)
     hermit = state.world.hermit
+    assert {hermit.x, hermit.y} == {-5724, -648}
     {cx, cy} = World.chunk_coord(hermit.x, hermit.y)
+    assert {cx, cy} == {-12, -2}
     extra = {cx - 2, cy}
     beyond = {cx, cy + 3}
+    assert extra == {-14, -2}
+    assert beyond == {-12, 1}
 
     state = Sim.tick(state)
     refute MapSet.member?(state.world.discovered, extra)
@@ -25,6 +29,7 @@ defmodule LastKeep.Game.HermitTest do
     scout = stand("pip", :scout)
     scout = move_player(scout, "pip", scout.world.hermit.x, scout.world.hermit.y)
     scout = Sim.tick(scout)
+    assert MapSet.member?(scout.world.discovered, extra)
     refute MapSet.member?(scout.world.discovered, beyond)
   end
 

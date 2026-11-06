@@ -365,10 +365,79 @@ defmodule LastKeep.Game.SimTest do
     assert state.wave == 2
     assert Sim.monsters(state) != []
 
+    portals = state.world.portals
+
     for monster <- Sim.monsters(state) do
       dist = :math.sqrt(monster.x * monster.x + monster.y * monster.y)
       assert dist > 740
-      assert dist < 900
+
+      assert Enum.any?(portals, fn portal ->
+               :math.sqrt((monster.x - portal.x) ** 2 + (monster.y - portal.y) ** 2) <= 80
+             end)
+    end
+  end
+
+  test "a broken portal sends no monster on the next wave" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 400, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+
+    portal =
+      Enum.min_by(state.world.portals, fn poi ->
+        {poi.x * poi.x + poi.y * poi.y, poi.id}
+      end)
+
+    ada = hero(state, "ada")
+
+    state =
+      state
+      |> put_hero(%{ada | x: portal.x * 1.0, y: portal.y * 1.0})
+      |> Sim.input("ada", %{"attack" => true, "ax" => portal.x, "ay" => portal.y})
+
+    state = Enum.reduce(1..40, state, fn _, state -> Sim.tick(state) end)
+    refute Enum.any?(state.world.portals, &(&1.id == portal.id))
+
+    state =
+      Enum.reduce_while(1..500, state, fn _, state ->
+        state = Sim.tick(state)
+
+        if state.wave == 1 and match?({:wave, _}, state.phase) do
+          {:halt, state}
+        else
+          {:cont, state}
+        end
+      end)
+
+    assert state.wave == 1
+    assert length(Sim.monsters(state)) == 2
+
+    state = %{
+      state
+      | entities: Map.reject(state.entities, fn {_id, entity} -> entity.type == :monster end)
+    }
+
+    state =
+      Enum.reduce_while(1..900, state, fn _, state ->
+        state = Sim.tick(state)
+
+        if state.wave == 2 and match?({:wave, _}, state.phase) do
+          {:halt, state}
+        else
+          {:cont, state}
+        end
+      end)
+
+    assert state.wave == 2
+    monsters = Sim.monsters(state)
+    assert monsters != []
+
+    refute Enum.any?(monsters, fn monster ->
+             :math.sqrt((monster.x - portal.x) ** 2 + (monster.y - portal.y) ** 2) <= 80
+           end)
+
+    for monster <- monsters do
+      assert Enum.any?(state.world.portals, fn live ->
+               :math.sqrt((monster.x - live.x) ** 2 + (monster.y - live.y) ** 2) <= 80
+             end)
     end
   end
 
@@ -474,6 +543,74 @@ defmodule LastKeep.Game.SimTest do
     paid = state.resources.gold - Rules.bounty(:goblin) * state.kills
     assert paid >= purse
     assert paid <= purse + state.kills * Rules.kill_bonus(:warrior)
+  end
+
+  test "five heroes reach the wave 2 pack before the keep falls" do
+    ids = ~w(ada lux nia bram kit)
+    heroes = [:warrior, :mage, :scout, :farmer, :engineer]
+
+    state =
+      Enum.reduce(
+        Enum.zip(ids, heroes),
+        Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false),
+        fn {id, hero}, state ->
+          {:ok, state} = Sim.join(state, player(id, hero))
+          state
+        end
+      )
+
+    state = %{state | wave: 1, phase: {:build, 1}, hints: []}
+
+    state =
+      Enum.reduce_while(1..4_000, state, fn _, state ->
+        cond do
+          state.phase == :over ->
+            {:halt, state}
+
+          match?({:build, _}, state.phase) and state.wave >= 2 and state.tick > 1 ->
+            {:halt, state}
+
+          true ->
+            state =
+              Enum.reduce(ids, state, fn id, state ->
+                Sim.input(state, id, %{"mx" => 0, "my" => 0, "attack" => false})
+              end)
+
+            {:cont, Sim.tick(state)}
+        end
+      end)
+
+    assert {:build, _} = state.phase
+    assert state.wave >= 2
+    assert state.keep.hp >= 700
+    assert Sim.monsters(state) == []
+
+    for id <- ids do
+      hero = hero(state, id)
+      assert hero.alive
+      assert hero.hp > div(hero.max_hp, 2)
+    end
+  end
+
+  test "night 1 leaves the two goblins for the players" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    {:ok, state} = Sim.join(state, player("bo", :mage))
+    state = Sim.tick(state)
+    assert {:wave, _} = state.phase
+    assert state.wave == 1
+
+    state =
+      Enum.reduce(1..400, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => 0, "my" => 0, "attack" => false})
+        |> Sim.input("bo", %{"mx" => 0, "my" => 0, "attack" => false})
+        |> Sim.tick()
+      end)
+
+    assert state.wave == 1
+    assert state.kills == 0
+    assert length(Sim.monsters(state)) == 2
   end
 
   test "the night waits until the host starts" do

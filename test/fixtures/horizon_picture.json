@@ -1,0 +1,72 @@
+[
+  {
+    "x": 0,
+    "y": 0,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "meadow"
+  },
+  {
+    "x": 432,
+    "y": 0,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "meadow"
+  },
+  {
+    "x": 800,
+    "y": 0,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "ruins"
+  },
+  {
+    "x": 2000,
+    "y": 0,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "pine"
+  },
+  {
+    "x": 7308,
+    "y": 0,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "hill"
+  },
+  {
+    "x": -360,
+    "y": 216,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "meadow"
+  },
+  {
+    "x": 8000,
+    "y": -72,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "pine"
+  },
+  {
+    "x": 12000,
+    "y": -4000,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "mountain"
+  },
+  {
+    "x": -7218,
+    "y": 0,
+    "seed": 1,
+    "attempt": 0,
+    "biome": "pine"
+  },
+  {
+    "x": 432,
+    "y": 0,
+    "seed": 5,
+    "attempt": 0,
+    "biome": "pine"
+  }
+]

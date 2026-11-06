@@ -1,0 +1,115 @@
+---
+title: "Last Keep"
+---
+stateDiagram-v2
+  direction LR
+  state "Legend" as legend {
+    lg0: Outside
+    lg1: Waiting
+    lg2: Day
+    lg3: Night
+    lg4: Fallen
+    lg5: Path to the NoRestartBeforeTheFall bug
+  }
+  class lg0 tan
+  class lg1 yellow
+  class lg2 blue
+  class lg3 purple
+  class lg4 pink
+  class lg5 bugPath
+  state "At the same time" as all {
+    state "Session" as r0 {
+      s0: Choosing a hero
+      s1: Waiting for the host
+      s2: Day
+      s3: The room is closed
+      s4: The night
+      s5: The keep has fallen
+      s6: Frenzied
+      [*] --> s0
+      s0 --> s1: you sit down
+      s1 --> s2: the host starts the night
+      s2 --> s1: a connected page sends restart
+      s2 --> s4: the horn sounds
+      s1 --> s3: the room closes [when Table is not A friend is here]
+      s4 --> s1: a connected page sends restart
+      s4 --> s2: the night clears
+      s4 --> s5: the keep falls
+      s4 --> s6: the night runs long
+      s5 --> s1: you press New keep
+      s6 --> s1: a connected page sends restart
+      s6 --> s2: the night clears
+      s6 --> s5: the keep falls
+    }
+    --
+    state "You" as r1 {
+      s7: Not in the yard
+      s8: On the ring
+      s9: At the keep
+      s10: Told to walk to the keep
+      s11: Down
+      [*] --> s7
+      s7 --> s8: you sit down [when Session is Choosing a hero]
+      s8 --> s9: you walk to the keep [when Session is not The keep has fallen]
+      s8 --> s10: you try to raise the keep [when Session is not The keep has fallen and Keep is Can still rise]
+      s8 --> s7: the room closes [when Session is Waiting for the host and Table is not A friend is here]
+      s9 --> s8: a connected page sends restart or you walk off the keep [when Session is not The keep has fallen]
+      s10 --> s8: a connected page sends restart [when Session is not The keep has fallen]
+      s10 --> s9: you walk to the keep [when Session is not The keep has fallen]
+      s9 --> s7: the room closes [when Session is Waiting for the host and Table is not A friend is here]
+      s10 --> s7: the room closes [when Session is Waiting for the host and Table is not A friend is here]
+      s8 --> s11: a monster downs you [when Session is one of Frenzied, The night]
+      s11 --> s8: a connected page sends restart or you stand back up on the ring [when Session is not The keep has fallen]
+      s9 --> s11: a monster downs you [when Session is one of Frenzied, The night]
+      s10 --> s11: a monster downs you [when Session is one of Frenzied, The night]
+      s11 --> s8: you press New keep [when Session is The keep has fallen]
+      s9 --> s8: you press New keep [when Session is The keep has fallen]
+      s10 --> s8: you press New keep [when Session is The keep has fallen]
+    }
+    --
+    state "Table" as r2 {
+      s12: No table
+      s13: Just the host
+      s14: A friend is here
+      s15: A friend left
+      [*] --> s12
+      s12 --> s13: you sit down [when Session is Choosing a hero]
+      s13 --> s14: a friend sits down [when Session is not The keep has fallen]
+      s14 --> s15: a friend leaves
+      s13 --> s12: the room closes [when Session is Waiting for the host and You is not Down]
+      s15 --> s14: a friend comes back
+      s15 --> s12: the room closes [when Session is Waiting for the host and You is not Down]
+    }
+    --
+    state "Keep" as r3 {
+      s16: No keep
+      s17: Can still rise
+      s18: As high as it goes
+      [*] --> s16
+      s16 --> s17: you sit down [when Session is Choosing a hero]
+      s17 --> s16: the room closes [when Session is Waiting for the host and You is not Down and Table is not A friend is here]
+      s17 --> s18: you raise the keep [when Session is not The keep has fallen and You is At the keep]
+      s18 --> s17: a connected page sends restart [when Session is not The keep has fallen]
+      s18 --> s16: the room closes [when Session is Waiting for the host and You is not Down and Table is not A friend is here]
+      s18 --> s17: you press New keep [when Session is The keep has fallen]
+    }
+  }
+  class s0 tan
+  class s0 bugPath
+  class s1 yellow
+  class s1 bugPath
+  class s2 blue
+  class s2 bugPath
+  class s3 tan
+  class s4 purple
+  class s5 pink
+  class s6 purple
+  class s7 tan
+  class s7 bugPath
+  class s8 bugPath
+  class s12 tan
+  class s12 bugPath
+  class s13 bugPath
+  class s16 tan
+  class s16 bugPath
+  class s17 bugPath

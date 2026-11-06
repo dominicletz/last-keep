@@ -6,7 +6,6 @@ import { decodePng, renderCloseup } from "../models/raster.js"
 import { loadSheet } from "../models/sheets.js"
 import { heroCrops, MONSTER_CROPS } from "../models/sprites.js"
 import { groundPixels } from "./ground.js"
-import { buildPaletteAtlas, createPalettePass, paletteFragmentShader, samplePaletteAtlas } from "./palette_pass.js"
 import { groundFloor, groundSpread } from "./mood.js"
 import { cycleLight, hueOf, litYard, lumaOf } from "./scene.js"
 import {
@@ -17,6 +16,7 @@ import {
   lockedPalette,
   membership,
   nearestLocked,
+  paletteMembership,
   noiseCap,
   noiseEnergy,
   paletteScales,
@@ -131,15 +131,27 @@ test("readability is the ink height and the silhouette gap against the ground", 
   assert.ok(Math.abs(read.contrast - gap) < 1e-6, read.contrast)
 })
 
-test("the gallery keep still misses the pipeline floors", () => {
+// Measured on the gallery keep card against theme.jpg 548,28, 188×230.
+// SSIM 0.505 and IoU 0.850. The floors are 0.50 and 0.84. They only rise.
+// The spec targets are 0.35 and 0.55. Ink membership stays at 0.98.
+test("the gallery keep clears the likeness floors", () => {
   const png = decodePng(fs.readFileSync(new URL("../../test/gallery/keep/day.png", import.meta.url)))
   const theme = loadSheet(new URL("../../docs/concept/theme.jpg", import.meta.url).pathname)
   const crop = cropOf(theme, { x: 548, y: 28, w: 188, h: 230 })
   const score = scoreFrame({ rgb: png.rgb, width: png.width, height: png.height }, crop, palette)
-  assert.ok(score.blockP25 < 8, score.blockP25)
-  assert.ok(score.ssim < 0.35, score.ssim)
-  assert.ok(score.iou < 0.55, score.iou)
-  assert.ok(score.membership < 0.98, score.membership)
+  assert.ok(score.ssim >= 0.5, score.ssim)
+  assert.ok(score.iou >= 0.84, score.iou)
+  const mask = new Uint8Array(png.width * png.height)
+  const bg = [png.rgb[0], png.rgb[1], png.rgb[2]]
+  for (let i = 0; i < mask.length; i++) {
+    const o = i * 3
+    const dr = png.rgb[o] - bg[0]
+    const dg = png.rgb[o + 1] - bg[1]
+    const db = png.rgb[o + 2] - bg[2]
+    if (Math.sqrt(dr * dr + dg * dg + db * db) > 18) mask[i] = 1
+  }
+  const ink = paletteMembership(png.rgb, png.width, png.height, mask, palette)
+  assert.ok(ink >= 0.98, ink)
 })
 
 // Measured on the player-camera close-up. The spec targets are block 8, SSIM 0.35,
@@ -286,76 +298,6 @@ function scalesInSpec() {
   return named.slice(1).map(Number)
 }
 
-test("the palette pass locks with one atlas lookup", () => {
-  const source = fs.readFileSync(new URL("./palette_pass.js", import.meta.url), "utf8")
-  assert.equal(source.includes("RGBFormat"), false)
-  assert.equal(source.includes("for (int i = 0; i < 320; i++)"), false)
-  const shader = paletteFragmentShader()
-  assert.match(shader, /texture2D\(tLut/)
-  assert.equal(shader.includes("for (int i"), false)
-  const atlas = buildPaletteAtlas(palette)
-  let worst = 0
-  for (let b = 0; b < 256; b += 8) {
-    for (let g = 0; g < 256; g += 8) {
-      for (let r = 0; r < 256; r += 8) {
-        const exact = nearestLocked(r, g, b, palette)
-        const got = samplePaletteAtlas(atlas, r, g, b)
-        const extra =
-          (r - got[0]) ** 2 + (g - got[1]) ** 2 + (b - got[2]) ** 2 - exact.dist * exact.dist
-        if (extra > worst) worst = extra
-      }
-    }
-  }
-  // A 128³ cell is two code points wide. The center's nearest color is the
-  // sample's nearest on most of the cube, and the extra distance stays under
-  // the measured 235. That bound only falls.
-  assert.ok(worst <= 235, worst)
-  const draw = source.slice(source.indexOf("draw(scene, camera)"))
-  const offAt = draw.indexOf("renderer.info.autoReset = false")
-  const resetAt = draw.indexOf("renderer.info.reset()")
-  const sceneAt = draw.indexOf("renderer.render(scene, camera)")
-  const quadAt = draw.indexOf("renderer.render(passScene, passCamera)")
-  const restoreAt = draw.indexOf("renderer.info.autoReset = reset")
-  assert.ok(offAt >= 0 && offAt < resetAt)
-  assert.ok(resetAt < sceneAt && sceneAt < quadAt && quadAt < restoreAt)
-  assert.equal(draw.split("renderer.info.reset()").length - 1, 1)
-  assert.equal(source.includes("RGBFormat"), false)
-  assert.match(source, /THREE\.RGBAFormat/)
-})
-
-test("hiding a rim still changes the draw count after the quantize quad", () => {
-  const info = {
-    autoReset: true,
-    render: { calls: 7, triangles: 40, frame: 3 },
-    reset() {
-      this.render.calls = 0
-      this.render.triangles = 0
-    }
-  }
-  let renders = 0
-  const renderer = {
-    info,
-    getSize(out) {
-      out.x = 16
-      out.y = 16
-    },
-    setRenderTarget() {},
-    render() {
-      renders += 1
-      info.render.frame += 1
-      if (info.autoReset === true) info.reset()
-      info.render.calls += renders === 1 ? 4 : 1
-      info.render.triangles += renders === 1 ? 8 : 2
-    }
-  }
-  createPalettePass(renderer, palette).draw({}, {})
-  assert.equal(info.autoReset, true)
-  assert.equal(renders, 2)
-  assert.equal(info.render.calls, 5)
-  assert.equal(info.render.triangles, 10)
-  assert.equal(info.render.frame, 5)
-})
-
 test("the locked palette is the style tokens at the spec's four shades", () => {
   assert.equal(tokens.size, 40)
   assert.deepEqual(styleHexes, [...tokens.keys()])
@@ -380,7 +322,10 @@ test("the camera and a sprite origin snap to the internal pixel", () => {
   assert.equal(snapWorld(step * 3, step), step * 3)
   const render = fs.readFileSync(new URL("./render.js", import.meta.url), "utf8")
   assert.equal(render.includes("focus.set(anchor.x, 0, anchor.z)"), false)
-  assert.equal(render.split("snapWorld(anchor.x, step)").length - 1, 2)
+  assert.equal(render.split("snapWorld(anchor.x, step)").length - 1, 1)
+  // The definition, draw(), placeCamera(), and the refit on a resize: every
+  // seat goes through the one snapped focus above.
+  assert.equal(render.split("seatCamera(").length - 1, 4)
 })
 
 function linearByte(channel) {
@@ -409,10 +354,6 @@ test("encoding the linear target keeps the yard spread on the palette", () => {
   const locked = lockFrame(encoded, 160, 160, palette)
   assert.ok(groundSpread(locked, 160, 160).spread >= groundFloor.spread)
   assert.ok(membership(locked, 160, 160, palette) >= 0.98)
-  const pass = fs.readFileSync(new URL("./palette_pass.js", import.meta.url), "utf8")
-  assert.match(pass, /0\.0031308/)
-  assert.match(pass, /12\.92/)
-  assert.match(pass, /toSrgb\(texture2D/)
 })
 
 function gap(left, right) {

@@ -63,4 +63,62 @@ function noteProgress(mark, score, now, stallMs = 700) {
   return { action: "hold", mark }
 }
 
-module.exports = { axes, keysFor, walkHitsKeep, noteNorth, noteProgress }
+// A moving hero changes cell between snapshots. Arrival is two snapshots
+// after the keys are up that still share a position. The same tick twice
+// is one sample, and a later tick at a new position is still walking.
+function stoppedTick(previous, fresh) {
+  if (!previous || !fresh) return false
+  return fresh.tick > previous.tick && fresh.x === previous.x && fresh.y === previous.y
+}
+
+// The pose comes from the stopped snapshot. Fields the goal already read
+// stay, and a field the goal does not use is left off the sample.
+function settleFields(last, fresh) {
+  const settled = { ...last, x: fresh.x, y: fresh.y }
+  if (Object.prototype.hasOwnProperty.call(last, "alive")) settled.alive = fresh.alive
+  if (Object.prototype.hasOwnProperty.call(last, "raiseReady")) settled.raiseReady = fresh.raiseReady
+  if (Object.prototype.hasOwnProperty.call(last, "held")) settled.held = fresh.held
+  if (Object.prototype.hasOwnProperty.call(last, "cloth")) settled.cloth = fresh.cloth
+  if (Object.prototype.hasOwnProperty.call(last, "table")) settled.table = fresh.table
+  return settled
+}
+
+// The walk that lands on a small goal over any round trip. The first leg
+// holds the keys until the client sees the hero inside the goal. The key-up
+// reaches the server a round trip later, so at 300ms the hero coasts about
+// 45 units, past the far edge of an 18 radius, and the next held leg does the
+// same from the other side. After one stop outside the goal, every leg is a
+// tap: hold, wait for two more ticks, release, and settle. Hold and release
+// are both one trip late, so the server holds them about 100ms apart at any
+// latency, which is shorter than the goal is wide.
+//   step()    holds keys toward the goal and returns the client pose
+//   tap()     waits two observed ticks with those keys still down
+//   settle(p) releases and returns the stopped pose, or null
+//   pause()   waits one poll while a held leg walks
+//   expired() is true once the deadline passed
+async function walkLoop({ step, tap, settle, pause, done, expired }) {
+  let last = null
+  let overshot = false
+  while (!expired()) {
+    last = (await step()) || last
+    if (!last) {
+      await pause()
+      continue
+    }
+    const inside = done(last)
+    if (!inside && !overshot) {
+      await pause()
+      continue
+    }
+    if (!inside) await tap()
+    const settled = await settle(last)
+    if (settled && done(settled)) return { ok: true, last: settled }
+    if (settled) {
+      last = settled
+      overshot = true
+    }
+  }
+  return { ok: false, last }
+}
+
+module.exports = { axes, keysFor, walkHitsKeep, noteNorth, noteProgress, stoppedTick, settleFields, walkLoop }

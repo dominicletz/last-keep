@@ -100,9 +100,9 @@ const REGISTRY = [
     cone("cap", 20, 12, 20, 0, 40, 0, DUSK),
     box("gem", 5, 5, 5, 0, 48, 0, GEM)
   ], "spell light"),
-  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 11930, null),
-  entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(0, 500, 180, 210) }, 682, pineParts()),
-  entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "felled wood", crop: crop(1080, 160, 180, 260) }, 253, null),
+  entry("keep", "prop", { r: 54 }, { sheet: "theme.jpg", figure: "keep", crop: crop(548, 28, 188, 230) }, 77331, null),
+  entry("tree", "prop", { r: TREE_RADIUS }, { sheet: "theme.jpg", figure: "pine", crop: crop(300, 600, 96, 112) }, 682, pineParts()),
+  entry("scenery", "prop", { r: sceneryForest().radiusBottom }, { sheet: "theme.jpg", figure: "felled wood", crop: crop(360, 480, 48, 80) }, 253, null),
   entry("house", "town", { r: 18 }, { sheet: "theme.jpg", figure: "cottage", crop: crop(500, 150, 180, 160) }, 1017, null)
 ]
 

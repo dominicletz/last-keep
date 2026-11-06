@@ -1,31 +1,31 @@
 import * as THREE from "three"
 import { present } from "./present"
 import { eliteLook } from "./elite"
-import { cameraFocus, cameraLift, drawDue, frameFor } from "./frame"
+import { cameraFocus, frameFor, frameSignature, ghostLook, paintDue, paintGap, sceneKey, snapshotDue, testHooks } from "./frame"
+import { clockScore } from "./hd2d/score.js"
 import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
-import { createPalettePass } from "./palette_pass.js"
-import { lockedPalette, pixelStep, snapWorld, styleHexes } from "./art_score.js"
+import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
-import { forestWall, forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
+import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { mountPicture } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
+import { stoneRepeat, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
-import { noiseEnergy, valueStructure } from "./art_score.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
-import { pictureColumn, sheetRow } from "./pictures.js"
+import { SHEET_HEROES, cellOffset, pictureColumn, sheetRow } from "./pictures.js"
+import { sheetHeroSize } from "./hd2d/picture.js"
+import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
 import { keepParts, modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint.js"
 import {
-  cycleLight,
-  flameColor,
   groundColor,
   lightName,
-  hueGap,
   lumaOf,
   maskedStats,
   ownedNear,
@@ -38,8 +38,7 @@ import {
   yardLight
 } from "./scene.js"
 
-function figurePixels(mesh, camera, bufferHeight) {
-  const box = new THREE.Box3().setFromObject(mesh)
+function projectBoxPixels(box, camera, bufferHeight) {
   const corner = new THREE.Vector3()
   let minY = Infinity
   let maxY = -Infinity
@@ -55,21 +54,42 @@ function figurePixels(mesh, camera, bufferHeight) {
   return Math.round((maxY - minY) * 0.5 * bufferHeight)
 }
 
-export function createView(stage) {
-  const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: false })
-  renderer.setSize(480, 270, false)
-  renderer.setPixelRatio(1)
-  renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.BasicShadowMap
-  renderer.outputColorSpace = THREE.SRGBColorSpace
+function figurePixels(mesh, camera, bufferHeight) {
+  return projectBoxPixels(new THREE.Box3().setFromObject(mesh), camera, bufferHeight)
+}
+
+// A sprite's center is (0.5, 0), so the feet sit on the group and the card
+// faces the camera. Box3 centers that sprite on its position and drops the
+// feet by half the height. The drawn quad is the camera-facing card. A lit
+// sheet card passes the drawn hero's size, since its cell is wider and taller.
+function spriteCardBox(group, camera, size = group.userData.picture) {
+  const halfW = size.w / 2
+  const yaw = Math.atan2(camera.position.x - group.position.x, camera.position.z - group.position.z)
+  const hx = Math.abs(Math.cos(yaw) * halfW)
+  const hz = Math.abs(Math.sin(yaw) * halfW)
+  const x = group.position.x
+  const y = group.position.y
+  const z = group.position.z
+  return {
+    min: { x: x - hx, y, z: z - hz },
+    max: { x: x + hx, y: y + size.h, z: z + hz }
+  }
+}
+
+export function createView(stage, picture) {
+  if (["open", "fit", "seat", "light", "dress", "present"].some((name) => typeof picture?.[name] !== "function")) {
+    throw new Error("createView needs a picture")
+  }
+
+  const opened = picture.open(stage)
+  const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
+  const renderer = opened.renderer
+  const camera = opened.camera
   stage.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(skyColor)
   scene.fog = new THREE.Fog(skyColor, 900, 2400)
-
-  const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
-  const camera = new THREE.OrthographicCamera(opening.left, opening.right, opening.top, opening.bottom, 0.1, 2400)
   const probe = new THREE.Vector3()
   const rimFrustum = new THREE.Frustum()
   const rimProj = new THREE.Matrix4()
@@ -92,26 +112,6 @@ export function createView(stage) {
   sun.shadow.camera.bottom = -280
   scene.add(sun)
   scene.add(sun.target)
-  const groundFill = new THREE.AmbientLight(yardLight.sky, 0)
-  groundFill.layers.set(1)
-  scene.add(groundFill)
-  camera.layers.enable(1)
-  const brazierPool = new THREE.PointLight(flameColor, 0, 90, 2)
-  brazierPool.position.set(26, 14, 26)
-  const windowPool = new THREE.PointLight(flameColor, 0, 72, 2)
-  windowPool.position.set(0, 16, 36)
-  const yardTorches = []
-  for (const [x, z] of [
-    [150, 150],
-    [-150, 150],
-    [150, -150],
-    [-150, -150]
-  ]) {
-    const light = new THREE.PointLight(flameColor, 0, 64, 2)
-    light.position.set(x, 14, z)
-    yardTorches.push(light)
-  }
-  scene.add(brazierPool, windowPool, ...yardTorches)
 
   const stoneTile = masonryBytes("day")
   const stoneMap = new THREE.DataTexture(stoneTile.rgba, stoneTile.w, stoneTile.h)
@@ -120,7 +120,7 @@ export function createView(stage) {
   stoneMap.minFilter = THREE.NearestFilter
   stoneMap.wrapS = THREE.RepeatWrapping
   stoneMap.wrapT = THREE.RepeatWrapping
-  stoneMap.repeat.set(2, 4)
+  stoneMap.repeat.set(stoneRepeat.x, stoneRepeat.y)
   stoneMap.needsUpdate = true
   const stoneMat = new THREE.MeshBasicMaterial({ map: stoneMap, color: 0xffffff })
   const stoneColors = new Set([0x4b3c33, 0x654e41, 0x2c2a2a])
@@ -143,8 +143,8 @@ export function createView(stage) {
     mat(groundColor)
   )
   ground.rotation.x = -Math.PI / 2
-  ground.receiveShadow = true
-  ground.layers.enable(1)
+  ground.receiveShadow = false
+  ground.visible = false
   scene.add(ground)
   const mapTable = new THREE.Mesh(
     trackGeometry(new THREE.BoxGeometry(36, 8, 22)),
@@ -181,9 +181,9 @@ export function createView(stage) {
   )
   yard.rotation.x = -Math.PI / 2
   yard.position.y = 0.08
-  yard.receiveShadow = true
+  yard.receiveShadow = false
   scene.add(yard)
-  let painted = "day"
+  const land = mountPicture(scene)
   const plazaBytes = plazaPixels("day")
   const plazaMap = new THREE.DataTexture(plazaBytes, PLAZA_TEX, PLAZA_TEX)
   plazaMap.colorSpace = THREE.SRGBColorSpace
@@ -207,20 +207,14 @@ export function createView(stage) {
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
   plaza.position.y = 0.2
-  plaza.receiveShadow = true
+  plaza.receiveShadow = false
   plaza.layers.enable(1)
   const ring = new THREE.Mesh(new THREE.RingGeometry(154, 164, plazaSides), mat(ringColor))
   ring.rotation.x = -Math.PI / 2
   ring.position.y = 0.28
-  ring.receiveShadow = true
+  ring.receiveShadow = false
   scene.add(plaza, ring)
-  const sheetKinds = {
-    house: { w: 56, h: 64, stand: true },
-    field: { w: 46, h: 26, stand: false },
-    wall: { w: 30, h: 40, stand: true },
-    forge: { w: 48, h: 36, stand: true },
-    trap: { w: 22, h: 20, stand: true }
-  }
+  const sheetKinds = yardCards
   const sheetMaps = {}
   const sheetMats = {}
   for (const [name, spec] of Object.entries(sheetKinds)) {
@@ -233,7 +227,13 @@ export function createView(stage) {
     map.needsUpdate = true
     sheetMaps[name] = map
     sheetMats[name] = spec.stand
-      ? new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false })
+      ? new THREE.SpriteMaterial({
+          map,
+          depthTest: true,
+          depthWrite: true,
+          transparent: false,
+          alphaTest: spec.cut ? 0.5 : 0
+        })
       : new THREE.MeshBasicMaterial({ map, color: 0xffffff })
   }
   const windowMat = new THREE.SpriteMaterial({
@@ -302,30 +302,16 @@ export function createView(stage) {
   const bursts = []
   let lastTick = -1
   let heroKey = null
+  let stageSize = null
+  // The snapshot and player the camera was last seated for. fit() resets the
+  // lens to the world view, so a refit outside draw() seats the camera again.
+  let lastSeat = null
   applyFrame()
-  window.addEventListener("resize", applyFrame)
+  window.addEventListener("resize", onResize)
+  const stageWatch = typeof ResizeObserver === "function" ? new ResizeObserver(() => onResize()) : null
+  if (stageWatch) stageWatch.observe(stage)
 
   const forestLook = forestState()
-
-  function paintYard(phase) {
-    if (painted === phase) return
-    groundMap.image.data.set(groundPixels(phase))
-    groundMap.needsUpdate = true
-    plazaMap.image.data.set(plazaPixels(phase))
-    plazaMap.needsUpdate = true
-    const stone = masonryBytes(phase)
-    stoneMap.image.data.set(stone.rgba)
-    stoneMap.needsUpdate = true
-    for (const [name, map] of Object.entries(sheetMaps)) {
-      map.image.data.set(propBytes(name, phase).rgba)
-      map.needsUpdate = true
-    }
-    const path = propBytes("path", phase)
-    pathNSMap.image.data.set(path.rgba)
-    pathNSMap.needsUpdate = true
-    pathEWMap.needsUpdate = true
-    painted = phase
-  }
 
   function contactTexture() {
     const canvas = document.createElement("canvas")
@@ -348,21 +334,26 @@ export function createView(stage) {
     mesh.rotation.x = -Math.PI / 2
     mesh.position.y = 0.46
     mesh.renderOrder = 2
+    mesh.userData.contact = true
     return mesh
   }
 
+  function sheetCard(kind, scale = 1, disc = true) {
+    const spec = sheetKinds[kind]
+    const group = new THREE.Group()
+    const card = new THREE.Sprite(sheetMats[kind])
+    card.center.set(0.5, 0)
+    card.scale.set(spec.w * scale, spec.h * scale, 1)
+    card.renderOrder = 1
+    group.add(card)
+    if (disc) group.add(contactDisc(8 * scale))
+    return group
+  }
+
   function addForestWall() {
-    const look = forestWall()
-    const parts = modelParts("tree").map((part) => {
-      if (part.name === "trunk") return { ...part, color: look.trunk }
-      return { ...part, color: part.y < 20 ? look.shade : look.pine }
-    })
     for (const slot of forestWallSlots()) {
-      const group = groupFrom(parts)
+      const group = sheetCard("tree", slot.scale, false)
       group.position.set(slot.x, 0, slot.z)
-      group.scale.setScalar(slot.scale)
-      group.rotation.y = slot.angle
-      group.add(contactDisc(8))
       group.traverse((child) => {
         child.castShadow = false
         child.receiveShadow = false
@@ -375,20 +366,15 @@ export function createView(stage) {
     const look = sceneryForest()
     const slots = scenerySlots()
     if (!look.parts.includes("stump") || !look.parts.includes("log") || slots.length === 0) return
-    const parts = modelParts("scenery")
-    slots.forEach((slot, index) => {
-      const group = new THREE.Group()
+    for (const slot of slots) {
+      const group = sheetCard("scenery", slot.scale, false)
       group.position.set(slot.x, 0, slot.z)
-      group.scale.set(slot.scale, slot.scale, slot.scale)
-      for (const piece of parts) {
-        const mesh = pieceMesh(piece)
-        if (piece.name === "log") mesh.rotation.y = (index * Math.PI) / 5
-        mesh.castShadow = false
-        mesh.receiveShadow = false
-        group.add(mesh)
-      }
+      group.traverse((child) => {
+        child.castShadow = false
+        child.receiveShadow = false
+      })
       scene.add(group)
-    })
+    }
   }
 
   function forestState() {
@@ -410,6 +396,7 @@ export function createView(stage) {
     for (const piece of keepParts(rank)) group.add(pieceMesh(piece))
     const torch = new THREE.PointLight(0xeea821, 8, 220)
     torch.position.set(22, 40, 22)
+    torch.layers.set(1)
     group.add(torch)
     group.userData.torch = torch
     return group
@@ -421,11 +408,22 @@ export function createView(stage) {
       const key = `${kind}:${row.id}`
       seen.add(key)
       let mesh = meshes.get(key)
+      if (mesh && kind === "hero" && mesh.userData.hero !== row.hero) {
+        scene.remove(mesh)
+        releaseGeometries(mesh)
+        meshes.delete(key)
+        tracks.delete(key)
+        mesh = null
+      }
       if (!mesh) {
         mesh = build(row)
         if (!mesh.userData.role) mesh.userData.role = kind
         meshes.set(key, mesh)
         scene.add(mesh)
+      }
+      if (kind === "hero") {
+        mesh.userData.preview = !!row.preview
+        mesh.userData.fade = Number.isFinite(row.opacity) ? row.opacity : 1
       }
       remember(key, row.x, row.y)
       aimFacing(mesh, row.facing)
@@ -456,6 +454,18 @@ export function createView(stage) {
   let pending = null
   let drawnTick = -1
   let viewApi = null
+  // Without test hooks a frame paints only when its signature moved or
+  // something outside the signature (a draw, a resize, the ghost) set this.
+  let dirty = true
+  let lastSignature = null
+  // The last drawn snapshot's sceneKey. A snapshot at 20 Hz that changes only
+  // the countdown leaves the picture as it was.
+  let lastSceneKey = null
+  let lastGhost = null
+  let firstPaint = null
+  // hold() stops paints until the next draw(). See paintDue.
+  let held = false
+  const rimAtlases = new WeakMap()
   let sampleTarget = null
   const savedClear = new THREE.Color()
   const samplePoint = new THREE.Vector3()
@@ -468,18 +478,25 @@ export function createView(stage) {
     lastInput = performance.now()
   }
 
-  const palette = lockedPalette(styleHexes)
-  let palettePass = null
-
   function worldStep() {
-    return pixelStep(viewFrame.halfH, viewFrame.bufferHeight)
+    const height = viewFrame.snapHeight || viewFrame.bufferHeight
+    return pixelStep(viewFrame.halfH, height)
   }
 
+  let lastSubmit = null
+  let driverLabel = null
+  let yieldPaintUntil = 0
+
   function paintFrame() {
-    if (!palettePass) palettePass = createPalettePass(renderer, palette)
-    palettePass.draw(scene, camera)
+    const presented = picture.present(renderer, scene, camera)
+    lastSubmit = presented && Number.isFinite(presented.submitMs) ? presented.submitMs : null
     renders += 1
     if (window.__lastKeep) window.__lastKeep.renders = renders
+    if (firstPaint) {
+      const mark = firstPaint
+      firstPaint = null
+      if (typeof performance !== "undefined" && performance.mark) performance.mark(mark)
+    }
   }
 
   function sampleYard(gl, canvas) {
@@ -504,7 +521,9 @@ export function createView(stage) {
         if (!flat) flat = stats
         continue
       }
-      if (!best || stats.variance < best.variance) best = stats
+      // The horizon quilt is smoother than the clearing and brighter, so the
+      // lowest variance now lands on that skirt. The clearing is the dark patch.
+      if (!best || stats.luma < best.luma) best = stats
     }
     const picked = best || flat
     return picked ? { ...picked, light: liveLight } : null
@@ -513,15 +532,33 @@ export function createView(stage) {
   window.addEventListener("pointerdown", noteInput)
   window.addEventListener("keydown", noteInput)
 
+  let closed = false
+
   function frame() {
+    if (closed) return
+    // A quiet guest stays in the room through the socket and the input
+    // interval. Presenting that page is the paint that fills the runner.
+    // The callback stays so wake() can present again without a new loop.
+    if (window.__lastKeepQuiet) {
+      requestAnimationFrame(frame)
+      return
+    }
     const now = performance.now()
+    // A slow paint used to chain straight into the next one. The 20ms blend
+    // poll then never landed inside the 45ms window. The gap is the idle
+    // stretch after that paint, and it is longer than the window.
+    if (now < yieldPaintUntil) {
+      requestAnimationFrame(frame)
+      return
+    }
     // The socket handler only queues. Drawing here lets the test's wait run
     // between snapshots. A draw inside the handler piles up and the page
     // never returns, so the fireball wait dies when the browser closes.
-    if (pending && viewApi && pending.snap.tick !== drawnTick && drawDue(now, lastRender, lastInput)) {
+    if (pending && viewApi && pending.snap.tick !== drawnTick && snapshotDue(testHooks, now, lastRender, lastInput)) {
       viewApi.draw(pending.snap, pending.selfId)
       drawnTick = pending.snap.tick
     }
+    if (pending && (window.__lastKeepArrive || boundLook())) placeCamera(pending.snap, pending.selfId)
     for (const [, mesh] of meshes) stepFacing(mesh)
     for (const [key, mesh] of meshes) placeMesh(key, mesh)
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
@@ -541,29 +578,42 @@ export function createView(stage) {
       window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
     }
     cullActors()
-    if (drawDue(now, lastRender, lastInput)) {
+    const signature = testHooks ? null : frameSignature(camera, meshes.values())
+    const changed = dirty || bursts.length > 0 || signature !== lastSignature
+    if (paintDue(testHooks, now, lastRender, lastInput, changed, held)) {
       const started = performance.now()
       paintFrame()
       publishPerf(performance.now() - started)
       lastRender = now
-    } else {
+      dirty = false
+      lastSignature = signature
+    } else if (testHooks) {
       publishPerf(null)
     }
+    const gap = paintGap(performance.now() - now)
+    if (gap) yieldPaintUntil = performance.now() + gap
     requestAnimationFrame(frame)
   }
 
-  requestAnimationFrame(frame)
+  // The first paint can sit inside shader compile. Waiting for load lets the
+  // document finish so a navigation is not stuck behind that compile.
+  if (typeof document !== "undefined" && document.readyState !== "complete") {
+    window.addEventListener("load", () => requestAnimationFrame(frame), { once: true })
+  } else {
+    requestAnimationFrame(frame)
+  }
 
   viewApi = {
     canvas: renderer.domElement,
     rims(show) {
       showRims(show)
+      dirty = true
     },
     repaint() {
       const frame = renderer.info.render.frame
       cullActors()
       paintFrame()
-      publishPerf(null)
+      publishPerf(null, true)
       const perf = window.__lastKeepPerf
       return {
         calls: perf.calls,
@@ -576,6 +626,13 @@ export function createView(stage) {
       pending = { snap, selfId }
       placeCamera(snap, selfId)
       nudge(snap, selfId)
+    },
+    stop() {
+      closed = true
+      window.removeEventListener("resize", onResize)
+      if (stageWatch) stageWatch.disconnect()
+      window.removeEventListener("pointerdown", noteInput)
+      window.removeEventListener("keydown", noteInput)
     },
     aim(clientX, clientY) {
       const rect = renderer.domElement.getBoundingClientRect()
@@ -605,35 +662,34 @@ export function createView(stage) {
       const point = new THREE.Vector3(x, 8, z).project(camera)
       return { x: point.x, y: point.y, behind: point.z > 1 }
     },
+    // A view marks its first painted frame of each kind for the probe:
+    // lastkeep:firstMenuFrame or lastkeep:firstWorldFrame.
+    markFirstPaint(name) {
+      firstPaint = name
+    },
+    hold() {
+      held = true
+    },
+    resume() {
+      if (held) dirty = true
+      held = false
+    },
+    get held() {
+      return held
+    },
     draw(snap, selfId) {
+      held = false
       drawnTick = snap.tick
+      const key = testHooks ? null : sceneKey(snap)
+      if (testHooks || key !== lastSceneKey) dirty = true
+      lastSceneKey = key
       const name = lightName(snap)
       liveLight = name
-      const rig = cycleLight[name]
-      if (keep.userData.torch) keep.userData.torch.intensity = rig.torch
-      groundFill.color.set(rig.groundFill || 0x000000)
-      groundFill.intensity = rig.groundFillLevel || 0
-      brazierPool.intensity = rig.pool || 0
-      windowPool.intensity = rig.pool || 0
-      for (const light of yardTorches) light.intensity = (rig.pool || 0) * 0.55
-      paintYard(name)
-      sky.color.set(rig.sky)
-      sky.groundColor.set(rig.ground)
-      sky.intensity = rig.hemisphere
-      ambient.color.set(rig.ambient)
-      ambient.intensity = rig.ambientLevel
-      sun.color.set(rig.sun)
-      sun.intensity = rig.sunLevel
-      scene.background.set(rig.background)
-      scene.fog.color.set(rig.background)
       townRank = snap.town || 0
       applyFrame()
       const zoom = zoomFor(snap)
       const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
-      const anchor = cameraFocus(me?.x, me?.y)
-      const step = worldStep()
-      focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
-      const dist = zoom.camera
+      seatCamera(snap, me)
       const yardScale = zoom.dirt / 150
       plaza.scale.setScalar(yardScale)
       ring.scale.setScalar(yardScale)
@@ -648,11 +704,6 @@ export function createView(stage) {
         keep = makeKeep(townRank)
         scene.add(keep)
       }
-      camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-      camera.lookAt(focus.x, cameraLift, focus.z)
-      sun.position.set(focus.x + 90, 200, focus.z + 30)
-      sun.target.position.copy(focus)
-
       const keepRatio = snap.keep.max ? snap.keep.hp / snap.keep.max : 1
       keep.scale.y = 0.65 + keepRatio * 0.35
 
@@ -662,26 +713,24 @@ export function createView(stage) {
 
       sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
 
+      const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
+      picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes })
+      dissolveYardEdge(yard)
+      picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
+
       liveMonsters = snap.monsters || []
 
       sync("monster", drawn.monsters, (row) => monsterMesh(row))
 
       sync("building", drawn.buildings, (row) => buildingMesh(row))
 
-      sync("tree", snap.trees || [], () => groupFrom(modelParts("tree")))
+      sync("tree", snap.trees || [], () => sheetCard("tree", 1, false))
 
       paintMapCloth(mapCloth, clothMarks, snap.map)
       sync("chest", snap.chests || [], () => {
         const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(16, 12, 16)), mat(0xf0c14a, 0xc9a227))
         mesh.userData.lift = 8
         mesh.userData.role = "chest"
-        return mesh
-      })
-
-      sync("portal", snap.portals || [], () => {
-        const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(18, 22, 18)), mat(0xff7a2a, 0xc45c24))
-        mesh.userData.lift = 11
-        mesh.userData.role = "portal"
         return mesh
       })
 
@@ -704,6 +753,8 @@ export function createView(stage) {
         }
       }
 
+      heroKey = me ? `hero:${me.id}` : null
+      if (!testHooks) return
       const kept = window.__lastKeep || {}
       const counts = { heroes: 0, monsters: 0, shots: 0 }
       scene.traverse((object) => {
@@ -730,16 +781,37 @@ export function createView(stage) {
       const figures = []
       for (const [key, mesh] of meshes) {
         if (!key.startsWith("hero:") || !mesh.userData.hero) continue
+        const card = mesh.userData.card
+        const picture = mesh.userData.picture
+        const sheet = card && card.isMesh && picture && mesh.userData.bounds && SHEET_HEROES.includes(mesh.userData.hd)
+        const px =
+          card && picture && (card.isSprite || sheet)
+            ? projectBoxPixels(
+                spriteCardBox(mesh, camera, sheet ? sheetHeroSize(card, mesh.userData.bounds) : picture),
+                camera,
+                viewFrame.bufferHeight
+              )
+            : figurePixels(card || mesh, camera, viewFrame.bufferHeight)
         figures.push({
           id: key.slice(5),
           hero: mesh.userData.hero,
+          hd: mesh.userData.hd || null,
+          box: heroScreenBox(mesh),
           parts: mesh.userData.parts,
           marks: mesh.userData.marks,
           bounds: mesh.userData.bounds,
-          px: figurePixels(mesh, camera, renderer.domElement.height)
+          x: mesh.position.x,
+          z: mesh.position.z,
+          px
         })
       }
-      heroKey = me ? `hero:${me.id}` : null
+      const keepBounds = new THREE.Box3().setFromObject(keep)
+      const keepFigure = {
+        px: figurePixels(keep, camera, viewFrame.bufferHeight),
+        worldH: keepBounds.max.y - keepBounds.min.y,
+        min: { x: keepBounds.min.x, y: keepBounds.min.y, z: keepBounds.min.z },
+        max: { x: keepBounds.max.x, y: keepBounds.max.y, z: keepBounds.max.z }
+      }
       const heroMesh = heroKey ? meshes.get(heroKey) : null
       const heroTrack = heroKey ? tracks.get(heroKey) : null
       window.__lastKeep = {
@@ -773,6 +845,7 @@ export function createView(stage) {
         monsters,
         vagrants: snap.vagrants || [],
         figures,
+        keepFigure,
         rangeRing: rangeRingState(rangeRing.visible, bearer.range),
         buildings: (snap.buildings || []).length,
         town: snap.town,
@@ -810,12 +883,16 @@ export function createView(stage) {
           ? { fromX: heroTrack.fromX, fromZ: heroTrack.fromZ, toX: heroTrack.toX, toZ: heroTrack.toZ, at: heroTrack.at }
           : null,
         frame: {
-          aspect: camera.right / camera.top,
+          mode: "hd2d",
+          aspect: viewFrame.aspect,
           bufferWidth: renderer.domElement.width,
           bufferHeight: renderer.domElement.height,
           halfW: viewFrame.halfW,
-          halfH: viewFrame.halfH
+          halfH: viewFrame.halfH,
+          fov: picture.fov
         },
+        contact: selfContact(heroMesh),
+        driver: driverName(),
         renders,
         toClient,
         redNear,
@@ -842,7 +919,23 @@ export function createView(stage) {
         audio: kept.audio
       }
     },
+    grade() {
+      return picture.grade(() => {
+        const buffers = []
+        for (const clock of ["day", "dusk", "night"]) {
+          viewApi.draw(stillSnap(clock), "still-warrior")
+          const shot = readFrame()
+          buffers.push({ rgba: shot.buf, width: shot.width, height: shot.height, frameMs: shot.frameMs })
+        }
+        return buffers
+      })
+    },
     ghost(kind, x, z, ok) {
+      // play.js calls this on every snapshot. Only a ghost or ring that
+      // changed asks for a paint.
+      const look = ghostLook(kind, x, z, ok, bearer)
+      if (look !== lastGhost) dirty = true
+      lastGhost = look
       ghost.visible = !!kind
       const ring = rangeRingState(!!kind, bearer.range)
       rangeRing.visible = ring.on
@@ -887,15 +980,97 @@ export function createView(stage) {
     }
   }
 
-  function placeCamera(snap, selfId) {
-    const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
-    const anchor = cameraFocus(me?.x, me?.y)
+  function arriveBlend() {
+    const mark = window.__lastKeepArrive
+    if (!mark) return 1
+    if (mark === "wait") {
+      window.__lastKeepArrive = performance.now()
+      return 0
+    }
+    const t = (performance.now() - mark) / ARRIVE_MS
+    if (t >= 1) {
+      window.__lastKeepArrive = 0
+      return 1
+    }
+    return t
+  }
+
+  function dissolveYardEdge(mesh) {
+    const material = mesh.material
+    if (!material || material.userData.yardEdge) return
+    material.userData.yardEdge = true
+    material.customProgramCacheKey = () => "yard-edge"
+    material.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <dithering_fragment>",
+        "float yardMargin = 0.5 - max(abs(vMapUv.x - 0.5), abs(vMapUv.y - 0.5));\n\tfloat yardBand = 1.0 - smoothstep(0.0, 0.1, yardMargin);\n\tfloat yardDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n\tif (yardDither < yardBand) discard;\n\t#include <dithering_fragment>"
+      )
+    }
+    material.needsUpdate = true
+  }
+
+  function boundLook() {
+    const look = window.__lastKeepLook
+    if (!look || !Number.isFinite(look.x) || !Number.isFinite(look.z)) return null
+    return { x: look.x, z: look.z }
+  }
+
+  function seatCamera(snap, me) {
+    lastSeat = { snap, me }
+    const portrait = !!snap.portrait
+    const hero = portrait
+      ? { x: PORTRAIT_STAND.x, z: PORTRAIT_STAND.z }
+      : { x: me?.x || 0, z: me?.y || 0 }
+    const bound = portrait ? null : boundLook()
+    const anchor = portrait ? hero : bound || cameraFocus(me?.x, me?.y)
     const step = worldStep()
     focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
     const dist = zoomFor(snap).camera
-    camera.position.set(focus.x + dist, dist * 0.9, focus.z + dist)
-    camera.lookAt(focus.x, cameraLift, focus.z)
-    camera.updateMatrixWorld(true)
+    picture.seat(camera, focus, dist, snap, {
+      blend: portrait ? 0 : arriveBlend(),
+      hero,
+      cssW: viewFrame.bufferWidth,
+      cssH: viewFrame.bufferHeight
+    })
+    land.sync(snap, camera, viewFrame.halfH)
+  }
+
+  function placeCamera(snap, selfId) {
+    const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
+    seatCamera(snap, me)
+  }
+
+  function heroScreenBox(mesh) {
+    const picture = mesh.userData.picture
+    const rect = renderer.domElement.getBoundingClientRect()
+    if (!picture || rect.width < 1 || rect.height < 1) return null
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).normalize()
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).normalize()
+    const center = mesh.position.clone().addScaledVector(up, picture.h / 2)
+    const corners = [
+      [1, -1],
+      [1, 1],
+      [-1, -1],
+      [-1, 1]
+    ]
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const [uy, rx] of corners) {
+      const point = center
+        .clone()
+        .addScaledVector(up, (uy * picture.h) / 2)
+        .addScaledVector(right, (rx * picture.w) / 2)
+        .project(camera)
+      const x = rect.left + (point.x * 0.5 + 0.5) * rect.width
+      const y = rect.top + (-point.y * 0.5 + 0.5) * rect.height
+      if (x < minX) minX = x
+      if (y < minY) minY = y
+      if (x > maxX) maxX = x
+      if (y > maxY) maxY = y
+    }
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
   }
 
   function toClient(x, z) {
@@ -907,10 +1082,10 @@ export function createView(stage) {
     }
   }
 
-  function redNear(x, z) {
+  function redNear(x, z, y = 16) {
     paintFrame()
     const gl = renderer.getContext()
-    const point = new THREE.Vector3(x, 16, z).project(camera)
+    const point = new THREE.Vector3(x, y, z).project(camera)
     const canvas = renderer.domElement
     const px = Math.round((point.x * 0.5 + 0.5) * canvas.width)
     const py = Math.round((-point.y * 0.5 + 0.5) * canvas.height)
@@ -1012,6 +1187,8 @@ export function createView(stage) {
     scene.traverse((object) => {
       if (!object.isMesh && !object.isSprite) return
       if (!drawnObject(object) || shadowOnly(object)) return
+      const role = object.userData && object.userData.role
+      if (role === "horizon" || role === "far-pine" || role === "portal") return
       objectBounds(object, sampleBox)
       if (sampleBox.isEmpty()) return
       sampleBox.expandByScalar(1.5)
@@ -1142,7 +1319,77 @@ export function createView(stage) {
     return { beauty, clear: [clearBuf[0], clearBuf[1], clearBuf[2]] }
   }
 
+  function stillSnap(clock) {
+    const night = clock === "night"
+    const dusk = clock === "dusk"
+    const player = (id, hero, name, x, y, facing, hp) => ({
+      id,
+      hero,
+      name,
+      x,
+      y,
+      facing,
+      hp,
+      max: hp,
+      alive: true,
+      cds: { attack: 0 }
+    })
+    return {
+      hd2dStill: true,
+      tick: night ? 3 : dusk ? 2 : 1,
+      phase: night ? "wave" : "build",
+      phase_ms: dusk ? 4000 : 60000,
+      hold: false,
+      town: 0,
+      wave: night ? 1 : 0,
+      shown_wave: night ? 1 : 0,
+      keep: { hp: 900, max: 900 },
+      resources: { wood: 40, gold: 0, food: 0 },
+      players: [
+        player("still-warrior", "warrior", "Ada", 88, 36, 0, 100),
+        player("still-mage", "mage", "Lux", 112, 78, 0.4, 80)
+      ],
+      monsters: [],
+      buildings: [],
+      trees: [],
+      chests: [],
+      portals: [],
+      projectiles: [],
+      events: [],
+      relics: [],
+      vagrants: [],
+      chunks: [],
+      land: [],
+      kills: 0,
+      score: 0
+    }
+  }
+
+  function selfContact(mesh) {
+    if (mesh) {
+      for (const child of mesh.children) {
+        if (!child.visible || !child.isMesh || !child.material || !child.material.color) continue
+        if (child.material.color.getHex() === 0xf0c14a && child.position.y > 0 && child.position.y < 2) return "plate"
+      }
+    }
+    return "shadow"
+  }
+
+  function driverName() {
+    if (driverLabel != null) return driverLabel
+    driverLabel = ""
+    try {
+      const gl = renderer.getContext()
+      const info = gl.getExtension("WEBGL_debug_renderer_info")
+      if (info) driverLabel = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL) || "")
+    } catch (_err) {
+      driverLabel = ""
+    }
+    return driverLabel
+  }
+
   function readFrame() {
+    const started = performance.now()
     paintFrame()
     const canvas = renderer.domElement
     const gl = renderer.getContext()
@@ -1158,7 +1405,7 @@ export function createView(stage) {
       const src = (height - 1 - y) * stride
       buf.set(raw.subarray(src, src + stride), y * stride)
     }
-    return { buf, width, height }
+    return { buf, width, height, frameMs: performance.now() - started }
   }
 
   function frameMood() {
@@ -1183,57 +1430,34 @@ export function createView(stage) {
     }
   }
 
-  // Day, dusk, and night each take one framebuffer read. The plate, the keep
-  // pine, and the stone sit here so a lane does not edit them in the scenario.
-  function yardGrade() {
-    if (liveLight !== "day") return null
-    const grade = frameGrade()
+  // One framebuffer read. The numbers are the HD-2D clock score for this light.
+  function clockGrade(clock) {
+    if (liveLight !== clock) return null
+    const shot = readFrame()
+    const score = clockScore(clock, { rgba: shot.buf, width: shot.width, height: shot.height })
+    const ok = Object.values(score).every((value) => Number.isFinite(value))
     return {
-      ok: grade.mood.problems.length === 0 && grade.ground.problems.length === 0,
-      mood: grade.mood,
-      ground: grade.ground
+      ok,
+      ...score,
+      light: clock,
+      mode: "hd2d",
+      fov: picture.fov,
+      width: shot.width,
+      height: shot.height
     }
   }
 
-  function plateSatOf(sample) {
-    const peak = Math.max(sample.r, sample.g, sample.b)
-    return (peak - Math.min(sample.r, sample.g, sample.b)) / Math.max(peak, 1)
+  function yardGrade() {
+    return clockGrade("day")
   }
 
   function duskGrade() {
-    if (liveLight !== "dusk") return null
-    const grade = frameGrade()
-    if (grade.mood.problems.length || grade.ground.problems.length) {
-      return { ok: false, mood: grade.mood, ground: grade.ground }
-    }
-    const stone = sampleObject(0, 36, 6)
-    const pine = sampleObject(-22, 30, -62)
-    const hero = window.__lastKeep && window.__lastKeep.self
-    if (!hero) return { ok: false, mood: grade.mood, ground: grade.ground }
-    // The card is 32 world units. Height 40 is above it. The steel is height 18.
-    const plate = sampleObject(hero.x, 18, hero.y)
-    const gap = hueGap(stone.hue, pine.hue)
-    const sat = plateSatOf(plate)
-    const counted =
-      stone.count >= sampleMinPixels && pine.count >= sampleMinPixels && plate.count >= sampleMinPixels
-    const ok = gap >= 25 && sat < 0.2 && counted
-    return {
-      ok,
-      mood: grade.mood,
-      ground: grade.ground,
-      stone,
-      pine,
-      plate,
-      hueGap: gap,
-      plateSat: sat
-    }
+    return clockGrade("dusk")
   }
 
   function nightGrade() {
-    if (liveLight !== "night") return null
-    const grade = frameGrade()
-    if (grade.mood.problems.length || grade.ground.problems.length) return null
-    return grade.ground
+    const grade = clockGrade("night")
+    return grade && grade.ok ? grade : null
   }
 
   // The blend window is 45ms. An open step is past a twitch and short of a teleport.
@@ -1251,106 +1475,8 @@ export function createView(stage) {
     return { step, age, sx, sz, open, travel }
   }
 
-  function screenRect(object, width, height) {
-    const box = new THREE.Box3().setFromObject(object)
-    if (box.isEmpty()) return null
-    const corner = new THREE.Vector3()
-    let minX = Infinity
-    let maxX = -Infinity
-    let minY = Infinity
-    let maxY = -Infinity
-    let seen = 0
-    for (const x of [box.min.x, box.max.x]) {
-      for (const y of [box.min.y, box.max.y]) {
-        for (const z of [box.min.z, box.max.z]) {
-          corner.set(x, y, z).project(camera)
-          if (corner.z > 1) continue
-          const px = (corner.x * 0.5 + 0.5) * width
-          const py = (-corner.y * 0.5 + 0.5) * height
-          if (px < minX) minX = px
-          if (px > maxX) maxX = px
-          if (py < minY) minY = py
-          if (py > maxY) maxY = py
-          seen += 1
-        }
-      }
-    }
-    if (!seen) return null
-    const x0 = Math.max(0, Math.floor(minX))
-    const y0 = Math.max(0, Math.floor(minY))
-    const x1 = Math.min(width, Math.ceil(maxX))
-    const y1 = Math.min(height, Math.ceil(maxY))
-    if (x1 <= x0 || y1 <= y0) return null
-    return { x0, y0, x1, y1 }
-  }
-
-  // Explicit read. The match loop does not call this, so ordinary paints stay off readPixels.
   function pictureGrade() {
-    const canvas = renderer.domElement
-    const focal = new Uint8Array(canvas.width * canvas.height)
-    const cover = new Uint8Array(canvas.width * canvas.height)
-    const fill = (mask, rect) => {
-      for (let y = rect.y0; y < rect.y1; y++) {
-        mask.fill(1, y * canvas.width + rect.x0, y * canvas.width + rect.x1)
-      }
-    }
-    // The keep's screen box includes the cottage and the pines at its corners.
-    // The subject is the inner ninety percent. The whole box stays out of the ground.
-    const stamp = (object) => {
-      const rect = screenRect(object, canvas.width, canvas.height)
-      if (!rect) return
-      fill(cover, rect)
-      const dx = Math.floor((rect.x1 - rect.x0) * 0.05)
-      const dy = Math.floor((rect.y1 - rect.y0) * 0.05)
-      const core = { x0: rect.x0 + dx, y0: rect.y0 + dy, x1: rect.x1 - dx, y1: rect.y1 - dy }
-      if (core.x1 > core.x0 && core.y1 > core.y0) fill(focal, core)
-    }
-    stamp(keep)
-    for (const [key, mesh] of meshes) {
-      if (key.startsWith("hero:") || key.startsWith("monster:")) stamp(mesh)
-    }
-    const shot = readFrame()
-    const n = shot.width * shot.height
-    const rgb = new Uint8Array(n * 3)
-    for (let i = 0; i < n; i++) {
-      const o = i * 4
-      const d = i * 3
-      rgb[d] = shot.buf[o]
-      rgb[d + 1] = shot.buf[o + 1]
-      rgb[d + 2] = shot.buf[o + 2]
-    }
-    const y0 = Math.round(shot.height * 0.42)
-    const y1 = Math.round(shot.height * 0.9)
-    const ground = new Uint8Array(n)
-    let focalCount = 0
-    let groundCount = 0
-    for (let i = 0; i < n; i++) if (focal[i]) focalCount += 1
-    for (let y = y0; y < y1; y++) {
-      const row = y * shot.width
-      for (let x = 0; x < shot.width; x++) {
-        const i = row + x
-        if (cover[i]) continue
-        ground[i] = 1
-        groundCount += 1
-      }
-    }
-    const value = valueStructure(rgb, shot.width, shot.height, focal, ground)
-    return {
-      light: liveLight,
-      width: shot.width,
-      height: shot.height,
-      levels: value.levels,
-      spread: value.spread,
-      focalContrast: value.focalContrast,
-      focalLuma: value.focalLuma,
-      groundLuma: value.groundLuma,
-      noise: noiseEnergy(rgb, shot.width, shot.height, ground),
-      focal: focalCount,
-      ground: groundCount,
-      bands: value.bands,
-      focalBands: value.focalBands,
-      groundBands: value.groundBands
-    }
+    return clockGrade(liveLight)
   }
 
   function patchAt(x, z) {
@@ -1392,6 +1518,11 @@ export function createView(stage) {
   function aimFacing(mesh, facing) {
     if (!mesh.userData.face || !Number.isFinite(facing)) return
     const target = -facing
+    if (mesh.userData.preview) {
+      mesh.rotation.y = target
+      mesh.userData.yawTarget = target
+      return
+    }
     if (!Number.isFinite(mesh.userData.yawTarget)) mesh.rotation.y = target
     mesh.userData.yawTarget = target
   }
@@ -1487,10 +1618,12 @@ export function createView(stage) {
     const anim = mesh.userData.pose || {}
     anim.moving = travel > 0.4
     mesh.userData.pose = anim
+    if (Number.isFinite(mesh.userData.fade) && card.material) card.material.opacity = mesh.userData.fade
     const frame = sheetRow(picture, anim, performance.now())
-    const offsetX = column / picture.directions
-    const offsetY = 1 - (frame + 1) / picture.frames
-    card.material.map.offset.set(offsetX, offsetY)
+    // A 4-frame sheet has no death row. sheetRow still returns walk when death is 0.
+    const row = Math.min(picture.frames - 1, Math.max(0, frame))
+    const cell = cellOffset(column, row, picture.directions, picture.frames)
+    card.material.map.offset.set(cell.x, cell.y)
     card.renderOrder = 0
     const rim = mesh.userData.rim
     if (!rim) return
@@ -1502,7 +1635,7 @@ export function createView(stage) {
     const seat = rimSeat(picture.h, picture.rim.scale, away)
     rim.position.set(seat.x, seat.y, seat.z)
     rim.renderOrder = seat.renderOrder
-    rim.material.map.offset.set(offsetX, offsetY)
+    rim.material.map.offset.set(cell.x, cell.y)
   }
 
   function heroCard(picture) {
@@ -1523,7 +1656,11 @@ export function createView(stage) {
     return card
   }
 
-  function rimCard(picture, rim) {
+  // A rim atlas is the card's atlas in one color. Each spawn used to copy and
+  // recolor the whole atlas, about 10MB for a goblin; one copy per kind does.
+  function rimBytes(picture, rim) {
+    const held = rimAtlases.get(picture)
+    if (held && held.color === rim.color) return held.bytes
     const bytes = new Uint8Array(picture.atlas)
     const red = (rim.color >> 16) & 255
     const green = (rim.color >> 8) & 255
@@ -1534,6 +1671,12 @@ export function createView(stage) {
       bytes[i + 1] = green
       bytes[i + 2] = blue
     }
+    rimAtlases.set(picture, { color: rim.color, bytes })
+    return bytes
+  }
+
+  function rimCard(picture, rim) {
+    const bytes = rimBytes(picture, rim)
     const map = new THREE.DataTexture(bytes, picture.atlasW, picture.atlasH, THREE.RGBAFormat)
     map.magFilter = THREE.NearestFilter
     map.minFilter = THREE.NearestFilter
@@ -1563,20 +1706,23 @@ export function createView(stage) {
     } else {
       for (const piece of sig.parts) group.add(pieceMesh(piece))
     }
-    const top = sig.bounds.h + 4
-    const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(22, sig.bounds.w * 0.45), 3, 2)), mat(0x1a100c))
-    const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(20, sig.bounds.w * 0.4), 2, 2)), mat(0x7ea35a))
-    plate.position.y = top
-    fill.position.set(0, top, 1.2)
-    group.add(plate, fill)
-    group.userData.hp = fill
+    if (!row.preview) {
+      const top = sig.bounds.h + 4
+      const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(22, sig.bounds.w * 0.45), 3, 2)), mat(0x1a100c))
+      const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(Math.max(20, sig.bounds.w * 0.4), 2, 2)), mat(0x7ea35a))
+      plate.position.y = top
+      fill.position.set(0, top, 1.2)
+      group.add(plate, fill)
+      group.userData.hp = fill
+    }
     group.userData.face = true
     group.userData.role = "hero"
     group.userData.hero = row.hero
+    group.userData.heroId = row.id
     group.userData.parts = picture ? picture.directions * picture.frames : sig.parts.length
     group.userData.marks = sig.marks.slice()
     group.userData.bounds = sig.bounds
-    if (row.id === selfId) {
+    if (row.id === selfId && !picture) {
       const gold = new THREE.Mesh(
         trackGeometry(new THREE.BoxGeometry(sig.bounds.w + 4, 1.2, Math.min(sig.bounds.d, 22) + 4)),
         mat(0xf0c14a)
@@ -1628,7 +1774,7 @@ export function createView(stage) {
     } else {
       for (const piece of modelParts(row.kind)) group.add(pieceMesh(piece))
     }
-    const radius = { house: 22, field: 22, forge: 18, trap: 15 }[row.kind] || 12
+    const radius = { house: 22, field: 22, forge: 18, trap: 15, tower: 16, mage_tower: 18 }[row.kind] || 12
     group.add(contactDisc(radius))
     return group
   }
@@ -1663,24 +1809,27 @@ export function createView(stage) {
     return mesh
   }
 
+  // draw() fits the frame every snapshot. Reading the stage rect there forced
+  // a layout per tick, so the size is read once and again only on a resize.
   function applyFrame() {
-    const rect = stage.getBoundingClientRect()
-    const next = frameFor(rect.width || stage.clientWidth || 480, rect.height || stage.clientHeight || 270, townRank)
-    const unchanged =
-      viewFrame.bufferWidth === next.bufferWidth &&
-      viewFrame.bufferHeight === next.bufferHeight &&
-      viewFrame.halfW === next.halfW &&
-      renderer.domElement.width === next.bufferWidth
-    viewFrame = next
-    if (unchanged) return
-    renderer.setSize(next.bufferWidth, next.bufferHeight, false)
-    renderer.domElement.style.width = "100%"
-    renderer.domElement.style.height = "100%"
-    camera.left = next.left
-    camera.right = next.right
-    camera.top = next.top
-    camera.bottom = next.bottom
-    camera.updateProjectionMatrix()
+    if (!stageSize) {
+      const rect = stage.getBoundingClientRect()
+      stageSize = { w: rect.width || stage.clientWidth || 480, h: rect.height || stage.clientHeight || 270 }
+    }
+    viewFrame = picture.fit(renderer, camera, stageSize.w, stageSize.h, townRank)
+  }
+
+  // fit() sets the world lens: fov, near, far. The menu's portrait seat
+  // narrows the fov and pulls near in to 1, so a refit without a seat paints
+  // the portrait pose through the world lens: near clips the hero and the
+  // ground under him, and the lower frame is the clear color. The
+  // ResizeObserver's first call lands after the menu's first draw, and the
+  // menu draws again only when its hero sheets load.
+  function onResize() {
+    stageSize = null
+    dirty = true
+    applyFrame()
+    if (lastSeat) seatCamera(lastSeat.snap, lastSeat.me)
   }
 
   function cullActors() {
@@ -1711,14 +1860,21 @@ export function createView(stage) {
     })
   }
 
-  function publishPerf(paintMs) {
+  // The census and the rim count walk the whole scene. They run each frame
+  // only for test hooks, and on repaint() when a test asks.
+  function publishPerf(paintMs, full = testHooks) {
     const perf = window.__lastKeepPerf || (window.__lastKeepPerf = { paints: [] })
     perf.geometries = renderer.info.memory.geometries
     perf.textures = renderer.info.memory.textures
     perf.calls = renderer.info.render.calls
     perf.triangles = renderer.info.render.triangles
-    perf.census = geometryCensus(scene)
-    perf.rims = visibleRims()
+    if (full) {
+      perf.census = geometryCensus(scene)
+      perf.rims = visibleRims()
+    }
+    perf.submitMs = lastSubmit
+    perf.driver = driverName()
+    perf.tier = picture.tier
     if (paintMs == null) return
     perf.paints.push(paintMs)
     if (perf.paints.length > 400) perf.paints.shift()

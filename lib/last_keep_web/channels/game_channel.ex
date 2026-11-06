@@ -51,6 +51,14 @@ defmodule LastKeepWeb.GameChannel do
     {:reply, :ok, socket}
   end
 
+  def handle_in("forget", _payload, socket) do
+    if System.get_env("PLAYWRIGHT") == "1" do
+      Room.forget(socket.assigns.code, socket.assigns.player_id)
+    end
+
+    {:reply, :ok, socket}
+  end
+
   def handle_in(_event, _payload, socket), do: {:noreply, socket}
 
   @impl true

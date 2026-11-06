@@ -3,8 +3,20 @@ import { buildCard } from "./pictures.js"
 
 const HEROES = ["warrior", "mage", "scout", "farmer", "engineer"]
 
+const LINES = {
+  warrior: "Melee and shield. Chops faster. Kills pay gold.",
+  mage: "Fire, frost, and a meteor. A mage tower sharpens spells.",
+  scout: "Fast bow. Shows where the next wave breaks the trees.",
+  farmer: "Plants fields that yield food and gold. Feasts heal the band.",
+  engineer: "Walls and traps at half the wood. The hammer mends stone."
+}
+
 export function heroKinds() {
   return HEROES.slice()
+}
+
+export function heroLine(kind) {
+  return LINES[kind] || ""
 }
 
 function decodeFront(entry) {
