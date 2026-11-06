@@ -18,6 +18,8 @@ screen-right, N is the back, W faces screen-left.
 
 Output: <out>.png (albedo) and <out>-normal.png. Columns follow
 pictureColumn: S, SW, W, NW, N, NE, E, SE. Rows: 8 walk frames, then 4 idle.
+When every attack clip (8) and every death clip (S W N E) is on disk, the
+sheet gains 6 attack rows and 6 death rows and idle moves to row 20.
 Needs python3, numpy, scipy, Pillow, and ffmpeg on PATH. The same inputs give the
 same bytes. See docs/concepts/SPRITE-PIPELINE.md.
 """
@@ -41,6 +43,11 @@ FILL = HERO - 2      # opaque body height before the outline
 FOOT = CELL - 12     # row of the lowest body pixel (outline sits one below)
 WALK = 8
 IDLE = 4
+# Attack and death rows use the monster row counts (attack_picks and
+# death_picks). A hero sheet gains them only when every clip of that block
+# is on disk; until then the sheet stays the 8 walk + 4 idle rows.
+ATTACK_ROWS = 6
+DEATH_ROWS = 6
 COLOURS = 28         # palette size, not counting the outline
 OUTLINE = (24, 24, 24)
 BG_LOOSE = 222       # min channel for border-connected white
@@ -96,6 +103,112 @@ class Spec(NamedTuple):
 
 
 HERO_SPEC = Spec(CELL, HERO, FOOT, (("walk", WALK), ("idle", IDLE)))
+
+
+def hero_bands(height):
+    """Row ranges for a hero sheet of this pixel height.
+
+    12 rows is walk then idle, the sheet the client reads today. 24 rows is
+    walk, attack, death, idle: the same order as a monster sheet, so idle
+    moves from row 8 to row 20. None when the height is neither."""
+    if height == CELL * (WALK + IDLE):
+        return {"walk": range(WALK), "attack": range(0), "death": range(0),
+                "idle": range(WALK, WALK + IDLE)}
+    full = WALK + ATTACK_ROWS + DEATH_ROWS + IDLE
+    if height == CELL * full:
+        attack = WALK
+        death = attack + ATTACK_ROWS
+        idle = death + DEATH_ROWS
+        return {"walk": range(WALK), "attack": range(attack, death),
+                "death": range(death, idle), "idle": range(idle, full)}
+    return None
+
+
+def actions_complete(clips):
+    """Both extra blocks are present: attack on all 8 directions, death on
+    S W N E. A partial set (the warrior pilot has only S) leaves the
+    walk and idle sheet alone."""
+    attack = all(os.path.exists(os.path.join(clips, f"attack-{d}.mp4")) for d in COLUMNS)
+    death = all(os.path.exists(os.path.join(clips, f"death-{d}.mp4")) for d in ("S", "W", "N", "E"))
+    return attack and death
+
+
+def hero_attack_cells(frames):
+    """Six attack cells placed like a walk frame: each frame's own foot and
+    head centre, scale within 5% of the clip median. Returns picks, scale,
+    cells (rgb, alpha) and the peak info."""
+    peak, back, picks = attack_picks(frames, ATTACK_ROWS)
+    scale = clip_geometry(frames, picks)
+    cells = []
+    for i in picks:
+        f = frames[i]
+        top, foot = span(f["mask"])
+        own = min(max(FILL / (foot - top + 1), scale * 0.95), scale * 1.05)
+        cells.append(place(f, own, head_centre(f["mask"]), foot))
+    return picks, scale, cells, {"peak": peak, "recovery": back}
+
+
+def hero_death_picks(frames, n=DEATH_ROWS):
+    """Six frames from the start pose to the last frame. The last cell is the
+    still lying pose the clip holds, not the earlier rest estimate a monster
+    death uses (that estimate can still be mid-fall)."""
+    end = len(frames) - 1
+    picks = []
+    for k in range(n):
+        t = int(round(k * end / (n - 1)))
+        picks.append(t if k in (0, n - 1) else sharpest(frames, t, 1, end))
+    return picks
+
+
+def hero_death_cells(frames):
+    """Death cells at frame 0's scale, so a lying pose stays short. Each
+    frame's own lowest pixel sits on the foot row, and x stays on frame 0's
+    head centre so the body does not slide. Returns picks, scale, cells,
+    a placer(i) for any source frame, and info."""
+    top, foot = span(frames[0]["mask"])
+    scale = FILL / float(foot - top + 1)
+    x0 = head_centre(frames[0]["mask"])
+    picks = hero_death_picks(frames)
+
+    def placer(i):
+        f = frames[i]
+        return place(f, scale, x0, span(f["mask"])[1])
+
+    return picks, scale, [placer(i) for i in picks], placer, {"scale": round(scale, 4)}
+
+
+def cell_metrics(rgb, alpha):
+    """Height, foot row and whether the outlined cell touches its border."""
+    cell = np.zeros((CELL, CELL, 4), np.uint8)
+    cell[alpha, :3] = np.clip(rgb[alpha], 0, 255).astype(np.uint8)
+    cell[alpha, 3] = 255
+    cell = outline(cell)
+    ys = np.nonzero(cell[..., 3].any(1))[0]
+    ring = np.ones((CELL, CELL), bool)
+    ring[1:-1, 1:-1] = False
+    if len(ys) == 0:
+        return {"height": 0, "foot": -1, "edge": False}
+    return {"height": int(ys[-1] - ys[0] + 1), "foot": int(ys[-1]),
+            "edge": bool((cell[..., 3][ring] > 0).any())}
+
+
+def paste_hero_actions(base, attack, death):
+    """A 24-row sheet. Walk rows and idle rows are the base sheet's pixels.
+    attack and death map a direction to ATTACK_ROWS / DEATH_ROWS outlined
+    RGBA cells. Diagonal deaths are the caller's copies of the cardinal."""
+    full = WALK + ATTACK_ROWS + DEATH_ROWS + IDLE
+    tall = np.zeros((CELL * full, CELL * len(COLUMNS), 4), np.uint8)
+    tall[:CELL * WALK] = base[:CELL * WALK]
+    idle_at = WALK + ATTACK_ROWS + DEATH_ROWS
+    tall[CELL * idle_at:CELL * (idle_at + IDLE)] = base[CELL * WALK:CELL * (WALK + IDLE)]
+    for c, d in enumerate(COLUMNS):
+        for r, cell in enumerate(attack[d]):
+            row = WALK + r
+            tall[row * CELL:(row + 1) * CELL, c * CELL:(c + 1) * CELL] = cell
+        for r, cell in enumerate(death[d]):
+            row = WALK + ATTACK_ROWS + r
+            tall[row * CELL:(row + 1) * CELL, c * CELL:(c + 1) * CELL] = cell
+    return tall
 
 
 def sheet_spec(cfg):
@@ -533,7 +646,37 @@ def build(clips, inspect=None):
         for r, (rgb, alpha) in enumerate(raw[d]):
             cell = outline(quantize(rgb, alpha, pal_lab, pal))
             sheet[r * CELL:(r + 1) * CELL, c * CELL:(c + 1) * CELL] = cell
-    return sheet, pal, plan
+    # A missing attack or death clip leaves this sheet exactly as it is.
+    # The walk and idle pixels above are copied unchanged when the blocks exist.
+    if not actions_complete(clips):
+        return sheet, pal, plan
+    def outlined(cells):
+        return [outline(quantize(rgb, alpha, pal_lab, pal)) for rgb, alpha in cells]
+
+    attack, death = {}, {}
+    for d in COLUMNS:
+        frames = load_clip(os.path.join(clips, f"attack-{d}.mp4"))
+        picks, scale, cells, info = hero_attack_cells(frames)
+        attack[d] = outlined(cells)
+        plan[d]["attack"] = {"clip": f"attack-{d}.mp4", "picks": picks, "scale": round(scale, 4), **info}
+        if inspect:
+            inspect(d, "attack", frames, picks, scale)
+        del frames
+    done = {}
+    for d in ("S", "W", "N", "E"):
+        frames = load_clip(os.path.join(clips, f"death-{d}.mp4"))
+        picks, scale, cells, _placer, info = hero_death_cells(frames)
+        done[d] = outlined(cells)
+        plan[d]["death"] = {"clip": f"death-{d}.mp4", "picks": picks, "scale": round(scale, 4), **info}
+        if inspect:
+            inspect(d, "death", frames, picks, scale)
+        del frames
+    for d, src in DEATH_FROM.items():
+        death[d] = done[src]
+        plan[d]["death"] = dict(plan[src]["death"])
+    for d in ("S", "W", "N", "E"):
+        death[d] = done[d]
+    return paste_hero_actions(sheet, attack, death), pal, plan
 
 
 def monster_palette_samples(dirs, spec):

@@ -873,7 +873,78 @@ def precheck(cfg, log=print):
         return problems
     walk_median = {}
 
+    def note_attack(d, frames, scale, cells):
+        clip = f"attack-{d}.mp4"
+        w, h, fps = clip_format(os.path.join(vid, clip))
+        if w != h or round(fps) != CLIP_FPS or len(frames) != CLIP_FRAMES:
+            flag(clip, f"format {w}x{h} {fps:g} fps {len(frames)} frames (want square, {CLIP_FPS} fps, "
+                       f"{CLIP_FRAMES} frames: 2 s with last frame = first)")
+        med = walk_median[d]
+        first, last = cell_alpha(frames[0], scale), cell_alpha(frames[-1], scale)
+        loop = int((first != last).sum())
+        if loop > WALK_LOOP * med:
+            flag(clip, f"loop does not close: last frame differs from the first by {loop} silhouette px "
+                       f"(limit {WALK_LOOP * med:.0f} = {WALK_LOOP} x walk median {med:.0f})")
+        start = int((first != pose_alpha(os.path.join(vid, "dirs", f"{d}.png"), frames[0])).sum())
+        if start > START_POSE * med:
+            flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                       f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
+        mets = [sv.cell_metrics(*c) for c in cells]
+        heights = [m["height"] for m in mets]
+        target = sv.FOOT + 1
+        import check_sprite_sheet as cs
+        if any(abs(h - sv.HERO) > cs.HERO_HEIGHT_TOL for h in heights):
+            flag(clip, f"height off 88 +-2: {heights} (the walk's check)")
+        if any(abs(m["foot"] - target) > 1 for m in mets):
+            flag(clip, f"foot line off row {target}: {[m['foot'] for m in mets]}")
+        if any(m["edge"] for m in mets):
+            flag(clip, "a frame touches the cell border")
+        log(f"{clip}: {len(frames)} frames, loop {loop} px, start {start} px, "
+            f"walk median {med:.0f}, height {min(heights)}..{max(heights)}")
+
+    def note_death(d, frames, scale, cells, placer):
+        clip = f"death-{d}.mp4"
+        w, h, fps = clip_format(os.path.join(vid, clip))
+        if w != h or round(fps) != CLIP_FPS or len(frames) != CLIP_FRAMES:
+            flag(clip, f"format {w}x{h} {fps:g} fps {len(frames)} frames (want square, {CLIP_FPS} fps, "
+                       f"{CLIP_FRAMES} frames)")
+        med = walk_median[d]
+        first = cell_alpha(frames[0], scale)
+        start = int((first != pose_alpha(os.path.join(vid, "dirs", f"{d}.png"), frames[0])).sum())
+        if start > START_POSE * med:
+            flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                       f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
+        mets = [sv.cell_metrics(*c) for c in cells]
+        import check_sprite_sheet as cs
+        if abs(mets[0]["height"] - sv.HERO) > cs.HERO_HEIGHT_TOL:
+            flag(clip, f"start height {mets[0]['height']} px off 88 +-2")
+        target = sv.FOOT + 1
+        feet = [m["foot"] for m in mets]
+        if any(abs(f - target) > cs.DEATH_FOOT for f in feet):
+            flag(clip, f"feet off the line: rows {feet} (target {target} +- {cs.DEATH_FOOT})")
+        if any(m["edge"] for m in mets):
+            flag(clip, "a frame touches the cell border")
+        # The last half second is the hold. It stays within the start-pose limit of the last frame.
+        half = CLIP_FPS // 2
+        last = ndimage.binary_dilation(placer(len(frames) - 1)[1], CROSS)
+        hold = max(int((ndimage.binary_dilation(placer(i)[1], CROSS) != last).sum())
+                   for i in range(len(frames) - half, len(frames)))
+        if hold > START_POSE * med:
+            flag(clip, f"last frames move: the last {half} frames differ from the last by {hold} silhouette px "
+                       f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
+        log(f"{clip}: {len(frames)} frames, no loop (death), start {start} px, "
+            f"walk median {med:.0f}, height {mets[0]['height']}..{min(m['height'] for m in mets)}, "
+            f"hold {hold} px")
+
     def inspect(d, kind, frames, picks, scale):
+        if kind == "attack":
+            _picks, scale, cells, _info = sv.hero_attack_cells(frames)
+            note_attack(d, frames, scale, cells)
+            return
+        if kind == "death":
+            _picks, scale, cells, placer, _info = sv.hero_death_cells(frames)
+            note_death(d, frames, scale, cells, placer)
+            return
         clip = f"{kind}-{d}.mp4"
         w, h, fps = clip_format(os.path.join(vid, clip))
         if w != h or round(fps) != CLIP_FPS or len(frames) != CLIP_FRAMES:
@@ -903,6 +974,23 @@ def precheck(cfg, log=print):
 
     with contextlib.redirect_stderr(io.StringIO()):
         sheet, pal, plan = sv.build(vid, inspect)
+    # A partial attack or death set is checked here and is not on the sheet.
+    # build() already checked a complete set through inspect.
+    if not sv.actions_complete(vid):
+        for d in COLUMNS:
+            path = os.path.join(vid, f"attack-{d}.mp4")
+            if os.path.exists(path):
+                frames = sv.load_clip(path)
+                _picks, scale, cells, _info = sv.hero_attack_cells(frames)
+                note_attack(d, frames, scale, cells)
+                del frames
+        for d in ("S", "W", "N", "E"):
+            path = os.path.join(vid, f"death-{d}.mp4")
+            if os.path.exists(path):
+                frames = sv.load_clip(path)
+                _picks, scale, cells, placer, _info = sv.hero_death_cells(frames)
+                note_death(d, frames, scale, cells, placer)
+                del frames
     import check_sprite_sheet as cs
     hero = cs.HEROES.get(cfg["hero"])
     if hero is None:

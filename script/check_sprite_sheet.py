@@ -201,8 +201,21 @@ def measure(cell, table, spec):
 
 
 def row_clip(d, r):
-    """The clip a sheet cell comes from: rows 0-7 walk, 8-11 idle."""
-    return f"{'walk' if r < WALK else 'idle'}-{d}.mp4"
+    """The clip a 12-row sheet cell comes from: rows 0-7 walk, 8-11 idle.
+
+    view_check calls this with the index of a walk-then-idle frame list, which
+    is the same numbering. A 24-row sheet's attack rows share numbers 8-13
+    with those idle rows, so the attack and death checks name their own clips."""
+    if r < WALK:
+        return f"walk-{d}.mp4"
+    if r < WALK + IDLE:
+        return f"idle-{d}.mp4"
+    if r < WALK + sv.ATTACK_ROWS:
+        return f"attack-{d}.mp4"
+    if r < WALK + sv.ATTACK_ROWS + sv.DEATH_ROWS:
+        src = d if d in ("S", "W", "N", "E") else sv.DEATH_FROM[d]
+        return f"death-{src}.mp4"
+    return f"idle-{d}.mp4"
 
 
 class Report:
@@ -275,13 +288,22 @@ def main(argv=None):
         concept = None
     sheet = np.asarray(Image.open(sheet_path).convert("RGBA")).copy()
     rep = run_checks(hero, sheet, poses_dir)
-    grid = cells(sheet)
+    bands = sv.hero_bands(sheet.shape[0])
+    rows = WALK + IDLE if not (bands and list(bands["attack"])) else (
+        WALK + sv.ATTACK_ROWS + sv.DEATH_ROWS + IDLE)
+    grid = cells(sheet, rows=rows)
     if args.out:
         os.makedirs(args.out, exist_ok=True)
         write_contact(grid, concept, os.path.join(args.out, "contact.png"))
         write_gif(grid, range(WALK), os.path.join(args.out, "walk.gif"), 125)
-        write_gif(grid, range(WALK, WALK + IDLE), os.path.join(args.out, "idle.gif"), 320)
-        print(f"wrote {args.out}/contact.png walk.gif idle.gif")
+        idle_rows = range(WALK, WALK + IDLE) if rows == WALK + IDLE else bands["idle"]
+        write_gif(grid, idle_rows, os.path.join(args.out, "idle.gif"), 320)
+        names = "contact.png walk.gif idle.gif"
+        if rows != WALK + IDLE:
+            write_gif(grid, bands["attack"], os.path.join(args.out, "attack.gif"), 140)
+            write_gif(grid, bands["death"], os.path.join(args.out, "death.gif"), 160)
+            names += " attack.gif death.gif"
+        print(f"wrote {args.out}/{names}")
     print(f"{'OK' if not rep.fails else 'FAILED'}: {rep.fails} failing checks")
     return 1 if rep.fails else 0
 
@@ -291,8 +313,23 @@ def run_checks(hero, sheet, poses_dir, quiet=False):
     table = hero["roles"]
     rep = Report(quiet)
 
-    rep.check(sheet.shape == (CELL * (WALK + IDLE), CELL * len(COLUMNS), 4), "sheet size",
-              f"{sheet.shape[1]}x{sheet.shape[0]} (want {CELL * len(COLUMNS)}x{CELL * (WALK + IDLE)})")
+    bands = sv.hero_bands(sheet.shape[0])
+    # 12 rows stay the only accepted size until attack and death are both present.
+    # A taller sheet is walk, attack, death, idle. Anything else still fails this.
+    expect_h = sheet.shape[0] if bands and bands["attack"] else CELL * (WALK + IDLE)
+    rep.check(sheet.shape == (expect_h, CELL * len(COLUMNS), 4), "sheet size",
+              f"{sheet.shape[1]}x{sheet.shape[0]} (want {CELL * len(COLUMNS)}x{expect_h}"
+              + ("" if not (bands and bands["attack"]) else
+                 f": {WALK} walk, {sv.ATTACK_ROWS} attack, {sv.DEATH_ROWS} death, {IDLE} idle")
+              + ")")
+    if bands and bands["attack"]:
+        grid_rows = WALK + sv.ATTACK_ROWS + sv.DEATH_ROWS + IDLE
+        standing = list(bands["walk"]) + list(bands["idle"])
+        idle_rows = list(bands["idle"])
+    else:
+        grid_rows = WALK + IDLE
+        standing = range(WALK + IDLE)
+        idle_rows = range(WALK, WALK + IDLE)
     alpha = sheet[..., 3]
     rep.check(set(np.unique(alpha)) <= {0, 255}, "alpha is 0 or 255")
     opaque = sheet[alpha > 0][:, :3]
@@ -307,7 +344,7 @@ def run_checks(hero, sheet, poses_dir, quiet=False):
         rep.check(d[j] <= 15, f"palette keeps {name} {rgb}", f"nearest {pal[j]} dE {d[j]:.1f}",
                   [f"dirs/{c}.png" for c in COLUMNS])
 
-    grid = cells(sheet)
+    grid = cells(sheet, rows=grid_rows)
     a = alpha > 0
     p = np.pad(a, 1)
     edge = a & ~(p[:-2, 1:-1] & p[2:, 1:-1] & p[1:-1, :-2] & p[1:-1, 2:])
@@ -317,21 +354,21 @@ def run_checks(hero, sheet, poses_dir, quiet=False):
 
     heights, feet, where = [], [], []
     for c in range(len(COLUMNS)):
-        for r in range(WALK + IDLE):
+        for r in standing:
             top, foot = body_span(grid[c][r])
             heights.append(foot - top + 1)
             feet.append(foot)
             where.append(row_clip(COLUMNS[c], r))
-    rep.check(all(abs(h - sv.HERO) <= 2 for h in heights), "height 88 +-2 px",
+    rep.check(all(abs(h - sv.HERO) <= HERO_HEIGHT_TOL for h in heights), "height 88 +-2 px",
               f"min {min(heights)} max {max(heights)}",
-              [w for w, h in zip(where, heights) if abs(h - sv.HERO) > 2])
+              [w for w, h in zip(where, heights) if abs(h - sv.HERO) > HERO_HEIGHT_TOL])
     rep.check(max(feet) - min(feet) <= 1 and abs(feet[0] - (sv.FOOT + 1)) <= 1, "shared foot line",
               f"rows {min(feet)}..{max(feet)} (target {sv.FOOT + 1})",
               [w for w, f in zip(where, feet) if abs(f - (sv.FOOT + 1)) > 1])
 
     lone, speckled = 0, []
     for c in range(len(COLUMNS)):
-        for r in range(WALK + IDLE):
+        for r in standing:
             cell = grid[c][r]
             key = cell[..., 0].astype(np.int32) * 65536 + cell[..., 1].astype(np.int32) * 256 + cell[..., 2]
             outline_key = OUTLINE[0] * 65536 + OUTLINE[1] * 256 + OUTLINE[2]
@@ -355,20 +392,21 @@ def run_checks(hero, sheet, poses_dir, quiet=False):
             rep.check(True, f"{prop_name} {d}", "on the body midline in this view: no side to hold")
             continue
         want, n = prop_offset(poses[d], table, prop_role)
-        got = [prop_offset(grid[c][r], table, prop_role) for r in range(WALK + IDLE)]
+        rows = list(standing)
+        got = [prop_offset(grid[c][r], table, prop_role) for r in rows]
         if want is None or abs(want) < 2:
             seen = [g for g, _ in got if g is not None]
             rep.check(True, f"{prop_name} {d}", f"pose shows {n} {prop_role} px: no side to hold" +
                       (f"; sheet frames show {prop_role} in {len(seen)}/12" if seen else ""))
             continue
         side = "right" if want > 0 else "left"
-        bad = [r for r, (g, _) in enumerate(got) if g is None or g * want <= 0 or abs(g) < 2]
+        bad = [rows[i] for i, (g, _) in enumerate(got) if g is None or g * want <= 0 or abs(g) < 2]
         rep.check(not bad, f"{prop_name} {d} on screen-{side} of body", f"pose {want:+.1f}px; bad rows {bad}",
                   [row_clip(d, r) for r in bad])
 
     for col, (title, bounds) in (("N", hero["back"]), ("S", hero["front"])):
         c = COLUMNS.index(col)
-        view_check(rep, [grid[c][r] for r in range(WALK + IDLE)], table, title, bounds, col)
+        view_check(rep, [grid[c][r] for r in standing], table, title, bounds, col)
 
     first = [grid[c][0] for c in range(len(COLUMNS))]
     worst = None
@@ -394,11 +432,74 @@ def run_checks(hero, sheet, poses_dir, quiet=False):
         rep.check(min(moves) >= 16 and contact >= 16, f"walk {d} legs move",
                   f"lower-half px per step {moves}, contact 0 vs 4 {contact}", [f"walk-{d}.mp4"])
         walk_shape = float(np.median([shape(grid[c][r], grid[c][(r + 1) % WALK]) for r in range(WALK)]))
-        idle_shape = [shape(grid[c][WALK + r], grid[c][WALK + (r + 1) % IDLE]) for r in range(IDLE)]
-        idle_col = [changed(grid[c][WALK + r], grid[c][WALK + (r + 1) % IDLE]) for r in range(IDLE)]
+        idle_shape = [shape(grid[c][idle_rows[r]], grid[c][idle_rows[(r + 1) % IDLE]]) for r in range(IDLE)]
+        idle_col = [changed(grid[c][idle_rows[r]], grid[c][idle_rows[(r + 1) % IDLE]]) for r in range(IDLE)]
         rep.check(min(idle_col) > 0 and max(idle_shape) <= 0.6 * walk_shape, f"idle {d} subtle",
                   f"silhouette px per step {idle_shape} vs walk median {int(walk_shape)}", [f"idle-{d}.mp4"])
 
+    if bands and list(bands["attack"]):
+        extra = action_faults(grid, bands)
+        for ok, name, detail, clips in extra.results:
+            rep.check(ok, name, detail, clips)
+    return rep
+
+
+def action_faults(grid, bands):
+    """Attack rows take the walk's height and foot line. A death's first frame
+    does too. Later death frames may lie down, so they are not held to the
+    standing height; the lowest pixel stays on the foot line and the cell
+    does not clip the body."""
+    rep = Report(quiet=True)
+    if not bands or not list(bands["attack"]):
+        return rep
+    target = sv.FOOT + 1
+    attack_where = []
+    for c, d in enumerate(COLUMNS):
+        for r in bands["attack"]:
+            top, foot = body_span(grid[c][r])
+            attack_where.append((d, r, foot - top + 1, foot))
+    heights = [h for _, _, h, _ in attack_where]
+    feet = [f for _, _, _, f in attack_where]
+    bad_h = [f"attack-{d}.mp4" for d, _, h, _ in attack_where if abs(h - sv.HERO) > HERO_HEIGHT_TOL]
+    rep.check(not bad_h, "attack height 88 +-2 px", f"min {min(heights)} max {max(heights)}", bad_h)
+    bad_f = [f"attack-{d}.mp4" for d, _, _, f in attack_where if abs(f - target) > 1]
+    rep.check(not bad_f and max(feet) - min(feet) <= 1, "attack shares the walk foot line",
+              f"rows {min(feet)}..{max(feet)} (target {target})", bad_f)
+    def blame(d, r):
+        # Attack rows 8-13 share numbers with the 12-row idle rows, so this
+        # does not go through row_clip.
+        if r in bands["attack"]:
+            return f"attack-{d}.mp4"
+        src = d if d in ("S", "W", "N", "E") else sv.DEATH_FROM[d]
+        return f"death-{src}.mp4"
+
+    death_rows = list(bands["death"])
+    starts = []
+    death_feet = []
+    bad_feet = []
+    for c, d in enumerate(COLUMNS):
+        top, foot = body_span(grid[c][death_rows[0]])
+        starts.append((d, foot - top + 1))
+        for r in death_rows:
+            _, foot = body_span(grid[c][r])
+            death_feet.append(foot)
+            if abs(foot - target) > DEATH_FOOT:
+                bad_feet.append(blame(d, r))
+    rep.check(all(abs(h - sv.HERO) <= HERO_HEIGHT_TOL for _, h in starts),
+              "death start height 88 +-2 px", f"{[h for _, h in starts]}",
+              [blame(d, death_rows[0]) for d, h in starts if abs(h - sv.HERO) > HERO_HEIGHT_TOL])
+    rep.check(not bad_feet, "death feet on the line",
+              f"rows {min(death_feet)}..{max(death_feet)} (target {target} +- {DEATH_FOOT})", bad_feet)
+    clipped = []
+    for c, d in enumerate(COLUMNS):
+        for r in list(bands["attack"]) + death_rows:
+            cell = grid[c][r]
+            ring = np.ones(cell.shape[:2], bool)
+            ring[1:-1, 1:-1] = False
+            if (cell[..., 3][ring] > 0).any():
+                clipped.append(blame(d, r))
+    rep.check(not clipped, "attack and death clear of the cell border",
+              f"{len(clipped)} cells touch the edge", clipped)
     return rep
 
 
@@ -464,6 +565,7 @@ def write_gif(grid, rows, path, ms, k=3):
 # Hero thresholds are px counts on an 88 px figure; a monster's scale by area.
 HERO_DISTINCT = 300
 HERO_LEGS = 16
+HERO_HEIGHT_TOL = 2      # px: every hero walk, idle and attack frame. Not loosened for a swing.
 START_TOLERANCE = 1      # px: frame 0 of every clip is the start pose at the sheet height
 WALK_SWING = 4           # px: the walk height may move this far off it (the spear swings in the height)
 ATTACK_FOOT = 1

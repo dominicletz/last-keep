@@ -99,6 +99,8 @@ Before the build, `precheck` names every clip to regenerate and why. It exits 1 
 - the loop closes: the last frame's silhouette differs from the first by at most 0.5 (walk) or 0.6 (idle) of the walk median step;
 - the clip starts on its pose: the first frame differs from `dirs/<DIR>.png` by at most 0.2 of the walk median. A clip that comes back at another size than the 720 px pose (the wolf's deaths are 960 px) is compared with the pose scaled to its frame size first (`pose_at`, Lanczos), so both sit on the same sub-pixel grid when they are placed in the cell;
 - an idle stays put: no frame differs from its first by more than 0.8 of the walk median. The approved idles reach at most 0.64; walks reach at least 1.04.
+- an attack, when its clip is on disk, loops like a walk (0.5 of the walk median), starts on its pose the same way, and every one of its 6 frames is 88 ±2 px on the walk's foot line. A missing attack clip is not a failure.
+- a death, when its clip is on disk, does not have to loop. It starts on its pose. Only the first of its 6 frames is held to 88 ±2. Later frames may lie down. Every frame's lowest pixel stays within 3 px of the foot line, and no frame touches the cell border. The last half second (12 frames at 24 fps) stays within the start-pose limit of the last frame. A missing death clip is not a failure.
 
 Then it builds the sheet in memory and runs every check from step 9. Each failure names the clips whose frames failed it. Height, foot line, speckles, prop side and the back and front views blame the clip of the failing row. Walk legs blame the walk, idle subtle blames the idle, and a palette anchor blames the poses. The prop side and the view checks catch a walk that turns. Facing is not judged from the clip's silhouette, because that misread approved clips.
 
@@ -124,7 +126,9 @@ How `sprite_from_video.py` works:
 3. Places each frame in a 128 px cell with a box filter. The fill is 86 px and the 1 px outline makes the hero 88 px tall. The boots sit on row 116 and the outline on row 117. The head centre sits on x = 64. The scale is per frame, clamped to the clip's median ±5%.
 4. Builds one palette of at most 28 colours plus the outline RGB 24 (Lab k-means, weighted toward saturated pixels so the shield blue, the gold cross, and the cape survive). The palette samples only the eight start poses in `dirs/`, so swapping a clip cannot move it. When it also sampled the clip frames, swapping the NE idle clip moved the front-view shield blue off its hue. It quantizes every frame, removes lone speckles, draws the outline, and writes the albedo and `-normal.png` (a port of `normalsFromAlbedo`). The normal alpha is the albedo alpha.
 
-The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536. The client loads it from `priv/static/images/hd2d/HERO-walk.png`.
+The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536, while any attack or death clip is missing. The client loads that file from `priv/static/images/hd2d/HERO-walk.png` and still reads those 12 rows.
+
+When all 8 attack clips and all 4 death clips (S, W, N, E) are on disk, the build adds the rows and the sheet becomes 24 rows, 1024×3072: 8 walk, 6 attack, 6 death, 4 idle. Idle moves from row 8 to row 20. The 6 and the 6 are the monster row counts (`attack_picks`, `death_picks`). Attack frames are placed like walk frames, so the 88 ±2 height check and the foot line apply to every attack frame. Death keeps frame 0's scale, so a lying pose stays short, and each frame's own lowest pixel sits on the foot row. The last death frame is the clip's last frame, the still hold. A diagonal death column reuses its cardinal clip, the same cells, never mirrored. Walk and idle pixels are copied from the 12-row sheet, so a hero with no attack or death clips rebuilds byte for byte. The client does not read the extra rows yet.
 
 `check_sprite_sheet.py` checks the same things for every hero. The colours it reads come from the `check` profile in the hero's `hero.json`: roles (hue range, chroma and lightness bounds), concept anchors, the prop colour, and floors and ceilings for the back and front views. `hero_sprites.py HERO colours` lists the concept's main colours with hue, lightness and chroma to start a new profile from.
 
@@ -139,7 +143,9 @@ The mage and scout faces count only the head columns 54–74, so the staff head 
 
 - Sheet size, alpha only 0 or 255, at most 32 colours.
 - The palette keeps the profile's concept anchors within ΔE 15.
-- Every silhouette edge is outline, height 88 ±2, one foot line ±1, no lone speckles.
+- Every silhouette edge is outline, height 88 ±2, one foot line ±1, no lone speckles. On a 24-row sheet that height and foot line cover the walk and the idle, which sit at rows 0–7 and 20–23.
+- Attack rows, when the sheet has them: every frame is 88 ±2 on that same foot line, and clear of the cell border.
+- Death rows: the first frame is 88 ±2. A later frame may lie down and is not held to that height. Every frame's lowest pixel stays within 3 px of the foot line, and no frame touches the cell border.
 - The prop side for each direction is the side the start pose shows. A pose with less than 2 px of offset or no visible prop colour has no side to hold.
 - The back view and the front view hold the profile floors and ceilings above.
 - The 8 directions differ from each other and from each other's mirror by at least 300 px.

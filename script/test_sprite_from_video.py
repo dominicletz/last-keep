@@ -579,5 +579,98 @@ class SheetBuildTest(unittest.TestCase):
         self.assertEqual([name for ok, name, _, _ in rep.results if not ok], [])
 
 
+def _stamp(height, foot=117, touch=False):
+    """An opaque block of the given height whose lowest row is foot."""
+    cell = np.zeros((sv.CELL, sv.CELL, 4), np.uint8)
+    top = foot - height + 1
+    cell[top:foot + 1, 40:88, :3] = (20, 20, 20)
+    cell[top:foot + 1, 40:88, 3] = 255
+    if touch:
+        cell[0, 40:88, 3] = 255
+    return cell
+
+
+class HeroActionRowsTest(unittest.TestCase):
+    def test_missing_action_clips_leave_the_twelve_row_sheet(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        mage = os.path.join(root, "assets/reference/mage/video")
+        warrior = os.path.join(root, "assets/reference/warrior/video")
+        self.assertFalse(sv.actions_complete(mage))
+        self.assertFalse(sv.actions_complete(warrior))
+        bands = sv.hero_bands(sv.CELL * 12)
+        self.assertEqual(list(bands["walk"]), list(range(8)))
+        self.assertEqual(list(bands["attack"]), [])
+        self.assertEqual(list(bands["death"]), [])
+        self.assertEqual(list(bands["idle"]), [8, 9, 10, 11])
+        self.assertEqual(cs.row_clip("S", 8), "idle-S.mp4")
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertFalse(sv.actions_complete(tmp))
+            open(os.path.join(tmp, "attack-S.mp4"), "w").close()
+            open(os.path.join(tmp, "death-S.mp4"), "w").close()
+            self.assertFalse(sv.actions_complete(tmp), "a south-only pair is not a full block")
+            for d in sv.COLUMNS:
+                open(os.path.join(tmp, f"attack-{d}.mp4"), "w").close()
+            for d in "SWNE":
+                open(os.path.join(tmp, f"death-{d}.mp4"), "w").close()
+            self.assertTrue(sv.actions_complete(tmp))
+
+    def test_a_full_sheet_is_walk_attack_death_idle(self):
+        bands = sv.hero_bands(sv.CELL * 24)
+        self.assertEqual(list(bands["walk"]), list(range(0, 8)))
+        self.assertEqual(list(bands["attack"]), list(range(8, 14)))
+        self.assertEqual(list(bands["death"]), list(range(14, 20)))
+        self.assertEqual(list(bands["idle"]), list(range(20, 24)))
+        self.assertIsNone(sv.hero_bands(sv.CELL * 13))
+        self.assertEqual((sv.ATTACK_ROWS, sv.DEATH_ROWS), (6, 6))
+
+    def test_death_picks_end_on_the_last_frame(self):
+        frames = frames_from([np.zeros((4, 4), np.float32) for _ in range(49)])
+        picks = sv.hero_death_picks(frames)
+        self.assertEqual(len(picks), sv.DEATH_ROWS)
+        self.assertEqual(picks[0], 0)
+        self.assertEqual(picks[-1], 48)
+        self.assertEqual(picks, sorted(set(picks)))
+
+    def test_pasting_actions_keeps_the_walk_and_idle_pixels(self):
+        rng = np.random.default_rng(0)
+        base = rng.integers(0, 255, (sv.CELL * 12, sv.CELL * 8, 4), dtype=np.uint8)
+        attack = {d: [np.zeros((sv.CELL, sv.CELL, 4), np.uint8) for _ in range(sv.ATTACK_ROWS)]
+                  for d in sv.COLUMNS}
+        death = {d: [np.full((sv.CELL, sv.CELL, 4), 7, np.uint8) for _ in range(sv.DEATH_ROWS)]
+                 for d in sv.COLUMNS}
+        tall = sv.paste_hero_actions(base, attack, death)
+        self.assertEqual(tall.shape, (sv.CELL * 24, sv.CELL * 8, 4))
+        self.assertTrue(np.array_equal(tall[:sv.CELL * 8], base[:sv.CELL * 8]))
+        self.assertTrue(np.array_equal(tall[sv.CELL * 20:sv.CELL * 24], base[sv.CELL * 8:sv.CELL * 12]))
+
+    def test_a_lying_death_frame_is_not_held_to_the_standing_height(self):
+        bands = sv.hero_bands(sv.CELL * 24)
+        grid = [[_stamp(88) for _ in range(24)] for _ in range(8)]
+        grid[0][8] = _stamp(97)
+        rep = cs.action_faults(grid, bands)
+        failed = {name: clips for ok, name, _, clips in rep.results if not ok}
+        self.assertIn("attack height 88 +-2 px", failed)
+        self.assertIn("attack-S.mp4", failed["attack height 88 +-2 px"])
+        self.assertNotIn("death start height 88 +-2 px", failed)
+        grid[0][8] = _stamp(88)
+        grid[0][19] = _stamp(42)
+        rep = cs.action_faults(grid, bands)
+        failed = {name: clips for ok, name, _, clips in rep.results if not ok}
+        self.assertEqual(failed, {})
+        grid[2][15] = _stamp(40, foot=100)
+        rep = cs.action_faults(grid, bands)
+        failed = {name: clips for ok, name, _, clips in rep.results if not ok}
+        self.assertIn("death feet on the line", failed)
+        self.assertIn("death-W.mp4", failed["death feet on the line"])
+        self.assertNotIn("death start height 88 +-2 px", failed)
+        grid[2][15] = _stamp(88)
+        grid[2][9] = _stamp(88, touch=True)
+        rep = cs.action_faults(grid, bands)
+        failed = {name: clips for ok, name, _, clips in rep.results if not ok}
+        self.assertIn("attack and death clear of the cell border", failed)
+        self.assertIn("attack-W.mp4", failed["attack and death clear of the cell border"])
+        self.assertNotIn("idle-W.mp4", failed["attack and death clear of the cell border"])
+
+
 if __name__ == "__main__":
     unittest.main()
