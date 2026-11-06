@@ -2,6 +2,7 @@ import * as THREE from "three"
 import { trackGeometry } from "./meshes.js"
 import { treeCard, treeSheet } from "./yard_cards.js"
 import { groundColor, horizonColor, lightName, ringColor, sunsetColor } from "./scene.js"
+import { onGroundTiles, sampleGroundTile } from "./seam_tiles.js"
 
 const CELL = 36
 const CHUNK = 512
@@ -128,9 +129,19 @@ function rgb(hex) {
   return [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]
 }
 
-function biomeRgb(name) {
+// Meadow and ruins sample the tiles that passed the column seam. Pine and
+// cliff failed it, so those cells stay the flat shade and the ring stone.
+export function biomeColor(name, worldX = 0, worldZ = 0) {
+  if (name === "meadow" || name === "ford") {
+    const sample = sampleGroundTile("meadow", worldX, worldZ)
+    if (sample) return sample
+  }
+  if (name === "ruins") {
+    const sample = sampleGroundTile("ruins", worldX, worldZ)
+    if (sample) return sample
+  }
   if (name === "pine" || name === "river") return rgb(SHADE)
-  if (name === "cliff" || name === "ruins") return rgb(ringColor)
+  if (name === "cliff") return rgb(ringColor)
   if (name === "hill") return rgb(sunsetColor)
   if (name === "mountain") return rgb(horizonColor)
   return rgb(groundColor)
@@ -160,7 +171,7 @@ function paintWindow(seed, attempt, originX, originZ) {
       const v = (iy + 0.5) / HORIZON_TEX
       const worldX = originX + (u - 0.5) * WINDOW
       const worldZ = originZ - (v - 0.5) * WINDOW
-      const [r, g, b] = biomeRgb(pictureCell(seed, attempt, worldX, worldZ))
+      const [r, g, b] = biomeColor(pictureCell(seed, attempt, worldX, worldZ), worldX, worldZ)
       const o = (iy * HORIZON_TEX + ix) * 4
       rgba[o] = r
       rgba[o + 1] = g
@@ -387,6 +398,9 @@ export function mountPicture(scene, options = {}) {
   let windowKey = ""
   let mistKey = ""
   let treeKey = ""
+  onGroundTiles(() => {
+    windowKey = ""
+  })
 
   function paint(seed, attempt, camera) {
     let lookX = 0

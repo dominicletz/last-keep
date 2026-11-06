@@ -441,6 +441,10 @@ class AssetTest(unittest.TestCase):
         self.assertIn("Take 4", note)
         self.assertIn("28, 33, 36, 39, 37, 35, 30, 28", note)
         self.assertIn("No retake4-batch.json", note)
+        self.assertIn("Take 5", note)
+        self.assertIn("28, 38, 41, 41, 41, 37, 30, 28", note)
+        self.assertIn("Max 41", note)
+        self.assertIn("not copied from another direction", note)
         self.assertFalse(os.path.exists(os.path.join(cfg["dir"], "retake3-batch.json")))
         self.assertFalse(os.path.exists(os.path.join(cfg["dir"], "retake4-batch.json")))
 

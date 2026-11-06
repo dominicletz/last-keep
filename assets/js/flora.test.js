@@ -100,6 +100,8 @@ test("the yard draws ruin stones from their sheet and the map table is a sprite 
   assert.match(src, /staticMats\.ruin_stones\[slot\.variant\]/)
   assert.match(src, /staticMats\.dead_tree\[slot\.variant\]/)
   assert.match(src, /staticCard\("dead_tree", slot\.variant\)/)
+  assert.match(src, /flatMats\[sheetKind\]\[variant\]/)
+  assert.match(src, /spec\.stand === false/)
   assert.doesNotMatch(src, /staticMats\.field/)
   assert.doesNotMatch(src, /staticMats\.forest_barrier/)
   assert.doesNotMatch(src, /staticMats\.cliff_face/)

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
-import { phash2, pictureCell } from "./horizon.js"
+import { biomeColor, phash2, pictureCell } from "./horizon.js"
+import { sampleGroundTile } from "./seam_tiles.js"
+import { readRgbaPng } from "./hd2d/png.js"
+import { seamHolds } from "./ground.js"
 
 test("phash2 matches erlang for integer tuples", () => {
   assert.equal(phash2([1, 0, 0, 0]), 6151981)
@@ -26,6 +29,34 @@ test("pictureCell matches the committed fixture", () => {
     assert.ok(rows.some((row) => row.seed === 1 && row.x === x && row.y === y))
   }
   assert.ok(rows.some((row) => row.seed === 1 && Math.hypot(row.x, row.y) > 7200))
+})
+
+test("meadow and ruins sample the passing tiles; pine and cliff stay flat", () => {
+  const root = new URL("../..", import.meta.url)
+  const read = (rel) => readRgbaPng(fs.readFileSync(new URL(rel, root)))
+  for (const rel of [
+    "priv/static/images/hd2d/ground-yard-grass.png",
+    "priv/static/images/hd2d/ground-meadow.png",
+    "priv/static/images/hd2d/ground-ruins.png"
+  ]) {
+    const image = read(rel)
+    assert.equal(seamHolds(image.rgba, image.width, image.height), true, rel)
+  }
+  for (const rel of ["assets/reference/ground/pine.png", "assets/reference/cliff_face/views/c.png"]) {
+    const image = read(rel)
+    assert.equal(seamHolds(image.rgba, image.width, image.height), false, rel)
+  }
+  const meadow = sampleGroundTile("meadow", 800, 0)
+  const ruins = sampleGroundTile("ruins", 2000, 0)
+  assert.ok(meadow)
+  assert.ok(ruins)
+  assert.deepEqual(biomeColor("meadow", 800, 0), meadow)
+  assert.deepEqual(biomeColor("ford", 432, 0), sampleGroundTile("meadow", 432, 0))
+  assert.deepEqual(biomeColor("ruins", 2000, 0), ruins)
+  assert.deepEqual(biomeColor("pine", 0, 0), [0x2c, 0x34, 0x16])
+  assert.deepEqual(biomeColor("river", 0, 0), [0x2c, 0x34, 0x16])
+  assert.deepEqual(biomeColor("cliff", 0, 0), [0x4b, 0x3c, 0x33])
+  assert.equal(pictureCell(1, 0, 0, 0), "meadow")
 })
 
 test("far pines: capped, outside the yard, on pine cells, stable and both variants", async () => {

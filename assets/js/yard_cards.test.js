@@ -138,7 +138,7 @@ function sheetRows(name) {
 }
 
 test("every building sheet matches its asset.json, stands on its foot row and is its card's height", () => {
-  const heights = { wall: [110], stone_wall: [110], tower: [132], house: [176], forge: [99], trap: [55, 33] }
+  const heights = { wall: [110], stone_wall: [110], tower: [132], house: [176], forge: [99], trap: [55, 33], field: [72, 72] }
   const flora = { bush: [38, 30, 25], rock: [44, 31, 22], flowers: [16, 16], grass_tufts: [14, 11, 9], stump_log: [28, 28], broadleaf: [110, 94] }
   for (const [name, want] of Object.entries({ ...heights, ...flora })) {
     const cfg = JSON.parse(fs.readFileSync(path.join(root, "assets/reference", name, "asset.json"), "utf8"))
@@ -194,7 +194,32 @@ test("the quarry, the camp and the shrine stand on their foot rows", () => {
 
 test("buildings with a sheet draw it, stone_wall its own; others keep their card", () => {
   for (const kind of ["wall", "stone_wall", "tower", "house", "forge", "trap"]) assert.equal(buildingSheet(kind), kind)
-  for (const kind of ["field", "mage_tower", "pine", "no_such_building"]) assert.equal(buildingSheet(kind), null)
+  for (const kind of ["mage_tower", "pine", "no_such_building"]) assert.equal(buildingSheet(kind), null)
+  assert.equal(buildingSheet("field"), "field")
+  const field = staticSheets.field
+  const fieldImage = readRgbaPng(fs.readFileSync(path.join(root, "priv/static", field.url)))
+  const [fieldW, fieldH] = field.cell
+  assert.equal(fieldImage.width, fieldW * 2)
+  assert.equal(fieldImage.height, fieldH)
+  for (let v = 0; v < 2; v++) {
+    let left = fieldW
+    let right = -1
+    let top = fieldH
+    let bottom = -1
+    for (let y = 0; y < fieldH; y++) {
+      for (let x = 0; x < fieldW; x++) {
+        if (!fieldImage.rgba[(y * fieldImage.width + v * fieldW + x) * 4 + 3]) continue
+        if (x < left) left = x
+        if (x > right) right = x
+        if (y < top) top = y
+        if (y > bottom) bottom = y
+      }
+    }
+    assert.equal(right - left + 1, 126, `field ${v} width`)
+    assert.equal(bottom - top + 1, 72, `field ${v} height`)
+  }
+  assert.equal(spotVariant("field", 0), "a")
+  assert.equal(spotVariant("field", 1), "b")
   const t = sheetCard("trap", "b")
   assert.deepEqual([t.repeat, t.offset, t.centerY], [[0.5, 1], [0.5, 0], 4 / 64])
   assert.ok(Math.abs(sheetCard("house", "a").h - (184 * 32) / 88) < 1e-9)

@@ -388,12 +388,14 @@ class StaticTest(unittest.TestCase):
         self.assertEqual((field["world_width"], field["world_height"]), (46, 26))
         self.assertEqual((field["width"], field["height"]), (126, 72))
         self.assertEqual([v["id"] for v in field["variants"]], ["a", "b"])
-        self.assertTrue(field["awaiting_art"])
+        self.assertNotIn("awaiting_art", field)
         live = os.path.join(hs.ROOT, "priv/static/images/hd2d/field-sheet.png")
         before = open(live, "rb").read()
-        with self.assertRaises(SystemExit):
-            hs.static_build(field, log=lambda *a, **k: None)
+        tmp = tempfile.mkdtemp()
+        out = os.path.join(tmp, "s.png")
+        self.assertEqual(hs.static_build(field, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None), 0)
         self.assertEqual(open(live, "rb").read(), before)
+        self.assertEqual(open(out, "rb").read(), before)
         cliff = hs.load_config("cliff_face")
         self.assertTrue(cliff["variants"][-1]["pending"])
         self.assertIn("seamless tiling", cliff["variants"][-1]["framing"])
@@ -449,10 +451,32 @@ class StaticTest(unittest.TestCase):
             self.assertEqual(got, want, name)
             built = dict(cfg, variants=[v for v in cfg["variants"] if not v.get("pending")])
             self.assertEqual([n for ok, n, _ in hs.static_checks(built, sheet) if not ok], [], name)
-        # The committed field sheet is the old three-quarter plot. The flat
-        # 126x72 decal replaces it when those views exist.
-        old = Image.open(os.path.join(hs.ROOT, "priv/static/images/hd2d/field-sheet.png"))
-        self.assertEqual(old.size, (272, 48))
+        field_sheet = np.asarray(Image.open(os.path.join(hs.ROOT, "priv/static/images/hd2d/field-sheet.png")).convert("RGBA"))
+        self.assertEqual(field_sheet.shape[:2], (80, 272))
+        field_cfg = hs.load_config("field")
+        cw = field_cfg["cell"][0]
+        for i, vid in enumerate(("a", "b")):
+            cell = field_sheet[:, i * cw:(i + 1) * cw]
+            ys, xs = np.nonzero(cell[..., 3] > 0)
+            self.assertEqual(int(ys.max() - ys.min() + 1), 72, vid)
+            self.assertEqual(int(xs.max() - xs.min() + 1), 126, vid)
+
+    def test_ground_tiles_and_the_cliff_face_keep_the_column_seam(self):
+        # Column wrap versus the largest interior column step. Rows are not the gate.
+        want = {
+            "ground/yard-grass.png": (102, 147, True),
+            "ground/meadow.png": (65, 123, True),
+            "ground/pine.png": (146, 129, False),
+            "ground/ruins.png": (148, 156, True),
+            "cliff_face/views/c.png": (151, 128, False),
+        }
+        for name, (wrap, interior, holds) in want.items():
+            rgb = np.asarray(Image.open(os.path.join(hs.ROOT, "assets/reference", name)).convert("RGB"))
+            got_i = int(np.abs(rgb[:, 1:].astype(int) - rgb[:, :-1].astype(int)).max())
+            got_w = int(np.abs(rgb[:, :1].astype(int) - rgb[:, -1:].astype(int)).max())
+            self.assertEqual((got_w, got_i, hs.seam_holds(rgb)), (wrap, interior, holds), name)
+        cliff = hs.load_config("cliff_face")
+        self.assertTrue(cliff["variants"][-1]["pending"])
 
 
 # Pieces prepped with no generated image yet. Heights are the world units in

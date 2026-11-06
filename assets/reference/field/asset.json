@@ -1,8 +1,7 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 3, field). The concept box is the wheat and vegetable plots right of the keep in theme.jpg (fences, a farmer and the stone wall at its edges excluded by source_note). Approved 2026-11-06: a flat top-down decal, card footprint 46x26 at the hero texel (126x72 px). a ripe, b sown. awaiting_art: the committed sheet is the old three-quarter plot and is not rewritten until the flat views exist. world_width is this footprint; the stone wall does not set it.",
+ "_note": "Static piece (docs/ART-REDO.md section 3, field). The concept box is the wheat and vegetable plots right of the keep in theme.jpg (fences, a farmer and the stone wall at its edges excluded by source_note). Approved 2026-11-06: a flat top-down decal, card footprint 46x26 at the hero texel (126x72 px). a ripe, b sown. world_width is this footprint; the stone wall does not set it.",
  "type": "static",
  "view": "top_down",
- "awaiting_art": true,
  "world_width": 46,
  "noun": "crop field plot",
  "concept": {

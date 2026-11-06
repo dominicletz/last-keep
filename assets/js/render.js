@@ -13,6 +13,7 @@ import { deadTreeSlots, DEAD_TREE_CAP, floraSlots, ruinSlots, RUIN_CAP } from ".
 import { deerAt, deerSheetUrl, deerSlots, DEER_SHEET } from "./wildlife.js"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { loadGroundTilesInBrowser, onGroundTiles } from "./seam_tiles.js"
 import { mountPicture, pineVariant } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
 import { buildingCard, buildingSheet, sheetCard as staticCard, spotVariant, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
@@ -199,6 +200,19 @@ export function createView(stage, picture) {
   plazaWear.rotation.x = -Math.PI / 2
   plazaWear.position.y = 0.24
   scene.add(plazaWear)
+  onGroundTiles(() => {
+    const next = groundPixels("day")
+    if (next.length === groundMap.image.data.length) {
+      groundMap.image.data.set(next)
+      groundMap.needsUpdate = true
+    }
+    const plazaNext = plazaPixels("day")
+    if (plazaNext.length === plazaMap.image.data.length) {
+      plazaMap.image.data.set(plazaNext)
+      plazaMap.needsUpdate = true
+    }
+  })
+  loadGroundTilesInBrowser()
   const shadowMat = new THREE.MeshBasicMaterial({
     map: contactTexture(),
     transparent: true,
@@ -240,6 +254,7 @@ export function createView(stage, picture) {
   // Trees and buildings with a static sheet (staticSheets) draw it; each
   // texture fills in once loaded. name -> variant -> SpriteMaterial.
   const staticMats = {}
+  const flatMats = {}
   const sheetLoader = new THREE.TextureLoader()
   const eliteMarkMats = {}
   for (let index = 0; index < ELITE_MARKS.length; index += 1) {
@@ -267,6 +282,16 @@ export function createView(stage, picture) {
       map.repeat.set(spec.repeat[0], spec.repeat[1])
       map.offset.set(spec.offset[0], spec.offset[1])
       staticMats[name][variant] = new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false, alphaTest: 0.5 })
+      if (yardCards[name]?.stand === false) {
+        flatMats[name] = flatMats[name] || {}
+        flatMats[name][variant] = new THREE.MeshBasicMaterial({
+          map,
+          transparent: true,
+          alphaTest: 0.5,
+          depthWrite: true,
+          side: THREE.DoubleSide
+        })
+      }
     }
   }
   const treeMats = staticMats.pine
@@ -2053,7 +2078,17 @@ export function createView(stage, picture) {
     const cardKind = buildingCard(row.kind)
     const spec = cardKind ? sheetKinds[cardKind] : null
     const group = new THREE.Group()
-    if (sheetKind) {
+    if (sheetKind && spec && spec.stand === false) {
+      const variant = spotVariant(sheetKind, row.id || 0)
+      const mesh = new THREE.Mesh(
+        trackGeometry(new THREE.PlaneGeometry(spec.w, spec.h)),
+        flatMats[sheetKind][variant]
+      )
+      mesh.rotation.x = -Math.PI / 2
+      mesh.position.y = 0.42
+      mesh.userData.sheet = sheetKind
+      group.add(mesh)
+    } else if (sheetKind) {
       // The window light is painted into the house sheet, so no glow sprites.
       const variant = staticSheets[sheetKind].variants[0]
       const art = staticCard(sheetKind, variant)

@@ -57,6 +57,8 @@ export const staticSheets = {
   // a a stump, b a felled log lying on its side.
   stump_log: staticSheet("stump_log", [80, 40], ["a", "b"]),
   broadleaf: staticSheet("broadleaf", [136, 120], ["a", "b"]),
+  // Flat top-down decal. a ripe, b sown. The plane is the 46×26 card.
+  field: staticSheet("field", [136, 80], ["a", "b"]),
   // Ruins-biome scatter (flora.js ruinSlots, deadTreeSlots). Not a building.
   ruin_stones: staticSheet("ruin_stones", [200, 64], ["a", "b", "c"]),
   dead_tree: staticSheet("dead_tree", [112, 112], ["a"]),
