@@ -1,5 +1,5 @@
 {
- "_note": "Attack on eight directions and death on S W N E for the five heroes. Each call is the build_prompts GenerateVideo for that clip, with paths made absolute. A death has no last_frame_path: the fall ends on the ground. The hero sheet builder still writes walk and idle only, so these clips are not on the sheet until it takes attack and death rows. Paths are absolute under /workspace/lk-art-redo.",
+ "_note": "Attack on eight directions and death on S W N E for the five heroes. Each call is the build_prompts GenerateVideo for that clip, with paths made absolute. A death has no last_frame_path: the fall ends on the ground. The builder writes the 24-row sheet when every clip of both blocks is on disk. These 60 calls are take 1. Clips that fail the existing checks are listed again, verbatim, in hero-attack-death-retake-batch.json. Paths are absolute under /workspace/lk-art-redo.",
  "calls": [
   {
    "id": "warrior-attack-S",

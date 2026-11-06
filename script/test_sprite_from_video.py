@@ -3,6 +3,7 @@
 
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -485,7 +486,27 @@ class SheetBuildTest(unittest.TestCase):
                     self.assertEqual(a.read(), b.read(), f)
 
     def test_the_mage_sheet_rebuilds_byte_for_byte(self):
-        self.rebuild("mage", ["mage-walk.png", "mage-walk-normal.png"])
+        # The attack and death clips are on disk. They fail the existing
+        # checks, so the committed sheet is still the 12-row walk and idle
+        # file. Rebuild from those clips only.
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        with tempfile.TemporaryDirectory() as tmp:
+            clips = os.path.join(tmp, "video")
+            shutil.copytree(os.path.join(root, "assets/reference/mage/video"), clips)
+            for name in os.listdir(clips):
+                if name.startswith(("attack-", "death-")) and name.endswith(".mp4"):
+                    os.remove(os.path.join(clips, name))
+            out = os.path.join(tmp, "out")
+            os.makedirs(out)
+            with open(os.devnull, "w") as quiet:
+                err, sys.stderr = sys.stderr, quiet
+                try:
+                    sv.main(["mage", "--clips", clips, "--out", os.path.join(out, "mage-walk.png")])
+                finally:
+                    sys.stderr = err
+            for f in ("mage-walk.png", "mage-walk-normal.png"):
+                with open(os.path.join(out, f), "rb") as a, open(os.path.join(root, "priv/static/images/hd2d", f), "rb") as b:
+                    self.assertEqual(a.read(), b.read(), f)
 
     def test_the_goblin_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
         self.rebuild("goblin", ["goblin-sheet.png"])
@@ -593,10 +614,12 @@ def _stamp(height, foot=117, touch=False):
 class HeroActionRowsTest(unittest.TestCase):
     def test_missing_action_clips_leave_the_twelve_row_sheet(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        mage = os.path.join(root, "assets/reference/mage/video")
-        warrior = os.path.join(root, "assets/reference/warrior/video")
-        self.assertFalse(sv.actions_complete(mage))
-        self.assertFalse(sv.actions_complete(warrior))
+        # Take 1 put every clip on disk. The checks failed, so the committed
+        # sheets stay 8 by 12. A partial directory still does not count.
+        for hero in ("warrior", "mage", "scout", "farmer", "engineer"):
+            self.assertTrue(sv.actions_complete(os.path.join(root, "assets/reference", hero, "video")), hero)
+            with Image.open(os.path.join(root, "priv/static/images/hd2d", f"{hero}-walk.png")) as im:
+                self.assertEqual(im.size, (sv.CELL * 8, sv.CELL * 12), hero)
         bands = sv.hero_bands(sv.CELL * 12)
         self.assertEqual(list(bands["walk"]), list(range(8)))
         self.assertEqual(list(bands["attack"]), [])
@@ -622,6 +645,35 @@ class HeroActionRowsTest(unittest.TestCase):
         self.assertEqual(list(bands["idle"]), list(range(20, 24)))
         self.assertIsNone(sv.hero_bands(sv.CELL * 13))
         self.assertEqual((sv.ATTACK_ROWS, sv.DEATH_ROWS), (6, 6))
+
+    def test_an_attack_that_returns_matches_its_start_cell(self):
+        def frame(arm):
+            rgb = np.full((180, 140, 3), 255, np.uint8)
+            rgb[30:150, 50:90] = (30, 30, 30)
+            if arm:
+                rgb[50:70, 90:90 + arm] = (30, 30, 30)
+            mask = sv.cut_out(rgb)
+            return {"rgb": rgb, "mask": mask, "sharp": 1.0, "gray": sv.small_gray(rgb, mask)}
+
+        start, swung = frame(0), frame(30)
+        frames = [start if i < 8 or i > 36 else swung for i in range(49)]
+        frames[-1] = start
+        picks, scale, cells, info = sv.hero_attack_cells(frames)
+        self.assertEqual(len(picks), sv.ATTACK_ROWS)
+        self.assertEqual(len(cells), sv.ATTACK_ROWS)
+        self.assertEqual(picks[0], 0)
+        self.assertIn("peak", info)
+        self.assertIn("recovery", info)
+        top, foot = sv.span(frames[-1]["mask"])
+        own = min(max(sv.FILL / (foot - top + 1), scale * 0.95), scale * 1.05)
+        last = sv.place(frames[-1], own, sv.head_centre(frames[-1]["mask"]), foot)
+        self.assertTrue(np.array_equal(last[1], cells[0][1]))
+        frames[-1] = swung
+        picks, scale, cells, _info = sv.hero_attack_cells(frames)
+        top, foot = sv.span(frames[-1]["mask"])
+        own = min(max(sv.FILL / (foot - top + 1), scale * 0.95), scale * 1.05)
+        moved = sv.place(frames[-1], own, sv.head_centre(frames[-1]["mask"]), foot)
+        self.assertFalse(np.array_equal(moved[1], cells[0][1]))
 
     def test_death_picks_end_on_the_last_frame(self):
         frames = frames_from([np.zeros((4, 4), np.float32) for _ in range(49)])

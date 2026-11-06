@@ -30,8 +30,8 @@ HERO_CLIP_ORDER = ("warrior", "mage", "scout", "farmer", "engineer")
 def hero_attack_death_batch():
     """Attack ×8 and death ×4 for each hero, in the order build_prompts emits them.
 
-    Paths are absolute under ART_ROOT. The sheet builder still writes walk and
-    idle only, so this batch is the clips and not a sheet."""
+    Paths are absolute under ART_ROOT. Take 1. The builder writes the 24-row
+    sheet only when every clip of both blocks is on disk and the checks pass."""
     calls = []
     for hero in HERO_CLIP_ORDER:
         for call in hs.build_prompts(hs.load_config(hero))["calls"]:
@@ -44,9 +44,10 @@ def hero_attack_death_batch():
                           "args": one["args"], "save_as": one["save_as"]})
     return {"_note": "Attack on eight directions and death on S W N E for the five heroes. "
             "Each call is the build_prompts GenerateVideo for that clip, with paths made absolute. "
-            "A death has no last_frame_path: the fall ends on the ground. The hero sheet builder "
-            "still writes walk and idle only, so these clips are not on the sheet until it takes "
-            "attack and death rows. Paths are absolute under /workspace/lk-art-redo.",
+            "A death has no last_frame_path: the fall ends on the ground. The builder writes the "
+            "24-row sheet when every clip of both blocks is on disk. These 60 calls are take 1. "
+            "Clips that fail the existing checks are listed again, verbatim, in "
+            "hero-attack-death-retake-batch.json. Paths are absolute under /workspace/lk-art-redo.",
             "calls": calls}
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
             "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
@@ -275,6 +276,31 @@ class PromptsTest(unittest.TestCase):
                 self.assertNotIn("last_frame_path", args)
             else:
                 self.assertEqual(args["last_frame_path"], args["image_path"])
+
+    def test_the_attack_and_death_retake_is_the_failing_take_one_calls(self):
+        # Take 1 precheck, thresholds unchanged. Each call is the original
+        # GenerateVideo args, not a rewritten prompt.
+        failed = [
+            "warrior-attack-S", "warrior-death-W", "warrior-attack-N", "warrior-death-N",
+            "warrior-attack-NE", "warrior-attack-E", "warrior-attack-SE",
+            "mage-death-S", "mage-death-W", "mage-attack-NW", "mage-attack-N", "mage-death-N",
+            "mage-attack-SE",
+            "scout-attack-NW", "scout-death-N", "scout-death-E",
+            "farmer-attack-S", "farmer-death-S", "farmer-attack-SW", "farmer-attack-N",
+            "farmer-death-N", "farmer-attack-E",
+            "engineer-attack-SW",
+        ]
+        original = json.loads(read(os.path.join(hs.ROOT, "assets/reference/hero-attack-death-batch.json")))
+        retake = json.loads(read(os.path.join(hs.ROOT, "assets/reference/hero-attack-death-retake-batch.json")))
+        by_id = {c["id"]: c for c in original["calls"]}
+        self.assertEqual([c["id"] for c in retake["calls"]], failed)
+        self.assertEqual(len(retake["calls"]), 23)
+        for call in retake["calls"]:
+            src = by_id[call["id"]]
+            self.assertEqual(call["tool"], "GenerateVideo")
+            self.assertEqual(call["asset"], src["asset"])
+            self.assertEqual(call["args"], src["args"])
+            self.assertEqual(call["save_as"], src["save_as"])
 
     def test_turntable_call_uses_the_keyframes(self):
         a = self.calls("scout")["turntable"]["args"]
@@ -1611,6 +1637,12 @@ class PrecheckTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             shutil.copytree(os.path.join(hs.REFERENCE, "mage"), os.path.join(tmp, "mage"))
             vid = os.path.join(tmp, "mage", "video")
+            # Take 1 of the attack and death clips is on disk and fails the
+            # existing checks. This test is the walk and idle contract: a
+            # missing action clip is not a failure.
+            for name in os.listdir(vid):
+                if name.startswith(("attack-", "death-")) and name.endswith(".mp4"):
+                    os.remove(os.path.join(vid, name))
             cfg = hs.load_config("mage", reference=tmp)
             self.assertEqual(hs.precheck(cfg, log=lambda *a, **k: None), {})
             # An idle that walks, and a walk cut short so its loop cannot close.
