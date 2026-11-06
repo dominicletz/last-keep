@@ -302,6 +302,35 @@ class PromptsTest(unittest.TestCase):
             self.assertEqual(call["args"], src["args"])
             self.assertEqual(call["save_as"], src["save_as"])
 
+    def test_the_attack_and_death_retake2_adds_one_sentence_to_the_fixable_clips(self):
+        attack = ("The weapon stays inside the height and the width of the first frame: it never rises above the head, "
+                  "the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. ")
+        death = ("The body falls straight down, staying under where the head started and no wider than the first frame, "
+                 "not sliding to either side. ")
+        ids = [
+            "warrior-attack-S", "warrior-death-W", "warrior-attack-N", "warrior-death-N",
+            "warrior-attack-NE", "warrior-attack-E",
+            "mage-attack-NW", "mage-attack-N",
+            "scout-attack-NW",
+            "farmer-attack-S",
+        ]
+        original = json.loads(read(os.path.join(hs.ROOT, "assets/reference/hero-attack-death-batch.json")))
+        retake = json.loads(read(os.path.join(hs.ROOT, "assets/reference/hero-attack-death-retake2-batch.json")))
+        by_id = {c["id"]: c for c in original["calls"]}
+        self.assertEqual([c["id"] for c in retake["calls"]], ids)
+        for call in retake["calls"]:
+            src = by_id[call["id"]]
+            self.assertEqual(call["save_as"], src["save_as"])
+            self.assertEqual(call["asset"], src["asset"])
+            self.assertEqual({k: v for k, v in call["args"].items() if k != "prompt"},
+                             {k: v for k, v in src["args"].items() if k != "prompt"})
+            kind = call["id"].split("-", 1)[1].split("-", 1)[0]
+            sentence = attack if kind == "attack" else death
+            self.assertIn(sentence, call["args"]["prompt"])
+            self.assertEqual(call["args"]["prompt"].replace(sentence, "", 1), src["args"]["prompt"])
+        self.assertNotIn("scout-death-N", [c["id"] for c in retake["calls"]])
+        self.assertNotIn("farmer-attack-SW", [c["id"] for c in retake["calls"]])
+
     def test_turntable_call_uses_the_keyframes(self):
         a = self.calls("scout")["turntable"]["args"]
         self.assertEqual(a["image_path"], "assets/reference/scout/video/views/k-S.png")

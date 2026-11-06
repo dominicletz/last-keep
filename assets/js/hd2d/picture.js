@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { cameraLift, frameFor } from "../frame.js"
 import { mixPose, PORTRAIT_FOV, portraitPose } from "../portrait.js"
-import { MONSTER_SHEETS, monsterSheetUrl, SHEET_HEROES, spriteHeight, walkSheetUrl } from "../pictures.js"
+import { heroSheetLayout, MONSTER_SHEETS, monsterSheetUrl, SHEET_HEROES, spriteHeight, walkSheetUrl } from "../pictures.js"
 import { masonryBytes } from "../tiles.js"
 import { tierExtras, tierFor } from "./tier.js"
 
@@ -655,17 +655,9 @@ function createHdPicture(env) {
       map.minFilter = THREE.NearestFilter
     }
     if (sheet) {
-      map.repeat.set(1 / 8, 1 / 12)
-      group.userData.picture = {
-        directions: 8,
-        frames: 12,
-        walk: 8,
-        idle: 4,
-        attack: 0,
-        death: 0,
-        w: source.w,
-        h: source.h
-      }
+      const layout = heroSheetLayout(map.image && map.image.height)
+      map.repeat.set(1 / layout.directions, 1 / layout.frames)
+      group.userData.picture = { ...layout, w: source.w, h: source.h }
     }
     let geometry
     if (sheet) {

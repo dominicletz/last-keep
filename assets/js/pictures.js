@@ -23,6 +23,17 @@ export function walkSheetUrl(hero, normal = false) {
   return `images/hd2d/${hero}-walk${normal ? "-normal" : ""}.png`
 }
 
+// A passing hero sheet is 24 rows: walk, attack, death, idle. A sheet that
+// failed precheck stays 12 rows, walk then idle, and does not play a swing.
+// imageHeight is the texture's pixel height. Anything that is not 24 cells
+// (the 1px stand-in in tests, a 12-row sheet) keeps the walk and idle layout.
+export function heroSheetLayout(imageHeight) {
+  if (imageHeight === 128 * 24) {
+    return { directions: 8, frames: 24, walk: 8, attack: 6, death: 6, idle: 4 }
+  }
+  return { directions: 8, frames: 12, walk: 8, attack: 0, death: 0, idle: 4 }
+}
+
 // Monster sheets from script/sprite_from_video.py and assets/reference/<kind>/asset.json.
 // Eight direction columns. Rows run walk, attack, then death, top to bottom.
 // A square cell of `cell` px, the figure `figure` px tall at the start pose,

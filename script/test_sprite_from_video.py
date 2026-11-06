@@ -619,7 +619,9 @@ class HeroActionRowsTest(unittest.TestCase):
         for hero in ("warrior", "mage", "scout", "farmer", "engineer"):
             self.assertTrue(sv.actions_complete(os.path.join(root, "assets/reference", hero, "video")), hero)
             with Image.open(os.path.join(root, "priv/static/images/hd2d", f"{hero}-walk.png")) as im:
-                self.assertEqual(im.size, (sv.CELL * 8, sv.CELL * 12), hero)
+                # Only a hero whose attack and death rows pass is a 24-row sheet.
+                height = sv.CELL * (24 if hero == "engineer" else 12)
+                self.assertEqual(im.size, (sv.CELL * 8, height), hero)
         bands = sv.hero_bands(sv.CELL * 12)
         self.assertEqual(list(bands["walk"]), list(range(8)))
         self.assertEqual(list(bands["attack"]), [])
