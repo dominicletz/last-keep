@@ -243,6 +243,8 @@ test("buildings with a sheet draw it, stone_wall its own; others keep their card
   assert.deepEqual(door.variants, ["a"])
   assert.deepEqual(sheetRows("hell_door").map(([t, b]) => b - t + 1), [154])
   assert.equal(sheetCard("hell_door", "a").h, (168 * 32) / 88)
+  assert.equal(staticSheets.portal, undefined)
+  assert.doesNotMatch(src, /staticCard\("portal"/)
   assert.match(src, /staticCard\("hell_door", "a"\)/)
   assert.match(src, /staticMats\.hell_door\.a/)
   assert.match(src, /sync\("portal", \(snap\.portals \|\| \[\]\)\.slice\(0, 8\)/)

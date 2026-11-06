@@ -3,6 +3,8 @@ import test from "node:test"
 import { fitSlack, horizontalRadius, houseParts, houseVariant, keepParts, modelParts, models } from "../models/registry.js"
 import { gameFrame, renderParts } from "../models/raster.js"
 import { keepReadabilityFloor, readability } from "./art_score.js"
+import { SHEET_TEXEL } from "./hd2d/picture.js"
+import fs from "node:fs"
 import { groundPixels } from "./ground.js"
 import { cameraDistance, dirtRadius, viewScale, zoomFor } from "./town.js"
 import { groundUnderMask } from "./yard_sample.js"
@@ -38,6 +40,25 @@ test("the keep reads against the yard at the gameplay camera", () => {
 function keepTop(rank) {
   return Math.max(...keepParts(rank).map((part) => part.y + part.h / 2))
 }
+
+test("a facing keep card at the live rank-0 height is under the 197 px floor", () => {
+  // The sheet's rank-0 figure is 454 px at the hero texel, 165.09 world units.
+  // On the rank-0 gameplay frustum that is 196.54 internal pixels. The mesh
+  // measures 197. The floor stays 197, so the card is not drawn.
+  const { frame } = gameFrame(0)
+  assert.equal(frame.halfH, 168)
+  assert.equal(frame.bufferHeight, 400)
+  const world = 454 * SHEET_TEXEL
+  const screen = (world / (2 * frame.halfH)) * frame.bufferHeight
+  assert.ok(Math.abs(world - 165.09) < 0.01, `world ${world}`)
+  assert.ok(Math.abs(screen - 196.54) < 0.02, `screen ${screen}`)
+  assert.ok(screen < keepReadabilityFloor.height)
+  assert.equal(keepReadabilityFloor.height, 197)
+  const src = fs.readFileSync(new URL("./render.js", import.meta.url), "utf8")
+  assert.match(src, /keepParts\(rank\)/)
+  assert.match(src, /keep\.scale\.y = 1/)
+  assert.doesNotMatch(src, /staticCard\("keep"/)
+})
 
 test("the keep tower grows a course of stone at each rank", () => {
   const heights = [0, 1, 2, 3, 4].map((rank) => keepParts(rank).find((part) => part.name === "tower").h)

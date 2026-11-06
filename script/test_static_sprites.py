@@ -1506,6 +1506,26 @@ class NextArtBatchTest(unittest.TestCase):
         self.assertIsNone(refused["seam_pass"])
         self.assertIn("content policy", refused["error"])
         self.assertIn("not retried", refused["error"])
+        with open(os.path.join(root, "next-art-ready-batch.json")) as fh:
+            ready = json.load(fh)
+        ids = [c["id"] for c in ready["calls"]]
+        self.assertEqual(ids, ["ground-plaza", "forest_barrier-strip", "reeds-a", "reeds-b"])
+        blob = json.dumps([c["args"]["reference_image_paths"] for c in ready["calls"]])
+        for banned in ("terrain-crops/plaza.png", "forest_barrier/concept.png", "theme.jpg"):
+            self.assertNotIn(banned, blob, banned)
+        refs = {
+            "ground-plaza": "assets/reference/next-art-refs/plaza-grass.png",
+            "forest_barrier-strip": "assets/reference/next-art-refs/pine-crown.png",
+            "reeds-a": "assets/reference/next-art-refs/reed-green.png",
+            "reeds-b": "assets/reference/next-art-refs/reed-green.png",
+        }
+        for call in ready["calls"]:
+            self.assertEqual(call["args"]["reference_image_paths"], [refs[call["id"]]], call["id"])
+            self.assertTrue(os.path.exists(os.path.join(hs.ROOT, refs[call["id"]])), call["id"])
+        self.assertNotIn("Plain flat white background", ready["calls"][0]["args"]["description"])
+        self.assertNotIn("Plain flat white background", ready["calls"][1]["args"]["description"])
+        self.assertIn("left column of pixels continues the right column", ready["calls"][1]["args"]["description"])
+        self.assertIn("single pixel-wide column", ready["calls"][2]["args"]["description"])
 
 
 if __name__ == "__main__":
