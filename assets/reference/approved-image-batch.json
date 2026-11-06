@@ -1,0 +1,140 @@
+{
+ "_note": "GenerateImage calls approved 2026-11-06. Field ripe and sown (126x72 top-down), cliff variant c (seamless 44 px rock tile), broadleaf b (a different silhouette), four ground tiles at the hero texel, and one yard concept sheet. No crops. Paths are absolute under /workspace/lk-art-redo. Do not wire these until the images exist.",
+ "calls": [
+  {
+   "id": "field-image-a",
+   "asset": "field",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the crop field plot from the reference image, seen from directly above as a flat plan, with no standing sides. The reference shows several fenced crop plots with a farmer, a house and a stone wall at its edges; draw only one rectangular plot and nothing else. Same design: a rectangular farm plot of tilled dark brown soil in neat rows, edged by a low wooden rail fence. Ripe: tall golden wheat standing in dense rows. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. A flat top-down decal of the whole crop field plot, filling a 126 by 72 pixel footprint, no standing sides, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single crop field plot only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/field/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "field-a.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/field/views/a.png"
+  },
+  {
+   "id": "field-image-b",
+   "asset": "field",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the crop field plot from the reference image, seen from directly above as a flat plan, with no standing sides. The reference shows several fenced crop plots with a farmer, a house and a stone wall at its edges; draw only one rectangular plot and nothing else. Same design: a rectangular farm plot of tilled dark brown soil in neat rows, edged by a low wooden rail fence. Sown: short green sprouts in rows of dark soil. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. A flat top-down decal of the whole crop field plot, filling a 126 by 72 pixel footprint, no standing sides, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single crop field plot only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/field/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "field-b.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/field/views/b.png"
+  },
+  {
+   "id": "cliff_face-image-c",
+   "asset": "cliff_face",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the rock cliff face segment from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows no cliff: it is only the dark forest scene whose palette, evening light and voxel style the cliff must match; draw only one cliff and nothing else, no trees, no figures; use the reference rocks only for the colours of the stone. Same design: a steep wall of rough grey-brown stone in chunky blocky ledges and cracks, darker in the cracks, lighter on the lit top edge, a few tufts of dark grass on the ledges, the strip much wider than it is tall. A seamless tiling rock texture for one 44 px cliff step. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. A seamless tiling rock texture for one 44 px step of the cliff. The left edge continues the right edge and the top edge continues the bottom. Not a freestanding block and not a pillar. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single rock cliff face segment only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/cliff_face/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "cliff_face-c.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/cliff_face/views/c.png"
+  },
+  {
+   "id": "broadleaf-image-b",
+   "asset": "broadleaf",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the broadleaf tree from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows one leafy tree behind a palisade with houses at its edges; draw only the single tree and nothing else. Same design: a broad leafy deciduous tree with a full rounded crown of dark green leaf clusters, lighter yellow-green leaves on the lit top, and a short thick dark brown trunk. A tall narrow poplar, a column of leaves on a slim trunk, a different silhouette from the round oak, not a smaller copy of it. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole broadleaf tree from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single broadleaf tree only, not a sheet of several.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/broadleaf/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "broadleaf-b.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/broadleaf/views/b.png"
+  },
+  {
+   "id": "ground-yard-grass",
+   "asset": "ground",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Seamless ground tile of the concept clearing's grass, the shared base of the yard, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the first reference image and the palette of the second: chunky voxel pixel-art, soft evening light. One square tile only.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png",
+     "/workspace/lk-art-redo/docs/concept/theme.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "ground-yard-grass.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/ground/yard-grass.png"
+  },
+  {
+   "id": "ground-meadow",
+   "asset": "ground",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Seamless ground tile of meadow grass, the open land around the keep, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the first reference image and the palette of the second: chunky voxel pixel-art, soft evening light. One square tile only.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png",
+     "/workspace/lk-art-redo/docs/concept/theme.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "ground-meadow.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/ground/meadow.png"
+  },
+  {
+   "id": "ground-pine",
+   "asset": "ground",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Seamless ground tile of a pine forest floor of needles and moss, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the first reference image and the palette of the second: chunky voxel pixel-art, soft evening light. One square tile only.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png",
+     "/workspace/lk-art-redo/docs/concept/theme.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "ground-pine.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/ground/pine.png"
+  },
+  {
+   "id": "ground-ruins",
+   "asset": "ground",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Seamless ground tile of broken flagstones of a ruins floor, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the first reference image and the palette of the second: chunky voxel pixel-art, soft evening light. One square tile only.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png",
+     "/workspace/lk-art-redo/docs/concept/theme.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "ground-ruins.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/ground/ruins.png"
+  },
+  {
+   "id": "yard-concept-sheet",
+   "asset": "yard-concept",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "One concept sheet in the theme style of the reference images. Crops come later; draw the pieces on this one sheet, separated, on a flat white ground: a closed chest and the same chest open; a portal and a hell door; a stone keep at ranks 0, 1, 2, 3 and 4, each rank a fuller keep than the one before; and a mage tower in the mage's blue and violet palette. No labels and no text. Match the chunky voxel pixel-art and the evening light of the references.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png",
+     "/workspace/lk-art-redo/docs/concept/theme.jpg"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "yard-concept-sheet.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/yard-concept/sheet.png"
+  }
+ ]
+}

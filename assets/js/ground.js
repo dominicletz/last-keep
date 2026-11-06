@@ -5,8 +5,9 @@ import { grassAt } from "./tiles.js"
 // The base is the concept clearing tile.
 // The outer plane covers the camera. The plaza disc covers the flat town circle
 // the camera stands on, without replacing that circle's mesh.
-// pixelStep(168, 400) is 0.84. That is the hero texel. The yard textures use the
-// same step, so a hero pixel and a ground pixel cover one world distance.
+// pixelStep(168, 400) is 0.84, the camera step. The live yard stays on it
+// until the seamless hero-texel tiles exist. Those tiles use SHEET_TEXEL
+// (32/88), the same constant as the hero sheets, and seamHolds.
 export const HERO_TEXEL = pixelStep(168, 400)
 export const GROUND_SPAN = 760
 export const GROUND_TEX = Math.round(GROUND_SPAN / HERO_TEXEL)
@@ -26,6 +27,27 @@ function mix(a, b, t) {
     Math.round(a[1] + (b[1] - a[1]) * clamped),
     Math.round(a[2] + (b[2] - a[2]) * clamped)
   ]
+}
+
+// A seamless tile: the wrap from the last column to the first is no larger
+// than the biggest step between adjacent interior columns.
+export function seamHolds(pixels, width, height, stride = 4) {
+  let interior = 0
+  for (let x = 1; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      const a = (y * width + x) * stride
+      const b = a - stride
+      for (let c = 0; c < 3; c++) interior = Math.max(interior, Math.abs(pixels[a + c] - pixels[b + c]))
+    }
+  }
+  let wrap = 0
+  const last = (width - 1) * stride
+  for (let y = 0; y < height; y++) {
+    const a = y * width * stride
+    const b = a + last
+    for (let c = 0; c < 3; c++) wrap = Math.max(wrap, Math.abs(pixels[a + c] - pixels[b + c]))
+  }
+  return wrap <= interior
 }
 
 function hash(x, y) {

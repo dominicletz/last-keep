@@ -666,16 +666,38 @@ class HeroActionRowsTest(unittest.TestCase):
         self.assertEqual(picks[0], 0)
         self.assertIn("peak", info)
         self.assertIn("recovery", info)
-        top, foot = sv.span(frames[-1]["mask"])
-        own = min(max(sv.FILL / (foot - top + 1), scale * 0.95), scale * 1.05)
-        last = sv.place(frames[-1], own, sv.head_centre(frames[-1]["mask"]), foot)
+        top, foot = sv.span(frames[0]["mask"])
+        self.assertEqual(scale, sv.FILL / float(foot - top + 1))
+        last = sv.place(frames[-1], scale, sv.head_centre(frames[-1]["mask"]), sv.span(frames[-1]["mask"])[1])
         self.assertTrue(np.array_equal(last[1], cells[0][1]))
         frames[-1] = swung
         picks, scale, cells, _info = sv.hero_attack_cells(frames)
-        top, foot = sv.span(frames[-1]["mask"])
-        own = min(max(sv.FILL / (foot - top + 1), scale * 0.95), scale * 1.05)
-        moved = sv.place(frames[-1], own, sv.head_centre(frames[-1]["mask"]), foot)
+        moved = sv.place(frames[-1], scale, sv.head_centre(frames[-1]["mask"]), sv.span(frames[-1]["mask"])[1])
         self.assertFalse(np.array_equal(moved[1], cells[0][1]))
+
+    def test_an_attack_keeps_frame_zero_scale_through_a_lunge(self):
+        def frame(arm):
+            rgb = np.full((180, 140, 3), 255, np.uint8)
+            rgb[30:150, 50:90] = (30, 30, 30)
+            if arm:
+                rgb[10:30, 50:90] = (30, 30, 30)
+            mask = sv.cut_out(rgb)
+            return {"rgb": rgb, "mask": mask, "sharp": 1.0, "gray": sv.small_gray(rgb, mask)}
+
+        start, lunged = frame(0), frame(1)
+        frames = [start if i < 8 or i > 36 else lunged for i in range(49)]
+        frames[-1] = start
+        picks, scale, cells, _info = sv.hero_attack_cells(frames)
+        top, foot = sv.span(frames[0]["mask"])
+        self.assertEqual(scale, sv.FILL / float(foot - top + 1))
+        mid = next(i for i, p in enumerate(picks) if 8 <= p <= 36)
+        placed = sv.place(frames[picks[mid]], scale, sv.head_centre(frames[picks[mid]]["mask"]),
+                          sv.span(frames[picks[mid]]["mask"])[1])
+        self.assertTrue(np.array_equal(placed[1], cells[mid][1]))
+        h0 = sv.cell_metrics(*cells[0])["height"]
+        hmid = sv.cell_metrics(*cells[mid])["height"]
+        self.assertEqual(h0, sv.HERO)
+        self.assertGreater(hmid, h0)
 
     def test_death_picks_end_on_the_last_frame(self):
         frames = frames_from([np.zeros((4, 4), np.float32) for _ in range(49)])
@@ -706,6 +728,26 @@ class HeroActionRowsTest(unittest.TestCase):
         self.assertIn("attack height 88 +-2 px", failed)
         self.assertIn("attack-S.mp4", failed["attack height 88 +-2 px"])
         self.assertNotIn("death start height 88 +-2 px", failed)
+        # Frame 0 and the last attack frame are the standing pose. A lunge
+        # in between may leave 88, and it is not a head-line failure.
+        grid[0][8] = _stamp(88)
+        grid[0][10] = _stamp(100)
+        grid[0][13] = _stamp(88)
+        rep = cs.action_faults(grid, bands)
+        failed = {name: clips for ok, name, _, clips in rep.results if not ok}
+        self.assertNotIn("attack height 88 +-2 px", failed)
+        grid[0][13] = _stamp(97)
+        rep = cs.action_faults(grid, bands)
+        failed = {name: clips for ok, name, _, clips in rep.results if not ok}
+        self.assertIn("attack height 88 +-2 px", failed)
+        self.assertIn("attack-S.mp4", failed["attack height 88 +-2 px"])
+        grid[0][13] = _stamp(88)
+        grid[0][10] = _stamp(88, foot=114)
+        rep = cs.action_faults(grid, bands)
+        failed = {name: clips for ok, name, _, clips in rep.results if not ok}
+        self.assertIn("attack shares the walk foot line", failed)
+        self.assertNotIn("attack height 88 +-2 px", failed)
+        grid[0][10] = _stamp(88)
         grid[0][8] = _stamp(88)
         grid[0][19] = _stamp(42)
         rep = cs.action_faults(grid, bands)

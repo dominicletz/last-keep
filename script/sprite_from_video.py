@@ -134,17 +134,18 @@ def actions_complete(clips):
 
 
 def hero_attack_cells(frames):
-    """Six attack cells placed like a walk frame: each frame's own foot and
-    head centre, scale within 5% of the clip median. Returns picks, scale,
-    cells (rgb, alpha) and the peak info."""
+    """Six attack cells at frame 0's scale, the monster and death rule, so a
+    swing does not resize the body. Each frame keeps its own foot and its own
+    head centre. A blade above the helm or a lunge may grow the silhouette or
+    move the head line; that is not a failure. Frames 0 and the last are the
+    standing pose. Returns picks, scale, cells (rgb, alpha) and the peak info."""
     peak, back, picks = attack_picks(frames, ATTACK_ROWS)
-    scale = clip_geometry(frames, picks)
+    top, foot = span(frames[0]["mask"])
+    scale = FILL / float(foot - top + 1)
     cells = []
     for i in picks:
         f = frames[i]
-        top, foot = span(f["mask"])
-        own = min(max(FILL / (foot - top + 1), scale * 0.95), scale * 1.05)
-        cells.append(place(f, own, head_centre(f["mask"]), foot))
+        cells.append(place(f, scale, head_centre(f["mask"]), span(f["mask"])[1]))
     return picks, scale, cells, {"peak": peak, "recovery": back}
 
 

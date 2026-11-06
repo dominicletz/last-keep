@@ -45,6 +45,31 @@ class StaticTest(unittest.TestCase):
             json.dump(dict(BASE, **over), fh)
         return hs.load_config("p", reference=tmp)
 
+    def test_a_flat_decal_keeps_its_footprint_and_shape_variants_must_differ(self):
+        cfg = self.config(world_width=46, world_height=26, cell=[136, 80], view="top_down",
+                          variants=[{"id": "a"}, {"id": "b"}])
+        self.assertEqual((cfg["width"], cfg["height"]), (126, 72))
+        img = np.full((100, 200, 3), 255, np.uint8)
+        img[10:90, 20:80] = (20, 80, 20)
+        _rgb, keep = hs.static_cut(img, 72, fit_width=126)
+        self.assertEqual(keep.shape, (70, 124))
+        with self.assertRaises(SystemExit):
+            self.config(world_width=46, world_height=26, cell=[128, 80])
+        same = self.config(shape_iou=0.85, variants=[{"id": "a"}, {"id": "b"}])
+        image = np.full((200, 200, 3), 255, np.uint8)
+        image[20:180, 60:140] = (20, 80, 30)
+        sheet = hs.static_sheet(same, {"a": image, "b": image})
+        self.assertIn("shape variants differ", [n for ok, n, _ in hs.static_checks(same, sheet) if not ok])
+        other = image.copy()
+        other[:] = 255
+        other[40:160, 20:50] = (20, 80, 30)
+        sheet = hs.static_sheet(same, {"a": image, "b": other})
+        self.assertNotIn("shape variants differ", [n for ok, n, _ in hs.static_checks(same, sheet) if not ok])
+        five = [{"id": chr(ord("a") + i)} for i in range(5)]
+        with self.assertRaises(SystemExit):
+            self.config(variants=five)
+        self.assertEqual(len(self.config(variant_cap=5, variants=five)["variants"]), 5)
+
     def test_a_static_config_loads_with_its_height_at_the_hero_texel(self):
         cfg = self.config()
         self.assertEqual(cfg["type"], "static")
@@ -246,12 +271,17 @@ class StaticTest(unittest.TestCase):
         tq = hs.static_prompts(self.config(view="three_quarter"))["calls"][0]["args"]["description"]
         self.assertIn("three-quarter view with one corner toward the camera", tq)
         self.assertNotIn("seen from the front", tq)
+        flat = hs.static_prompts(self.config(view="top_down", world_width=46, world_height=26,
+                                             cell=[136, 80]))["calls"][0]["args"]["description"]
+        self.assertIn("seen from directly above as a flat plan", flat)
+        self.assertIn("126 by 72 pixel footprint", flat)
+        self.assertNotIn("upright", flat)
 
     def test_every_committed_static_sheet_rebuilds_byte_for_byte(self):
         views = {"pine": "front", "stone_wall": "front", "wall": "three_quarter", "tower": "three_quarter",
                  "house": "three_quarter", "forge": "three_quarter", "trap": "three_quarter",
                  "bush": "three_quarter", "rock": "three_quarter", "flowers": "three_quarter",
-                 "broadleaf": "front", "field": "three_quarter", "forest_barrier": "front",
+                 "broadleaf": "front", "forest_barrier": "front",
                  "stump_log": "three_quarter", "cliff_face": "front", "grass_tufts": "three_quarter",
                  "reeds": "three_quarter", "dead_tree": "front",
                  "ruin_stones": "three_quarter", "map_table": "three_quarter",
@@ -259,11 +289,21 @@ class StaticTest(unittest.TestCase):
         for name, view in views.items():
             cfg = hs.load_config(name)
             self.assertEqual(cfg.get("view", "front"), view, name)
+            live = os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")
+            before = open(live, "rb").read()
             tmp = tempfile.mkdtemp()
             out = os.path.join(tmp, "s.png")
-            self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None), 0, name)
-            with open(out, "rb") as a, open(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png"), "rb") as b:
-                self.assertEqual(a.read(), b.read(), name)
+            code = hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None)
+            self.assertEqual(open(live, "rb").read(), before, name)
+            if code:
+                self.assertEqual(name, "broadleaf")
+                text = open(os.path.join(tmp, "a", "check.txt")).read()
+                self.assertEqual(text.count("FAIL"), 1, text)
+                self.assertIn("FAIL  shape variants differ", text)
+                self.assertFalse(os.path.exists(out))
+            else:
+                with open(out, "rb") as a:
+                    self.assertEqual(a.read(), before, name)
         trap = hs.load_config("trap")
         self.assertEqual(trap["variants"][1]["squash_of"], "a")
         self.assertFalse(os.path.exists(os.path.join(trap["dir"], "views", "b.png")))
@@ -317,8 +357,8 @@ class StaticTest(unittest.TestCase):
 
     def test_the_terrain_and_scenery_pieces_are_set_up_and_their_prompts_are_current(self):
         # name: (world height, variants, drawn from text with only the concept's palette)
-        want = {"broadleaf": (40, 2, False), "field": (12, 2, False), "forest_barrier": (32, 2, False),
-                "stump_log": (10, 2, True), "cliff_face": (16, 2, True), "grass_tufts": (5, 3, False),
+        want = {"broadleaf": (40, 2, False), "field": (26, 2, False), "forest_barrier": (32, 2, False),
+                "stump_log": (10, 2, True), "cliff_face": (16, 3, True), "grass_tufts": (5, 3, False),
                 "reeds": (9, 2, True), "dead_tree": (36, 1, True)}
         for name, (wh, n, text_only) in want.items():
             cfg = hs.load_config(name)
@@ -343,6 +383,30 @@ class StaticTest(unittest.TestCase):
         # Greens are matched to the pine forest, as the bush is.
         for name in ("broadleaf", "forest_barrier", "grass_tufts", "reeds"):
             self.assertEqual(hs.load_config(name)["match"], "pine", name)
+        field = hs.load_config("field")
+        self.assertEqual(field["view"], "top_down")
+        self.assertEqual((field["world_width"], field["world_height"]), (46, 26))
+        self.assertEqual((field["width"], field["height"]), (126, 72))
+        self.assertEqual([v["id"] for v in field["variants"]], ["a", "b"])
+        self.assertTrue(field["awaiting_art"])
+        live = os.path.join(hs.ROOT, "priv/static/images/hd2d/field-sheet.png")
+        before = open(live, "rb").read()
+        with self.assertRaises(SystemExit):
+            hs.static_build(field, log=lambda *a, **k: None)
+        self.assertEqual(open(live, "rb").read(), before)
+        cliff = hs.load_config("cliff_face")
+        self.assertTrue(cliff["variants"][-1]["pending"])
+        self.assertIn("seamless tiling", cliff["variants"][-1]["framing"])
+        broad = hs.load_config("broadleaf")
+        self.assertEqual(broad["shape_iou"], 0.85)
+        self.assertIn("poplar", broad["variants"][1]["note"])
+        settings = json.load(open(os.path.join(hs.ROOT, "assets/reference/yard-concept/settings.json")))
+        self.assertNotIn("box", settings)
+        self.assertTrue(all("box" not in piece for piece in settings["pieces"]))
+        self.assertEqual([p["id"] for p in settings["pieces"]], ["chest", "portal", "keep", "mage_tower"])
+        self.assertEqual(settings["pieces"][2]["ranks"], [0, 1, 2, 3, 4])
+        self.assertEqual(settings["felled_wood"], "stump_log variant b")
+        self.assertEqual(hs.STATIC_VARIANTS, 4)
 
     def test_framing_replaces_the_upright_sentence_and_pending_variants_wait_outside_the_sheet(self):
         cfg = self.config(variants=[{"id": "a"}, {"id": "b", "framing": "the whole log lying flat along the ground",
@@ -370,7 +434,7 @@ class StaticTest(unittest.TestCase):
         d = hs.static_prompts(log)["calls"][1]["args"]["description"]
         self.assertIn("lying flat along the ground, much longer than it is tall", d)
         self.assertNotIn("upright, centred", d)
-        sizes = {"broadleaf": [110, 94], "field": [33, 33], "forest_barrier": [88, 88], "stump_log": [28, 28],
+        sizes = {"broadleaf": [110, 94], "forest_barrier": [88, 88], "stump_log": [28, 28],
                  "cliff_face": [44, 44], "grass_tufts": [14, 11, 9], "reeds": [25, 20], "dead_tree": [99]}
         for name, want in sizes.items():
             cfg = hs.load_config(name)
@@ -385,6 +449,10 @@ class StaticTest(unittest.TestCase):
             self.assertEqual(got, want, name)
             built = dict(cfg, variants=[v for v in cfg["variants"] if not v.get("pending")])
             self.assertEqual([n for ok, n, _ in hs.static_checks(built, sheet) if not ok], [], name)
+        # The committed field sheet is the old three-quarter plot. The flat
+        # 126x72 decal replaces it when those views exist.
+        old = Image.open(os.path.join(hs.ROOT, "priv/static/images/hd2d/field-sheet.png"))
+        self.assertEqual(old.size, (272, 48))
 
 
 # Pieces prepped with no generated image yet. Heights are the world units in
@@ -835,6 +903,148 @@ def hermit_motion_batch():
             "`hero_sprites.py hermit dirs` writes after the turntable. view-E is the flip of "
             "view-W, so k-E and dirs/E.png come from that flip.",
             "calls": calls}
+
+
+def _abs_image(name, call):
+    args = json.loads(json.dumps(call["args"]))
+    args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
+    return {"id": f"{name}-{call['id']}", "asset": name, "tool": "GenerateImage",
+            "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])}
+
+
+def approved_image_batch():
+    """GenerateImage calls approved on 2026-11-06. Paths are absolute under
+    ART_ROOT. Nothing here is wired, and no crop is invented."""
+    calls = []
+    for call in hs.static_prompts(hs.load_config("field"))["calls"]:
+        calls.append(_abs_image("field", call))
+    for call in hs.static_prompts(hs.load_config("cliff_face"))["calls"]:
+        if call["id"] == "image-c":
+            calls.append(_abs_image("cliff_face", call))
+    for call in hs.static_prompts(hs.load_config("broadleaf"))["calls"]:
+        if call["id"] == "image-b":
+            calls.append(_abs_image("broadleaf", call))
+    refs = [os.path.join(ART_ROOT, p) for p in (
+        "assets/reference/engineer/video/views/v-S.png", "docs/concept/theme.jpg")]
+    tiles = (
+        ("ground-yard-grass", "the concept clearing's grass, the shared base of the yard",
+         "assets/reference/ground/yard-grass.png"),
+        ("ground-meadow", "meadow grass, the open land around the keep",
+         "assets/reference/ground/meadow.png"),
+        ("ground-pine", "a pine forest floor of needles and moss",
+         "assets/reference/ground/pine.png"),
+        ("ground-ruins", "broken flagstones of a ruins floor",
+         "assets/reference/ground/ruins.png"),
+    )
+    for cid, subject, save in tiles:
+        calls.append({
+            "id": cid, "asset": "ground", "tool": "GenerateImage",
+            "args": {
+                "description": (
+                    f"Seamless ground tile of {subject}, at the hero texel (32 world units over 88 px, "
+                    "the same constant as the hero sheets). Seen from directly above. The left edge continues "
+                    "the right edge and the top edge continues the bottom, with no border and no figure. "
+                    "Match the rendering style of the first reference image and the palette of the second: "
+                    "chunky voxel pixel-art, soft evening light. One square tile only."
+                ),
+                "reference_image_paths": refs,
+                "aspect_ratio": "1:1",
+                "filename": f"{cid}.png",
+            },
+            "save_as": os.path.join(ART_ROOT, save),
+        })
+    calls.append({
+        "id": "yard-concept-sheet", "asset": "yard-concept", "tool": "GenerateImage",
+        "args": {
+            "description": (
+                "One concept sheet in the theme style of the reference images. Crops come later; draw the "
+                "pieces on this one sheet, separated, on a flat white ground: a closed chest and the same "
+                "chest open; a portal and a hell door; a stone keep at ranks 0, 1, 2, 3 and 4, each rank a "
+                "fuller keep than the one before; and a mage tower in the mage's blue and violet palette. "
+                "No labels and no text. Match the chunky voxel pixel-art and the evening light of the references."
+            ),
+            "reference_image_paths": refs,
+            "aspect_ratio": "1:1",
+            "filename": "yard-concept-sheet.png",
+        },
+        "save_as": os.path.join(ART_ROOT, "assets/reference/yard-concept/sheet.png"),
+    })
+    return {"_note": "GenerateImage calls approved 2026-11-06. Field ripe and sown (126x72 top-down), "
+            "cliff variant c (seamless 44 px rock tile), broadleaf b (a different silhouette), "
+            "four ground tiles at the hero texel, and one yard concept sheet. No crops. "
+            "Paths are absolute under /workspace/lk-art-redo. Do not wire these until the images exist.",
+            "calls": calls}
+
+
+def approved_video_batch():
+    """Scout death-N with the still final second, and one rabbit walk-NW.
+    Deer run is not here: CLIP_KINDS has no run, and the deer attack slot is graze."""
+    root = hs.ROOT
+    with open(os.path.join(root, "assets/reference/hero-attack-death-batch.json")) as fh:
+        scout = next(c for c in json.load(fh)["calls"] if c["id"] == "scout-death-N")
+    old = "it staggers, sinks to their knees and falls onto their side, the bow staying in their hand."
+    held = ("it flinches and holds the exact first-frame pose perfectly still for a moment, "
+            "then sinks straight down onto their knees and falls onto their side on the exact spot where they stood, "
+            "the bow staying in their hand. Their body only ever gets lower, frame by frame, never higher. "
+            "It never springs, hops, or stretches up; it does not move away from the camera, up the frame or toward the camera.")
+    if old not in scout["args"]["prompt"]:
+        raise AssertionError("scout death-N prompt no longer has the sentence this retake replaces")
+    scout["args"]["prompt"] = scout["args"]["prompt"].replace(old, held)
+    with open(os.path.join(root, "assets/reference/rabbit/prompts.json")) as fh:
+        rabbit = next(c for c in json.load(fh)["calls"] if c["id"] == "walk-NW")
+    hop = ("Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the "
+           "front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward.")
+    flat = ("Short hops on the spot, ears flat, two short hops a second: the long hind feet push off together and the "
+            "front paws land first, ears held flat along the back, back arching a little with each hop; its body never moves forward.")
+    if hop not in rabbit["args"]["prompt"]:
+        raise AssertionError("rabbit walk-NW prompt no longer has the hop sentence this retake replaces")
+    rabbit["args"]["prompt"] = rabbit["args"]["prompt"].replace(hop, flat)
+    fixed = hs.absolute({"calls": [rabbit]}, root=ART_ROOT)["calls"][0]
+    return {"_note": "GenerateVideo calls approved 2026-11-06. Scout death-N holds the first frame still, "
+            "then only moves down, and lies still for the last half second (the wolf and troll wording). "
+            "Rabbit walk-NW is one last retake: ears flat, short hops. Drop the rabbit if this fails; "
+            "do not copy another direction over it. Deer run is not in this list: CLIP_KINDS has no run kind, "
+            "and the deer attack slot is already graze. Paths are absolute under /workspace/lk-art-redo.",
+            "calls": [scout, {"id": "rabbit-walk-NW", "asset": "rabbit", "tool": "GenerateVideo",
+                              "args": fixed["args"], "save_as": fixed["save_as"]}]}
+
+
+class ApprovedBatchTest(unittest.TestCase):
+    def test_the_approved_image_and_video_batches_match_the_calls(self):
+        image = json.load(open(os.path.join(hs.ROOT, "assets/reference/approved-image-batch.json")))
+        video = json.load(open(os.path.join(hs.ROOT, "assets/reference/approved-video-batch.json")))
+        self.assertEqual(image, approved_image_batch())
+        self.assertEqual(video, approved_video_batch())
+        self.assertEqual(len(image["calls"]), 9)
+        self.assertEqual(len(video["calls"]), 2)
+        self.assertTrue(all(c["tool"] == "GenerateImage" for c in image["calls"]))
+        self.assertTrue(all(c["tool"] == "GenerateVideo" for c in video["calls"]))
+        ids = [c["id"] for c in image["calls"]]
+        self.assertEqual(ids, [
+            "field-image-a", "field-image-b", "cliff_face-image-c", "broadleaf-image-b",
+            "ground-yard-grass", "ground-meadow", "ground-pine", "ground-ruins", "yard-concept-sheet"])
+        self.assertEqual([c["id"] for c in video["calls"]], ["scout-death-N", "rabbit-walk-NW"])
+        self.assertNotIn("deer", [c["asset"] for c in video["calls"]])
+        self.assertIn("CLIP_KINDS has no run kind", video["_note"])
+        for call in image["calls"] + video["calls"]:
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/"), call["id"])
+            text = call["args"].get("description") or call["args"].get("prompt")
+            self.assertTrue(text and text.strip(), call["id"])
+        sheet = next(c for c in image["calls"] if c["id"] == "yard-concept-sheet")
+        self.assertNotIn("box", sheet["args"])
+        self.assertIn("ranks 0, 1, 2, 3 and 4", sheet["args"]["description"])
+        self.assertIn("mage", sheet["args"]["description"])
+        broad = next(c for c in image["calls"] if c["id"] == "broadleaf-image-b")
+        self.assertIn("poplar", broad["args"]["description"])
+        cliff = next(c for c in image["calls"] if c["id"] == "cliff_face-image-c")
+        self.assertIn("Not a freestanding block and not a pillar", cliff["args"]["description"])
+        field = next(c for c in image["calls"] if c["id"] == "field-image-a")
+        self.assertIn("126 by 72", field["args"]["description"])
+        death = video["calls"][0]["args"]["prompt"]
+        self.assertIn("holds the exact first-frame pose perfectly still", death)
+        self.assertIn("lies still on the ground for the last half second", death)
+        self.assertIn("ears held flat", video["calls"][1]["args"]["prompt"])
+        self.assertNotIn("ears upright", video["calls"][1]["args"]["prompt"])
 
 
 if __name__ == "__main__":

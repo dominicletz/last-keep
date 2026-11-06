@@ -1,3 +1,5 @@
+import { SHEET_TEXEL } from "./hd2d/picture.js"
+
 // World size of a concept card. Texel density is this size over the crop in
 // assets/models/tiles.js. A card coarser than the hero texel fails the yard test.
 export const yardCards = {
@@ -32,9 +34,9 @@ export function buildingCard(kind) {
 // (assets/reference/<name>/asset.json, "type": "static"): one row of cells,
 // one per variant, each figure's lowest outline row footRow (the cell height
 // minus hero_sprites.STATIC_MARGIN 4, minus 1), drawn at the hero texel
-// (32 / 88 world units per px) like the monster sheets.
+// (SHEET_TEXEL, 32/88) like the monster sheets.
 function staticSheet(name, cell, variants) {
-  return { url: `images/hd2d/${name}-sheet.png`, cell, footRow: cell[1] - 5, variants, texel: 32 / 88 }
+  return { url: `images/hd2d/${name}-sheet.png`, cell, footRow: cell[1] - 5, variants, texel: SHEET_TEXEL }
 }
 
 export const staticSheets = {

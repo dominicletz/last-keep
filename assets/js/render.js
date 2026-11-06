@@ -13,7 +13,7 @@ import { deadTreeSlots, DEAD_TREE_CAP, floraSlots, ruinSlots, RUIN_CAP } from ".
 import { deerAt, deerSheetUrl, deerSlots, DEER_SHEET } from "./wildlife.js"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
-import { mountPicture } from "./horizon.js"
+import { mountPicture, pineVariant } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
 import { buildingCard, buildingSheet, sheetCard as staticCard, spotVariant, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
@@ -628,7 +628,7 @@ export function createView(stage, picture) {
 
   function addForestWall() {
     for (const [i, slot] of forestWallSlots().entries()) {
-      const group = treeSprite(slot.scale, treeVariant(i))
+      const group = treeSprite(slot.scale, pineVariant(slot.x, slot.z))
       group.position.set(slot.x, 0, slot.z)
       group.traverse((child) => {
         child.castShadow = false
@@ -950,8 +950,7 @@ export function createView(stage, picture) {
         keep = makeKeep(townRank)
         scene.add(keep)
       }
-      const keepRatio = snap.keep.max ? snap.keep.hp / snap.keep.max : 1
-      keep.scale.y = 0.65 + keepRatio * 0.35
+      keep.scale.y = 1
 
       const drawn = present(snap)
 
@@ -974,7 +973,7 @@ export function createView(stage, picture) {
 
       sync("building", drawn.buildings, (row) => buildingMesh(row))
 
-      sync("tree", snap.trees || [], () => treeSprite(1))
+      sync("tree", snap.trees || [], (row) => treeSprite(1, pineVariant(row.x, row.y)))
 
       paintMapCloth(mapCloth, clothMarks, snap.map)
       sync("chest", snap.chests || [], () => {

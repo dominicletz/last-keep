@@ -78,6 +78,14 @@ export function phash2(values) {
   return hash & 0x07ffffff
 }
 
+// Yard pines and both forest-wall rings. The variant is the hash of the
+// cell, so two trees on the same spot agree and a rebuilt ring does not
+// stripe a, b, a, b.
+export function pineVariant(x, z) {
+  const variants = treeSheet.variants
+  return variants[phash2([Math.round(x), Math.round(z)]) % variants.length]
+}
+
 function inside(i, j) {
   const x = i * CELL
   const y = j * CELL

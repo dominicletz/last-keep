@@ -1,7 +1,9 @@
 {
- "_note": "Static piece (docs/ART-REDO.md section 3, field). The concept box is the wheat and vegetable plots right of the keep in theme.jpg (fences, a farmer and the stone wall at its edges excluded by source_note). The field card is 46x26 and flat; three-quarter like the concept, world height 12 (33 px, the plot's depth plus the crop's height). a ripe, b sown: the sow and harvest stages.",
+ "_note": "Static piece (docs/ART-REDO.md section 3, field). The concept box is the wheat and vegetable plots right of the keep in theme.jpg (fences, a farmer and the stone wall at its edges excluded by source_note). Approved 2026-11-06: a flat top-down decal, card footprint 46x26 at the hero texel (126x72 px). a ripe, b sown. awaiting_art: the committed sheet is the old three-quarter plot and is not rewritten until the flat views exist. world_width is this footprint; the stone wall does not set it.",
  "type": "static",
- "view": "three_quarter",
+ "view": "top_down",
+ "awaiting_art": true,
+ "world_width": 46,
  "noun": "crop field plot",
  "concept": {
   "source": "docs/concept/theme.jpg",
@@ -17,10 +19,10 @@
   "assets/reference/engineer/video/views/v-S.png"
  ],
  "design": "a rectangular farm plot of tilled dark brown soil in neat rows, edged by a low wooden rail fence",
- "world_height": 12,
+ "world_height": 26,
  "cell": [
   136,
-  48
+  80
  ],
  "variants": [
   {

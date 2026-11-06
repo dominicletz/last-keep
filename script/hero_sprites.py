@@ -21,6 +21,7 @@ already match is left alone. See docs/concepts/SPRITE-PIPELINE.md.
 """
 import argparse
 import contextlib
+import hashlib
 import io
 import json
 import math
@@ -28,6 +29,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 import numpy as np
 from PIL import Image
@@ -60,6 +62,9 @@ CLIP_FRAMES = 49     # 2 s at 24 fps, last frame = first
 WALK_LOOP = 0.5      # last vs first frame, silhouette px, times the walk median
 IDLE_LOOP = 0.6
 START_POSE = 0.2     # first frame vs dirs/<DIR>.png, times the walk median
+# A still idle (no walk beside it) may sit under that fraction when its own
+# step is a few pixels. The limit is then the encode noise floor instead.
+_NOISE = {}
 IDLE_DRIFT = 0.8     # any idle frame vs its first frame, times the walk median
 ATTACK_LOOP = WALK_LOOP  # a monster attack ends back on its start pose like a walk loop
 
@@ -74,6 +79,70 @@ HERO_CLIPS = {"walk": COLUMNS, "idle": COLUMNS}
 TYPES = ("hero", "monster", "static")
 # One sheet texel in world units: the hero's 32-unit body over its 88 px.
 TEXEL = 32 / 88
+
+
+def still_idle_limit(median, noise_floor):
+    """Start limit for an idle that has no walk beside it: the larger of
+    0.2× its own step and the encode noise floor of that dirs pose."""
+    return max(START_POSE * float(median), float(noise_floor))
+
+
+def idle_start_fails(start, median, noise_floor, still):
+    """Whether a clip's first frame misses its dirs pose. A walk, an attack,
+    a death, and an idle that has a walk stay at 0.2× the walk median. The
+    noise floor applies only to a still idle."""
+    limit = still_idle_limit(median, noise_floor) if still else START_POSE * float(median)
+    return start > limit, limit
+
+
+def _posed(rgb):
+    """cut_out then place, dilated, the silhouette the start check compares."""
+    mask = sv.cut_out(np.ascontiguousarray(rgb))
+    if not mask.any():
+        return np.zeros((sv.CELL, sv.CELL), bool)
+    top, foot = sv.span(mask)
+    _, alpha = sv.place({"rgb": rgb, "mask": mask}, sv.FILL / float(foot - top + 1),
+                        sv.head_centre(mask), foot)
+    return ndimage.binary_dilation(alpha, CROSS)
+
+
+def _encode_frame(rgb):
+    """One frame through the clip codec and back. yuv420 needs even sides."""
+    h, w = rgb.shape[:2]
+    td = tempfile.mkdtemp()
+    try:
+        src, mp4, out = (os.path.join(td, n) for n in ("a.png", "a.mp4", "b.png"))
+        Image.fromarray(np.ascontiguousarray(rgb)).save(src)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", src, "-frames:v", "1",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", mp4], check=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", mp4, "-frames:v", "1", out], check=True)
+        back = np.asarray(Image.open(out).convert("RGB"))
+        if back.shape[0] != h or back.shape[1] != w:
+            back = np.asarray(Image.fromarray(back).resize((w, h), Image.BOX))
+        return back
+    finally:
+        shutil.rmtree(td)
+
+
+def pose_noise_floor(rgb):
+    """Silhouette pixels that move when a dirs pose is encoded, cut out and
+    placed again. Two calls on the same image return the same count."""
+    rgb = np.ascontiguousarray(rgb)
+    key = hashlib.sha256(rgb.tobytes()).hexdigest()
+    if key not in _NOISE:
+        _NOISE[key] = int((_posed(rgb) != _posed(_encode_frame(rgb))).sum())
+    return _NOISE[key]
+
+
+def seam_holds(rgb):
+    """A seamless tile. The wrap from the last column to the first is no
+    larger than the biggest step between adjacent interior columns."""
+    cols = np.asarray(rgb)
+    if cols.ndim == 2:
+        cols = cols[..., None]
+    interior = np.abs(cols[:, 1:].astype(int) - cols[:, :-1].astype(int)).max()
+    wrap = np.abs(cols[:, :1].astype(int) - cols[:, -1:].astype(int)).max()
+    return int(wrap) <= int(interior)
 
 
 def sheet_height(world_height):
@@ -893,8 +962,11 @@ def precheck(cfg, log=print):
         heights = [m["height"] for m in mets]
         target = sv.FOOT + 1
         import check_sprite_sheet as cs
-        if any(abs(h - sv.HERO) > cs.HERO_HEIGHT_TOL for h in heights):
-            flag(clip, f"height off 88 +-2: {heights} (the walk's check)")
+        # Standing frames only. A mid-swing lunge is not a height failure, and
+        # there is no head-line gate for it.
+        standing = (heights[0], heights[-1])
+        if any(abs(h - sv.HERO) > cs.HERO_HEIGHT_TOL for h in standing):
+            flag(clip, f"height off 88 +-2 on the standing frames: {heights}")
         if any(abs(m["foot"] - target) > 1 for m in mets):
             flag(clip, f"foot line off row {target}: {[m['foot'] for m in mets]}")
         if any(m["edge"] for m in mets):
@@ -1080,11 +1152,21 @@ def monster_precheck(cfg, log=print):
                 flag(clip, f"loop does not close: last frame differs from the first by {loop} silhouette px "
                            f"(limit {k * med:.0f} = {k} x walk median {med:.0f})")
         start = int((first != pose(d, frames[0])).sum())
-        if start > START_POSE * med:
-            flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
-                       f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
+        # The noise floor is only for a still idle. A walk fills walk_median
+        # before this test, so an idle beside a walk stays at 0.2× that median.
+        still = kind == "idle" and d not in have.get("walk", ())
+        floor = pose_noise_floor(pose_at(os.path.join(vid, "dirs", f"{d}.png"), frames[0])) if still else 0
+        fails, limit = idle_start_fails(start, med, floor, still)
+        if fails:
+            if still:
+                flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                           f"(limit {limit:.0f} = max({START_POSE} x step {med:.0f}, noise floor {floor}))")
+            else:
+                flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                           f"(limit {limit:.0f} = {START_POSE} x walk median {med:.0f})")
         log(f"{clip}: {len(frames)} frames, " + (f"loop {loop} px, " if loop is not None else "no loop (death), ")
-            + f"start {start} px, picks {picks}, walk median {med:.0f}")
+            + f"start {start} px, picks {picks}, walk median {med:.0f}"
+            + (f", noise floor {floor}" if still else ""))
 
     with contextlib.redirect_stderr(io.StringIO()):
         sheet, pal, plan = sv.build_monster(vid, spec, have, inspect)
@@ -1183,6 +1265,7 @@ STATIC_VIEWS = {
     "front": "seen from the front at the game's camera angle, slightly from above",
     "three_quarter": ("seen in a three-quarter view with one corner toward the camera, at the game's camera "
                       "angle, slightly from above, like the reference image"),
+    "top_down": "seen from directly above as a flat plan, with no standing sides",
 }
 
 
@@ -1196,16 +1279,25 @@ def load_static(cfg, hero, name, reference=REFERENCE):
     wh = cfg["world_height"]
     if not isinstance(wh, (int, float)) or isinstance(wh, bool) or wh <= 0:
         raise SystemExit(f"{hero}/{name}: world_height is a positive number of world units, got {wh!r}")
+    cap = cfg.get("variant_cap", STATIC_VARIANTS)
+    if type(cap) is not int or cap < 1:
+        raise SystemExit(f"{hero}/{name}: variant_cap is a positive integer, got {cap!r}")
+    ww = cfg.get("world_width")
+    if ww is not None and (not isinstance(ww, (int, float)) or isinstance(ww, bool) or ww <= 0):
+        raise SystemExit(f"{hero}/{name}: world_width is a positive number of world units, got {ww!r}")
+    iou = cfg.get("shape_iou")
+    if iou is not None and (not isinstance(iou, (int, float)) or isinstance(iou, bool) or not 0 < float(iou) < 1):
+        raise SystemExit(f"{hero}/{name}: shape_iou is a fraction between 0 and 1, got {iou!r}")
     vs = cfg["variants"]
     ids = [v.get("id") for v in vs] if isinstance(vs, list) else []
-    if (not isinstance(vs, list) or not 1 <= len(vs) <= STATIC_VARIANTS or len(set(ids)) != len(ids)
+    if (not isinstance(vs, list) or not 1 <= len(vs) <= cap or len(set(ids)) != len(ids)
             or any(not isinstance(i, str) or not i.isalnum() or not i.islower() for i in ids)
             or any(not isinstance(v.get("note", ""), str) for v in vs)
             or any(set(v) - {"id", "note", "scale", "pick", "squash_of", "framing", "pending"} for v in vs)
             or any(not isinstance(v.get("framing", ""), str) or v.get("pending", False) not in (True, False) for v in vs)
             or all(v.get("pending") for v in vs)
             or any(v.get("pick", "left") not in STATIC_PICKS for v in vs)):
-        raise SystemExit(f"{hero}/{name}: variants is 1-{STATIC_VARIANTS} entries "
+        raise SystemExit(f"{hero}/{name}: variants is 1-{cap} entries "
                          f"{{\"id\" (lowercase letters/digits, unique), \"note\", \"scale\"?, \"pick\"? {STATIC_PICKS}}}, got {vs!r}")
     for v in vs:
         src = v.get("squash_of")
@@ -1226,14 +1318,18 @@ def load_static(cfg, hero, name, reference=REFERENCE):
             raise SystemExit(f"{hero}/{name}: variant {v['id']!r} scale {s!r} is from {STATIC_SCALE[0]} to {STATIC_SCALE[1]}")
     cell = cfg["cell"]
     h = sheet_height(wh)
+    width = sheet_height(float(ww)) if ww is not None else None
+    wide = width + 2 * STATIC_MARGIN if width is not None else 0
     if (not isinstance(cell, list) or len(cell) != 2 or any(type(c) is not int or c % 8 for c in cell)
-            or cell[1] < h + 2 * STATIC_MARGIN):
+            or cell[1] < h + 2 * STATIC_MARGIN or cell[0] < wide):
         raise SystemExit(f"{hero}/{name}: cell is [w, h], multiples of 8, h at least {h + 2 * STATIC_MARGIN} "
-                         f"({h} px figure + {STATIC_MARGIN} px above and below), got {cell!r}")
+                         f"({h} px figure + {STATIC_MARGIN} px above and below)"
+                         + (f", w at least {wide}" if width is not None else "") + f", got {cell!r}")
     cfg["type"] = "static"
     cfg["hero"] = hero
     cfg["dir"] = os.path.join(reference, hero)
     cfg["height"] = h
+    cfg["width"] = width
     return cfg
 
 
@@ -1258,8 +1354,13 @@ def static_prompts(cfg):
         note = f" {sentence(v['note'])}" if v.get("note") else ""
         # A variant's "framing" replaces the upright framing sentence (a log
         # lies along the ground; "upright" made the model draw a stump).
-        framing = (sentence(v["framing"]) if v.get("framing") else
-                   f"The whole {noun} from its top to the ground it stands on, upright, centred, nothing cropped.")
+        if v.get("framing"):
+            framing = sentence(v["framing"])
+        elif cfg.get("view") == "top_down" and cfg.get("width"):
+            framing = (f"A flat top-down decal of the whole {noun}, filling a {cfg['width']} by {cfg['height']} "
+                       f"pixel footprint, no standing sides, nothing cropped.")
+        else:
+            framing = f"The whole {noun} from its top to the ground it stands on, upright, centred, nothing cropped."
         desc = (f"Game prop reference of the {noun} from the reference image, {STATIC_VIEWS[cfg.get('view', 'front')]}. {sentence(source) + ' ' if source else ''}"
                 f"Same design: {cfg['design']}.{note}{style} {framing} Plain flat white background, no ground, no grass, no "
                 f"shadow, no text, no other objects. One single {noun} only, not a sheet of several.")
@@ -1284,12 +1385,13 @@ def static_pick(mask, side):
     return lab == keep
 
 
-def static_cut(rgb, height, pick=None, width_at=None):
+def static_cut(rgb, height, pick=None, width_at=None, fit_width=None):
     """A generated image on white -> (RGB, mask) of the figure scaled so its
     opaque body is height - 2 px tall (the outline adds a row above and
     below). Background is sv.cut_out's white; the figure is its bounding box.
     pick ("left"/"right") keeps one figure of several (static_pick); the rest
-    turns white."""
+    turns white. fit_width stretches the box to that many pixels including
+    the outline, ignoring the source aspect (a flat top-down decal)."""
     mask = sv.cut_out(rgb)
     if not mask.any():
         raise ValueError("no figure on the image")
@@ -1299,7 +1401,10 @@ def static_cut(rgb, height, pick=None, width_at=None):
     ys, xs = np.nonzero(mask)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
     fill = height - 2
-    w = max(1, int(round((x1 - x0) * ((width_at or height) - 2) / (y1 - y0))))
+    if fit_width:
+        w = max(1, fit_width - 2)
+    else:
+        w = max(1, int(round((x1 - x0) * ((width_at or height) - 2) / (y1 - y0))))
     img = Image.fromarray(np.ascontiguousarray(rgb[y0:y1, x0:x1]))
     small = np.asarray(img.resize((w, fill), Image.BOX), np.float64)
     a = np.asarray(Image.fromarray((mask[y0:y1, x0:x1] * 255).astype(np.uint8)).resize((w, fill), Image.BOX))
@@ -1308,6 +1413,9 @@ def static_cut(rgb, height, pick=None, width_at=None):
     # the box keeps at least its most covered pixel, so the height is exact.
     for y in np.nonzero(~keep.any(1))[0]:
         keep[y, int(a[y].argmax())] = True
+    if fit_width:
+        for x in np.nonzero(~keep.any(0))[0]:
+            keep[int(a[:, x].argmax()), x] = True
     return np.clip(np.round(small), 0, 255).astype(np.uint8), keep
 
 
@@ -1348,7 +1456,8 @@ def static_sheet(cfg, images, match=None):
     for v in cfg["variants"]:
         src = next((u for u in cfg["variants"] if u["id"] == v.get("squash_of")), v)
         rgb, keep = static_cut(images[src["id"]], static_height(cfg, v), src.get("pick"),
-                               static_height(cfg, src) if src is not v else None)
+                               static_height(cfg, src) if src is not v else None,
+                               cfg.get("width") if src is v else None)
         if keep.shape[1] + 2 > cw - 2 * STATIC_MARGIN:
             raise ValueError(f"{cfg['hero']} {v['id']}: {keep.shape[1] + 2} px wide with its outline, "
                              f"cell {cw} keeps {cw - 2 * STATIC_MARGIN}: widen cell, never crop")
@@ -1405,6 +1514,20 @@ def static_checks(cfg, sheet):
         out.append((clear, f"{v['id']} clear of the cell border", f"rows {ys.min()}..{ys.max()}, cols {xs.min()}..{xs.max()}"))
         _, parts = ndimage.label(ca)
         out.append((parts == 1, f"{v['id']} is one piece", f"{parts} pieces"))
+    limit = cfg.get("shape_iou")
+    if limit is not None and n >= 2:
+        worst, pair = -1.0, ""
+        for i in range(n):
+            ai = a[:, i * cw:(i + 1) * cw]
+            for j in range(i + 1, n):
+                aj = a[:, j * cw:(j + 1) * cw]
+                inter = int(np.logical_and(ai, aj).sum())
+                union = int(np.logical_or(ai, aj).sum())
+                score = inter / union if union else 1.0
+                if score > worst:
+                    worst, pair = score, f"{cfg['variants'][i]['id']}/{cfg['variants'][j]['id']}"
+        out.append((worst < float(limit), "shape variants differ",
+                    f"{pair} IoU {worst:.3f} (want < {limit})"))
     return out
 
 
@@ -1414,6 +1537,8 @@ def static_build(cfg, out=None, approval=None, log=print):
     Returns the number of failing checks; the sheet is written only when
     none fail. A variant with "pending": true (its image is being retaken)
     is left out of the sheet until the flag is removed."""
+    if cfg.get("awaiting_art") and out is None:
+        raise SystemExit(f"{cfg['hero']}: the views are not the approved art yet; the sheet is not written")
     cfg = dict(cfg, variants=[v for v in cfg["variants"] if not v.get("pending")])
     images = {}
     for v in cfg["variants"]:

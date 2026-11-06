@@ -1745,6 +1745,28 @@ class MonsterPrecheckTest(unittest.TestCase):
         self.assertTrue((hs.pose_at(pose, {"rgb": np.zeros((720, 720, 3), np.uint8)})
                          == np.asarray(Image.open(pose).convert("RGB"))).all())
 
+    def test_a_still_idle_start_limit_is_the_noise_floor_and_a_walk_is_not(self):
+        self.assertEqual(hs.still_idle_limit(1, 5), 5)
+        self.assertEqual(hs.still_idle_limit(100, 5), 20)
+        self.assertEqual(hs.still_idle_limit(10, 0), 2)
+        # Between 0.2× the step and the floor: the still idle passes, the walk fails.
+        self.assertEqual(hs.idle_start_fails(4, 10, 8, True), (False, 8))
+        self.assertEqual(hs.idle_start_fails(9, 10, 8, True), (True, 8))
+        self.assertEqual(hs.idle_start_fails(3, 10, 8, False), (True, 2))
+        self.assertEqual(hs.idle_start_fails(2, 10, 8, False), (False, 2))
+        rgb = np.full((64, 64, 3), 255, np.uint8)
+        rgb[16:48, 24:40] = (30, 30, 30)
+        floor = hs.pose_noise_floor(rgb)
+        self.assertEqual(floor, hs.pose_noise_floor(rgb))
+        self.assertIsInstance(floor, int)
+        self.assertGreaterEqual(floor, 0)
+        band = np.array([0, 1, 2, 1, 0, 1, 2, 0], np.uint8)
+        tile = np.broadcast_to(band, (4, 8)).copy()
+        self.assertTrue(hs.seam_holds(tile))
+        broken = tile.copy()
+        broken[:, -1] = 255
+        self.assertFalse(hs.seam_holds(broken))
+
     def test_monster_precheck_reports_a_missing_cardinal_death(self):
         with tempfile.TemporaryDirectory() as tmp:
             shutil.copytree(os.path.join(hs.REFERENCE, "goblin"), os.path.join(tmp, "goblin"))

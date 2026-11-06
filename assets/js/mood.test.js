@@ -5,7 +5,8 @@ import test from "node:test"
 import { fileURLToPath } from "node:url"
 import jpeg from "jpeg-js"
 import { pixelStep } from "./art_score.js"
-import { GROUND_SPAN, GROUND_TEX, HERO_TEXEL, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
+import { GROUND_SPAN, GROUND_TEX, HERO_TEXEL, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels, seamHolds } from "./ground.js"
+import { SHEET_TEXEL } from "./hd2d/picture.js"
 import { stoneRepeat, yardCards } from "./yard_cards.js"
 import { propCrops, masonryCrop } from "../models/tiles.js"
 import { keepParts } from "../models/registry.js"
@@ -113,6 +114,25 @@ test("the pine, the cottage, and the keep stone are at least as fine as the hero
   const down = masonryCrop.h * stoneRepeat.y
   assert.ok(faceW / across <= hero * 1.02, `keep width texel ${faceW / across}`)
   assert.ok(faceH / down <= hero * 1.02, `keep height texel ${faceH / down}`)
+})
+
+test("a seamless tile wraps no harder than its interior columns", () => {
+  assert.equal(SHEET_TEXEL, 32 / 88)
+  const width = 8
+  const height = 4
+  const smooth = new Uint8Array(width * height * 4)
+  const band = [0, 1, 2, 1, 0, 1, 2, 0]
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const o = (y * width + x) * 4
+      smooth[o] = smooth[o + 1] = smooth[o + 2] = band[x]
+      smooth[o + 3] = 255
+    }
+  }
+  assert.equal(seamHolds(smooth, width, height), true)
+  const seam = smooth.slice()
+  for (let y = 0; y < height; y++) seam[(y * width + width - 1) * 4] = 255
+  assert.equal(seamHolds(seam, width, height), false)
 })
 
 test("the yard texel is the hero texel and the grass tile does not stamp", () => {

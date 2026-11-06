@@ -1,0 +1,16 @@
+{
+ "_note": "Approved 2026-11-06. One theme-style concept sheet, then the normal static pipeline. No crops until that sheet exists: this file records the pieces and does not invent a concept box. The 4-variant cap stays for every other piece. Keep may have exactly one variant per rank. Felled wood reuses stump_log variant b. HP stays on the bar; the keep mesh does not shrink on scale.y.",
+ "sheet": "assets/reference/yard-concept/sheet.png",
+ "style": "theme",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png",
+  "docs/concept/theme.jpg"
+ ],
+ "pieces": [
+  {"id": "chest", "states": ["closed", "open"]},
+  {"id": "portal", "states": ["closed", "open"], "also": "hell door"},
+  {"id": "keep", "ranks": [0, 1, 2, 3, 4], "variant_cap": 5},
+  {"id": "mage_tower", "palette": "mage"}
+ ],
+ "felled_wood": "stump_log variant b"
+}

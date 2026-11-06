@@ -3,6 +3,8 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
+import { pineVariant } from "./horizon.js"
+import { SHEET_TEXEL } from "./hd2d/picture.js"
 import { buildingCard, buildingSheet, cardFallback, sheetCard, spotVariant, staticSheets, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { readRgbaPng } from "./hd2d/png.js"
 import { spriteHeight } from "./pictures.js"
@@ -84,6 +86,8 @@ test("trees draw the pine sheet: its cells, foot row and variant heights match t
 test("a pine card is one cell at the hero texel with its foot on the ground", () => {
   const a = treeCard("a")
   const b = treeCard("b")
+  assert.equal(treeSheet.texel, SHEET_TEXEL)
+  assert.equal(SHEET_TEXEL, 32 / 88)
   assert.ok(Math.abs(a.w - (128 * 32) / 88) < 1e-9)
   assert.ok(Math.abs(a.h - (120 * 32) / 88) < 1e-9)
   assert.deepEqual([a.w, a.h, a.centerY], [b.w, b.h, b.centerY])
@@ -93,15 +97,22 @@ test("a pine card is one cell at the hero texel with its foot on the ground", ()
   assert.throws(() => treeCard("c"), /no pine variant c/)
 })
 
-test("trees alternate the pine variants", () => {
+test("the index fallback still alternates, and a placed pine is phash2 of x and z", () => {
   assert.deepEqual([0, 1, 2, 3, -1].map(treeVariant), ["a", "b", "a", "b", "b"])
+  assert.equal(pineVariant(10, 20), pineVariant(10, 20))
+  assert.equal(pineVariant(10.4, 19.6), pineVariant(10, 20))
+  const seen = new Set()
+  for (let x = 0; x < 40; x++) for (let z = 0; z < 40; z++) seen.add(pineVariant(x, z))
+  assert.deepEqual([...seen].sort(), ["a", "b"])
 })
 
 test("render.js draws the yard trees and the forest wall from the pine sheet, not the old tree card", () => {
   const src = fs.readFileSync(path.join(root, "assets/js/render.js"), "utf8")
   assert.doesNotMatch(src, /sheetCard\("tree"/)
-  assert.match(src, /sync\("tree", snap\.trees \|\| \[\], \(\) => treeSprite\(1\)\)/)
-  assert.match(src, /treeSprite\(slot\.scale, treeVariant\(i\)\)/)
+  assert.match(src, /sync\("tree", snap\.trees \|\| \[\], \(row\) => treeSprite\(1, pineVariant\(row\.x, row\.y\)\)\)/)
+  assert.match(src, /treeSprite\(slot\.scale, pineVariant\(slot\.x, slot\.z\)\)/)
+  assert.match(src, /keep\.scale\.y = 1/)
+  assert.doesNotMatch(src, /keepRatio/)
 })
 
 // [top, bottom] opaque rows of each cell of a static sheet.
