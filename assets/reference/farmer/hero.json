@@ -36,6 +36,46 @@
    "still": "grain sack"
   }
  ],
+ "attack": "thrusts the pitchfork in his right hand straight ahead and pulls it back",
+ "death": "staggers, sinks to his knees and falls onto his side, the pitchfork staying in his hand",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "idle": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
  "turntable": {
   "seconds": 8,
   "fps": 24,

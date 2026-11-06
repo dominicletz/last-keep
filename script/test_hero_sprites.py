@@ -23,6 +23,31 @@ import hero_sprites as hs  # noqa: E402
 
 HEROES = ["engineer", "farmer", "mage", "scout", "warrior"]
 ASSETS = ["goblin", "skeleton", "wolf", "bat", "deer"]  # non-hero figures with an asset.json (docs/ART-REDO.md)
+ART_ROOT = "/workspace/lk-art-redo"
+HERO_CLIP_ORDER = ("warrior", "mage", "scout", "farmer", "engineer")
+
+
+def hero_attack_death_batch():
+    """Attack ×8 and death ×4 for each hero, in the order build_prompts emits them.
+
+    Paths are absolute under ART_ROOT. The sheet builder still writes walk and
+    idle only, so this batch is the clips and not a sheet."""
+    calls = []
+    for hero in HERO_CLIP_ORDER:
+        for call in hs.build_prompts(hs.load_config(hero))["calls"]:
+            if not (call["id"].startswith("attack-") or call["id"].startswith("death-")):
+                continue
+            args = json.loads(json.dumps(call["args"]))
+            fixed = hs.absolute({"calls": [{"args": args, "save_as": call["save_as"]}]}, root=ART_ROOT)
+            one = fixed["calls"][0]
+            calls.append({"id": f"{hero}-{call['id']}", "asset": hero, "tool": "GenerateVideo",
+                          "args": one["args"], "save_as": one["save_as"]})
+    return {"_note": "Attack on eight directions and death on S W N E for the five heroes. "
+            "Each call is the build_prompts GenerateVideo for that clip, with paths made absolute. "
+            "A death has no last_frame_path: the fall ends on the ground. The hero sheet builder "
+            "still writes walk and idle only, so these clips are not on the sheet until it takes "
+            "attack and death rows. Paths are absolute under /workspace/lk-art-redo.",
+            "calls": calls}
 APPROVED = {"mage": {"SW": 46, "NW": 67, "NE": 122, "SE": 156},
             "warrior": {"SW": 20, "NW": 74, "NE": 122, "SE": 166},
             "scout": {"SW": 32, "NW": 72, "NE": 120, "SE": 164},
@@ -167,7 +192,11 @@ class PromptsTest(unittest.TestCase):
         for h in HEROES:
             ids = list(self.calls(h))
             self.assertEqual(ids[:5], ["view-S", "view-N", "view-W", "view-E", "turntable"], h)
-            self.assertEqual(sorted(ids[5:]), sorted(f"{k}-{d}" for d in hs.COLUMNS for k in ("walk", "idle")), h)
+            clips = [f"{k}-{d}" for d in hs.COLUMNS for k in ("walk", "idle", "attack", "death")
+                     if k != "death" or d in ("S", "W", "N", "E")]
+            self.assertEqual(ids[5:], clips, h)
+            self.assertIn("feet stay planted", self.calls(h)["attack-S"]["args"]["prompt"])
+            self.assertNotIn("last_frame_path", self.calls(h)["death-S"]["args"])
 
     def test_view_prompts_name_the_hand_and_the_image_side(self):
         c = self.calls("scout")
@@ -222,6 +251,30 @@ class PromptsTest(unittest.TestCase):
                     self.assertEqual(a["image_path"], f"assets/reference/{h}/video/dirs/{d}.png")
                     self.assertEqual(a["duration"], 2)
         self.assertIn("the cyan crystal keeps exactly the same brightness", self.calls("mage")["idle-E"]["args"]["prompt"])
+
+    def test_the_attack_and_death_batch_is_sixty_calls(self):
+        path = os.path.join(hs.ROOT, "assets/reference/hero-attack-death-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, hero_attack_death_batch())
+        self.assertEqual(len(batch["calls"]), 60)
+        ids = [c["id"] for c in batch["calls"]]
+        self.assertEqual(ids[:2], ["warrior-attack-S", "warrior-death-S"])
+        self.assertEqual(ids[-2:], ["engineer-death-E", "engineer-attack-SE"])
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateVideo")
+            self.assertEqual(set(call), {"id", "asset", "tool", "args", "save_as"})
+            hero, kind = call["id"].split("-", 1)
+            self.assertTrue(call["save_as"].startswith(f"{ART_ROOT}/assets/reference/{call['asset']}/video/"))
+            self.assertTrue(call["save_as"].endswith(f"/{kind}.mp4"))
+            args = call["args"]
+            self.assertEqual(args["duration"], 2)
+            self.assertTrue(args["image_path"].startswith(ART_ROOT + "/"))
+            self.assertIn("/video/dirs/", args["image_path"])
+            if kind.startswith("death-"):
+                self.assertNotIn("last_frame_path", args)
+            else:
+                self.assertEqual(args["last_frame_path"], args["image_path"])
 
     def test_turntable_call_uses_the_keyframes(self):
         a = self.calls("scout")["turntable"]["args"]
@@ -365,7 +418,8 @@ class AssetTest(unittest.TestCase):
         self.assertEqual(cfg["clips"], {"walk": hs.COLUMNS, "attack": hs.COLUMNS, "death": hs.CARDINALS})
         for h in HEROES:
             self.assertEqual(hs.load_config(h)["type"], "hero", h)
-            self.assertEqual(hs.load_config(h)["clips"], {"walk": hs.COLUMNS, "idle": hs.COLUMNS}, h)
+            self.assertEqual(hs.load_config(h)["clips"], {
+                "walk": hs.COLUMNS, "idle": hs.COLUMNS, "attack": hs.COLUMNS, "death": hs.CARDINALS}, h)
 
     def test_goblin_sheet_keeps_the_hero_texel(self):
         # monsters.js draws the goblin 18 world units tall; at 32/88 units per
@@ -916,7 +970,12 @@ class AssetTest(unittest.TestCase):
                           calls[f"view-{d}"]["args"]["description"])
         # No other asset draws a diagonal view.
         for h in sorted(os.listdir(hs.REFERENCE)):
-            if h == "boss" or not os.path.isdir(os.path.join(hs.REFERENCE, h)):
+            folder = os.path.join(hs.REFERENCE, h)
+            if h == "boss" or not os.path.isdir(folder):
+                continue
+            # Icon and title folders sit beside the figures and have no config.
+            if not (os.path.exists(os.path.join(folder, "hero.json"))
+                    or os.path.exists(os.path.join(folder, "asset.json"))):
                 continue
             c = hs.load_config(h)
             if c["type"] == "static":

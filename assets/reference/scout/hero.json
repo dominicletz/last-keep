@@ -38,6 +38,46 @@
    "idle": "cloak edge moves very slightly"
   }
  ],
+ "attack": "draws the longbow in their right hand and releases the string, then lowers the bow, with no arrow leaving the frame, the spyglass staying at their left hip",
+ "death": "staggers, sinks to their knees and falls onto their side, the bow staying in their hand",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "idle": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
  "turntable": {
   "seconds": 8,
   "fps": 24,

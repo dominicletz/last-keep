@@ -26,6 +26,46 @@
    "idle": "cape edge moves very slightly"
   }
  ],
+ "attack": "swings the sword in his right hand across in front of him and brings it back, the shield staying on his left arm",
+ "death": "staggers, drops to one knee and falls onto his side, the sword and the shield staying with him",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "idle": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
  "turntable": {
   "seconds": 8,
   "fps": 24,

@@ -123,6 +123,35 @@
    "save_as": "assets/reference/mage/video/idle-S.mp4"
   },
   {
+   "id": "attack-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (facing the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/mage/video/dirs/S.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-S.mp4"
+   },
+   "save_as": "assets/reference/mage/video/attack-S.mp4"
+  },
+  {
+   "id": "death-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The mage starts exactly in the pose and facing of the first frame (facing the camera). It is struck down: it staggers, sinks to their knees and falls onto their side, the staff staying in their hand. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/mage/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-death-S.mp4"
+   },
+   "save_as": "assets/reference/mage/video/death-S.mp4"
+  },
+  {
    "id": "walk-SW",
    "step": "precheck",
    "tool": "GenerateVideo",
@@ -151,6 +180,21 @@
     "filename": "mage-idle-SW.mp4"
    },
    "save_as": "assets/reference/mage/video/idle-SW.mp4"
+  },
+  {
+   "id": "attack-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/mage/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-SW.mp4"
+   },
+   "save_as": "assets/reference/mage/video/attack-SW.mp4"
   },
   {
    "id": "walk-W",
@@ -183,6 +227,35 @@
    "save_as": "assets/reference/mage/video/idle-W.mp4"
   },
   {
+   "id": "attack-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (facing screen-left, their left side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/mage/video/dirs/W.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-W.mp4"
+   },
+   "save_as": "assets/reference/mage/video/attack-W.mp4"
+  },
+  {
+   "id": "death-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The mage starts exactly in the pose and facing of the first frame (facing screen-left, their left side toward the camera). It is struck down: it staggers, sinks to their knees and falls onto their side, the staff staying in their hand. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/mage/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-death-W.mp4"
+   },
+   "save_as": "assets/reference/mage/video/death-W.mp4"
+  },
+  {
    "id": "walk-NW",
    "step": "precheck",
    "tool": "GenerateVideo",
@@ -211,6 +284,21 @@
     "filename": "mage-idle-NW.mp4"
    },
    "save_as": "assets/reference/mage/video/idle-NW.mp4"
+  },
+  {
+   "id": "attack-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/mage/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-NW.mp4"
+   },
+   "save_as": "assets/reference/mage/video/attack-NW.mp4"
   },
   {
    "id": "walk-N",
@@ -243,6 +331,35 @@
    "save_as": "assets/reference/mage/video/idle-N.mp4"
   },
   {
+   "id": "attack-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (seen from directly behind, back to the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/mage/video/dirs/N.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-N.mp4"
+   },
+   "save_as": "assets/reference/mage/video/attack-N.mp4"
+  },
+  {
+   "id": "death-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The mage starts exactly in the pose and facing of the first frame (seen from directly behind, back to the camera). It is struck down: it staggers, sinks to their knees and falls onto their side, the staff staying in their hand. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/mage/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-death-N.mp4"
+   },
+   "save_as": "assets/reference/mage/video/death-N.mp4"
+  },
+  {
    "id": "walk-NE",
    "step": "precheck",
    "tool": "GenerateVideo",
@@ -271,6 +388,21 @@
     "filename": "mage-idle-NE.mp4"
    },
    "save_as": "assets/reference/mage/video/idle-NE.mp4"
+  },
+  {
+   "id": "attack-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/mage/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-NE.mp4"
+   },
+   "save_as": "assets/reference/mage/video/attack-NE.mp4"
   },
   {
    "id": "walk-E",
@@ -303,6 +435,35 @@
    "save_as": "assets/reference/mage/video/idle-E.mp4"
   },
   {
+   "id": "attack-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (facing screen-right, their right side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/mage/video/dirs/E.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-E.mp4"
+   },
+   "save_as": "assets/reference/mage/video/attack-E.mp4"
+  },
+  {
+   "id": "death-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The mage starts exactly in the pose and facing of the first frame (facing screen-right, their right side toward the camera). It is struck down: it staggers, sinks to their knees and falls onto their side, the staff staying in their hand. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/mage/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-death-E.mp4"
+   },
+   "save_as": "assets/reference/mage/video/death-E.mp4"
+  },
+  {
    "id": "walk-SE",
    "step": "precheck",
    "tool": "GenerateVideo",
@@ -330,7 +491,22 @@
     "resolution": "720p",
     "filename": "mage-idle-SE.mp4"
    },
-   "save_as": "assets/reference/mage/video/idle-SE.mp4",
+   "save_as": "assets/reference/mage/video/idle-SE.mp4"
+  },
+  {
+   "id": "attack-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/mage/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/mage/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-SE.mp4"
+   },
+   "save_as": "assets/reference/mage/video/attack-SE.mp4",
    "then": "hero_sprites.py precheck"
   }
  ]
