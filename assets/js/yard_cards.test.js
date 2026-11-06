@@ -143,8 +143,8 @@ test("every building sheet matches its asset.json, stands on its foot row and is
   }
 })
 
-test("the ruin stones and the map table stand on their foot rows", () => {
-  const want = { ruin_stones: [55, 30, 28], map_table: [44] }
+test("the ruin stones, the dead tree and the map table stand on their foot rows", () => {
+  const want = { ruin_stones: [55, 30, 28], dead_tree: [99], map_table: [44] }
   for (const [name, heights] of Object.entries(want)) {
     const cfg = JSON.parse(fs.readFileSync(path.join(root, "assets/reference", name, "asset.json"), "utf8"))
     const sheet = staticSheets[name]
@@ -155,7 +155,9 @@ test("the ruin stones and the map table stand on their foot rows", () => {
     assert.deepEqual(rows.map(([t, b]) => b - t + 1), heights, name)
   }
   assert.equal(buildingSheet("ruin_stones"), "ruin_stones")
+  assert.equal(buildingSheet("dead_tree"), "dead_tree")
   assert.equal(buildingSheet("map_table"), "map_table")
+  assert.equal(sheetCard("dead_tree", "a").h, (112 * 32) / 88)
 })
 
 test("the quarry, the camp and the shrine stand on their foot rows", () => {

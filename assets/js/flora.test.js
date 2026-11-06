@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
-import { floraBands, floraCount, floraFree, floraLook, floraSlots, RUIN_CAP, ruinSlots } from "./flora.js"
+import { deadTreeSlots, DEAD_TREE_CAP, floraBands, floraCount, floraFree, floraLook, floraSlots, RUIN_CAP, ruinSlots } from "./flora.js"
 import { pictureCell } from "./horizon.js"
 import { staticSheets, buildingSheet, floraSheets } from "./yard_cards.js"
 
@@ -71,10 +71,39 @@ test("ruin stones sit on ruins cells outside the yard and stay capped", () => {
   assert.equal(floraCount, 64)
 })
 
+test("dead trees take the next ruins cells and stand on the same lift", () => {
+  const stones = ruinSlots(7, 0, 0, 0, 2400)
+  const trees = deadTreeSlots(7, 0, 0, 0, 2400)
+  assert.equal(DEAD_TREE_CAP, 6)
+  assert.equal(trees.length, DEAD_TREE_CAP)
+  const taken = new Set(stones.map((slot) => `${slot.x},${slot.z}`))
+  for (const slot of trees) {
+    assert.equal(slot.kind, "dead_tree")
+    assert.equal(slot.variant, "a")
+    assert.equal(slot.y, 8)
+    assert.ok(!(Math.abs(slot.x) < 380 && Math.abs(slot.z) < 380))
+    assert.ok(Math.hypot(slot.x, slot.z) <= 2400)
+    assert.equal(pictureCell(7, 0, slot.x, slot.z), "ruins")
+    assert.equal(taken.has(`${slot.x},${slot.z}`), false)
+    taken.add(`${slot.x},${slot.z}`)
+  }
+  assert.equal(taken.size, stones.length + trees.length)
+  assert.deepEqual(deadTreeSlots(7, 0, 0, 0, 2400), trees)
+  assert.notDeepEqual(deadTreeSlots(8, 0, 0, 0, 2400), trees)
+  assert.notDeepEqual(deadTreeSlots(7, 1, 0, 0, 2400), trees)
+})
+
 test("the yard draws ruin stones from their sheet and the map table is a sprite under the cloth", () => {
   const src = fs.readFileSync(new URL("./render.js", import.meta.url), "utf8")
   assert.match(src, /placeRuins\(Number\.isInteger\(snap && snap\.seed\)/)
+  assert.match(src, /placeDeadTrees\(Number\.isInteger\(snap && snap\.seed\)/)
   assert.match(src, /staticMats\.ruin_stones\[slot\.variant\]/)
+  assert.match(src, /staticMats\.dead_tree\[slot\.variant\]/)
+  assert.match(src, /staticCard\("dead_tree", slot\.variant\)/)
+  assert.doesNotMatch(src, /staticMats\.field/)
+  assert.doesNotMatch(src, /staticMats\.forest_barrier/)
+  assert.doesNotMatch(src, /staticMats\.cliff_face/)
+  assert.doesNotMatch(src, /staticMats\.reeds/)
   assert.match(src, /staticCard\("map_table", "a"\)/)
   assert.match(src, /new THREE\.Sprite\(staticMats\.map_table\.a\)/)
   assert.match(src, /mapTable\.position\.set\(0, 0, 160\)/)

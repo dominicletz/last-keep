@@ -91,6 +91,8 @@ export const floraCount = KINDS.reduce((sum, kind) => sum + floraLook[kind].yard
 const RUIN_CELL = 36
 const RUIN_YARD = 380
 export const RUIN_CAP = 24
+// A few bare trees on the ruins cells the stones did not take.
+export const DEAD_TREE_CAP = 6
 const RUIN_VARIANTS = ["a", "b", "c"]
 const RUIN_LIFT = 8
 
@@ -100,7 +102,7 @@ function ruinRange(origin, reach) {
   return [min, max]
 }
 
-export function ruinSlots(seed = 1, attempt = 0, camX = 0, camZ = 0, reach = 2400) {
+function rankedRuins(seed, attempt, camX, camZ, reach) {
   const [i0, i1] = ruinRange(camX, reach)
   const [j0, j1] = ruinRange(camZ, reach)
   const found = []
@@ -115,9 +117,23 @@ export function ruinSlots(seed = 1, attempt = 0, camX = 0, camZ = 0, reach = 240
     }
   }
   found.sort((a, b) => a.hash - b.hash || a.x - b.x || a.z - b.z)
-  return found.slice(0, RUIN_CAP).map((row) => ({
+  return found
+}
+
+export function ruinSlots(seed = 1, attempt = 0, camX = 0, camZ = 0, reach = 2400) {
+  return rankedRuins(seed, attempt, camX, camZ, reach).slice(0, RUIN_CAP).map((row) => ({
     kind: "ruin_stones",
     variant: RUIN_VARIANTS[row.hash % RUIN_VARIANTS.length],
+    x: row.x,
+    z: row.z,
+    y: RUIN_LIFT
+  }))
+}
+
+export function deadTreeSlots(seed = 1, attempt = 0, camX = 0, camZ = 0, reach = 2400) {
+  return rankedRuins(seed, attempt, camX, camZ, reach).slice(RUIN_CAP, RUIN_CAP + DEAD_TREE_CAP).map((row) => ({
+    kind: "dead_tree",
+    variant: "a",
     x: row.x,
     z: row.z,
     y: RUIN_LIFT

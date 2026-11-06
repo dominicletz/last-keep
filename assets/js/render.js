@@ -9,7 +9,7 @@ import { arrowFrame, fireFrame, shotArt, shotScale, SHOT_URL } from "./shots.js"
 import { BURST_CELL, BURST_FRAMES, BURST_MS, BURST_SHEET, burstFrame, burstRow } from "./bursts.js"
 import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
-import { floraSlots, ruinSlots, RUIN_CAP } from "./flora.js"
+import { deadTreeSlots, DEAD_TREE_CAP, floraSlots, ruinSlots, RUIN_CAP } from "./flora.js"
 import { deerAt, deerSheetUrl, deerSlots, DEER_SHEET } from "./wildlife.js"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
@@ -379,6 +379,8 @@ export function createView(stage, picture) {
   let floraKey = null
   const ruinPool = []
   let ruinKey = null
+  const deadTreePool = []
+  let deadTreeKey = null
   const deerPool = []
   let deerKey = null
   let deerSource = null
@@ -497,6 +499,39 @@ export function createView(stage, picture) {
       card.userData.flora = "ruin_stones-" + slot.variant
     }
     forestLook.ruins = slots.length
+  }
+
+  // Dead trees: the next ruins cells after the stones, same lift, own pool.
+  function placeDeadTrees(seed, attempt) {
+    const reach = (viewFrame.halfH / Math.tan(THREE.MathUtils.degToRad(7.5))) * 1.42
+    const key = `${seed}:${attempt}:${Math.floor(camera.position.x / 512)}:${Math.floor(camera.position.z / 512)}:${Math.round(reach)}`
+    if (key === deadTreeKey) return
+    deadTreeKey = key
+    const slots = deadTreeSlots(seed, attempt, camera.position.x, camera.position.z, reach)
+    for (let n = 0; n < DEAD_TREE_CAP; n++) {
+      const slot = slots[n]
+      if (!slot) {
+        if (deadTreePool[n]) deadTreePool[n].visible = false
+        continue
+      }
+      if (!deadTreePool[n]) {
+        const card = new THREE.Sprite(staticMats.dead_tree[slot.variant])
+        card.renderOrder = 1
+        card.castShadow = false
+        card.receiveShadow = false
+        card.userData.role = "dead-tree"
+        scene.add(card)
+        deadTreePool[n] = card
+      }
+      const card = deadTreePool[n]
+      const spec = staticCard("dead_tree", slot.variant)
+      card.material = staticMats.dead_tree[slot.variant]
+      card.center.set(0.5, spec.centerY)
+      card.scale.set(spec.w, spec.h, 1)
+      card.position.set(slot.x, slot.y, slot.z)
+      card.visible = true
+      card.userData.flora = "dead_tree-" + slot.variant
+    }
   }
 
   // Deer: one pool of sheet cards. A new seed only moves their homes. Each
@@ -1245,6 +1280,7 @@ export function createView(stage, picture) {
     land.sync(snap, camera, viewFrame.halfH)
     placeFlora(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
     placeRuins(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+    placeDeadTrees(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
     placeDeer(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
     noteDeerClock(snap)
   }

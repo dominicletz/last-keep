@@ -55,8 +55,9 @@ export const staticSheets = {
   // a a stump, b a felled log lying on its side.
   stump_log: staticSheet("stump_log", [80, 40], ["a", "b"]),
   broadleaf: staticSheet("broadleaf", [136, 120], ["a", "b"]),
-  // Ruins-biome scatter (flora.js ruinSlots). Not a building.
+  // Ruins-biome scatter (flora.js ruinSlots, deadTreeSlots). Not a building.
   ruin_stones: staticSheet("ruin_stones", [200, 64], ["a", "b", "c"]),
+  dead_tree: staticSheet("dead_tree", [112, 112], ["a"]),
   // The yard table at (0, 160). The chunk map stays a separate cloth.
   map_table: staticSheet("map_table", [160, 56], ["a"]),
   // Sim points of interest (snapshot pois). Not a building.
