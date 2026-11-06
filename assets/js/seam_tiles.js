@@ -6,7 +6,8 @@ export const GROUND_TILE_URLS = {
   meadow: "/images/hd2d/ground-meadow.png",
   ruins: "/images/hd2d/ground-ruins.png",
   pine: "/images/hd2d/ground-pine.png",
-  cliff: "/images/hd2d/ground-cliff.png"
+  cliff: "/images/hd2d/ground-cliff.png",
+  river: "/images/hd2d/ground-river.png"
 }
 
 const tiles = {}

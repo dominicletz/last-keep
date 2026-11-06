@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import test from "node:test"
 import { biomeColor, phash2, pictureCell } from "./horizon.js"
-import { sampleGroundTile } from "./seam_tiles.js"
+import { GROUND_TILE_URLS, sampleGroundTile } from "./seam_tiles.js"
 import { readRgbaPng } from "./hd2d/png.js"
 import { seamHolds } from "./ground.js"
 
@@ -31,7 +31,7 @@ test("pictureCell matches the committed fixture", () => {
   assert.ok(rows.some((row) => row.seed === 1 && Math.hypot(row.x, row.y) > 7200))
 })
 
-test("meadow, ruins, pine and cliff sample the passing tiles; the river stays flat", () => {
+test("meadow, ruins, pine, cliff and river sample the passing tiles", () => {
   const root = new URL("../..", import.meta.url)
   const read = (rel) => readRgbaPng(fs.readFileSync(new URL(rel, root)))
   for (const rel of [
@@ -39,7 +39,8 @@ test("meadow, ruins, pine and cliff sample the passing tiles; the river stays fl
     "priv/static/images/hd2d/ground-meadow.png",
     "priv/static/images/hd2d/ground-ruins.png",
     "priv/static/images/hd2d/ground-pine.png",
-    "priv/static/images/hd2d/ground-cliff.png"
+    "priv/static/images/hd2d/ground-cliff.png",
+    "priv/static/images/hd2d/ground-river.png"
   ]) {
     const image = read(rel)
     assert.equal(seamHolds(image.rgba, image.width, image.height), true, rel)
@@ -57,7 +58,11 @@ test("meadow, ruins, pine and cliff sample the passing tiles; the river stays fl
   assert.deepEqual(biomeColor("ruins", 2000, 0), ruins)
   assert.deepEqual(biomeColor("pine", 120, 40), sampleGroundTile("pine", 120, 40))
   assert.deepEqual(biomeColor("cliff", 80, 20), sampleGroundTile("cliff", 80, 20))
-  assert.deepEqual(biomeColor("river", 0, 0), [0x2c, 0x34, 0x16])
+  assert.deepEqual(biomeColor("river", 0, 0), sampleGroundTile("river", 0, 0))
+  assert.equal(GROUND_TILE_URLS.river, "/images/hd2d/ground-river.png")
+  for (const held of ["ford", "plaza", "path", "dirt", "hill", "mountain"]) {
+    assert.equal(GROUND_TILE_URLS[held], undefined, held)
+  }
   assert.equal(pictureCell(1, 0, 0, 0), "meadow")
 })
 

@@ -1,0 +1,351 @@
+[
+ {
+  "id": "ground-river",
+  "asset": "ground",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of dark water. The reference has no river: it is the dark green forest floor, and the tile is water of that colour, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is the colour and the texture. Preserve its colours, its block size and its proportions. Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only. Do not draw a landscape or a freestanding object.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/terrain-crops/river.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-river.png"
+  },
+  "save_as": "assets/reference/ground/river.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/e9995082db135ffaac7668424ec06f87dab5d3b0478470cbca701c51bacfabec.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/river.png",
+  "archive_path": "ground/river.png",
+  "seam": {
+   "wrap_max": 31,
+   "interior_max": 83,
+   "pass": true
+  }
+ },
+ {
+  "id": "ground-ford",
+  "asset": "ground",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of a ford of shallow water over the path's stones. The reference has no water: keep these stones and put shallow water over them, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is the colour and the texture. Preserve its colours, its block size and its proportions. Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only. Do not draw a landscape or a freestanding object.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/terrain-crops/ford.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-ford.png"
+  },
+  "save_as": "assets/reference/ground/ford.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/69d7775e7f04e21a53c84fda20a756163315c8d68223402439ac0045f808bdb6.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/ford.png",
+  "archive_path": "ground/ford.png",
+  "seam": {
+   "wrap_max": 113,
+   "interior_max": 70,
+   "pass": false
+  }
+ },
+ {
+  "id": "ground-plaza",
+  "asset": "ground",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of the plaza's grass, the ring inside the palisade, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is the colour and the texture. Preserve its colours, its block size and its proportions. Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only. Do not draw a landscape or a freestanding object.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/terrain-crops/plaza.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-plaza.png"
+  },
+  "save_as": "assets/reference/ground/plaza.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/9dfa13e650b4c4a19b86542ebe6e619d739581e3bbe24bff921bd053c763b535.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/plaza.png",
+  "archive_path": "ground/plaza.png",
+  "seam": {
+   "wrap_max": 142,
+   "interior_max": 158,
+   "pass": true
+  }
+ },
+ {
+  "id": "ground-path",
+  "asset": "ground",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of the trodden path through the yard, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is the colour and the texture. Preserve its colours, its block size and its proportions. Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only. Do not draw a landscape or a freestanding object.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/terrain-crops/path.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-path.png"
+  },
+  "save_as": "assets/reference/ground/path.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/5b5531f205be64cc09f3e6b837611f8b742e2fa996f609184f3e677689793d61.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/path.png",
+  "archive_path": "ground/path.png",
+  "seam": {
+   "wrap_max": 128,
+   "interior_max": 105,
+   "pass": false
+  }
+ },
+ {
+  "id": "ground-dirt",
+  "asset": "ground",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of worn dirt and small pebbles, the bare earth of the path, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is the colour and the texture. Preserve its colours, its block size and its proportions. Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only. Do not draw a landscape or a freestanding object.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/terrain-crops/dirt.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-dirt.png"
+  },
+  "save_as": "assets/reference/ground/dirt.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/636abdeb0476de3739dcd8f65a35213f6c1040566d4100d9c563e76a2f32d5d4.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/dirt.png",
+  "archive_path": "ground/dirt.png",
+  "seam": {
+   "wrap_max": 94,
+   "interior_max": 62,
+   "pass": false
+  }
+ },
+ {
+  "id": "ground-hill",
+  "asset": "ground",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of the near slope under the ridge. Draw that slope's dark ground, not the trees and not the sky, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is the colour and the texture. Preserve its colours, its block size and its proportions. Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only. Do not draw a landscape or a freestanding object.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/terrain-crops/hill.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-hill.png"
+  },
+  "save_as": "assets/reference/ground/hill.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/3783d3eacd9e7932e7d32f819d785c64986627394a3b4ba1a00d7d7e2a9c30ff.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/hill.png",
+  "archive_path": "ground/hill.png",
+  "seam": {
+   "wrap_max": 74,
+   "interior_max": 59,
+   "pass": false
+  }
+ },
+ {
+  "id": "ground-mountain",
+  "asset": "ground",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of rock in the colour of the distant ridge. Draw a ground tile, not a picture of the skyline and not the sky, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is the colour and the texture. Preserve its colours, its block size and its proportions. Seen from directly above. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only. Do not draw a landscape or a freestanding object.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/terrain-crops/mountain.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-mountain.png"
+  },
+  "save_as": "assets/reference/ground/mountain.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/cbd849f01794c7d5db462f105b931fb347432aa2aabf2579ffaf198f9d799b67.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/mountain.png",
+  "archive_path": "ground/mountain.png",
+  "seam": {
+   "wrap_max": 181,
+   "interior_max": 104,
+   "pass": false
+  }
+ },
+ {
+  "id": "keep-0",
+  "asset": "keep",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Same design: a stone keep of the first reference, the same masses and the same base. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no text, no other objects. Keep the base, the steps and the ground that are part of the first reference. The subject stands on that base. It does not float. One single keep only, not a sheet of several. Preserve the silhouette and the proportions of the first reference exactly. The outline, the height-to-width ratio, and the number of masses stay as they are in that image.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/yard-concept/crops/keep-0.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "keep-0.png"
+  },
+  "save_as": "assets/reference/keep/views/0.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/bca615a37a13b8b9f397537c269cddf074786fed105b48f5008f865196dc63d5.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/0.png",
+  "archive_path": "keep/views/0.png"
+ },
+ {
+  "id": "keep-1",
+  "asset": "keep",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Same design: a stone keep of the first reference, the same masses and the same base. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no text, no other objects. Keep the base, the steps and the ground that are part of the first reference. The subject stands on that base. It does not float. One single keep only, not a sheet of several. Preserve the silhouette and the proportions of the first reference exactly. The outline, the height-to-width ratio, and the number of masses stay as they are in that image.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/yard-concept/crops/keep-1.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "keep-1.png"
+  },
+  "save_as": "assets/reference/keep/views/1.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/66d9235291baffc45c6fee2368eb596dfe6fe4200d84b8ea82ed55b34fa58636.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/1.png",
+  "archive_path": "keep/views/1.png"
+ },
+ {
+  "id": "keep-2",
+  "asset": "keep",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Same design: a stone keep of the first reference, the same masses and the same base. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no text, no other objects. Keep the base, the steps and the ground that are part of the first reference. The subject stands on that base. It does not float. One single keep only, not a sheet of several. Preserve the silhouette and the proportions of the first reference exactly. The outline, the height-to-width ratio, and the number of masses stay as they are in that image.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/yard-concept/crops/keep-2.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "keep-2.png"
+  },
+  "save_as": "assets/reference/keep/views/2.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/23a0d245aee67e39dec91189824b3e68eb5af12fb4d58cd8c122fe50268c80bb.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/2.png",
+  "archive_path": "keep/views/2.png"
+ },
+ {
+  "id": "keep-3",
+  "asset": "keep",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Same design: a stone keep of the first reference, the same masses and the same base. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no text, no other objects. Keep the base, the steps and the ground that are part of the first reference. The subject stands on that base. It does not float. One single keep only, not a sheet of several. Preserve the silhouette and the proportions of the first reference exactly. The outline, the height-to-width ratio, and the number of masses stay as they are in that image.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/yard-concept/crops/keep-3.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "keep-3.png"
+  },
+  "save_as": "assets/reference/keep/views/3.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/b4e99fca524bc9f11b0f1bc930184a000d541041ff9cea05bbc84b083cc81f84.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/3.png",
+  "archive_path": "keep/views/3.png"
+ },
+ {
+  "id": "keep-4",
+  "asset": "keep",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Same design: a stone keep of the first reference, the same masses and the same base. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no text, no other objects. Keep the base, the steps and the ground that are part of the first reference. The subject stands on that base. It does not float. One single keep only, not a sheet of several. Preserve the silhouette and the proportions of the first reference exactly. The outline, the height-to-width ratio, and the number of masses stay as they are in that image.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/yard-concept/crops/keep-4.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "keep-4.png"
+  },
+  "save_as": "assets/reference/keep/views/4.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/b7177e13bfc99ec33589a405b1ae0d743800948f981d475d9eb7b799d44c4486.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/4.png",
+  "archive_path": "keep/views/4.png"
+ },
+ {
+  "id": "portal-a",
+  "asset": "portal",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Game prop reference of the portal from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Same design: the grounded stone arch of the first reference, with its steps and the glow inside the opening. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole portal from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no text, no other objects. Keep the base, the steps and the ground that are part of the first reference. The subject stands on that base. It does not float. One single portal only, not a sheet of several. Preserve the silhouette and the proportions of the first reference exactly. The outline, the height-to-width ratio, and the number of masses stay as they are in that image. The arch stands on its steps. It is not a floating ring.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/yard-concept/crops/portal.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "portal-a.png"
+  },
+  "save_as": "assets/reference/portal/views/a.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/9f919f9c7d6f85a7736e4a5706d871ff14fb167403634f3718d88bab9f8d568b.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/portal/views/a.png",
+  "archive_path": "portal/views/a.png"
+ },
+ {
+  "id": "forest_barrier-image-c",
+  "asset": "forest_barrier",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Game prop reference of the dense strip of pine forest from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows a dark pine forest with skeletons and goblins among the trees; draw only the trees and nothing else. Same design: a wide, dense wall of overlapping dark evergreen pines of slightly different heights, conical crowns of layered dark green needle tiers with lighter yellow-green tips on the lit side, packed so no gap shows between them, short dark trunks at the base, the strip wider than it is tall. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. A seamless tiling strip 90 px wide at a 110 px pine, one outer-ring pitch. The left edge continues the right edge and the pines run off both side edges. Not a single tree and not a row that stops inside the frame. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single dense strip of pine forest only, not a sheet of several. Preserve the silhouette and the proportions of the first reference exactly. The outline, the height-to-width ratio, and the number of masses stay as they are in that image.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/forest_barrier/concept.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "forest_barrier-c.png"
+  },
+  "save_as": "assets/reference/forest_barrier/views/c.png",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/fcdb400e826e320fcdce894b10b9a13d0c8f0a3f5089c600d0c74278283274bd.jpg",
+  "error": null,
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/forest_barrier/views/c.png",
+  "archive_path": "forest_barrier/views/c.png"
+ },
+ {
+  "id": "idle-W",
+  "step": "precheck",
+  "tool": "GenerateVideo",
+  "args": {
+   "prompt": "Nearly static game sprite idle loop. The hermit holds exactly the pose, angle and facing of the first frame (facing screen-left, his left side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+   "image_path": "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/hermit/video/dirs/W.png",
+   "last_frame_path": "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/hermit/video/dirs/W.png",
+   "duration": 2,
+   "aspect_ratio": "1:1",
+   "resolution": "720p",
+   "filename": "hermit-idle-W.mp4"
+  },
+  "save_as": "assets/reference/hermit/video/idle-W.mp4",
+  "missing": [],
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/b5fbfcec123491ff19a7f3e57e5c05557d20044a55f95ddd4788c8c20e0d65ca.mp4",
+  "error": null,
+  "staged_path": "/workspace/lk/next-art-generation/run-1794004007/staged/hermit/video/idle-W.mp4",
+  "archive_path": "hermit/video/idle-W.mp4"
+ }
+]

@@ -1,0 +1,22 @@
+{
+ "hero": "portal",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the portal from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The crop is yard-concept/crops/portal.png, a grounded stone arch. The view matches it. The portal rows already draw the hell door. Same design: a grounded stone arch on its steps, with a blue glow in the opening. The grounded portal. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole portal from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single portal only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/portal/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "portal-a.png"
+   },
+   "save_as": "assets/reference/portal/views/a.png",
+   "then": "python3 script/hero_sprites.py portal build"
+  }
+ ],
+ "type": "static"
+}

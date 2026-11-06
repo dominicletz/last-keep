@@ -478,6 +478,7 @@ class StaticTest(unittest.TestCase):
             "ground/pine.png": (94, 104, True),
             "ground/ruins.png": (148, 156, True),
             "cliff_face/views/c.png": (129, 169, True),
+            "ground/river.png": (31, 83, True),
         }
         for name, (wrap, interior, holds) in want.items():
             rgb = np.asarray(Image.open(os.path.join(hs.ROOT, "assets/reference", name)).convert("RGB"))
@@ -495,6 +496,8 @@ class StaticTest(unittest.TestCase):
                           "crop": "assets/reference/yard-concept/crops/hell-door.png"},
             "mage_tower": {"cell": [96, 112], "heights": [99], "variants": ["a"],
                            "crop": "assets/reference/yard-concept/crops/mage-tower.png"},
+            "portal": {"cell": [144, 168], "heights": [154], "variants": ["a"],
+                       "crop": "assets/reference/yard-concept/crops/portal.png"},
         }
         for name, want in built.items():
             cfg = hs.load_config(name)
@@ -525,52 +528,56 @@ class StaticTest(unittest.TestCase):
                 self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
             with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
                 self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
-        # The hell door is the glowing door at each portal. The blue portal crop stays unbuilt.
+        # The hell door stays the door drawn on portal rows. The portal sheet is a separate piece.
         with open(os.path.join(hs.ROOT, "assets/js/yard_cards.js")) as fh:
             cards = fh.read()
         self.assertIn("hell_door", cards)
         with open(os.path.join(hs.ROOT, "assets/js/render.js")) as fh:
             page = fh.read()
         self.assertIn('staticCard("hell_door", "a")', page)
+        self.assertNotIn('staticCard("portal"', page)
+        self.assertNotIn('staticCard("keep"', page)
         self.assertIn('sync("portal", (snap.portals || []).slice(0, 8)', page)
         self.assertIn('staticCard("chest", "closed")', page)
         self.assertIn("buildingSheet(row.kind)", page)
         with open(os.path.join(hs.ROOT, "assets/js/horizon.js")) as fh:
             self.assertNotIn("gateGeometry", fh.read())
 
-    def test_keep_and_the_portal_stay_unbuilt_when_the_view_misses_the_crop(self):
-        # Ranks 0 and 1 are a different silhouette from their crops, and the
-        # portal view is a floating ring where the crop is a grounded arch.
-        # No asset.json, so a build cannot write those sheets.
+    def test_the_keep_sheet_uses_the_live_tops_and_the_mesh_stays(self):
+        # The new views match the crop silhouettes. Their canvas heights are
+        # not the world heights: the sheet uses the live tops, which sit inside
+        # the scale floor. The mesh stays, torch and all.
+        cfg = hs.load_config("keep")
+        live = [165, 179, 193, 207, 235]
+        self.assertEqual(cfg["world_height"], live[-1])
+        self.assertEqual(cfg["cell"], [648, 656])
+        self.assertEqual([hs.static_height(cfg, v) for v in cfg["variants"]],
+                         [hs.sheet_height(h) for h in live])
+        self.assertTrue(all(hs.STATIC_SCALE[0] <= v["scale"] <= hs.STATIC_SCALE[1] for v in cfg["variants"]))
         root = os.path.join(hs.ROOT, "assets/reference")
-        for name in ("keep", "portal"):
-            self.assertFalse(os.path.exists(os.path.join(root, name, "asset.json")), name)
-            self.assertFalse(os.path.exists(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")), name)
+        views = [(809, 647), (864, 710), (730, 917), (896, 932), (945, 956)]
+        crops = [(60, 46), (128, 103), (157, 194), (251, 259), (309, 305)]
 
-        def aspect(rel):
+        def box(rel):
             mask = sv.cut_out(np.asarray(Image.open(os.path.join(root, rel)).convert("RGB")))
             ys, xs = np.nonzero(mask)
             return (int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1))
 
-        def hole(rel):
-            from scipy import ndimage
-            mask = sv.cut_out(np.asarray(Image.open(os.path.join(root, rel)).convert("RGB")))
-            lab, n = ndimage.label(~mask)
-            edge = {int(v) for v in np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))}
-            return max((int((lab == i).sum()) for i in range(1, n + 1) if i not in edge), default=0)
-
-        k0v, k0c = aspect("keep/views/0.png"), aspect("yard-concept/crops/keep-0.png")
-        self.assertEqual(k0v, (788, 447))
-        self.assertEqual(k0c, (60, 46))
-        k1v, k1c = aspect("keep/views/1.png"), aspect("yard-concept/crops/keep-1.png")
-        self.assertEqual(k1v, (571, 883))
-        self.assertEqual(k1c, (128, 103))
-        self.assertGreater(k0v[0] / k0v[1], 1.6)
-        self.assertLess(k0c[0] / k0c[1], 1.4)
-        self.assertLess(k1v[0] / k1v[1], 0.7)
-        self.assertGreater(k1c[0] / k1c[1], 1.1)
-        self.assertGreater(hole("portal/views/a.png"), 50000)
-        self.assertLess(hole("yard-concept/crops/portal.png"), 5000)
+        for rank, (view, crop) in enumerate(zip(views, crops)):
+            self.assertEqual(box(f"keep/views/{rank}.png"), view, rank)
+            self.assertEqual(box(f"yard-concept/crops/keep-{rank}.png"), crop, rank)
+            self.assertLess(abs(view[0] / view[1] - crop[0] / crop[1]), 0.06, rank)
+        sheet_path = os.path.join(hs.ROOT, "priv/static/images/hd2d/keep-sheet.png")
+        before = open(sheet_path, "rb").read()
+        tmp = tempfile.mkdtemp()
+        out = os.path.join(tmp, "s.png")
+        self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None), 0)
+        self.assertEqual(open(sheet_path, "rb").read(), before)
+        self.assertEqual(open(out, "rb").read(), before)
+        with open(os.path.join(hs.ROOT, "assets/js/render.js")) as fh:
+            page = fh.read()
+        self.assertIn("keepParts(rank)", page)
+        self.assertIn("keep.scale.y = 1", page)
 
 
 # Pieces prepped with no generated image yet. Heights are the world units in
@@ -1347,8 +1354,8 @@ class NextArtBatchTest(unittest.TestCase):
         self.assertIn("left edge continues the right edge", strip["args"]["description"])
         self.assertIn(f"{round(barrier_pitch_px())} px", strip["args"]["description"])
         self.assertIn("Preserve the silhouette", strip["args"]["description"])
-        self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "assets/reference/keep/asset.json")))
-        self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "assets/reference/portal/asset.json")))
+        self.assertTrue(os.path.exists(os.path.join(hs.ROOT, "assets/reference/keep/asset.json")))
+        self.assertTrue(os.path.exists(os.path.join(hs.ROOT, "assets/reference/portal/asset.json")))
 
     def test_keep_ranks_fit_the_scale_floor_only_at_the_live_heights(self):
         # The concept crops are the approved silhouettes. Their heights are not
@@ -1395,19 +1402,36 @@ class NextArtBatchTest(unittest.TestCase):
         self.assertEqual(set(save_as), set(batch))
         for name, src in save_as.items():
             self.assertEqual(batch[name]["save_as"], src)
-        # The old barrier sheet stays. These copies are the ones this batch would install, and none of them exist.
+        # River passed the seam and is water, so it is installed. The keep and
+        # portal sheets passed and are not drawn. The other ground tiles failed
+        # and stay in the provenance pack.
         for dest in (
             "priv/static/images/hd2d/ground-river.png",
+            "priv/static/images/hd2d/keep-sheet.png",
+            "priv/static/images/hd2d/portal-sheet.png",
+        ):
+            self.assertTrue(os.path.exists(os.path.join(hs.ROOT, dest)), dest)
+        for dest in (
             "priv/static/images/hd2d/ground-ford.png",
             "priv/static/images/hd2d/ground-plaza.png",
             "priv/static/images/hd2d/ground-path.png",
             "priv/static/images/hd2d/ground-dirt.png",
             "priv/static/images/hd2d/ground-hill.png",
             "priv/static/images/hd2d/ground-mountain.png",
-            "priv/static/images/hd2d/keep-sheet.png",
-            "priv/static/images/hd2d/portal-sheet.png",
         ):
             self.assertFalse(os.path.exists(os.path.join(hs.ROOT, dest)), dest)
+        pack = os.path.join(hs.ROOT, "assets/reference/next-art-output")
+        plaza = np.asarray(Image.open(os.path.join(pack, "ground/plaza.png")).convert("RGB"))
+        row_interior = int(np.abs(plaza[1:].astype(int) - plaza[:-1].astype(int)).max())
+        row_wrap = int(np.abs(plaza[:1].astype(int) - plaza[-1:].astype(int)).max())
+        self.assertEqual((row_wrap, row_interior, row_wrap <= row_interior), (208, 150, False))
+        barrier = np.asarray(Image.open(os.path.join(hs.ROOT, "assets/reference/forest_barrier/views/c.png")).convert("RGB"))
+        mask = sv.cut_out(barrier)
+        self.assertEqual(int(mask[:, 0].sum()), 0)
+        self.assertEqual(int(mask[:, -1].sum()), 0)
+        b_interior = int(np.abs(barrier[:, 1:].astype(int) - barrier[:, :-1].astype(int)).max())
+        b_wrap = int(np.abs(barrier[:, :1].astype(int) - barrier[:, -1:].astype(int)).max())
+        self.assertEqual((b_wrap, b_interior, hs.seam_holds(barrier)), (241, 220, False))
         with open(os.path.join(hs.ROOT, "assets/reference/forest_barrier/asset.json")) as fh:
             barrier = json.load(fh)
         self.assertEqual([v["id"] for v in barrier["variants"]], ["a", "b"])
@@ -1452,6 +1476,12 @@ class NextArtBatchTest(unittest.TestCase):
             batch = json.load(fh)
         self.assertEqual(batch, next_art_batch())
         self.assertNotIn("content policy", json.dumps(batch))
+        with open(os.path.join(root, "reeds-retake-batch.json")) as fh:
+            reeds = json.load(fh)
+        cfg = hs.load_config("reeds")
+        self.assertEqual(reeds["calls"], hs.static_prompts(cfg)["calls"])
+        self.assertIn("tall thin", reeds["calls"][0]["args"]["description"])
+        self.assertEqual([c["id"] for c in reeds["calls"]], ["image-a", "image-b"])
 
 
 if __name__ == "__main__":
