@@ -40,7 +40,11 @@ test("meadow, ruins, pine, cliff and river sample the passing tiles", () => {
     "priv/static/images/hd2d/ground-ruins.png",
     "priv/static/images/hd2d/ground-pine.png",
     "priv/static/images/hd2d/ground-cliff.png",
-    "priv/static/images/hd2d/ground-river.png"
+    "priv/static/images/hd2d/ground-river.png",
+    "priv/static/images/hd2d/ground-ford.png",
+    "priv/static/images/hd2d/ground-dirt.png",
+    "priv/static/images/hd2d/ground-hill.png",
+    "priv/static/images/hd2d/ground-mountain.png"
   ]) {
     const image = read(rel)
     assert.equal(seamHolds(image.rgba, image.width, image.height), true, rel)
@@ -54,13 +58,19 @@ test("meadow, ruins, pine, cliff and river sample the passing tiles", () => {
   assert.ok(pine)
   assert.ok(cliff)
   assert.deepEqual(biomeColor("meadow", 800, 0), meadow)
-  assert.deepEqual(biomeColor("ford", 432, 0), sampleGroundTile("meadow", 432, 0))
+  assert.deepEqual(biomeColor("ford", 432, 0), sampleGroundTile("ford", 432, 0))
+  assert.deepEqual(biomeColor("hill", 900, 40), sampleGroundTile("hill", 900, 40))
+  assert.deepEqual(biomeColor("mountain", 1400, 20), sampleGroundTile("mountain", 1400, 20))
   assert.deepEqual(biomeColor("ruins", 2000, 0), ruins)
   assert.deepEqual(biomeColor("pine", 120, 40), sampleGroundTile("pine", 120, 40))
   assert.deepEqual(biomeColor("cliff", 80, 20), sampleGroundTile("cliff", 80, 20))
   assert.deepEqual(biomeColor("river", 0, 0), sampleGroundTile("river", 0, 0))
   assert.equal(GROUND_TILE_URLS.river, "/images/hd2d/ground-river.png")
-  for (const held of ["ford", "plaza", "path", "dirt", "hill", "mountain"]) {
+  assert.equal(GROUND_TILE_URLS.ford, "/images/hd2d/ground-ford.png")
+  assert.equal(GROUND_TILE_URLS.dirt, "/images/hd2d/ground-dirt.png")
+  assert.equal(GROUND_TILE_URLS.hill, "/images/hd2d/ground-hill.png")
+  assert.equal(GROUND_TILE_URLS.mountain, "/images/hd2d/ground-mountain.png")
+  for (const held of ["plaza", "path"]) {
     assert.equal(GROUND_TILE_URLS[held], undefined, held)
   }
   assert.equal(pictureCell(1, 0, 0, 0), "meadow")

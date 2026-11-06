@@ -479,6 +479,10 @@ class StaticTest(unittest.TestCase):
             "ground/ruins.png": (148, 156, True),
             "cliff_face/views/c.png": (129, 169, True),
             "ground/river.png": (31, 83, True),
+            "ground/ford.png": (120, 142, True),
+            "ground/dirt.png": (68, 77, True),
+            "ground/hill.png": (50, 56, True),
+            "ground/mountain.png": (25, 81, True),
         }
         for name, (wrap, interior, holds) in want.items():
             rgb = np.asarray(Image.open(os.path.join(hs.ROOT, "assets/reference", name)).convert("RGB"))
@@ -1407,17 +1411,18 @@ class NextArtBatchTest(unittest.TestCase):
         # and stay in the provenance pack.
         for dest in (
             "priv/static/images/hd2d/ground-river.png",
+            "priv/static/images/hd2d/ground-ford.png",
+            "priv/static/images/hd2d/ground-dirt.png",
+            "priv/static/images/hd2d/ground-hill.png",
+            "priv/static/images/hd2d/ground-mountain.png",
             "priv/static/images/hd2d/keep-sheet.png",
             "priv/static/images/hd2d/portal-sheet.png",
         ):
             self.assertTrue(os.path.exists(os.path.join(hs.ROOT, dest)), dest)
         for dest in (
-            "priv/static/images/hd2d/ground-ford.png",
             "priv/static/images/hd2d/ground-plaza.png",
             "priv/static/images/hd2d/ground-path.png",
-            "priv/static/images/hd2d/ground-dirt.png",
-            "priv/static/images/hd2d/ground-hill.png",
-            "priv/static/images/hd2d/ground-mountain.png",
+            "assets/reference/ground/path.png",
         ):
             self.assertFalse(os.path.exists(os.path.join(hs.ROOT, dest)), dest)
         pack = os.path.join(hs.ROOT, "assets/reference/next-art-output")
@@ -1482,6 +1487,25 @@ class NextArtBatchTest(unittest.TestCase):
         self.assertEqual(reeds["calls"], hs.static_prompts(cfg)["calls"])
         self.assertIn("tall thin", reeds["calls"][0]["args"]["description"])
         self.assertEqual([c["id"] for c in reeds["calls"]], ["image-a", "image-b"])
+        with open(os.path.join(root, "retake-manifest.json")) as fh:
+            retake = json.load(fh)
+        by_id = {}
+        for row in retake:
+            by_id.setdefault(row["id"], []).append(row)
+        self.assertEqual(by_id["ground-ford"][0]["seam_wrap"], 120)
+        self.assertEqual(by_id["ground-ford"][0]["seam_interior"], 142)
+        self.assertTrue(by_id["ground-ford"][0]["seam_pass"])
+        self.assertEqual(by_id["ground-dirt"][0]["seam_wrap"], 68)
+        self.assertEqual(by_id["ground-hill"][0]["seam_wrap"], 50)
+        self.assertEqual(by_id["ground-mountain"][0]["seam_wrap"], 25)
+        self.assertEqual(by_id["ground-path"][0]["seam_wrap"], 101)
+        self.assertEqual(by_id["ground-path"][0]["seam_interior"], 46)
+        self.assertFalse(by_id["ground-path"][0]["seam_pass"])
+        refused = by_id["ground-path"][1]
+        self.assertEqual(refused["attempt"], 2)
+        self.assertIsNone(refused["seam_pass"])
+        self.assertIn("content policy", refused["error"])
+        self.assertIn("not retried", refused["error"])
 
 
 if __name__ == "__main__":

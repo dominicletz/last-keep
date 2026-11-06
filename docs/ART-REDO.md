@@ -287,41 +287,41 @@ The sim places the quarries, camps and shrines. The snapshot sends the ones whos
 
 ### 6. Terrain
 
-Approved 2026-11-06: rebake at the hero texel, 32/88, as seamless tiles. The live buffer stays on 0.84. A 32/88 buffer measured plaza spread 4.72 (floor 8). Yard-grass on the plaza disc at 0.84 measured 3.75. The wider yard plane samples `ground-yard-grass.png`. Meadow, ruins, pine, cliff and river sample their tiles in `biomeColor`. The ford still samples the meadow tile. The plaza disc stays `grassAt`.
+Approved 2026-11-06: rebake at the hero texel, 32/88, as seamless tiles. The live buffer stays on 0.84. A 32/88 buffer measured plaza spread 4.72 (floor 8). Yard-grass on the plaza disc at 0.84 measured 3.75. The wider yard plane samples `ground-yard-grass.png`. Meadow, ruins, pine, cliff, river, ford, hill and mountain sample their tiles in `biomeColor`. Hill lift stays 56 and mountain lift stays 120. The dirt tile replaces the stone fleck (`n2 < 0.07`); pebbles and the path band stay. The plaza disc stays `grassAt`. The path is not a tile.
 
 The pack is `assets/reference/next-art-output/`, and `generation-manifest.json` there is its record. A tile is wired only after `seam_holds` (column wrap ≤ the max interior column step) and a look that is a tile. The live copy is `priv/static/images/hd2d/ground-<name>.png`, then `GROUND_TILE_URLS` in `seam_tiles.js`.
 
 | Call | Lands at | Sampled by, today | Wire |
 |---|---|---|---|
 | ground-river | `assets/reference/ground/river.png` | `biomeColor("river")` samples `ground-river.png` | wired. Column wrap 31 ≤ interior 83, and the row wrap is 42 ≤ 114. Dark green water, no sky |
-| ground-ford | `assets/reference/next-art-output/ground/ford.png` | ford samples the meadow tile | column wrap 113 > 70, and the picture has a horizon. Not wired. The parent is retaking it |
+| ground-ford | `assets/reference/ground/ford.png` | `biomeColor("ford")` samples `ground-ford.png` | wired. Column wrap 120 ≤ 142, row wrap 89 ≤ 152. Shallow water over stones, no horizon |
 | ground-plaza | `assets/reference/next-art-output/ground/plaza.png` | the plaza disc is `grassAt` | column wrap 142 ≤ 158, row wrap 208 > 150. The picture is a path and a canopy, not a tile. Not wired |
-| ground-path | `assets/reference/next-art-output/ground/path.png` | `pathNS` / `pathEW` use `propBytes("path", "day")` | column wrap 128 > 105. Not wired. Retake 2 was refused; no new prompt |
-| ground-dirt | `assets/reference/next-art-output/ground/dirt.png` | `STONE` flecks in `ground.js` | column wrap 94 > 62. Not wired. The parent is retaking it |
-| ground-hill | `assets/reference/next-art-output/ground/hill.png` | `sunsetColor`, `biomeLift` 56 | column wrap 74 > 59. Not wired. The parent is retaking it |
-| ground-mountain | `assets/reference/next-art-output/ground/mountain.png` | `horizonColor`, `biomeLift` 120 | column wrap 181 > 104, and the picture is a sunset skyline. Not wired. The parent is retaking it |
+| ground-path | `assets/reference/next-art-output/ground/path.png` | `pathNS` / `pathEW` use `propBytes("path", "day")` | not wired. First image 128 > 105. Retake 1 is 101 > 46, a blurry block band. Retake 2 was refused. No further prompt |
+| ground-dirt | `assets/reference/ground/dirt.png` | the stone fleck in `ground.js` | wired. Column wrap 68 ≤ 77. A few grass clumps sit on the left and the bottom |
+| ground-hill | `assets/reference/ground/hill.png` | `biomeColor("hill")`, lift 56 | wired. Column wrap 50 ≤ 56. Purple-brown soil and scrub, no skyline |
+| ground-mountain | `assets/reference/ground/mountain.png` | `biomeColor("mountain")`, lift 120 | wired. Column wrap 25 ≤ 81. Grey-purple rock, no sky |
 | keep-0 … keep-4 | `assets/reference/keep/views/0.png` … `4.png` | `keepParts`, `keep.scale.y` = 1 | sheet built at the live tops. The mesh stays |
 | portal-a | `assets/reference/portal/views/a.png` | the hell door on `snap.portals` | sheet built. The hell door stays |
 | forest_barrier-image-c | `assets/reference/forest_barrier/views/c.png` | `forestWallSlots` pines | column wrap 241 > interior 220. The outer columns are empty. Not a variant |
 
-`assets/reference/next-art-generation-summary.json` is the record of that run, and `assets/reference/next-art-retake-manifest.v2.json` is the six retake calls with their prompts. `next-art-batch.json` is unchanged. Column seams from the summary, wrap against interior: river 31 ≤ 83, plaza 142 ≤ 158, both on the first image. Ford 113 > 70, path 128 > 105, dirt 94 > 62, hill 74 > 59, and mountain 181 > 104 failed the first image. The retakes: ford 120 ≤ 142, dirt 68 ≤ 77, hill 50 ≤ 56, mountain 25 ≤ 81. Path retake 1 was 101 > 46. Path retake 2 was refused by the image provider under its content policy, with no image and no seam. That refusal stays unresolved. There is no further path prompt. None of these tiles is installed. The summary still says the hermit idle-W clip was not watched. The later visual review is in answer 23, and it is not a precheck.
+`assets/reference/next-art-generation-summary.json` is the record of the first run, and `assets/reference/next-art-retake-manifest.v2.json` is the six retake calls with their prompts. `assets/reference/retake-manifest.json` is the delivered retake. `next-art-batch.json` is unchanged. Column seams from the first image, wrap against interior: river 31 ≤ 83, plaza 142 ≤ 158. Ford 113 > 70, path 128 > 105, dirt 94 > 62, hill 74 > 59, and mountain 181 > 104 failed that image. The delivered retakes pass: ford 120 ≤ 142, dirt 68 ≤ 77, hill 50 ≤ 56, mountain 25 ≤ 81, and those four are installed. Path retake 1 is 101 > 46. Path retake 2 was refused by the image provider under its content policy, with no image and no seam. That refusal stays unresolved. There is no further path prompt, and the path texture is unchanged. The summary still says the hermit idle-W clip was not watched. The later visual review is in answer 23, and it is not a precheck.
 
 | Asset | Files | Current | Var | Status |
 |---|---|---|---|---|
 | yard grass | `ground.js groundPixels`, `priv/static/images/hd2d/ground-yard-grass.png` | the passing tile, on the day yard plane | c (seamless tile) | **wired on the day yard plane** (column wrap 102 ≤ interior 147. The plaza disc stays `grassAt`: the tile there measures spread 3.75, floor 8. Dusk and night stay `grassAt`: the day tile under the scout at (160, 0) at night measures contrast 28.72, floor 29. The live mesh is the day paint.) |
 | plaza disc and ring | `propCrops.path`, RingGeometry 154–164 | crop | c | not wired (the take is a scene; row wrap 208 > 150) |
-| paths NS/EW | `propCrops.path` | crop | c | not wired (column wrap 128 > 105; retake refused) |
+| paths NS/EW | `propCrops.path` | crop | c | not wired (retake 1 is 101 > 46; retake 2 refused; the path texture is unchanged) |
 | yard edge | `dissolveYardEdge` | shader | d | keep |
-| horizon biome window | `horizon.js paintWindow` (256 texel over 6144) | meadow, ruins, pine and cliff sample their tiles | c | **rebaked** (`biomeColor`. The river stays `SHADE`. The ford samples the meadow tile.) |
-| meadow ground | `world.ex` cell biome `:meadow`, `horizon.js pictureCell` | `ground-meadow.png` on meadow and ford cells | c (seamless tile) | **wired on the horizon** (column wrap 65 ≤ interior 123. The keep disc in the live yard is the yard-grass plane, not this tile.) |
+| horizon biome window | `horizon.js paintWindow` (256 texel over 6144) | meadow, ruins, pine, cliff, river, ford, hill and mountain sample their tiles | c | **rebaked** (`biomeColor`. The path is not a tile.) |
+| meadow ground | `world.ex` cell biome `:meadow`, `horizon.js pictureCell` | `ground-meadow.png` on meadow cells | c (seamless tile) | **wired on the horizon** (column wrap 65 ≤ interior 123. The keep disc in the live yard is the yard-grass plane, not this tile.) |
 | pine ground (forest floor) | biome `:pine` | `ground-pine.png` on pine cells | c (seamless tile, needles and moss) | **wired on the horizon** (column wrap 94 ≤ interior 104.) |
 | ruins ground | biome `:ruins` | `ground-ruins.png` on ruins cells | c (seamless tile, broken flagstones) plus ruin props in section 9 | **wired on the horizon** (column wrap 148 ≤ interior 156. Row wrap 151 > interior 150; rows are not the gate.) |
 | river water | biome `:river` | `ground-river.png` | c (seamless tile, 2–4 frame ripple) | **wired** (column wrap 31 ≤ 83) |
-| ford | biome `:ford` (a walkable river cell) | meadow tile | c (shallow water over stones tile) | not wired (column wrap 113 > 70) |
+| ford | biome `:ford` (a walkable river cell) | `ground-ford.png` | c (shallow water over stones tile) | **wired** (column wrap 120 ≤ 142) |
 | cliff | biome `:cliff`, skirt `:cliff`, `biomeLift` 16 | `ground-cliff.png` on cliff cells, plus lift | c (the face tile) | **wired on the horizon** (column wrap 129 ≤ interior 169. No separate top tile.) |
-| hill | skirt `:hill`, `biomeLift` 56 | `sunsetColor` plus lift | c (seamless tile) | not wired (column wrap 74 > 59) |
-| mountain | skirt `:mountain`, `biomeLift` 120 | `horizonColor` plus lift | c (seamless tile, rock and snow) | not wired (column wrap 181 > 104) |
-| dirt | `ground.js` `STONE` flecks (`n2 < 0.07`), worn plaza and paths | noise flecks | c (seamless tile, trodden dirt and pebbles) | not wired (column wrap 94 > 62) |
+| hill | skirt `:hill`, `biomeLift` 56 | `ground-hill.png` plus lift 56 | c (seamless tile) | **wired** (column wrap 50 ≤ 56. The lift stays.) |
+| mountain | skirt `:mountain`, `biomeLift` 120 | `ground-mountain.png` plus lift 120 | c (seamless tile, rock) | **wired** (column wrap 25 ≤ 81. The lift stays.) |
+| dirt | `ground.js` stone flecks (`n2 < 0.07`), worn plaza and paths | `ground-dirt.png` on those flecks | c (seamless tile, trodden dirt and pebbles) | **wired** (column wrap 68 ≤ 77. A few grass clumps remain. Hero contrast stays at or above 29 and the keep at or above 25.) |
 | void (outside the world) | `world.ex` `:void` | none (fog) | d | keep |
 
 ### 7. UI

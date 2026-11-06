@@ -94,7 +94,9 @@ function paint(phase, size, span) {
       // contrast 28.72, under the floor of 29. The live mesh is the day paint.
       const tiled = phase === "day" && span > PLAZA_SPAN ? sampleGroundTile("yard", worldX, worldZ) : null
       let color = tiled || grassAt(ix + jigX, iy + jigY, phase)
-      if (n2 < 0.07) color = STONE
+      // The dirt tile replaces the flat stone fleck. A missing tile keeps STONE.
+      // Pebbles stay the course colour. The path band below is still PATH.
+      if (n2 < 0.07) color = sampleGroundTile("dirt", worldX, worldZ) || STONE
       else if (n2 < 0.12) color = PEBBLE
       // The inner pine crown is a few pixels. The dusk sample around it is mostly
       // the ground behind that crown. Sunset flecks there pull the pine hue onto
