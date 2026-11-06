@@ -2,6 +2,7 @@
 import contextlib
 import io
 import json
+import math
 import os
 import sys
 import tempfile
@@ -1136,6 +1137,131 @@ def approved_video_batch():
                               "args": fixed["args"], "save_as": fixed["save_as"]}]}
 
 
+# theme.jpg boxes. The tile prompts use these crops as the first reference.
+TERRAIN_BOXES = {
+    "plaza": (680, 608, 760, 680),
+    "path": (590, 540, 680, 630),
+    "dirt": (610, 555, 670, 615),
+    "ford": (595, 548, 650, 615),
+    "river": (1140, 640, 1260, 710),
+    "hill": (900, 56, 1260, 86),
+    "mountain": (900, 42, 1260, 70),
+}
+
+PRESERVE = (" Preserve the silhouette and the proportions of the first reference exactly. "
+            "The outline, the height-to-width ratio, and the number of masses stay as they are in that image.")
+
+
+def barrier_pitch_px():
+    """scenery.js barrierPitch of the outer ring, in pixels of a full pine."""
+    return ((2 * math.pi * 258) / 62 / 0.8) * 110 / 40
+
+
+def _stand_on_the_reference(call, crop):
+    """The stock prop prompt drops the ground. A keep and a portal include
+    their base, so that clause is replaced and the silhouette sentence is added."""
+    refs = list(call["args"]["reference_image_paths"])
+    refs[0] = crop
+    call["args"]["reference_image_paths"] = refs
+    old = "Plain flat white background, no ground, no grass, no shadow, no text, no other objects."
+    new = ("Plain flat white background, no text, no other objects. Keep the base, the steps and the "
+           "ground that are part of the first reference. The subject stands on that base. It does not float.")
+    if old not in call["args"]["description"]:
+        raise AssertionError("static prompt no longer has the ground sentence")
+    call["args"]["description"] = call["args"]["description"].replace(old, new) + PRESERVE
+    return call
+
+
+def _prop(hero, noun, design, crop, variant, save_as):
+    cfg = {"hero": hero, "noun": noun, "design": design, "view": "three_quarter",
+           "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+           "variants": [{"id": variant}]}
+    call = hs.static_prompts(cfg)["calls"][0]
+    _stand_on_the_reference(call, crop)
+    call["id"] = f"{hero}-{variant}"
+    call["save_as"] = save_as
+    return {"id": call["id"], "asset": hero, "tool": "GenerateImage",
+            "args": call["args"], "save_as": save_as}
+
+
+def next_art_batch():
+    """The next GenerateImage calls. Each crop is the first reference.
+    Reeds wait on the river tile. Birds stay deferred. Fish and rabbits stay dropped."""
+    style = "assets/reference/engineer/video/views/v-S.png"
+    calls = []
+    tiles = (
+        ("river", "dark water. The reference has no river: it is the dark green forest floor, and the tile is water of that colour",
+         "assets/reference/ground/river.png"),
+        ("ford", "a ford of shallow water over the path's stones. The reference has no water: keep these stones and put shallow water over them",
+         "assets/reference/ground/ford.png"),
+        ("plaza", "the plaza's grass, the ring inside the palisade",
+         "assets/reference/ground/plaza.png"),
+        ("path", "the trodden path through the yard",
+         "assets/reference/ground/path.png"),
+        ("dirt", "worn dirt and small pebbles, the bare earth of the path",
+         "assets/reference/ground/dirt.png"),
+        ("hill", "the near slope under the ridge. Draw that slope's dark ground, not the trees and not the sky",
+         "assets/reference/ground/hill.png"),
+        ("mountain", "rock in the colour of the distant ridge. Draw a ground tile, not a picture of the skyline and not the sky",
+         "assets/reference/ground/mountain.png"),
+    )
+    for name, subject, save in tiles:
+        calls.append({
+            "id": f"ground-{name}", "asset": "ground", "tool": "GenerateImage",
+            "args": {
+                "description": (
+                    f"Seamless ground tile of {subject}, at the hero texel (32 world units over 88 px, "
+                    "the same constant as the hero sheets). The first reference is the colour and the texture. "
+                    "Preserve its colours, its block size and its proportions. Seen from directly above. "
+                    "The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. "
+                    "Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. "
+                    "One square tile only. Do not draw a landscape or a freestanding object."
+                ),
+                "reference_image_paths": [f"assets/reference/terrain-crops/{name}.png", style],
+                "aspect_ratio": "1:1",
+                "filename": f"ground-{name}.png",
+            },
+            "save_as": save,
+        })
+    keep = "a stone keep of the first reference, the same masses and the same base"
+    for rank in range(5):
+        calls.append(_prop(
+            "keep", "keep", keep,
+            f"assets/reference/yard-concept/crops/keep-{rank}.png", str(rank),
+            f"assets/reference/keep/views/{rank}.png"))
+    calls.append(_prop(
+        "portal", "portal",
+        "the grounded stone arch of the first reference, with its steps and the glow inside the opening",
+        "assets/reference/yard-concept/crops/portal.png", "a",
+        "assets/reference/portal/views/a.png"))
+    calls[-1]["args"]["description"] += " The arch stands on its steps. It is not a floating ring."
+    pitch = round(barrier_pitch_px())
+    barrier = hs.load_config("forest_barrier")
+    framed = dict(barrier, variants=list(barrier["variants"]) + [{
+        "id": "c",
+        "framing": (f"a seamless tiling strip {pitch} px wide at a 110 px pine, one outer-ring pitch. "
+                    "The left edge continues the right edge and the pines run off both side edges. "
+                    "Not a single tree and not a row that stops inside the frame"),
+    }])
+    strip = next(c for c in hs.static_prompts(framed)["calls"] if c["id"] == "image-c")
+    strip["args"]["description"] += PRESERVE
+    calls.append({"id": "forest_barrier-image-c", "asset": "forest_barrier", "tool": "GenerateImage",
+                  "args": strip["args"], "save_as": strip["save_as"]})
+    boxes = {k: list(v) for k, v in TERRAIN_BOXES.items()}
+    return {
+        "_note": "GenerateImage calls. The parent runs the tool. Each reference_image_paths entry is "
+        "relative to the repository root, and the first image is the piece's own crop. "
+        "Keep and the portal keep the base in the crop: the stock 'no ground' sentence is replaced so the "
+        "arch is not a floating ring and a rank is not a different keep. "
+        f"Terrain boxes on theme.jpg: {boxes}. "
+        "The forest barrier strip on disk does not tile (variant a has 2 opaque pixels on each side edge, "
+        f"variant b has 4 and 8). Variant c is one outer-ring pitch, {pitch} px at a 110 px pine. "
+        "Reeds wait until the river tile exists. Birds stay deferred. Fish stay dropped. Rabbits stay dropped. "
+        "Do not build a keep or portal sheet from the views these calls replace.",
+        "calls": calls,
+    }
+
+
 class ApprovedBatchTest(unittest.TestCase):
     def test_the_approved_image_and_video_batches_match_the_calls(self):
         image = json.load(open(os.path.join(hs.ROOT, "assets/reference/approved-image-batch.json")))
@@ -1172,6 +1298,57 @@ class ApprovedBatchTest(unittest.TestCase):
         self.assertIn("lies still on the ground for the last half second", death)
         self.assertIn("ears held flat", video["calls"][1]["args"]["prompt"])
         self.assertNotIn("ears upright", video["calls"][1]["args"]["prompt"])
+
+
+class NextArtBatchTest(unittest.TestCase):
+    def test_the_next_batch_uses_each_crop_and_keeps_its_silhouette(self):
+        batch = next_art_batch()
+        path = os.path.join(hs.ROOT, "assets/reference/next-art-batch.json")
+        with open(path) as fh:
+            self.assertEqual(json.load(fh), batch)
+        ids = [c["id"] for c in batch["calls"]]
+        self.assertEqual(ids, [
+            "ground-river", "ground-ford", "ground-plaza", "ground-path", "ground-dirt",
+            "ground-hill", "ground-mountain",
+            "keep-0", "keep-1", "keep-2", "keep-3", "keep-4", "portal-a",
+            "forest_barrier-image-c",
+        ])
+        self.assertTrue(all(c["tool"] == "GenerateImage" for c in batch["calls"]))
+        for dropped in ("reeds", "bird", "fish", "rabbit"):
+            self.assertNotIn(dropped, ids)
+        self.assertIn("Reeds wait", batch["_note"])
+        self.assertIn("Rabbits stay dropped", batch["_note"])
+        theme = Image.open(os.path.join(hs.ROOT, "docs/concept/theme.jpg"))
+        for name, box in TERRAIN_BOXES.items():
+            crop = Image.open(os.path.join(hs.ROOT, "assets/reference/terrain-crops", f"{name}.png"))
+            self.assertEqual(crop.size, (box[2] - box[0], box[3] - box[1]), name)
+            self.assertEqual(list(crop.getdata()), list(theme.crop(box).getdata()), name)
+            call = next(c for c in batch["calls"] if c["id"] == f"ground-{name}")
+            self.assertEqual(call["args"]["reference_image_paths"][0],
+                             f"assets/reference/terrain-crops/{name}.png")
+            self.assertIn("32 world units over 88 px", call["args"]["description"])
+            self.assertIn("left edge continues the right edge", call["args"]["description"])
+        for rank in range(5):
+            call = next(c for c in batch["calls"] if c["id"] == f"keep-{rank}")
+            self.assertEqual(call["args"]["reference_image_paths"][0],
+                             f"assets/reference/yard-concept/crops/keep-{rank}.png")
+            self.assertIn("Preserve the silhouette", call["args"]["description"])
+            self.assertIn("does not float", call["args"]["description"])
+            self.assertNotIn("no ground", call["args"]["description"])
+            self.assertTrue(os.path.exists(os.path.join(hs.ROOT, call["args"]["reference_image_paths"][0])))
+        portal = next(c for c in batch["calls"] if c["id"] == "portal-a")
+        self.assertEqual(portal["args"]["reference_image_paths"][0],
+                         "assets/reference/yard-concept/crops/portal.png")
+        self.assertIn("not a floating ring", portal["args"]["description"])
+        self.assertIn("stands on its steps", portal["args"]["description"])
+        strip = next(c for c in batch["calls"] if c["id"] == "forest_barrier-image-c")
+        self.assertEqual(strip["args"]["reference_image_paths"][0],
+                         "assets/reference/forest_barrier/concept.png")
+        self.assertIn("left edge continues the right edge", strip["args"]["description"])
+        self.assertIn(f"{round(barrier_pitch_px())} px", strip["args"]["description"])
+        self.assertIn("Preserve the silhouette", strip["args"]["description"])
+        self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "assets/reference/keep/asset.json")))
+        self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "assets/reference/portal/asset.json")))
 
 
 if __name__ == "__main__":
