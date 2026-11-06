@@ -1,0 +1,25 @@
+{
+  "_note": "NPC (docs/ART-REDO.md section 4). The concept sheets have no hermit, so the box is the theme.jpg night pines for the cloak colour, and the source_note says so. The sim stores one hermit point of interest and does not send it. Idle on the four views. No video and no sheet yet. Not wired.",
+  "type": "monster",
+  "noun": "hermit",
+  "possessive": "his",
+  "concept": {
+    "source": "docs/concept/theme.jpg",
+    "box": [20, 100, 150, 250]
+  },
+  "source_note": "The reference shows no hermit: it is the night pines; draw one hermit and nothing else, no trees; use the reference only for the colours of the cloak",
+  "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+  "design": "a hermit with a long grey beard, a deep green hooded cloak the colour of the night pines, a dark brown robe, worn boots, empty hands, no weapon",
+  "feet": "boots",
+  "sheet": {"world_height": 32, "height": 88, "cell": 128},
+  "items": [],
+  "clips": {
+    "idle": ["S", "W", "N", "E"]
+  },
+  "turntable": {
+    "seconds": 8,
+    "fps": 24,
+    "keyframes": {"W": 2, "N": 4, "E": 6},
+    "design": "a hermit with a long grey beard, a deep green hooded cloak the colour of the night pines, a dark brown robe, worn boots, empty hands, no weapon"
+  }
+}

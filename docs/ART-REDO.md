@@ -209,16 +209,16 @@ baked into `tile-data.js` (2.2 MB) per phase: day, dusk and night.
 
 ### 4. Points of interest and NPCs
 
-The sim places the quarries, camps and shrines. The snapshot sends the ones whose chunk is already discovered, the same filter as a chest, and `render.js` draws the built sheet on that spot. A camp or a shrine leaves the list when the sim removes it. The merchant and the hermit are not sent. A vagrant is already an entity in the snapshot and still has no sheet.
+The sim places the quarries, camps and shrines. The snapshot sends the ones whose chunk is already discovered, the same filter as a chest, and `render.js` draws the built sheet on that spot. A camp or a shrine leaves the list when the sim removes it. The merchant and the hermit are not sent. A vagrant is already an entity in the snapshot. Its clips are in, and the sheet stays off the client until walk-W passes the height check.
 
 | Asset | Var | Notes | Status |
 |---|---|---|---|
 | quarry | b | Stone source. `quarry-sheet.png`, 88 px. Variant a or b by `spotVariant` on the poi id. Feet on the ground. | **built, awaiting final review** |
 | camp | b | `camp-sheet.png`, 77 px, one lean-to and a fire. One variant. | **built, awaiting final review** |
 | shrine | b | Relics are HUD text only; a relic icon could come with it (variant c), and that icon is not a variant here. `shrine-sheet.png`, 66 px, empty niche. | **built, awaiting final review** |
-| vagrant (NPC) | a | idle ×4, walk ×8. No vagrant on the concept sheets, so the crop is the theme.jpg timber house for cloak colours (`source_note`). The four views are in, and `views` wrote `k-S/N/W/E.png`. v-S is a slight three-quarter; `views` only scales the figure, and there is no check profile, so nothing rejects that facing. Motion calls, not generated: `assets/reference/npc-motion-batch.json`. No sheet, not wired. | **views in** |
-| merchant (planned) | a | idle ×4, no walk. No merchant on the concept sheets, so the crop is the theme.jpg wheat and stone for the sack colours (`source_note`). Same views and the same motion batch (turntable and four idles). v-S is a slight three-quarter, accepted the same way. No sheet, not wired. | **views in** |
-| hermit (planned) | a | idle ×4 | todo |
+| vagrant (NPC) | a | idle ×4, walk ×8. No vagrant on the concept sheets, so the crop is the theme.jpg timber house for cloak colours (`source_note`). The four views, the turntable, the eight dirs and the clips are in. v-S is a slight three-quarter, recorded for the final review: `views` only scales the figure. Clip precheck passed. The sheet failed walk height 88 ±4 on walk-W (min 83). `hero_sprites.py vagrant build` still refuses without a check profile, and a profile would not pass that height check. The snapshot already lists vagrants. The sheet stays unwired. Retake: `assets/reference/npc-retake-batch.json`. | **clips in, sheet refused** |
+| merchant (planned) | a | idle ×4, no walk. No merchant on the concept sheets, so the crop is the theme.jpg wheat and stone for the sack colours (`source_note`). Same views, turntable and dirs. v-S is a slight three-quarter, recorded for the final review the same way. Precheck fails the start pose on idle-W, idle-N and idle-E. idle-S passed. No sheet. The snapshot does not send a merchant, so it stays unwired. Same retake batch. | **precheck failed, unwired** |
+| hermit (planned) | a | idle ×4. No hermit on the concept sheets, so the crop is the theme.jpg night pines for the cloak colour (`source_note`). The sim stores one hermit and does not send it. Settings and the four view calls are in `assets/reference/hermit/asset.json` and `assets/reference/hermit-views-batch.json`. No video, no sheet, not wired. | **views prepped** |
 
 ### 5. Projectiles and effects
 

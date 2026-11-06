@@ -47,8 +47,9 @@ BG_LOOSE = 222       # min channel for border-connected white
 BG_TIGHT = 240       # min channel for an enclosed white hole
 HOLE_MIN = 24        # smallest enclosed hole (source px) treated as background
 # Monster sheets: rows in this order (the client's sheetRow reads walk, then
-# attack, then death), only the kinds the asset has clips for.
-MONSTER_ROWS = (("walk", WALK), ("attack", 6), ("death", 6))
+# attack, then death, then idle), only the kinds the asset has clips for.
+# An NPC idle is four frames, the same count as a hero idle.
+MONSTER_ROWS = (("walk", WALK), ("attack", 6), ("death", 6), ("idle", IDLE))
 # A diagonal death reuses the nearest cardinal clip that keeps its read:
 # SW and SE face the camera like S, NW and NE show the back like N. Never a
 # mirror: a mirrored clip swaps the hand that holds the weapon.
@@ -560,6 +561,9 @@ def monster_geometry(kind, frames, spec):
     elif kind == "attack":
         peak, back, picks = attack_picks(frames)
         info = {"peak": peak, "recovery": back}
+    elif kind == "idle":
+        picks = idle_picks(frames)
+        info = {}
     else:
         rest, picks = death_picks(frames, by_motion=spec.death_by_motion)
         info = {"rest": rest}
@@ -591,7 +595,7 @@ def monster_anchor(kind, m, h, start, flies=False):
     torso0, feet0, foot0 = start
     if flies:
         return torso0, (span(m)[1] if kind == "death" else foot0)
-    if kind == "walk":
+    if kind in ("walk", "idle"):
         return torso_centre(m, h), span(m)[1]
     if kind == "attack":
         return torso0 + feet_centre(m, h) - feet0, span(m)[1]
@@ -609,6 +613,15 @@ def build_monster(clips, spec, have, inspect=None):
     for kind, n in spec.rows:
         done = {}
         for d in COLUMNS:
+            # An idle authored on the four views only (an NPC) holds the start
+            # pose on the other four columns. It is not a mirrored clip.
+            if kind == "idle" and d not in have.get("idle", ()):
+                rgb, alpha = pose_place(
+                    np.asarray(Image.open(os.path.join(clips, "dirs", f"{d}.png")).convert("RGB")), spec)
+                raw.setdefault(d, []).extend([(rgb, alpha)] * n)
+                plan[d][kind] = {"clip": f"dirs/{d}.png", "frames": 1, "picks": [0] * n, "held": True}
+                print(f"{d} {kind}: held on dirs/{d}.png", file=sys.stderr)
+                continue
             src = clip_for(have, kind, d)
             if src not in done:
                 frames = load_clip(os.path.join(clips, f"{kind}-{src}.mp4"))

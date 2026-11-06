@@ -286,7 +286,9 @@ function deathOf(image) {
 }
 
 export function sheetRow(picture, pose, now) {
-  const walk = picture.walk || picture.frames
+  // walk 0 is an idle-only sheet (a merchant). A missing walk still means the
+  // whole strip, which is what a walk-only picture stores on frames.
+  const walk = Number.isInteger(picture.walk) ? picture.walk : (picture.frames || 0)
   const attack = picture.attack || 0
   const death = picture.death || 0
   if (pose.dead) {
@@ -298,7 +300,7 @@ export function sheetRow(picture, pose, now) {
     const index = Math.min(attack - 1, Math.floor((now - pose.attackAt) / 140))
     return walk + index
   }
-  if (pose.moving) return Math.floor(now / 160) % walk
+  if (pose.moving && walk) return Math.floor(now / 160) % walk
   // A graze has no idle row. It loops the attack rows (the deer's head-down clip).
   if (pose.graze && attack) {
     const spun = Math.floor(now / 140) % attack

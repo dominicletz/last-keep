@@ -745,7 +745,7 @@ def monster_main(args):
 
 # Client frame times (assets/js/pictures.js sheetRow): walk and death 160 ms,
 # attack 140 ms; death holds its last frame.
-GIF_MS = {"walk": 160, "attack": 140, "death": 160}
+GIF_MS = {"walk": 160, "attack": 140, "death": 160, "idle": 320}
 
 
 def write_monster_approval(sheet, spec, concept, out):

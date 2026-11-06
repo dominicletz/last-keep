@@ -1,0 +1,65 @@
+{
+ "_note": "GenerateImage calls for the hermit, four views (front S, back N, left W, right E). Paths are absolute under /workspace/lk-art-redo. save_as is the file `hero_sprites.py hermit views` reads. The front view uses the engineer style reference; the other three use that front view. No video. The sim stores one hermit and does not send it.",
+ "calls": [
+  {
+   "id": "hermit-view-S",
+   "asset": "hermit",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the hermit from the reference image, front view, facing the camera. The reference shows no hermit: it is the night pines; draw one hermit and nothing else, no trees; use the reference only for the colours of the cloak. Same design exactly: a hermit with a long grey beard, a deep green hooded cloak the colour of the night pines, a dark brown robe, worn boots, empty hands, no weapon. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its design. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/hermit/concept.png",
+     "/workspace/lk-art-redo/assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "hermit-v-S.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/hermit/video/views/v-S.png"
+  },
+  {
+   "id": "hermit-view-N",
+   "asset": "hermit",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the hermit from the reference image, back view, seen from directly behind, back to the camera. The reference shows no hermit: it is the night pines; draw one hermit and nothing else, no trees; use the reference only for the colours of the cloak. Same design exactly: a hermit with a long grey beard, a deep green hooded cloak the colour of the night pines, a dark brown robe, worn boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/hermit/concept.png",
+     "/workspace/lk-art-redo/assets/reference/hermit/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "hermit-v-N.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/hermit/video/views/v-N.png"
+  },
+  {
+   "id": "hermit-view-W",
+   "asset": "hermit",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the hermit from the reference image, left profile view, facing screen-left, his left side toward the camera. The reference shows no hermit: it is the night pines; draw one hermit and nothing else, no trees; use the reference only for the colours of the cloak. Same design exactly: a hermit with a long grey beard, a deep green hooded cloak the colour of the night pines, a dark brown robe, worn boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/hermit/concept.png",
+     "/workspace/lk-art-redo/assets/reference/hermit/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "hermit-v-W.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/hermit/video/views/v-W.png"
+  },
+  {
+   "id": "hermit-view-E",
+   "asset": "hermit",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the hermit from the reference image, right profile view, facing screen-right, his right side toward the camera. The reference shows no hermit: it is the night pines; draw one hermit and nothing else, no trees; use the reference only for the colours of the cloak. Same design exactly: a hermit with a long grey beard, a deep green hooded cloak the colour of the night pines, a dark brown robe, worn boots, empty hands, no weapon. Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "/workspace/lk-art-redo/assets/reference/hermit/concept.png",
+     "/workspace/lk-art-redo/assets/reference/hermit/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "hermit-v-E.png"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/hermit/video/views/v-E.png"
+  }
+ ]
+}

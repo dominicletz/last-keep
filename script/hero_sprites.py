@@ -939,6 +939,9 @@ def monster_precheck(cfg, log=print):
                 if not os.path.exists(os.path.join(vid, "mid", f"{d}.png"))]
     for kind, _ in spec.rows:
         for d in COLUMNS:
+            # Idle on the four views holds the start pose on the other columns.
+            if kind == "idle" and d not in have.get("idle", ()):
+                continue
             try:
                 sv.clip_for(have, kind, d)
             except SystemExit as e:
@@ -971,7 +974,15 @@ def monster_precheck(cfg, log=print):
             cells = [alpha(i) for i in picks]
             walk_median[d] = float(np.median([int((cells[r] != cells[(r + 1) % len(cells)]).sum())
                                               for r in range(len(cells))]))
-        med = walk_median[d]
+        if d in walk_median:
+            med = walk_median[d]
+        else:
+            # An idle with no walk beside it (the merchant) is measured against
+            # its own step. A still clip makes that step small, so the start
+            # check stays strict.
+            cells = [alpha(i) for i in picks]
+            med = float(np.median([int((cells[r] != cells[(r + 1) % len(cells)]).sum())
+                                   for r in range(len(cells))])) or 1.0
         first = alpha(0)
         loop = None
         if kind in ("walk", "attack"):

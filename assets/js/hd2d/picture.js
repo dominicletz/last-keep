@@ -55,8 +55,9 @@ export function monsterSheetPicture(spec) {
   const walk = spec.rows.walk || 0
   const attack = spec.rows.attack || 0
   const death = spec.rows.death || 0
-  if (!walk) throw new Error("a monster sheet needs walk rows")
-  return { directions: 8, frames: walk + attack + death, walk, attack, death, idle: 0 }
+  const idle = spec.rows.idle || 0
+  if (!walk && !idle) throw new Error("a monster sheet needs walk or idle rows")
+  return { directions: 8, frames: walk + attack + death + idle, walk, attack, death, idle }
 }
 
 // The hero drawn inside a sheet card, not the whole cell: SHEET_HERO texels

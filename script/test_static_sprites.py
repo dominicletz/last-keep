@@ -622,6 +622,81 @@ class NpcViewsTest(unittest.TestCase):
                 self.assertIn("/video/dirs/", args["image_path"])
                 self.assertEqual(args["last_frame_path"], args["image_path"])
 
+    def test_the_retake_batch_is_the_clips_that_failed_and_nothing_else(self):
+        for name in NPCS:
+            self.assertIn("slight three-quarter", hs.load_config(name)["_note"])
+        path = os.path.join(hs.ROOT, "assets/reference/npc-retake-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_retake_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]], list(RETAKE_IDS))
+        motion = {c["id"]: c for c in npc_motion_batch()["calls"]}
+        for call in batch["calls"]:
+            self.assertEqual(call, motion[call["id"]])
+
+    def test_the_hermit_is_a_palette_crop_and_a_views_batch(self):
+        cfg = hs.load_config("hermit")
+        box = [20, 100, 150, 250]
+        self.assertEqual(cfg["type"], "monster")
+        self.assertEqual(cfg["concept"]["source"], "docs/concept/theme.jpg")
+        self.assertEqual(cfg["concept"]["box"], box)
+        self.assertTrue(cfg["source_note"].startswith("The reference shows no "))
+        self.assertEqual(cfg["style_refs"], ["assets/reference/engineer/video/views/v-S.png"])
+        self.assertEqual(cfg["items"], [])
+        self.assertEqual(cfg["clips"], {"idle": ["S", "W", "N", "E"]})
+        self.assertNotIn("walk", cfg["clips"])
+        self.assertEqual(cfg["sheet"]["world_height"], 32)
+        self.assertEqual(cfg["sheet"]["height"], hs.sheet_height(32))
+        with Image.open(os.path.join(cfg["dir"], "concept.png")) as image:
+            self.assertEqual(list(np.asarray(image).shape[:2]), [box[3] - box[1], box[2] - box[0]])
+        prompts = hs.build_prompts(cfg)["calls"]
+        views = [c for c in prompts if c["id"].startswith("view-")]
+        self.assertEqual([c["id"] for c in views], ["view-S", "view-N", "view-W", "view-E"])
+        video = [c for c in prompts if c["tool"] == "GenerateVideo"]
+        self.assertEqual({c["id"].split("-", 1)[0] for c in video}, {"turntable", "idle"})
+        path = os.path.join(hs.ROOT, "assets/reference/hermit-views-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, hermit_views_batch())
+        self.assertEqual(len(batch["calls"]), 4)
+        self.assertTrue(all(c["tool"] == "GenerateImage" for c in batch["calls"]))
+        self.assertNotIn("GenerateVideo", json.dumps(batch["calls"]))
+
+
+RETAKE_IDS = ("vagrant-walk-W", "merchant-idle-W", "merchant-idle-N", "merchant-idle-E")
+
+
+def npc_retake_batch():
+    """The clips the checks refused, copied from the motion batch.
+
+    Prompts, image paths and save_as are the motion-batch calls. Nothing
+    else is in the list, and the wording is not rewritten."""
+    by_id = {c["id"]: c for c in npc_motion_batch()["calls"]}
+    return {"_note": "The clips the checks refused, copied from npc-motion-batch.json. "
+            "Prompts and save_as are unchanged. vagrant-walk-W fails the sheet walk height "
+            "88 ±4 (min 83). merchant idle-W, idle-N and idle-E fail the start pose "
+            "(8 px limit 2, 3 px limit 2, 4 px limit 0). v-S stays a slight three-quarter "
+            "and is not in this list. Paths are absolute under /workspace/lk-art-redo.",
+            "calls": [by_id[i] for i in RETAKE_IDS]}
+
+
+def hermit_views_batch():
+    """The hermit's four views. Same shape as the vagrant and merchant views.
+    No video. Paths are absolute under ART_ROOT."""
+    calls = []
+    for call in hs.build_prompts(hs.load_config("hermit"))["calls"]:
+        if call["tool"] != "GenerateImage":
+            continue
+        args = json.loads(json.dumps(call["args"]))
+        args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
+        calls.append({"id": f"hermit-{call['id']}", "asset": "hermit", "tool": "GenerateImage",
+                      "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])})
+    return {"_note": "GenerateImage calls for the hermit, four views (front S, back N, left W, right E). "
+            "Paths are absolute under /workspace/lk-art-redo. save_as is the file "
+            "`hero_sprites.py hermit views` reads. The front view uses the engineer style reference; "
+            "the other three use that front view. No video. The sim stores one hermit and does not send it.",
+            "calls": calls}
+
 
 if __name__ == "__main__":
     unittest.main()

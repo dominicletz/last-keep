@@ -390,7 +390,17 @@ test("a sheet missing a clip kind falls back to the kinds it has", () => {
   assert.deepEqual([0, 160, 5000].map((t) => sheetRow(noAttack, { dead: true, deadAt: 0 }, t)), [8, 9, 13])
   const walkOnly = monsterSheetPicture({ ...GOBLIN, rows: { walk: 8 } })
   assert.deepEqual(walkOnly, { directions: 8, frames: 8, walk: 8, attack: 0, death: 0, idle: 0 })
-  assert.throws(() => monsterSheetPicture({ ...GOBLIN, rows: { attack: 6 } }), /walk rows/)
+  assert.throws(() => monsterSheetPicture({ ...GOBLIN, rows: { attack: 6 } }), /walk or idle rows/)
+  const withIdle = monsterSheetPicture({ ...GOBLIN, rows: { walk: 8, idle: 4 } })
+  assert.deepEqual(withIdle, { directions: 8, frames: 12, walk: 8, attack: 0, death: 0, idle: 4 })
+  assert.equal(sheetRow(withIdle, { moving: false }, 0), 8)
+  assert.equal(sheetRow(withIdle, { moving: false }, 320), 9)
+  assert.equal(sheetRow(withIdle, { moving: true }, 0), 0)
+  const idleOnly = monsterSheetPicture({ ...GOBLIN, rows: { idle: 4 } })
+  assert.deepEqual(idleOnly, { directions: 8, frames: 4, walk: 0, attack: 0, death: 0, idle: 4 })
+  assert.equal(sheetRow(idleOnly, { moving: false }, 0), 0)
+  assert.equal(sheetRow(idleOnly, { moving: false }, 320), 1)
+  assert.equal(sheetRow(idleOnly, { moving: true }, 320), 1)
 })
 
 test("a flier hovers at its lift and drops to the ground through its death row", () => {

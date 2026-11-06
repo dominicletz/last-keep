@@ -136,6 +136,12 @@ class SpecTest(unittest.TestCase):
         no_death = sv.sheet_spec(dict(cfg, clips={"walk": sv.COLUMNS, "attack": sv.COLUMNS}))
         self.assertEqual(no_death.rows, (("walk", 8), ("attack", 6)))
         self.assertIsNone(sv.asset_config("mage"))
+        vagrant = sv.sheet_spec(sv.asset_config("vagrant"))
+        self.assertEqual(vagrant.rows, (("walk", 8), ("idle", 4)))
+        self.assertEqual(vagrant.first_row("idle"), 8)
+        merchant = sv.sheet_spec(sv.asset_config("merchant"))
+        self.assertEqual(merchant.rows, (("idle", 4),))
+        self.assertEqual(merchant.frames, 4)
 
     def test_a_diagonal_death_reuses_the_cardinal_that_keeps_its_read(self):
         have = {"walk": sv.COLUMNS, "death": ["S", "W", "N", "E"]}
@@ -183,6 +189,17 @@ class MonsterGeometryTest(unittest.TestCase):
         self.assertEqual(sv.monster_anchor("death", down, 100, start, flies=True), (start[0], 259))
         self.assertEqual(sv.monster_anchor("death", down, 100, start), (start[0], 199))
         self.assertEqual(sv.monster_anchor("walk", body, 100, start), (sv.torso_centre(body, 100), 199))
+        self.assertEqual(sv.monster_anchor("idle", body, 100, start), sv.monster_anchor("walk", body, 100, start))
+        mask = np.zeros((40, 20), bool)
+        mask[8:32, 6:14] = True
+        rgb = np.full((40, 20, 3), 200, np.uint8)
+        frames = [{"gray": np.zeros((4, 4), np.float32), "sharp": float(i + 1), "mask": mask, "rgb": rgb}
+                  for i in range(49)]
+        spec = sv.sheet_spec(sv.asset_config("merchant"))
+        picks, _scale, _placer, info = sv.monster_geometry("idle", frames, spec)
+        self.assertEqual(len(picks), 4)
+        self.assertEqual(picks[0], 0)
+        self.assertEqual(info, {})
 
     def test_only_a_flies_config_gets_a_flier_spec(self):
         self.assertFalse(sv.HERO_SPEC.flies)
