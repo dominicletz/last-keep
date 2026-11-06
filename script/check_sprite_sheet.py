@@ -747,6 +747,9 @@ def run_monster_checks(asset, sheet, poses_dir, quiet=False):
         cell[al, 3] = 255
         poses[d] = cell
     held = [r for k in ("walk", "attack") if k in rows for r in rows[k]]
+    # An idle-only figure (the merchant) has no walk or attack. The front and
+    # back colour bounds run on its idle rows. A walker still uses walk and attack.
+    colour_rows = held or list(rows.get("idle", ()))
     for c, d in enumerate(COLUMNS if prop_name else ()):
         if d not in prof["prop_dirs"]:
             rep.check(True, f"{prop_name} {d}", "on the body midline in this view: no side to hold")
@@ -770,8 +773,8 @@ def run_monster_checks(asset, sheet, poses_dir, quiet=False):
 
     for col, (title, bounds) in (("N", prof["back"]), ("S", prof["front"])):
         c = COLUMNS.index(col)
-        view_check(rep, [grid[c][r] for r in held], table, title, bounds, col,
-                   lambda d, i: where(d, held[i]))
+        view_check(rep, [grid[c][r] for r in colour_rows], table, title, bounds, col,
+                   lambda d, i: where(d, colour_rows[i]))
 
     first = [grid[c][0] for c in range(len(COLUMNS))]
     worst = None

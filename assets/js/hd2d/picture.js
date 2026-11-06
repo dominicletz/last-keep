@@ -700,7 +700,7 @@ function createHdPicture(env) {
   function dressMonster(mesh) {
     if (!mesh || !mesh.userData || mesh.userData.hd) return false
     const role = mesh.userData.role
-    if (role !== "monster" && role !== "vagrant") return false
+    if (role !== "monster" && role !== "vagrant" && role !== "merchant") return false
     const kind = mesh.userData.kind
     const spec = MONSTER_SHEETS[kind]
     const source = monsterSheets.get(kind)

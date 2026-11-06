@@ -1,0 +1,20 @@
+{
+ "_note": "Hermit idle-W still fails the start pose: first frame differs by 3 silhouette px, limit 1 (max(0.2 x step 2, noise floor 1)). This is the idle-W call from hermit/prompts.json, duration 2. idle-S, idle-N and idle-E pass and are not here. The older hermit-retake-batch.json is unchanged.",
+ "calls": [
+  {
+   "id": "idle-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The hermit holds exactly the pose, angle and facing of the first frame (facing screen-left, his left side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "assets/reference/hermit/video/dirs/W.png",
+    "last_frame_path": "assets/reference/hermit/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "hermit-idle-W.mp4"
+   },
+   "save_as": "assets/reference/hermit/video/idle-W.mp4"
+  }
+ ]
+}

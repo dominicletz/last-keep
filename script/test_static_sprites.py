@@ -887,6 +887,16 @@ class NpcViewsTest(unittest.TestCase):
         for call in batch["calls"]:
             self.assertEqual(call, motion[call["id"]])
 
+    def test_the_hermit_west_idle_retake_is_the_pipeline_prompt(self):
+        cfg = hs.load_config("hermit")
+        sent = next(c for c in hs.build_prompts(cfg)["calls"] if c["id"] == "idle-W")
+        with open(os.path.join(hs.ROOT, "assets/reference/hermit-idle-w-retake-batch.json")) as fh:
+            batch = json.load(fh)
+        self.assertEqual([c["id"] for c in batch["calls"]], ["idle-W"])
+        self.assertEqual(batch["calls"][0], sent)
+        self.assertEqual(sent["args"]["duration"], 2)
+        self.assertIn("limit 1", batch["_note"])
+
     def test_the_hermit_motion_batch_is_the_turntable_and_four_idles(self):
         cfg = hs.load_config("hermit")
         p = hs.build_prompts(cfg)

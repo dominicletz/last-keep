@@ -116,6 +116,15 @@ test("a discovered chest may raise the settled count", () => {
   assert.equal(body.includes("first.census.settled)"), false)
   assert.match(source, /chests: \(game\.chests \|\| \[\]\)\.length/)
   assert.match(source, /portals: \(game\.portals \|\| \[\]\)\.length/)
+  assert.match(source, /merchant: game\.merchant \? 1 : 0/)
+  const arrived = seat(765, 1, 1)
+  arrived.merchant = 1
+  arrived.census.byRole.merchant = 1
+  assert.equal(settledHolds(seat(764, 1, 1), arrived), true)
+  const leaked = seat(766, 1, 1)
+  leaked.merchant = 1
+  leaked.census.byRole.merchant = 1
+  assert.equal(settledHolds(seat(764, 1, 1), leaked), false)
 })
 
 test("scripted walks wait on the server position", () => {

@@ -110,6 +110,33 @@ defmodule LastKeep.Game.FogTest do
     refute Enum.any?(seen.pois, &(&1.kind == "merchant"))
   end
 
+  test "the merchant is sent when his chunk is discovered and stays off the poi list" do
+    merchant = Enum.find(World.generate(5).pois, &(&1.kind == :merchant))
+    refute merchant == nil
+
+    state =
+      "MERCHANT"
+      |> Sim.new(seed: 5)
+      |> join("ada", :farmer)
+      |> Sim.tick()
+
+    hidden = Snapshot.deliver(state)
+    assert hidden.merchant == nil
+    refute Enum.any?(hidden.pois, &(&1.kind == "merchant"))
+    assert Snapshot.render(state).merchant == %{id: merchant.id, x: merchant.x, y: merchant.y}
+
+    found =
+      state
+      |> put_hero("ada", merchant.x * 1.0, merchant.y * 1.0)
+      |> Sim.tick()
+
+    seen = Snapshot.deliver(found)
+    assert seen.merchant == %{id: merchant.id, x: merchant.x, y: merchant.y}
+    refute Map.has_key?(seen.merchant, :kind)
+    refute Enum.any?(seen.pois, &(&1.kind == "merchant"))
+    refute Map.has_key?(seen, :hermit)
+  end
+
   test "a hero past the last chunk does not discover the void" do
     state =
       "EDGE"

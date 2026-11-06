@@ -377,7 +377,7 @@ class MonsterCheckTest(unittest.TestCase):
 
 class AssetProfileTest(unittest.TestCase):
     def test_goblin_roles(self):
-        self.assertEqual(sorted(cs.ASSETS), ["bat", "boss", "deer", "goblin", "skeleton", "troll", "vagrant", "wolf"])
+        self.assertEqual(sorted(cs.ASSETS), ["bat", "boss", "deer", "goblin", "merchant", "skeleton", "troll", "vagrant", "wolf"])
         table = cs.ASSETS["goblin"]["profile"]["roles"]
         self.assertEqual(cs.role((142, 136, 134), table), "iron")
         self.assertEqual(cs.role((56, 39, 27), table), "leather")
@@ -576,6 +576,19 @@ class SheetBuildTest(unittest.TestCase):
         rep = cs.run_monster_checks(cs.ASSETS["wolf"], sheet,
                                     os.path.join(root, "assets/reference/wolf/video/dirs"), quiet=True)
         self.assertEqual([name for ok, name, _, _ in rep.results if not ok], [])
+
+    def test_the_committed_merchant_sheet_passes_and_the_face_is_on_the_idle_rows(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sheet = np.asarray(Image.open(os.path.join(root, "priv/static/images/hd2d/merchant-sheet.png")).convert("RGBA"))
+        self.assertEqual(sheet.shape, (4 * 128, 8 * 128, 4))
+        rep = cs.run_monster_checks(cs.ASSETS["merchant"], sheet,
+                                    os.path.join(root, "assets/reference/merchant/video/dirs"), quiet=True)
+        self.assertEqual([name for ok, name, _, _ in rep.results if not ok], [])
+        front = next(detail for ok, name, detail, _ in rep.results if name.startswith("front"))
+        back = next(detail for ok, name, detail, _ in rep.results if name.startswith("back"))
+        self.assertIn("min face 66", front)
+        self.assertIn("max face 3", back)
+        self.assertNotIn("hermit", cs.ASSETS)
 
     def test_the_committed_vagrant_sheet_passes_its_checks(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

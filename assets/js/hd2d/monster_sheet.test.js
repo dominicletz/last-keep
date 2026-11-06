@@ -421,6 +421,33 @@ test("the vagrant sheet is a person at the hero height", () => {
   assert.equal(sheetRow(layout, { moving: true }, 0), 0)
 })
 
+test("dressMonster draws a merchant from the idle sheet", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const group = new THREE.Group()
+  const map = new THREE.DataTexture(new Uint8Array(4), 1, 1)
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map }))
+  group.add(sprite)
+  const spec = MONSTER_SHEETS.merchant
+  const layout = monsterSheetPicture(spec)
+  Object.assign(group.userData, {
+    role: "merchant",
+    kind: "merchant",
+    card: sprite,
+    picture: layout
+  })
+  assert.deepEqual(layout, { directions: 8, frames: 4, walk: 0, attack: 0, death: 0, idle: 4 })
+  assert.equal(sheetRow(layout, { moving: false }, 0), 0)
+  assert.equal(sheetRow(layout, { moving: false }, 320), 1)
+  assert.equal(sheetRow(layout, { moving: true }, 320), 1)
+  picture.attachMonsterSheet(sheetTexture(), "merchant")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [group] })
+  assert.equal(group.userData.card.isMesh, true)
+  assert.equal(group.userData.hd, "merchant")
+  assert.equal(group.userData.parts, 8 * 4)
+  assert.equal(group.userData.picture.h, spec.figure * SHEET_TEXEL)
+})
+
 test("dressMonster draws a vagrant from the vagrant sheet", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()

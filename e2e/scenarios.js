@@ -2367,6 +2367,7 @@ async function readMatch(page) {
       census: perf.census || { inScene: 0, orphans: 0, pooled: 0, byRole: {}, settled: 0 },
       chests: (game.chests || []).length,
       portals: (game.portals || []).length,
+      merchant: game.merchant ? 1 : 0,
       p95: null,
       paints: perf.paints || [],
       maxStep: perf.maxStep || 0,

@@ -985,7 +985,7 @@ export function createView(stage, picture) {
 
       const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
       const monsterCards = [...meshes.values()].filter(
-        (mesh) => mesh.userData.role === "monster" || mesh.userData.role === "vagrant"
+        (mesh) => mesh.userData.role === "monster" || mesh.userData.role === "vagrant" || mesh.userData.role === "merchant"
       )
       picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes, monsters: monsterCards })
       dissolveYardEdge(yard)
@@ -995,6 +995,7 @@ export function createView(stage, picture) {
 
       sync("monster", drawn.monsters, (row) => monsterMesh(row))
       sync("vagrant", drawn.vagrants, (row) => vagrantMesh(row))
+      sync("merchant", snap.merchant ? [snap.merchant] : [], () => merchantMesh())
 
       sync("building", drawn.buildings, (row) => buildingMesh(row))
 
@@ -1136,6 +1137,7 @@ export function createView(stage, picture) {
         projectiles: snap.projectiles || [],
         chests: snap.chests || [],
         portals: snap.portals || [],
+        merchant: snap.merchant || null,
         chunks: snap.chunks || [],
         map: snap.map || null,
         land: snap.land || [],
@@ -2292,6 +2294,27 @@ export function createView(stage, picture) {
       mesh.userData.bar.position.y += spread.bar
       if (mesh.userData.mark) mesh.userData.mark.position.y += spread.bar
     }
+    return mesh
+  }
+
+  function merchantMesh() {
+    const spec = MONSTER_SHEETS.merchant
+    const picture = { ...monsterSheetPicture(spec), w: 12, h: spec.figure * SHEET_TEXEL, d: 6, y: 0 }
+    const map = new THREE.DataTexture(new Uint8Array(4), 1, 1)
+    map.needsUpdate = true
+    const card = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 }))
+    card.center.set(0.5, 0)
+    card.scale.set(picture.w, picture.h, 1)
+    const mesh = new THREE.Group()
+    mesh.add(card)
+    mesh.userData.card = card
+    mesh.userData.picture = picture
+    mesh.userData.parts = picture.directions * picture.frames
+    mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: 0, height: picture.h }
+    mesh.userData.face = true
+    mesh.userData.role = "merchant"
+    mesh.userData.kind = "merchant"
+    dressMonster(mesh)
     return mesh
   }
 
