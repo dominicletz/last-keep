@@ -3,7 +3,6 @@
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -487,27 +486,9 @@ class SheetBuildTest(unittest.TestCase):
                     self.assertEqual(a.read(), b.read(), f)
 
     def test_the_mage_sheet_rebuilds_byte_for_byte(self):
-        # The attack and death clips are on disk. They fail the existing
-        # checks, so the committed sheet is still the 12-row walk and idle
-        # file. Rebuild from those clips only.
-        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        with tempfile.TemporaryDirectory() as tmp:
-            clips = os.path.join(tmp, "video")
-            shutil.copytree(os.path.join(root, "assets/reference/mage/video"), clips)
-            for name in os.listdir(clips):
-                if name.startswith(("attack-", "death-")) and name.endswith(".mp4"):
-                    os.remove(os.path.join(clips, name))
-            out = os.path.join(tmp, "out")
-            os.makedirs(out)
-            with open(os.devnull, "w") as quiet:
-                err, sys.stderr = sys.stderr, quiet
-                try:
-                    sv.main(["mage", "--clips", clips, "--out", os.path.join(out, "mage-walk.png")])
-                finally:
-                    sys.stderr = err
-            for f in ("mage-walk.png", "mage-walk-normal.png"):
-                with open(os.path.join(out, f), "rb") as a, open(os.path.join(root, "priv/static/images/hd2d", f), "rb") as b:
-                    self.assertEqual(a.read(), b.read(), f)
+        # Attack and death pass, so the committed sheet is the 24-row file.
+        # A rebuild from the clips on disk matches it, including the normal map.
+        self.rebuild("mage", ["mage-walk.png", "mage-walk-normal.png"])
 
     def test_the_goblin_sheet_rebuilds_byte_for_byte_without_a_normal_map(self):
         self.rebuild("goblin", ["goblin-sheet.png"])

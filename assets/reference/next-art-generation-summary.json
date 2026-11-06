@@ -1,0 +1,207 @@
+{
+ "initial": {
+  "manifest": "/workspace/lk/next-art-generation/run-1794004007/generation-manifest.json",
+  "archive": "/workspace/lk/next-art-generation/run-1794004007/next-art-output.tar.gz",
+  "results": [
+   {
+    "id": "ground-river",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/river.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/e9995082db135ffaac7668424ec06f87dab5d3b0478470cbca701c51bacfabec.jpg",
+    "seam": {
+     "wrap_max": 31,
+     "interior_max": 83,
+     "pass": true
+    }
+   },
+   {
+    "id": "ground-ford",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/ford.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/69d7775e7f04e21a53c84fda20a756163315c8d68223402439ac0045f808bdb6.jpg",
+    "seam": {
+     "wrap_max": 113,
+     "interior_max": 70,
+     "pass": false
+    }
+   },
+   {
+    "id": "ground-plaza",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/plaza.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/9dfa13e650b4c4a19b86542ebe6e619d739581e3bbe24bff921bd053c763b535.jpg",
+    "seam": {
+     "wrap_max": 142,
+     "interior_max": 158,
+     "pass": true
+    }
+   },
+   {
+    "id": "ground-path",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/path.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/5b5531f205be64cc09f3e6b837611f8b742e2fa996f609184f3e677689793d61.jpg",
+    "seam": {
+     "wrap_max": 128,
+     "interior_max": 105,
+     "pass": false
+    }
+   },
+   {
+    "id": "ground-dirt",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/dirt.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/636abdeb0476de3739dcd8f65a35213f6c1040566d4100d9c563e76a2f32d5d4.jpg",
+    "seam": {
+     "wrap_max": 94,
+     "interior_max": 62,
+     "pass": false
+    }
+   },
+   {
+    "id": "ground-hill",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/hill.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/3783d3eacd9e7932e7d32f819d785c64986627394a3b4ba1a00d7d7e2a9c30ff.jpg",
+    "seam": {
+     "wrap_max": 74,
+     "interior_max": 59,
+     "pass": false
+    }
+   },
+   {
+    "id": "ground-mountain",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/ground/mountain.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/cbd849f01794c7d5db462f105b931fb347432aa2aabf2579ffaf198f9d799b67.jpg",
+    "seam": {
+     "wrap_max": 181,
+     "interior_max": 104,
+     "pass": false
+    }
+   },
+   {
+    "id": "keep-0",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/0.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/bca615a37a13b8b9f397537c269cddf074786fed105b48f5008f865196dc63d5.jpg"
+   },
+   {
+    "id": "keep-1",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/1.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/66d9235291baffc45c6fee2368eb596dfe6fe4200d84b8ea82ed55b34fa58636.jpg"
+   },
+   {
+    "id": "keep-2",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/2.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/23a0d245aee67e39dec91189824b3e68eb5af12fb4d58cd8c122fe50268c80bb.jpg"
+   },
+   {
+    "id": "keep-3",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/3.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/b4e99fca524bc9f11b0f1bc930184a000d541041ff9cea05bbc84b083cc81f84.jpg"
+   },
+   {
+    "id": "keep-4",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/keep/views/4.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/b7177e13bfc99ec33589a405b1ae0d743800948f981d475d9eb7b799d44c4486.jpg"
+   },
+   {
+    "id": "portal-a",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/portal/views/a.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/9f919f9c7d6f85a7736e4a5706d871ff14fb167403634f3718d88bab9f8d568b.jpg"
+   },
+   {
+    "id": "forest_barrier-image-c",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/forest_barrier/views/c.png",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/fcdb400e826e320fcdce894b10b9a13d0c8f0a3f5089c600d0c74278283274bd.jpg"
+   },
+   {
+    "id": "idle-W",
+    "staged": "/workspace/lk/next-art-generation/run-1794004007/staged/hermit/video/idle-W.mp4",
+    "returned": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/b5fbfcec123491ff19a7f3e57e5c05557d20044a55f95ddd4788c8c20e0d65ca.mp4"
+   }
+  ]
+ },
+ "retake": {
+  "manifest_v2": "/workspace/lk/next-art-generation/run-1794004007/retake/retake-manifest.v2.json",
+  "pass_archive": "/workspace/lk/next-art-generation/run-1794004007/retake/ground-retake-pass.tar.gz",
+  "fail_archive": "/workspace/lk/next-art-generation/run-1794004007/retake/ground-retake-fail.tar.gz",
+  "results": [
+   {
+    "id": "ground-ford",
+    "attempt": 1,
+    "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/ford.png",
+    "seam": [
+     120,
+     142
+    ],
+    "seam_pass": true,
+    "semantic": "pass: top-down shallow water over stones, no horizon",
+    "error": null
+   },
+   {
+    "id": "ground-path",
+    "attempt": 1,
+    "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/path.png",
+    "seam": [
+     101,
+     46
+    ],
+    "seam_pass": false,
+    "semantic": "FAIL: blurry oversized blocks, dark verge band on right",
+    "error": null
+   },
+   {
+    "id": "ground-dirt",
+    "attempt": 1,
+    "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/dirt.png",
+    "seam": [
+     68,
+     77
+    ],
+    "seam_pass": true,
+    "semantic": "pass (note: some grass clumps at left/bottom edges)",
+    "error": null
+   },
+   {
+    "id": "ground-hill",
+    "attempt": 1,
+    "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/hill.png",
+    "seam": [
+     50,
+     56
+    ],
+    "seam_pass": true,
+    "semantic": "pass: dark purple-brown soil with scrub",
+    "error": null
+   },
+   {
+    "id": "ground-mountain",
+    "attempt": 1,
+    "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/mountain.png",
+    "seam": [
+     25,
+     81
+    ],
+    "seam_pass": true,
+    "semantic": "pass: grey-purple rock, no sky",
+    "error": null
+   },
+   {
+    "id": "ground-path",
+    "attempt": 2,
+    "png": null,
+    "seam": [
+     null,
+     null
+    ],
+    "seam_pass": null,
+    "semantic": null,
+    "error": "Failed to generate image, error: The image provider blocked this request under its content policy. This often happens when the description names trademarked characters, brands, or real people. Try describing the subject in your own words instead."
+   }
+  ]
+ },
+ "final_ground": {
+  "river": "initial pass",
+  "plaza": "initial pass",
+  "ford": "retake1 pass",
+  "dirt": "retake1 pass",
+  "hill": "retake1 pass",
+  "mountain": "retake1 pass",
+  "path": "UNRESOLVED (retake1 fail, retake2 provider refusal)"
+ },
+ "hermit_idle_W_video": "needs parent videoReview, not watched"
+}

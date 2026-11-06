@@ -1350,6 +1350,109 @@ class NextArtBatchTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "assets/reference/keep/asset.json")))
         self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "assets/reference/portal/asset.json")))
 
+    def test_keep_ranks_fit_the_scale_floor_only_at_the_live_heights(self):
+        # The concept crops are the approved silhouettes. Their heights are not
+        # one object at a scale the floor allows. The live keep is.
+        crops = []
+        for rank in range(5):
+            mask = sv.cut_out(np.asarray(Image.open(os.path.join(
+                hs.ROOT, "assets/reference/yard-concept/crops", f"keep-{rank}.png")).convert("RGB")))
+            ys, xs = np.nonzero(mask)
+            crops.append((int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)))
+        self.assertEqual(crops, [(60, 46), (128, 103), (157, 194), (251, 259), (309, 305)])
+        self.assertEqual(hs.STATIC_SCALE, (0.5, 1.0))
+        tall = crops[4][1]
+        host = StaticTest()
+        for rank in (0, 1):
+            ratio = crops[rank][1] / tall
+            self.assertLess(ratio, hs.STATIC_SCALE[0])
+            with self.assertRaises(SystemExit):
+                host.config(world_height=235, cell=[128, 656], variants=[{"id": str(rank), "scale": ratio}])
+        with self.assertRaises(SystemExit):
+            host.config(variants=[{"id": "a", "world_height": 165}])
+        live = [165, 179, 193, 207, 235]
+        cfg = host.config(world_height=live[-1], cell=[128, 656], variant_cap=5,
+                          variants=[{"id": str(i), "scale": h / live[-1]} for i, h in enumerate(live)])
+        self.assertEqual([hs.static_height(cfg, v) for v in cfg["variants"]],
+                         [hs.sheet_height(h) for h in live])
+
+    def test_the_batch_names_its_wire_point_and_does_not_install_the_files(self):
+        # The parent is generating these. The live copies stay absent, so nothing samples them.
+        batch = {c["id"]: c for c in next_art_batch()["calls"]}
+        save_as = {
+            "ground-river": "assets/reference/ground/river.png",
+            "ground-ford": "assets/reference/ground/ford.png",
+            "ground-plaza": "assets/reference/ground/plaza.png",
+            "ground-path": "assets/reference/ground/path.png",
+            "ground-dirt": "assets/reference/ground/dirt.png",
+            "ground-hill": "assets/reference/ground/hill.png",
+            "ground-mountain": "assets/reference/ground/mountain.png",
+            "portal-a": "assets/reference/portal/views/a.png",
+            "forest_barrier-image-c": "assets/reference/forest_barrier/views/c.png",
+        }
+        for rank in range(5):
+            save_as[f"keep-{rank}"] = f"assets/reference/keep/views/{rank}.png"
+        self.assertEqual(set(save_as), set(batch))
+        for name, src in save_as.items():
+            self.assertEqual(batch[name]["save_as"], src)
+        # The old barrier sheet stays. These copies are the ones this batch would install, and none of them exist.
+        for dest in (
+            "priv/static/images/hd2d/ground-river.png",
+            "priv/static/images/hd2d/ground-ford.png",
+            "priv/static/images/hd2d/ground-plaza.png",
+            "priv/static/images/hd2d/ground-path.png",
+            "priv/static/images/hd2d/ground-dirt.png",
+            "priv/static/images/hd2d/ground-hill.png",
+            "priv/static/images/hd2d/ground-mountain.png",
+            "priv/static/images/hd2d/keep-sheet.png",
+            "priv/static/images/hd2d/portal-sheet.png",
+        ):
+            self.assertFalse(os.path.exists(os.path.join(hs.ROOT, dest)), dest)
+        with open(os.path.join(hs.ROOT, "assets/reference/forest_barrier/asset.json")) as fh:
+            barrier = json.load(fh)
+        self.assertEqual([v["id"] for v in barrier["variants"]], ["a", "b"])
+
+    def test_the_generation_record_keeps_the_path_refusal(self):
+        root = os.path.join(hs.ROOT, "assets/reference")
+        with open(os.path.join(root, "next-art-generation-summary.json")) as fh:
+            summary = json.load(fh)
+        with open(os.path.join(root, "next-art-retake-manifest.v2.json")) as fh:
+            manifest = json.load(fh)
+        self.assertEqual(summary["final_ground"], {
+            "river": "initial pass",
+            "plaza": "initial pass",
+            "ford": "retake1 pass",
+            "dirt": "retake1 pass",
+            "hill": "retake1 pass",
+            "mountain": "retake1 pass",
+            "path": "UNRESOLVED (retake1 fail, retake2 provider refusal)",
+        })
+        self.assertEqual(summary["hermit_idle_W_video"], "needs parent videoReview, not watched")
+        initial = {row["id"]: row["seam"] for row in summary["initial"]["results"] if "seam" in row}
+        self.assertEqual(initial, {
+            "ground-river": {"wrap_max": 31, "interior_max": 83, "pass": True},
+            "ground-ford": {"wrap_max": 113, "interior_max": 70, "pass": False},
+            "ground-plaza": {"wrap_max": 142, "interior_max": 158, "pass": True},
+            "ground-path": {"wrap_max": 128, "interior_max": 105, "pass": False},
+            "ground-dirt": {"wrap_max": 94, "interior_max": 62, "pass": False},
+            "ground-hill": {"wrap_max": 74, "interior_max": 59, "pass": False},
+            "ground-mountain": {"wrap_max": 181, "interior_max": 104, "pass": False},
+        })
+        self.assertEqual([(row["id"], row["attempt"]) for row in manifest], [
+            ("ground-ford", 1), ("ground-path", 1), ("ground-dirt", 1),
+            ("ground-hill", 1), ("ground-mountain", 1), ("ground-path", 2),
+        ])
+        refused = manifest[-1]
+        self.assertIn("content policy", refused["error"])
+        self.assertEqual(refused["status"], "unresolved; refusal not bypassed")
+        self.assertIsNone(refused["seam_pass"])
+        self.assertEqual(refused["tool"], "GenerateImage")
+        self.assertTrue(refused["args"]["description"].strip())
+        with open(os.path.join(root, "next-art-batch.json")) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, next_art_batch())
+        self.assertNotIn("content policy", json.dumps(batch))
+
 
 if __name__ == "__main__":
     unittest.main()

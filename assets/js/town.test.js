@@ -35,9 +35,17 @@ test("the keep reads against the yard at the gameplay camera", () => {
   assert.ok(keepReadabilityFloor.contrast >= quietest * 0.5, `contrast floor is under half of ${quietest}`)
 })
 
+function keepTop(rank) {
+  return Math.max(...keepParts(rank).map((part) => part.y + part.h / 2))
+}
+
 test("the keep tower grows a course of stone at each rank", () => {
   const heights = [0, 1, 2, 3, 4].map((rank) => keepParts(rank).find((part) => part.name === "tower").h)
   assert.deepEqual(heights, [104, 118, 132, 146, 160])
+  // The whole building, roof and banner included. Rank 0 is 165, the gallery keep.
+  // Rank 4 is 235. 165/235 is 0.702, inside the 0.5 scale floor.
+  assert.deepEqual([0, 1, 2, 3, 4].map(keepTop), [165, 179, 193, 207, 235])
+  assert.ok(keepTop(0) / keepTop(4) >= 0.5)
   assert.equal(keepParts(1).some((part) => part.name === "battlement"), false)
   assert.equal(keepParts(2).some((part) => part.name === "battlement"), true)
   assert.equal(keepParts(4).some((part) => part.name === "banner"), true)
