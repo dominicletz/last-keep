@@ -545,3 +545,57 @@ export function bonusCopy(snap) {
     relics: (snap?.relics || []).map((name) => RELIC[name] || name)
   }
 }
+
+// A per-paint memo for layout reads. get(key, read) calls read once per key
+// until drop(key) or clear(). reads counts the calls that reached the DOM.
+export function rectMemo() {
+  const seen = new Map()
+  const memo = {
+    reads: 0,
+    get(key, read) {
+      if (seen.has(key)) return seen.get(key)
+      memo.reads += 1
+      const value = read()
+      seen.set(key, value)
+      return value
+    },
+    // A node that moved or changed text reads fresh next time.
+    drop(key) {
+      seen.delete(key)
+    },
+    clear() {
+      seen.clear()
+    }
+  }
+  return memo
+}
+
+// Everything the pinned captions are seated from: the scene, where the camera
+// puts the keep and the hero, the window, and the text that sizes the pins.
+// Two paints with equal keys seat every caption in the same spot, so the
+// second one reads no layout at all. The countdown and cooldowns tick every
+// snapshot but only change text inside fixed boxes.
+export function hudLayoutKey({ scene, keepPoint, heroPoint, width, height, armed, look, text, controls }) {
+  const point = (p) => (p ? `${Math.round(p.x * 4096)},${Math.round(p.y * 4096)},${p.behind ? 1 : 0}` : "-")
+  return [scene, point(keepPoint), point(heroPoint), width, height, armed || "", look || "", text || "", controls || ""].join("|")
+}
+
+// The fixed controls the captions are seated around, as a string read from
+// attributes and text only, so building it forces no layout. A control that
+// shows, hides, or changes its words (a cooldown, the context button) moves
+// the captions on the next pass.
+export const SEAT_CONTROLS =
+  ".hud-top, .builds, .skills, [data-touch-pad], [data-touch], [data-touch-context], [data-volume], [data-raise], [data-copy], [data-mute], [data-start], .stick"
+
+// Where a HUD pass left its nodes, from inline style and hidden only.
+export function seatedLook(nodes) {
+  let out = ""
+  for (const node of nodes) out += `${node.hidden ? 0 : 1}${node.style.cssText}|`
+  return out
+}
+
+export function controlsLook(nodes) {
+  let out = ""
+  for (const node of nodes) out += `${node.hidden ? 0 : 1}${node.className}:${node.textContent}|`
+  return out
+}

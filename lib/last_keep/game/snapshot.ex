@@ -53,7 +53,7 @@ defmodule LastKeep.Game.Snapshot do
       buildings: Enum.map(of_type(state, :building), &building/1),
       trees: Enum.map(of_type(state, :tree), &tree/1),
       seed: state.world.seed,
-      attempt: World.generate(state.world.seed).attempt,
+      attempt: state.world.attempt,
       chests: Enum.map(state.world.chests, &chest_view/1),
       portals: Enum.map(state.world.portals, &portal_view/1),
       pois: Enum.map(world_pois(state.world), &poi_view/1),

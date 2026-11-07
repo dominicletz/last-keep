@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -393,4 +393,75 @@ test("the wave line seats clear of the sacks", () => {
   assert.ok(rect.bottom <= view.height - 72)
   const clearSpot = { left: 960, top: 140 }
   assert.deepEqual(seatPin(clearSpot, view, { width: 180, height: 22 }, obstacles), visiblePin(clearSpot, view, { width: 180, height: 22 }))
+})
+
+test("a HUD paint reads each layout box once until the memo is cleared", () => {
+  const memo = rectMemo()
+  let dom = 0
+  const read = () => {
+    dom += 1
+    return { left: dom, top: 0, width: 10, height: 10 }
+  }
+  const first = memo.get("hud", read)
+  for (let i = 0; i < 20; i += 1) assert.equal(memo.get("hud", read), first)
+  memo.get("canvas", read)
+  assert.equal(dom, 2)
+  assert.equal(memo.reads, 2)
+  memo.clear()
+  assert.notEqual(memo.get("hud", read), first)
+  assert.equal(dom, 3)
+})
+
+test("a node that moved reads fresh while the others stay memoized", () => {
+  const memo = rectMemo()
+  const reads = { sack: 0, bar: 0 }
+  const sack = {}
+  const bar = {}
+  const box = (key) => () => {
+    reads[key] += 1
+    return { left: reads[key], top: 0, width: 10, height: 10 }
+  }
+  memo.get(sack, box("sack"))
+  memo.get(bar, box("bar"))
+  memo.drop(sack)
+  assert.equal(memo.get(sack, box("sack")).left, 2)
+  assert.equal(memo.get(bar, box("bar")).left, 1)
+  assert.deepEqual(reads, { sack: 2, bar: 1 })
+})
+
+test("a HUD pass that moved or hid a caption reads as unsettled", () => {
+  const caption = (left, hidden = false) => ({ hidden, style: { cssText: `left: ${left}px; top: 4px;` } })
+  const look = seatedLook([caption(10), caption(40)])
+  assert.equal(seatedLook([caption(10), caption(40)]), look)
+  assert.notEqual(seatedLook([caption(12), caption(40)]), look)
+  assert.notEqual(seatedLook([caption(10), caption(40, true)]), look)
+})
+
+test("a control that shows, hides, or changes its words changes the controls look", () => {
+  const thumb = { hidden: false, className: "thumb q", textContent: "Bash" }
+  const context = { hidden: true, className: "thumb context", textContent: "" }
+  const look = controlsLook([thumb, context])
+  assert.equal(controlsLook([{ ...thumb }, { ...context }]), look)
+  assert.notEqual(controlsLook([{ ...thumb, textContent: "Bash 3s" }, context]), look)
+  assert.notEqual(controlsLook([thumb, { ...context, hidden: false, textContent: "Build" }]), look)
+  assert.notEqual(controlsLook([thumb, { ...context, className: "thumb context wide" }]), look)
+})
+
+test("the HUD seats its captions again only when the scene, camera, window, or pin text moved", () => {
+  const base = { scene: "s1", keepPoint: { x: 0.1, y: -0.2, behind: false }, heroPoint: { x: 0.3, y: 0.1, behind: false }, width: 1280, height: 800, armed: null, look: "", text: "Wave 1" }
+  const key = hudLayoutKey(base)
+  assert.equal(hudLayoutKey({ ...base, keepPoint: { ...base.keepPoint } }), key)
+  for (const change of [
+    { scene: "s2" },
+    { keepPoint: { x: 0.1005, y: -0.2, behind: false } },
+    { heroPoint: null },
+    { width: 390 },
+    { height: 844 },
+    { armed: "wall" },
+    { look: "touch-play" },
+    { text: "Wave 2" },
+    { controls: "1thumb q:Bash 3s|" }
+  ]) {
+    assert.notEqual(hudLayoutKey({ ...base, ...change }), key, JSON.stringify(change))
+  }
 })

@@ -93,7 +93,7 @@ flowchart LR
   stone -->|280 health| wall
   camp[Camp] -->|wake an ally| vagrant[Vagrant]
   shrine[Shrine] -->|one relic| relics
-  hermit[Hermit] -.->|reveal the next ring| scout
+  hermit[Hermit] -->|reveal the next ring| scout
   merchant[Merchant] -.->|sell food| food
   merchant -.->|sell stone| stone
 ```
@@ -173,11 +173,13 @@ Wave 1 is two slower, softer goblins, spawned about 620 to 659 units from the or
 
 On screen the five heroes do not share a body. A warrior reads as broad shoulders and a shield, a mage as a robe, hat, and staff, a scout as a hood and a bow, a farmer as a straw brim and a fork, and an engineer as an apron and a hammer. Two monsters drawn on the same ground step apart, each with its own outline and bar, so a pair at the door is two bodies.
 
-The night has its own sound. Day and building play one loop, the wave plays another, a horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. Nothing is loaded from another host.
+The night has its own sound. Day and building play `/audio/day.mp3`. The wave plays `/audio/night.mp3`. A horn marks the start, a sting marks the clear, and hits, kills, builds, keep bites, and the fall each have a cue. The mixer starts on the first click or key, and mute and volume stay on this machine. The loops are files on this host. Nothing is loaded from another host.
 
 ## Session
 
 The door is the yard at dusk. The camera sits low and close on the hero, with the keep, the trees, and the sky behind, and it glides to the yard camera once the seat is taken. Left and right change the class. Create and Join are that same screen, described in [concepts/START-SCREEN.md](concepts/START-SCREEN.md). A stored seat sits down without showing it, and a lost seat uses the saved name and class again. Sitting down, the host starting the night, the horn, a frenzy, a cleared night, a raise, a downed hero, a fallen keep, and a friend joining or leaving are [concepts/statechart/chart.mmd](concepts/statechart/chart.mmd). The model is [concepts/statechart/LastKeep.tla](concepts/statechart/LastKeep.tla). TLC's report is [concepts/statechart/report.md](concepts/statechart/report.md). The chart still calls that first sit `you sit down`.
+
+Create turns the door into the room without loading a new page. The address becomes `/r/CODE`, the yard keeps its picture and moves to the device's detail tier, and the hero sits down. While Create waits on the server the door holds still: it paints nothing and loads no monster art until the room's first frame, so a slow machine spends its time on the new room, even when the hero art finishes loading during the wait. The door's first frame shows the hero and the ground under him before any hero art has loaded, and a window or layout change seats the camera again. If Create fails, the door moves again with the error under the button. A reload of `/r/CODE` sits down in the same seat, a shared link still opens the join card, and Back loads the door again. The picture paints whenever something on it moves, at the display's rate, and rests while nothing does. The captions over the yard are seated again only when the scene, the camera, or the window changes. That work is measured by `script/perf_probe.cjs`, and `e2e/perf.spec.js` holds its budget.
 
 ## Empty roles
 
@@ -189,7 +191,7 @@ A chest on the seeded land pays 24 gold the first time a living hero stands on i
 
 ## World edges
 
-Solid arrows in the graph are in the simulation. Dotted arrows are still `planned` in `interactions.json`. The chest, the portal, the quarry, the meadow sow, the stone wall, the pine chop, the camp, and the shrine are implemented. The hermit and the merchant stay planned. Generation stays off the hot tick. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is in the resource list.
+Solid arrows in the graph are in the simulation. Dotted arrows are still `planned` in `interactions.json`. The chest, the portal, the quarry, the meadow sow, the stone wall, the pine chop, the camp, the shrine, and the hermit are implemented. The merchant stays planned. Generation stays off the hot tick. The numbers and the slice tests are [`concepts/WORLD.md`](concepts/WORLD.md). Stone is in the resource list.
 
 Pine forest is the wood that refills a wall line after the yard trees are cut. Any living hero chops a pine that still has wood. Each pine holds 12. A yard tree within 48 takes the chop instead. The seventy bare trunks stay bare.
 
@@ -199,4 +201,4 @@ A field can be sown only on meadow. Pine, ruins, river, ford, and cliff refuse t
 
 A chest holds 24 gold, once. Field gold stays the small daytime mint. The cleared wave pays the next raise. The chest is the extra hoard. A living scout reveals one extra chunk ring, which is how the party finds the next chest before the day ends. The discovered set is one set for the room. A chest in a hidden chunk is absent from the snapshot. The map table at (0, 160) shows the explored chunks to a hero within 80. Off screen, the nearest revealed portal and the nearest unopened chest use the same edge beacon as the next wave.
 
-A portal is a wave origin. Destroying it removes its bearing from the next plan and claims that portal's chunk. The keep disc of radius 400 stays held. A build inside the hero's reach and outside both of those fails with "The land is not held." A barricade whose three sites are all outside that land spends no wood and does not start its cooldown. A field on held pine still needs meadow. Raising the keep widens the town and the build reach. It does not claim the map. Wave 1 stays two goblins. A camp spends 8 gold to wake one ally who does not take a seat. The ally follows the nearest living hero and uses that role's strike. A shrine grants one relic the party does not hold, once. A merchant sells food or stone for gold. A hermit reveals the next chunk ring.
+A portal is a wave origin. Destroying it removes its bearing from the next plan and claims that portal's chunk. The keep disc of radius 400 stays held. A build inside the hero's reach and outside both of those fails with "The land is not held." A barricade whose three sites are all outside that land spends no wood and does not start its cooldown. A field on held pine still needs meadow. Raising the keep widens the town and the build reach. It does not claim the map. Wave 1 stays two goblins. A camp spends 8 gold to wake one ally who does not take a seat. The ally follows the nearest living hero and uses that role's strike. A shrine grants one relic the party does not hold, once. A hermit reveals the next chunk ring, the same extra ring a living scout already reveals. A second visit does not open a further ring. A merchant sells food or stone for gold.

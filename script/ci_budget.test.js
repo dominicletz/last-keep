@@ -2,7 +2,7 @@ const assert = require("node:assert/strict")
 const fs = require("fs")
 const path = require("path")
 const { test } = require("node:test")
-const { gateGaps, jobsIn, missingTimeout, overBudget } = require("./ci_jobs")
+const { DEPLOY_LIMIT_MS, deployOver, gateGaps, jobsIn, missingTimeout, overBudget } = require("./ci_jobs")
 
 test("every CI job has a 10 minute timeout and the gate needs the rest", () => {
   const yaml = fs.readFileSync(path.join(__dirname, "../.github/workflows/ci.yml"), "utf8")
@@ -58,4 +58,26 @@ test("the slowest completed job fails once it passes 10 minutes", () => {
   ])
   assert.equal(over.name, "browser (3)")
   assert.ok(over.ms > 10 * 60 * 1000)
+})
+
+test("the smoke set covers a shared room, the night, a phone, and the join form", () => {
+  const read = (name) => fs.readFileSync(path.join(__dirname, "../e2e", name), "utf8")
+  const tagged = (source) =>
+    [...source.matchAll(/test\("([^"]+)", \{ tag: "@smoke" \}/g)].map((match) => match[1])
+  const names = [...tagged(read("smoke.spec.js")), ...tagged(read("coop.spec.js")), ...tagged(read("mobile.spec.js"))]
+  assert.ok(names.some((name) => /night opens wave 1/.test(name)))
+  assert.ok(names.some((name) => /phone joins, walks with the stick/.test(name)))
+  assert.ok(names.some((name) => /join form/.test(name)))
+  assert.ok(!names.some((name) => /six seats/.test(name)))
+  assert.ok(names.length <= 6, `the smoke set grew to ${names.length}`)
+})
+
+test("a deploy past its limit fails the time box", () => {
+  const started = 1_800_000_000
+  assert.equal(deployOver(started, started * 1000 + 4 * 60 * 1000).over, false)
+  const over = deployOver(started, started * 1000 + DEPLOY_LIMIT_MS + 1000)
+  assert.equal(over.over, true)
+  assert.match(over.reason, /deploy ran \d+s/)
+  assert.equal(deployOver(undefined, Date.now()).over, true)
+  assert.ok(DEPLOY_LIMIT_MS < 10 * 60 * 1000)
 })

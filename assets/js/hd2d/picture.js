@@ -920,8 +920,27 @@ function createHdPicture(env) {
     dropChain()
   }
 
+  // The menu runs at the low tier. A room that keeps the menu's renderer and
+  // scene moves the same picture to the device's tier instead of a new one.
+  function retier(env) {
+    tier = tierFor(env)
+    extras = { ...tierExtras(tier) }
+    colorType = tier === "low" ? THREE.UnsignedByteType : THREE.HalfFloatType
+    slowPaints = 0
+    driverNoted = false
+    if (spot) {
+      spot.shadow.mapSize.set(extras.shadow, extras.shadow)
+      if (spot.shadow.map) {
+        spot.shadow.map.dispose()
+        spot.shadow.map = null
+      }
+    }
+    dropChain()
+  }
+
   return {
     fov: LOOK.fov,
+    retier,
     get tier() {
       return tier
     },
@@ -958,10 +977,13 @@ function createHdPicture(env) {
       const world = frameFor(cssW, cssH, rank)
       const bufferWidth = Math.max(160, Math.round(cssW))
       const bufferHeight = Math.max(160, Math.round(cssH))
-      renderer.setPixelRatio(1)
-      renderer.setSize(bufferWidth, bufferHeight, false)
-      renderer.domElement.style.width = "100%"
-      renderer.domElement.style.height = "100%"
+      // setSize writes canvas.width, which reallocates the drawing buffer even
+      // at the same size. fit() runs on every snapshot.
+      if (renderer.getPixelRatio && renderer.getPixelRatio() !== 1) renderer.setPixelRatio(1)
+      const size = renderer.getSize ? renderer.getSize(drawSize) : null
+      if (!size || size.x !== bufferWidth || size.y !== bufferHeight) renderer.setSize(bufferWidth, bufferHeight, false)
+      if (renderer.domElement.style.width !== "100%") renderer.domElement.style.width = "100%"
+      if (renderer.domElement.style.height !== "100%") renderer.domElement.style.height = "100%"
       camera.fov = LOOK.fov
       camera.aspect = bufferWidth / bufferHeight
       span = world.halfH / Math.tan(THREE.MathUtils.degToRad(LOOK.fov) / 2)
@@ -1091,7 +1113,8 @@ function createHdPicture(env) {
       }
       if (renderer.shadowMap) {
         renderer.shadowMap.enabled = casting
-        if (extras.shadow <= 128) renderer.shadowMap.type = THREE.BasicShadowMap
+        // A retiered picture can climb back from 128, so set the type both ways.
+        renderer.shadowMap.type = extras.shadow <= 128 ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap
       }
       const started = performance.now()
       const previousAutoReset = renderer.info.autoReset

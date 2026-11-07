@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict")
 const { test } = require("node:test")
 const { keysAround } = require("../assets/js/input.js")
-const { axes, keysFor, settleFields, stoppedTick, walkHitsKeep, noteNorth, noteProgress } = require("./steer")
+const { axes, keysFor, settleFields, stoppedTick, walkHitsKeep, noteNorth, noteProgress, walkLoop } = require("./steer")
 
 const BODY = 68
 const SPEED = 155
@@ -126,4 +126,120 @@ test("a heading stays while the server position gains and turns when it stops", 
   const again = noteProgress(stalled.mark, 30, 1200)
   assert.equal(again.action, "hold")
   assert.equal(again.mark.heading, 1)
+})
+
+// A virtual link: the server ticks every 50ms and moves a held hero 148 u/s
+// (the farmer). Key changes and snapshots each take `oneWay` ms to arrive.
+function link(oneWay, start = 0, speed = 148) {
+  const sim = { stops: [], now: 0, tick: 0, x: start, heldServer: 0, view: { tick: 0, x: start }, inbox: [], outbox: [] }
+  sim.advance = (ms) => {
+    const end = sim.now + ms
+    while (sim.now < end) {
+      sim.now += 1
+      while (sim.inbox.length && sim.inbox[0].at <= sim.now) sim.heldServer = sim.inbox.shift().dir
+      if (sim.now % 50 === 0) {
+        sim.tick += 1
+        sim.x += sim.heldServer * speed * 0.05
+        sim.outbox.push({ at: sim.now + oneWay, tick: sim.tick, x: sim.x })
+      }
+      while (sim.outbox.length && sim.outbox[0].at <= sim.now) sim.view = sim.outbox.shift()
+    }
+  }
+  sim.hold = (dir) => sim.inbox.push({ at: sim.now + oneWay, dir })
+  // The reply to the last frame arrives a round trip after it was sent.
+  sim.ack = () => sim.advance(2 * oneWay)
+  return sim
+}
+
+function simWalk(sim, goal, radius, deadline, stepMs = 10, acked = true) {
+  const done = (pose) => Math.abs(pose.x - goal) <= radius
+  return walkLoop({
+    done,
+    expired: () => sim.now >= deadline,
+    step: async () => {
+      const diff = goal - sim.view.x
+      sim.hold(Math.abs(diff) <= 12 ? 0 : Math.sign(diff))
+      sim.advance(stepMs)
+      return { x: sim.view.x }
+    },
+    pause: async () => sim.advance(80),
+    tap: async () => {
+      const mark = sim.view.tick
+      while (sim.view.tick < mark + 2) sim.advance(5)
+    },
+    settle: async () => {
+      sim.hold(0)
+      if (acked) sim.ack()
+      let previous = null
+      while (sim.now < deadline) {
+        const fresh = { ...sim.view }
+        if (stoppedTick(previous, fresh)) {
+          sim.stops.push(fresh.x)
+          return { x: fresh.x }
+        }
+        previous = fresh
+        while (sim.view.tick === fresh.tick && sim.now < deadline) sim.advance(5)
+      }
+      return null
+    }
+  })
+}
+
+test("a held walk released on the client's first inside sample coasts past an 18 radius at 300ms", async () => {
+  const sim = link(150)
+  while (Math.abs(300 - sim.view.x) > 18) {
+    sim.hold(1)
+    sim.advance(80)
+  }
+  sim.hold(0)
+  sim.advance(1000)
+  assert.ok(sim.x - 300 > 18, `stopped ${sim.x - 300} past the goal`)
+})
+
+test("the walk lands inside an 18 radius at every round trip up to 400ms", async () => {
+  for (const oneWay of [0, 25, 60, 100, 150, 200]) {
+    for (const goal of [120, 300, 517]) {
+      const sim = link(oneWay)
+      const result = await simWalk(sim, goal, 18, 20_000)
+      assert.equal(result.ok, true, `oneWay ${oneWay} goal ${goal} ended at ${JSON.stringify(result.last)}`)
+      assert.ok(Math.abs(sim.x - goal) <= 18, `server x ${sim.x} for goal ${goal}`)
+      assert.ok(sim.now < 15_000, `oneWay ${oneWay} goal ${goal} took ${sim.now}ms`)
+    }
+  }
+})
+
+// The client sends a key change at once, so a hold and a release that leave
+// a millisecond apart can land inside one server tick and move nothing.
+test("after an overshoot each tap moves the hero, and by less than the goal is wide", async () => {
+  for (const goal of [120, 300, 517]) {
+    const sim = link(200, 0, 200)
+    const result = await simWalk(sim, goal, 18, 20_000, 1)
+    assert.equal(result.ok, true, `goal ${goal} ended at ${JSON.stringify(result.last)}`)
+    assert.ok(sim.stops.length >= 2, `goal ${goal} landed without an overshoot`)
+    for (let i = 1; i < sim.stops.length; i += 1) {
+      const moved = Math.abs(sim.stops[i] - sim.stops[i - 1])
+      assert.ok(moved > 0 && moved < 36, `goal ${goal} tap ${i} moved ${moved}`)
+    }
+  }
+})
+
+test("a stop read before the key-up reply can be a tap that has not started", async () => {
+  const sim = link(150)
+  sim.hold(1)
+  sim.advance(110)
+  sim.hold(0)
+  const early = { ...sim.view }
+  while (sim.view.tick < early.tick + 1) sim.advance(5)
+  assert.equal(sim.view.x, early.x)
+  sim.ack()
+  sim.advance(200)
+  assert.ok(sim.x > early.x, "the tap moved the hero after the early read")
+  assert.ok(sim.x - early.x < 36, `a two tick tap moved ${sim.x - early.x}`)
+})
+
+test("a walk that cannot arrive returns the last pose when the deadline passes", async () => {
+  const sim = link(150)
+  const result = await simWalk(sim, 10_000, 18, 2_000)
+  assert.equal(result.ok, false)
+  assert.ok(result.last.x > 0)
 })

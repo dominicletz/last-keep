@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, theFogEdgeIsNotAFlatFill, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
+const { captionsClearTheBuilds, createKeepsThePage, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, meetTheHermit, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, theFirstMenuFrameWaitsForNoSheet, theFogEdgeIsNotAFlatFill, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -11,7 +11,7 @@ test("two players start the night, place a wall, and clear wave 1", async ({ bro
   await twoPlayerNight(browser)
 })
 
-test("the join form on a bare invite enters the same room", async ({ browser }) => {
+test("the join form on a bare invite enters the same room", { tag: "@smoke" }, async ({ browser }) => {
   await joinFromForm(browser)
 })
 
@@ -23,7 +23,7 @@ test("a creator names one hero and a lost seat sits back down", async ({ browser
   await oneSeat(browser)
 })
 
-test("the high score list hides scoreless runs", async ({ request }) => {
+test("the high score list hides scoreless runs", { tag: "@smoke" }, async ({ request }) => {
   await scoreList(request)
 })
 
@@ -106,7 +106,20 @@ test("the fog edge is not a flat fill", async ({ browser }) => {
   await theFogEdgeIsNotAFlatFill(browser)
 })
 
+test("the first menu frame shows the ground before the hero sheets load", async ({ browser }) => {
+  await theFirstMenuFrameWaitsForNoSheet(browser)
+})
+
 test("six seats hold the match budgets across three waves", async ({ browser }) => {
   test.setTimeout(660_000)
   await sixSeatMatch(browser)
+})
+
+test("create turns the home page into the room without a reload", async ({ browser }) => {
+  await createKeepsThePage(browser)
+})
+
+test("a hermit reveals the next chunk ring", async ({ browser }) => {
+  test.setTimeout(180_000)
+  await meetTheHermit(browser)
 })

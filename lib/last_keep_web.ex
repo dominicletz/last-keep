@@ -17,7 +17,7 @@ defmodule LastKeepWeb do
   those modules here.
   """
 
-  def static_paths, do: ~w(assets fonts images css favicon.ico robots.txt)
+  def static_paths, do: ~w(assets audio fonts images css favicon.ico robots.txt)
 
   def router do
     quote do
@@ -82,6 +82,7 @@ defmodule LastKeepWeb do
       # Core UI components
       import LastKeepWeb.CoreComponents
       import LastKeepWeb.StartScreen
+      import LastKeepWeb.RoomLayers
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

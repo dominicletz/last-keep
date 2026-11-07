@@ -1,4 +1,5 @@
 import { createPicture } from "./hd2d/picture"
+import { holdMonsterSheets, releaseMonsterSheets } from "./monsters.js"
 import { createView } from "./render"
 import { heroKinds, heroLine } from "./heroes.js"
 import { heroMotion, PORTRAIT_STAND, portraitPose } from "./portrait.js"
@@ -8,6 +9,8 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   const kinds = heroKinds()
   let index = Math.max(0, kinds.indexOf(hero || storedHero() || "warrior"))
   let view = null
+  let picture = null
+  let held = false
   let tick = 1
   let alive = true
   let pads = [false, false]
@@ -69,11 +72,14 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   requestAnimationFrame(poll)
   requestAnimationFrame(() => {
     if (!alive) return
-    const picture = createPicture(menuEnv(deviceEnv()))
+    picture = createPicture(menuEnv(deviceEnv()))
     view = createView(stage, picture)
-    window.__lastKeepPicture = { ready: picture.ready, grade: () => view.grade(), tier: picture.tier }
+    const shown = picture
+    window.__lastKeepPicture = { ready: shown.ready, grade: () => view.grade(), tier: shown.tier }
+    if (view.markFirstPaint) view.markFirstPaint("lastkeep:firstMenuFrame")
     paint()
-    if (picture.ready && picture.ready.then) picture.ready.then(() => { if (alive) paint() })
+    if (held && view.hold) view.hold()
+    if (shown.ready && shown.ready.then) shown.ready.then(() => { if (alive) paint() })
   })
   window.addEventListener("resize", paint)
 
@@ -90,8 +96,10 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
     form.querySelector("[data-class-role]").textContent = heroLine(kind)
   }
 
+  // A held menu draws nothing: draw() is the room's way to end the hold, and
+  // the hero sheets that load while Create waits would end it early.
   function paint() {
-    if (!view || !alive) return
+    if (!view || !alive || held) return
     const motion = heroMotion(swap, performance.now())
     if (swap && motion.opacity === 1 && motion.slide === 0) swap = 0
     view.draw(previewSnap(kinds[index], tick, motion), "pick")
@@ -112,15 +120,41 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
     pads = [left, right]
   }
 
+  function detach() {
+    alive = false
+    window.removeEventListener("keydown", onKey)
+    window.removeEventListener("pointerdown", onPointerDown)
+    window.removeEventListener("pointerup", onPointerUp)
+    window.removeEventListener("resize", paint)
+  }
+
   return {
     stop() {
-      alive = false
-      window.removeEventListener("keydown", onKey)
-      window.removeEventListener("pointerdown", onPointerDown)
-      window.removeEventListener("pointerup", onPointerUp)
-      window.removeEventListener("resize", paint)
+      detach()
       if (view && view.stop) view.stop()
       view = null
+    },
+    // Create is waiting on the server: the menu stops painting until it
+    // resumes or the room draws its first snapshot into the same view.
+    hold() {
+      held = true
+      holdMonsterSheets()
+      if (view && view.hold) view.hold()
+    },
+    resume() {
+      held = false
+      releaseMonsterSheets()
+      if (view && view.resume) view.resume()
+      paint()
+    },
+    // Stops the menu but hands its view and picture on, still running. Both
+    // are null when the menu never got its first frame.
+    release() {
+      detach()
+      const kept = { view, picture }
+      view = null
+      picture = null
+      return kept
     }
   }
 }

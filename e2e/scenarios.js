@@ -3,7 +3,7 @@ const { lowContext } = require("./low_tier")
 const { joinTogether, rosterReady } = require("./roster")
 const { SPRITE_HEIGHT, cardSpan, projectBox, sheetHeroHeight } = require("./screen")
 const { settledHolds } = require("./settled")
-const { noteNorth, noteProgress, settleFields, stoppedTick } = require("./steer")
+const { noteNorth, noteProgress, settleFields, stoppedTick, walkLoop } = require("./steer")
 const fs = require("fs")
 const path = require("path")
 const { inflateSync } = require("node:zlib")
@@ -1017,6 +1017,9 @@ async function assertNightAudio(page) {
   expect(audio.cues).toContain("night")
   expect(audio.unlocked).toBe(true)
   expect(audio.loop).toBe("night")
+  expect(audio.bed).toBe("/audio/night.mp3")
+  const bed = await page.request.get("/audio/night.mp3")
+  expect(bed.status()).toBe(200)
 }
 
 async function assertWaveClear(page) {
@@ -1675,35 +1678,44 @@ async function assertPhoneClear(page) {
   }
 }
 
-// Holds whatever `step` sets. The first sample inside the goal still has
-// those keys down, and the hero keeps that step until the key-up reaches
-// the server. Arrival is two later snapshots that share a position, with
-// the keys already up, and that sample still has to satisfy `done`. The
-// wait stays inside `timeout`. A timeout throws the last position, unless
-// `soft` is set for a leg that has another plan.
+// Holds whatever `step` sets until the client sees the goal, then settles
+// on two later snapshots that share a position with the keys up. A settle
+// outside the goal means the key-up arrived late, so the rest of the walk is
+// taps that last two observed ticks (walkLoop in steer.js). The wait stays
+// inside `timeout`. A timeout throws the last position, unless `soft` is set
+// for a leg that has another plan.
 async function walkUntil(page, { timeout, label, poll = 100, step, done, soft = false }) {
   const deadline = Date.now() + timeout
-  let last = null
+  let result = { ok: false, last: null }
   try {
-    while (Date.now() < deadline) {
-      last = await step(page)
-      if (last && done(last)) {
-        const settled = await stoppedSample(page, last, deadline)
-        if (settled && done(settled)) return settled
-        last = settled || last
-        continue
+    result = await walkLoop({
+      done,
+      expired: () => Date.now() >= deadline,
+      step: () => step(page),
+      pause: () => page.waitForTimeout(poll),
+      settle: (last) => stoppedSample(page, last, deadline),
+      tap: async () => {
+        const mark = await page.evaluate(() => window.__lastKeep.tick)
+        await page
+          .waitForFunction((tick) => window.__lastKeep.tick >= tick + 2, mark, {
+            timeout: Math.max(1, deadline - Date.now())
+          })
+          .catch(() => {})
       }
-      await page.waitForTimeout(poll)
-    }
+    })
   } finally {
     await releaseCodes(page)
   }
-  if (soft) return last
-  throw new Error(`${label} timed out at ${JSON.stringify(last)}`)
+  if (result.ok) return result.last
+  if (soft) return result.last
+  throw new Error(`${label} timed out at ${JSON.stringify(result.last)}`)
 }
 
 async function stoppedSample(page, last, deadline) {
   await releaseCodes(page)
+  // Two equal snapshots before the key-up reached the room can be a hero
+  // that has not started a short tap yet. Read the stop after the reply.
+  await page.evaluate(() => window.__lastKeepTest.ack())
   let previous = null
   while (Date.now() < deadline) {
     const fresh = await page.evaluate(() => {
@@ -2095,6 +2107,41 @@ async function takeTheShrine(browser) {
   await page.waitForFunction(() => window.__lastKeep.relics.length === 1, null, { timeout: 5_000 })
   expect(await page.evaluate(() => window.__lastKeep.seats.length)).toBe(1)
   await page.screenshot({ path: shot("shrine-host.png") })
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
+async function meetTheHermit(browser) {
+  const errors = []
+  const hermit = { x: -5724, y: -648 }
+  const host = await createHost(browser, "Ada", "warrior", async (page) => {
+    await page.route("**/api/rooms", async (route) => {
+      const request = route.request()
+      if (request.method() !== "POST" || !request.url().endsWith("/api/rooms")) {
+        await route.continue()
+        return
+      }
+      const body = request.postDataJSON()
+      await route.continue({ postData: JSON.stringify({ ...body, seed: 5 }) })
+    })
+  })
+  const page = host.page
+  watch(page, "host", errors)
+  await page.waitForFunction(() => window.__lastKeep && window.__lastKeep.self)
+  await steerPast(
+    page,
+    hermit,
+    (state) => Math.hypot(state.x - hermit.x, state.y - hermit.y) < 30,
+    120_000,
+    "hermit"
+  )
+  await page.waitForFunction(
+    () => (window.__lastKeep.chunks || []).some((row) => row.cx === -14 && row.cy === -2),
+    null,
+    { timeout: 5_000 }
+  )
+  expect(await page.evaluate(() => window.__lastKeep.seats.length)).toBe(1)
+  await page.screenshot({ path: shot("hermit-host.png") })
   expect(errors, errors.join("\n")).toEqual([])
   await host.context.close()
 }
@@ -2891,6 +2938,40 @@ async function portraitHero(browser) {
   expect(errors, errors.join("\n")).toEqual([])
 }
 
+// On the live site the hero walk sheets arrive after the menu's first frame.
+// The menu draws again only once they load, so the first frame a player sees
+// is whatever the camera held when the stage's ResizeObserver refit it. Here
+// the sheets wait until the first frame is shot.
+async function theFirstMenuFrameWaitsForNoSheet(browser) {
+  const errors = []
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
+  let released = false
+  let parked = 0
+  await context.route("**/images/hd2d/*-walk*.png", async (route) => {
+    parked += 1
+    while (!released) await new Promise((resolve) => setTimeout(resolve, 50))
+    await route.continue().catch(() => {})
+  })
+  const page = await context.newPage()
+  watch(page, "first", errors)
+  try {
+    await page.goto(gameUrl("/"))
+    await page.locator("#start-button").waitFor()
+    await page.waitForFunction(() => {
+      const fig = window.__lastKeep && window.__lastKeep.figures && window.__lastKeep.figures[0]
+      return fig && fig.box && window.__lastKeep.renders > 0
+    })
+    // The ResizeObserver's first call has landed by the next frame.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    expect(parked, "the hero sheets were asked for and are still parked").toBeGreaterThan(0)
+    await assertLandMeetsSky(page, "first menu")
+  } finally {
+    released = true
+  }
+  await context.close()
+  expect(errors, errors.join("\n")).toEqual([])
+}
+
 async function theFogEdgeIsNotAFlatFill(browser) {
   const errors = []
   const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
@@ -3049,7 +3130,142 @@ async function oneSeat(browser) {
   await context.close()
 }
 
+// The deploy smoke. Two seats share one room, the host's hero walks on the
+// server, and the night opens wave 1 with goblins on both clients. Every
+// wait is on a published value, so a slow link waits longer, not wrong.
+async function liveSmoke(browser) {
+  const errors = []
+  const host = await createHost(browser, "Bob", "warrior")
+  const page = host.page
+  watch(page, "host", errors)
+  const code = await page.evaluate(() => document.body.dataset.code)
+  const guest = await joinQuery(browser, code, "LLL", "mage")
+  const friend = guest.page
+  watch(friend, "guest", errors)
+  await expect(page.locator("[data-roster]")).toContainText("LLL")
+  await expect(friend.locator("[data-roster]")).toContainText("Bob")
+  await expect(page.locator("[data-start]")).toHaveText("Start the night")
+  await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
+
+  await page.bringToFront()
+  const from = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
+  await holdCodes(page, ["KeyW"])
+  try {
+    await page.waitForFunction(
+      (start) => {
+        const me = window.__lastKeep.self
+        return me && Math.hypot(me.x - start.x, me.y - start.y) > 40
+      },
+      from,
+      { timeout: 10_000 }
+    )
+  } finally {
+    await releaseCodes(page)
+  }
+  // The guest sees the same hero move on its own socket.
+  await friend.waitForFunction(
+    (start) => {
+      const host = (window.__lastKeep.party || []).find((player) => player.host)
+      return host && Math.hypot(host.x - start.x, host.y - start.y) > 40
+    },
+    from,
+    { timeout: 10_000 }
+  )
+
+  await page.locator("[data-start]").click()
+  for (const seat of [page, friend]) {
+    await seat.waitForFunction(
+      () => {
+        const game = window.__lastKeep
+        return game && game.phase === "wave" && (game.monsters || []).length >= 2
+      },
+      undefined,
+      { timeout: 30_000, polling: 100 }
+    )
+  }
+  await expect(page.locator("[data-wave]")).toHaveText("Wave 1")
+  expect(errors).toEqual([])
+  await Promise.all([host.context.close(), guest.context.close()])
+}
+
+// Create used to reload into /r/CODE, which threw away the menu's renderer,
+// scene, and shaders and evaluated the whole bundle again. Now the address
+// changes in place and the menu's canvas becomes the room's canvas.
+async function createKeepsThePage(browser) {
+  const errors = []
+  const context = await lowContext(browser, { viewport: { width: 1280, height: 800 } })
+  const page = await context.newPage()
+  watch(page, "host", errors)
+  await page.goto(gameUrl("/"))
+  await page.locator("#start-button").waitFor()
+  await page.waitForFunction(() => document.querySelector("#stage canvas") && performance.getEntriesByName("lastkeep:firstMenuFrame").length === 1)
+  const before = await page.evaluate(() => {
+    window.__sameDocument = true
+    window.__menuCanvas = document.querySelector("#stage canvas")
+    return { history: history.length }
+  })
+  await page.locator("#player-name").fill("Ada")
+  await page.locator("#start-button").click()
+  await page.waitForURL(/\/r\/[A-Z0-9]+$/)
+  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Ada"))
+  await page.waitForFunction(() => performance.getEntriesByName("lastkeep:firstWorldFrame").length === 1)
+  const after = await page.evaluate(() => ({
+    same: window.__sameDocument === true,
+    canvas: document.querySelector("#stage canvas") === window.__menuCanvas,
+    canvases: document.querySelectorAll("#stage canvas").length,
+    page: document.body.dataset.page,
+    code: document.body.dataset.code,
+    path: location.pathname,
+    history: history.length,
+    joinHidden: document.querySelector("#start-screen").hidden,
+    scoreLists: document.querySelectorAll("#score-list").length,
+    hud: !document.querySelector("#hud").hidden,
+    menuFrames: performance.getEntriesByName("lastkeep:firstMenuFrame").length,
+    worldAfterMenu:
+      performance.getEntriesByName("lastkeep:firstWorldFrame")[0].startTime > performance.getEntriesByName("lastkeep:firstMenuFrame")[0].startTime
+  }))
+  expect(after.same).toBe(true)
+  expect(after.canvas).toBe(true)
+  expect(after.canvases).toBe(1)
+  expect(after.page).toBe("room")
+  expect(after.path).toBe(`/r/${after.code}`)
+  expect(after.history).toBe(before.history + 1)
+  expect(after.joinHidden).toBe(true)
+  expect(after.scoreLists).toBe(0)
+  expect(after.hud).toBe(true)
+  expect(after.menuFrames).toBe(1)
+  expect(after.worldAfterMenu).toBe(true)
+
+  // The monster cards come from the baked PNGs, the same pixels the page
+  // used to build while the bundle loaded.
+  const sheets = await page.evaluate(() => window.__lastKeepTest.monsterSheets())
+  for (const [kind, sheet] of Object.entries(sheets)) {
+    expect(sheet.source, kind).toBe("sheet")
+    expect(sheet.same, kind).toBe(true)
+  }
+  expect(Object.keys(sheets).length).toBe(6)
+
+  // The room plays like a reloaded one: the hero walks.
+  const start = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
+  await page.evaluate(() => window.__lastKeepTest.hold("KeyW", true))
+  await page.waitForFunction((from) => Math.hypot(window.__lastKeep.self.x - from.x, window.__lastKeep.self.y - from.y) > 20, start)
+  await page.evaluate(() => window.__lastKeepTest.hold("KeyW", false))
+
+  // A reload of /r/CODE sits back in the same seat, and back goes home.
+  await page.reload()
+  await page.waitForFunction(() => document.querySelector("[data-roster]")?.innerText?.includes("Ada"))
+  expect(await page.locator("[data-roster]").innerText()).not.toContain("Ada 2")
+  await page.goBack()
+  await page.waitForURL((url) => url.pathname === "/")
+  await page.locator("#start-button").waitFor()
+  expect(await page.evaluate(() => document.body.dataset.page)).toBe("home")
+  expect(errors, errors.join("\n")).toEqual([])
+  await context.close()
+}
+
 module.exports = {
+  createKeepsThePage,
+  liveSmoke,
   prepareProof,
   proofDir,
   gameUrl,
@@ -3060,6 +3276,7 @@ module.exports = {
   classSelect,
   portraitHero,
   theFogEdgeIsNotAFlatFill,
+  theFirstMenuFrameWaitsForNoSheet,
   oneSeat,
   squarePixels,
   scoreList,
@@ -3076,6 +3293,7 @@ module.exports = {
   exploreLand,
   chopThePine,
   wakeTheCamp,
+  meetTheHermit,
   takeTheShrine,
   holdTheLand,
   readTheMap,

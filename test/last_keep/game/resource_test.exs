@@ -127,7 +127,9 @@ defmodule LastKeep.Game.ResourceTest do
     world = World.generate(seed)
     taken = MapSet.new(world.pois, fn poi -> {poi.i, poi.j} end)
 
-    Enum.find_value(world.chunks, fn {_key, %{cells: cells}} ->
+    chunks = for cx <- -14..14, cy <- -14..14, chunk = World.chunk(seed, cx, cy), do: chunk
+
+    Enum.find_value(chunks, fn %{cells: cells} ->
       Enum.find_value(cells, fn {{i, j}, %{biome: biome}} ->
         if biome == :pine and not MapSet.member?(taken, {i, j}) do
           {i * 36.0, j * 36.0}

@@ -13,8 +13,10 @@ defmodule LastKeep.Game.WorldTest do
     second = World.generate(3)
 
     assert first == second
-    assert World.chunk(3, 0, 0) == first.chunks[{0, 0}]
-    assert World.chunk(3, -2, 4) == first.chunks[{-2, 4}]
+    refute Map.has_key?(first, :chunks)
+    assert World.chunk(3, 0, 0) == World.chunk(3, 0, 0)
+    assert World.chunk(3, -2, 4) == fresh(fn -> World.chunk(3, -2, 4) end)
+    assert first == fresh(fn -> World.generate(3) end)
 
     assert counts(first) == %{
              portal: 6,
@@ -25,6 +27,23 @@ defmodule LastKeep.Game.WorldTest do
              merchant: 1,
              hermit: 1
            }
+  end
+
+  # The fingerprints were taken from the world before it was laid out lazily
+  # per room, so a seed still makes the same map it always made.
+  test "a seed lays out the same map it made before the lazy world" do
+    fingerprints =
+      for seed <- [3, 77, 123_456], into: %{} do
+        world = fresh(fn -> World.generate(seed) end)
+
+        {seed,
+         :erlang.phash2(
+           {world.attempt, world.pois, World.chunk(seed, 0, 0), World.chunk(seed, -2, 4),
+            World.chunk(seed, 9, -11)}
+         )}
+      end
+
+    assert fingerprints == %{3 => 92_055_555, 77 => 3_496_929, 123_456 => 37_097_763}
   end
 
   test "the keep disc stays clear" do
@@ -186,9 +205,18 @@ defmodule LastKeep.Game.WorldTest do
   end
 
   defp cells(world) do
-    for {_id, %{cells: chunk}} <- world.chunks, {{i, j}, cell} <- chunk, into: %{} do
+    for cx <- -14..14,
+        cy <- -14..14,
+        %{cells: chunk} <- [World.chunk(world.seed, cx, cy)],
+        {{i, j}, cell} <- chunk,
+        into: %{} do
       {{i * 36, j * 36}, cell}
     end
+  end
+
+  # Runs fun in a fresh process, so nothing memoized here is reused.
+  defp fresh(fun) do
+    fun |> Task.async() |> Task.await(30_000)
   end
 
   defp flood(stored) do
