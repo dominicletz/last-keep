@@ -105,6 +105,21 @@ test("an in-flight effect stays out of the settled count and a leaked mesh break
   releaseGeometries(spawn)
 })
 
+test("each chest sprite counts even though sprites share one geometry", () => {
+  const scene = new THREE.Scene()
+  const tree = new THREE.Sprite()
+  tree.userData.role = "tree"
+  const first = new THREE.Sprite()
+  first.userData.role = "chest"
+  const second = new THREE.Sprite()
+  second.userData.role = "chest"
+  scene.add(tree, first, second)
+  const census = geometryCensus(scene)
+  assert.equal(first.geometry, second.geometry)
+  assert.equal(census.byRole.chest, 2)
+  assert.equal(census.settled, 3)
+})
+
 test("a portal batch counts each living door", () => {
   const scene = new THREE.Scene()
   const mesh = new THREE.InstancedMesh(

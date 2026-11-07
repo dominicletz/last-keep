@@ -18,6 +18,14 @@ export function geometryCensus(root) {
   let settled = 0
   if (root && typeof root.traverse === "function") {
     root.traverse((node) => {
+      // Chest cards are sprites, and every sprite shares one geometry. Counting
+      // that geometry once hides a chest, so the quiet-build check sees zero
+      // chests while the snapshot still lists one. Each chest sprite is a chest.
+      if (node.isSprite && node.userData && node.userData.role === "chest") {
+        byRole.chest = (byRole.chest || 0) + 1
+        settled += 1
+        return
+      }
       const geometry = node.geometry
       if (!geometry || inScene.has(geometry)) return
       inScene.add(geometry)

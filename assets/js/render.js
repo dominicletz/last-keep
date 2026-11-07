@@ -93,6 +93,7 @@ export function createView(stage, picture) {
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
   const renderer = opened.renderer
   const camera = opened.camera
+  const heldTextures = new WeakSet()
   stage.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
@@ -279,13 +280,25 @@ export function createView(stage, picture) {
     staticMats[name] = {}
     for (const variant of sheet.variants) {
       const spec = staticCard(name, variant)
-      const map = sheetLoader.load("/" + sheet.url)
+      const map = sheetLoader.load("/" + sheet.url, holdMap)
       map.colorSpace = THREE.SRGBColorSpace
       map.magFilter = THREE.NearestFilter
       map.minFilter = THREE.NearestFilter
       map.repeat.set(spec.repeat[0], spec.repeat[1])
       map.offset.set(spec.offset[0], spec.offset[1])
       staticMats[name][variant] = new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false, alphaTest: 0.5 })
+      // The hell door is a plane, not a sprite. A SpriteMaterial on a Mesh makes
+      // the renderer read object.center, which a Mesh does not have, and the paint throws.
+      if (name === "hell_door") {
+        flatMats[name] = flatMats[name] || {}
+        flatMats[name][variant] = new THREE.MeshBasicMaterial({
+          map,
+          transparent: true,
+          alphaTest: 0.5,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        })
+      }
       if (yardCards[name]?.stand === false) {
         flatMats[name] = flatMats[name] || {}
         flatMats[name][variant] = new THREE.MeshBasicMaterial({
@@ -358,6 +371,7 @@ export function createView(stage, picture) {
       tex.generateMipmaps = false
       tex.needsUpdate = true
       shotSources[name] = tex
+      holdMap(tex)
       for (const mesh of meshes.values()) {
         if (mesh.userData.shotSheet === name) bindShotMap(mesh, tex)
       }
@@ -372,6 +386,7 @@ export function createView(stage, picture) {
     tex.generateMipmaps = false
     tex.needsUpdate = true
     burstSource = tex
+    holdMap(tex)
     for (const burst of bursts) dressBurst(burst.mesh)
   })
   const ghost = new THREE.Mesh(
@@ -655,6 +670,7 @@ export function createView(stage, picture) {
       tex.generateMipmaps = false
       tex.needsUpdate = true
       deerSource = tex
+      holdMap(tex)
       for (const mesh of deerPool) giveDeerMap(mesh)
     },
     undefined,
@@ -866,8 +882,18 @@ export function createView(stage, picture) {
 
   let closed = false
 
+  function holdMap(map) {
+    if (!map || heldTextures.has(map) || typeof renderer.initTexture !== "function") return
+    const image = map.image
+    if (image && image.complete === false) return
+    renderer.initTexture(map)
+    heldTextures.add(map)
+  }
+
   function frame() {
     if (closed) return
+    if (picture.uploadSheets) picture.uploadSheets(renderer)
+    for (const material of Object.values(eliteMarkMats)) holdMap(material.map)
     // A quiet guest stays in the room through the socket and the input
     // interval. Presenting that page is the paint that fills the runner.
     // The callback stays so wake() can present again without a new loop.
@@ -1076,7 +1102,7 @@ export function createView(stage, picture) {
         const art = staticCard("hell_door", "a")
         const geometry = trackGeometry(new THREE.PlaneGeometry(art.w, art.h))
         geometry.translate(0, art.h / 2 - art.centerY * art.h, 0)
-        const mesh = new THREE.Mesh(geometry, staticMats.hell_door.a)
+        const mesh = new THREE.Mesh(geometry, flatMats.hell_door.a)
         mesh.userData.role = "portal"
         return mesh
       })

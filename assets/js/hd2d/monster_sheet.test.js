@@ -47,7 +47,18 @@ function stoneAndGrounds() {
 
 // The voxel card render.js builds: a sprite, a rim sprite, picture and kind.
 function monsterGroup(kind) {
-  const voxel = { directions: 8, frames: 11, walk: 4, attack: 3, death: 4, w: 12, h: monsterHeights[kind], d: 6, y: 0 }
+  const voxel = {
+    directions: 8,
+    frames: 11,
+    walk: 4,
+    attack: 3,
+    death: 4,
+    w: 12,
+    h: monsterHeights[kind],
+    d: 6,
+    y: 0,
+    rim: { color: 0x908b8a, scale: 1.15 }
+  }
   const map = new THREE.DataTexture(new Uint8Array([90, 100, 50, 255]), 1, 1)
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 }))
   const rimMap = new THREE.DataTexture(new Uint8Array([144, 139, 138, 255]), 1, 1)
@@ -224,6 +235,21 @@ test("a goblin keeps its voxel card until its sheet loads", () => {
   assert.throws(() => picture.attachMonsterSheet(null, "goblin"), /monster sheet/)
 })
 
+test("a monster sheet uploads once, before the merchant who uses it arrives", () => {
+  const picture = createPicture()
+  const sheet = sheetTexture()
+  picture.attachMonsterSheet(sheet, "merchant")
+  const seen = []
+  const renderer = {
+    initTexture(map) {
+      seen.push(map)
+    }
+  }
+  picture.uploadSheets(renderer)
+  picture.uploadSheets(renderer)
+  assert.deepEqual(seen, [sheet])
+})
+
 test("dressMonster draws each goblin from its own clone of the sheet", () => {
   const picture = createPicture()
   const sheet = sheetTexture()
@@ -242,7 +268,11 @@ test("dressMonster draws each goblin from its own clone of the sheet", () => {
   assert.equal(card.parent, a.group)
   assert.equal(a.sprite.parent, null)
   assert.equal(a.rim.parent, null)
-  assert.equal(a.group.userData.rim, null)
+  const rim = a.group.userData.rim
+  assert.equal(rim.isSprite, true)
+  assert.notEqual(rim, a.rim)
+  assert.equal(rim.parent, a.group)
+  assert.equal(rim.material.color.getHex(), 0x908b8a)
   assert.equal(dropped, 2)
   assert.equal(a.group.userData.hd, "goblin")
   assert.notEqual(card.material.map, sheet)
@@ -261,7 +291,8 @@ test("dressMonster draws each goblin from its own clone of the sheet", () => {
     w: 12,
     h: GOBLIN.figure * SHEET_TEXEL,
     d: 6,
-    y: 0
+    y: 0,
+    rim: { color: 0x908b8a, scale: 1.15 }
   })
   assert.equal(a.group.userData.parts, 160)
   // Removing one goblin drops its clone, never the shared sheet.

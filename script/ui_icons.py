@@ -29,7 +29,7 @@ BUILD_CELL = {
     "wall": (128, 120),
     "tower": (112, 144),
     "trap": (80, 64),
-    "field": (136, 48),
+    "field": (136, 80),
     "forge": (152, 112),
 }
 BUILD_SIZE = 28

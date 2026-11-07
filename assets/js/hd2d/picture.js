@@ -506,6 +506,7 @@ function createHdPicture(env) {
   const sheets = new Map()
   // kind -> loaded MONSTER_SHEETS texture; each monster card draws a clone.
   const monsterSheets = new Map()
+  const uploadedSheets = new WeakSet()
   const sheetCards = new Set()
   let spot = null
   let torchFill = null
@@ -694,9 +695,31 @@ function createHdPicture(env) {
     }
   }
 
+  // A sheet rim is the same frame, a little larger, in the bone colour. The
+  // six-seat budget counts these sprites: hiding one drops a call and two triangles.
+  function sheetRim(source, layout, spec, rimSpec) {
+    const map = source.clone()
+    map.repeat.set(1 / layout.directions, 1 / layout.frames)
+    map.needsUpdate = true
+    const size = spec.cell * SHEET_TEXEL
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({
+        map,
+        color: rimSpec.color,
+        transparent: true,
+        alphaTest: 0.4,
+        depthWrite: false
+      })
+    )
+    sprite.center.set(0.5, 0)
+    sprite.scale.set(size * rimSpec.scale, size * rimSpec.scale, 1)
+    return sprite
+  }
+
   // Swap a monster's voxel card for its sheet once the sheet has loaded. The
-  // card stays unlit like the voxel sprite it replaces, and drops the rim: the
-  // sheet draws its own outline. Without a sheet the voxel card stays.
+  // card stays unlit like the voxel sprite it replaces. A monster that already
+  // had a rim keeps one, drawn from the sheet, so the outline still costs a
+  // sprite. Without a sheet the voxel card stays.
   function dressMonster(mesh) {
     if (!mesh || !mesh.userData || mesh.userData.hd) return false
     const role = mesh.userData.role
@@ -719,7 +742,10 @@ function createHdPicture(env) {
     plane.castShadow = false
     plane.receiveShadow = false
     plane.onBeforeRender = faceCamera
-    for (const old of [sprite, mesh.userData.rim]) {
+    const before = mesh.userData.picture || {}
+    const rimSpec = before.rim
+    const oldRim = mesh.userData.rim
+    for (const old of [sprite, oldRim]) {
       if (!old) continue
       mesh.remove(old)
       if (old.material) {
@@ -728,10 +754,13 @@ function createHdPicture(env) {
       }
     }
     mesh.add(plane)
-    const before = mesh.userData.picture || {}
+    const rim = oldRim && rimSpec && rimSpec.scale > 1 ? sheetRim(source, layout, spec, rimSpec) : null
+    if (rim) mesh.add(rim)
     mesh.userData.card = plane
-    mesh.userData.rim = null
-    mesh.userData.picture = { ...layout, w: before.w, h: spec.figure * SHEET_TEXEL, d: before.d, y: before.y }
+    mesh.userData.rim = rim
+    const picture = { ...layout, w: before.w, h: spec.figure * SHEET_TEXEL, d: before.d, y: before.y }
+    if (rimSpec) picture.rim = rimSpec
+    mesh.userData.picture = picture
     mesh.userData.parts = layout.directions * layout.frames
     mesh.userData.hd = kind
     sheetCards.add(plane)
@@ -894,6 +923,25 @@ function createHdPicture(env) {
     monsterSheets.set(kind, map)
   }
 
+  // A sheet that waits for its first monster uploads between quiet builds.
+  // The match counts that as a texture leak. Upload each sheet once it has
+  // pixels, so a merchant who arrives later reuses the same GPU texture.
+  function uploadSheets(renderer) {
+    if (!renderer || typeof renderer.initTexture !== "function") return
+    const maps = [...monsterSheets.values()]
+    for (const sheet of sheets.values()) {
+      if (sheet.map) maps.push(sheet.map)
+      if (sheet.normal) maps.push(sheet.normal)
+    }
+    for (const map of maps) {
+      if (!map || uploadedSheets.has(map)) continue
+      const image = map.image
+      if (!image || image.complete === false) continue
+      renderer.initTexture(map)
+      uploadedSheets.add(map)
+    }
+  }
+
   function dropChain() {
     if (!chain) return
     const depth = chain.scene.depthTexture
@@ -953,6 +1001,7 @@ function createHdPicture(env) {
     },
     attachStrip,
     attachMonsterSheet,
+    uploadSheets,
     dressMonster,
     grade(paint) {
       if (live) throw new Error("grade refuses a live room")
