@@ -52,6 +52,10 @@ test("the fireball loops four frames and a meteor is the same sheet drawn larger
 test("shots are billboards on the texel grid, not turned spheres", () => {
   const source = fs.readFileSync(new URL("./render.js", import.meta.url), "utf8")
   assert.match(source, /arrowFrame\(flightTo\.x - flightFrom\.x, flightTo\.y - flightFrom\.y\)/)
+  const lines = source.split("\n")
+  const flightAt = lines.findIndex((line) => line.includes("const flightFrom"))
+  const returned = lines.findIndex((line) => line.trim() === "return viewApi")
+  assert.ok(flightAt > 0 && returned > flightAt, "flightFrom is initialized before the view returns")
   assert.match(source, /fireFrame\(performance\.now\(\)\)/)
   assert.match(source, /if \(mesh\.userData\.role === "shot"\)/)
   assert.match(source, /snapWorld\(pose\.x \+ spread\.x, step\)/)

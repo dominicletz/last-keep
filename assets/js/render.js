@@ -99,6 +99,10 @@ export function createView(stage, picture) {
   scene.background = new THREE.Color(skyColor)
   scene.fog = new THREE.Fog(skyColor, 900, 2400)
   const probe = new THREE.Vector3()
+  // aimShot runs from the first projectile draw. These live with the other
+  // vectors so the binding is initialized before the view is returned.
+  const flightFrom = new THREE.Vector3()
+  const flightTo = new THREE.Vector3()
   const rimFrustum = new THREE.Frustum()
   const rimProj = new THREE.Matrix4()
   let viewFrame = opening
@@ -1964,9 +1968,6 @@ export function createView(stage, picture) {
     }
     group.visible = true
   }
-
-  const flightFrom = new THREE.Vector3()
-  const flightTo = new THREE.Vector3()
 
   function bindShotMap(mesh, source) {
     if (!source || !source.image) return
