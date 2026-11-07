@@ -2019,6 +2019,7 @@ export function createView(stage, picture) {
     const world = shotScale(art, SHEET_TEXEL)
     sprite.scale.set(world, world, 1)
     sprite.userData.role = "shot"
+    sprite.userData.ownsMap = true
     sprite.userData.art = art
     sprite.userData.shotSheet = art.sheet
     sprite.userData.lift = row.kind === "meteor" ? 28 : row.kind === "fireball" ? 18 : 12
@@ -2060,16 +2061,27 @@ export function createView(stage, picture) {
     // A flier's shadow stays on the ground under it.
     if (mesh.userData.shadow) mesh.userData.shadow.position.y = 0.46 - lift
     if (mesh.userData.role === "shot") {
+      // The snapshot sends no velocity. The track is the step the bolt just took.
+      const track = tracks.get(key)
+      if (track) {
+        const dx = track.toX - track.fromX
+        const dz = track.toZ - track.fromZ
+        if (dx !== 0 || dz !== 0) {
+          mesh.userData.vx = dx
+          mesh.userData.vy = dz
+        }
+      }
       aimShot(mesh)
       return
     }
-    const card = mesh.userData.card
-    if (!card) return
     const viewYaw = Math.atan2(camera.position.x - mesh.position.x, camera.position.z - mesh.position.z)
+    // The hell door is a bare plane, so it has no card. Yaw has to land before that return.
     if (mesh.userData.role === "portal") {
       mesh.rotation.y = viewYaw
       return
     }
+    const card = mesh.userData.card
+    if (!card) return
     const facing = Number.isFinite(mesh.rotation.y) ? -mesh.rotation.y : 0
     const column = pictureColumn(viewYaw, facing)
     const track = tracks.get(key)
@@ -2112,6 +2124,7 @@ export function createView(stage, picture) {
     map.needsUpdate = true
     const material = new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 })
     const card = new THREE.Sprite(material)
+    card.userData.ownsMap = true
     card.center.set(0.5, 0)
     card.scale.set(picture.w, picture.h, 1)
     card.position.y = 0
@@ -2150,6 +2163,7 @@ export function createView(stage, picture) {
     map.needsUpdate = true
     const material = new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4, depthWrite: false })
     const card = new THREE.Sprite(material)
+    card.userData.ownsMap = true
     card.center.set(0.5, 0)
     card.scale.set(picture.w * rim.scale, picture.h * rim.scale, 1)
     card.renderOrder = 0

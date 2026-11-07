@@ -39,6 +39,7 @@ test("a dropped hero leaves the shared sprite plane", () => {
   bar.dispose = () => {
     bars += 1
   }
+  card.userData.ownsMap = true
   card.add(new THREE.Mesh(bar))
   let maps = 0
   card.material.map = { dispose: () => { maps += 1 } }
@@ -103,6 +104,30 @@ test("an in-flight effect stays out of the settled count and a leaked mesh break
   releaseGeometries(wall)
   releaseGeometries(leaked)
   releaseGeometries(spawn)
+})
+
+test("dropping one chest leaves the shared sprite material in place", () => {
+  const material = new THREE.SpriteMaterial()
+  const map = new THREE.Texture()
+  material.map = map
+  let materials = 0
+  let maps = 0
+  material.dispose = () => {
+    materials += 1
+  }
+  map.dispose = () => {
+    maps += 1
+  }
+  const chest = new THREE.Sprite(material)
+  chest.userData.role = "chest"
+  releaseGeometries(chest)
+  assert.equal(materials, 0)
+  assert.equal(maps, 0)
+  const owned = new THREE.Sprite(material)
+  owned.userData.ownsMap = true
+  releaseGeometries(owned)
+  assert.equal(materials, 1)
+  assert.equal(maps, 1)
 })
 
 test("each chest sprite counts even though sprites share one geometry", () => {

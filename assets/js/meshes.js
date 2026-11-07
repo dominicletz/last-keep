@@ -62,7 +62,10 @@ export function releaseGeometries(root) {
   root.traverse((node) => {
     const geometry = node.geometry
     // Each card uploads its own atlas. The plane itself is shared, so disposing it blanks every card.
-    if (node.isSprite && node.material) {
+    // A chest, a keep card, and an elite mark share one material. Disposing
+    // that copy blanks every sprite still using it. Only a card that owns
+    // its map (a hero atlas, a rim, a shot clone) is dropped with the mesh.
+    if (node.isSprite && node.material && node.userData && node.userData.ownsMap) {
       const map = node.material.map
       node.material.dispose()
       if (map) map.dispose()

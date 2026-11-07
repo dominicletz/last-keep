@@ -711,6 +711,7 @@ function createHdPicture(env) {
         depthWrite: false
       })
     )
+    sprite.userData.ownsMap = true
     sprite.center.set(0.5, 0)
     sprite.scale.set(size * rimSpec.scale, size * rimSpec.scale, 1)
     return sprite

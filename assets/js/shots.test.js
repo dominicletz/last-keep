@@ -58,6 +58,8 @@ test("shots are billboards on the texel grid, not turned spheres", () => {
   assert.ok(flightAt > 0 && returned > flightAt, "flightFrom is initialized before the view returns")
   assert.match(source, /fireFrame\(performance\.now\(\)\)/)
   assert.match(source, /if \(mesh\.userData\.role === "shot"\)/)
+  assert.match(source, /track\.toX - track\.fromX/)
+  assert.match(source, /track\.toZ - track\.fromZ/)
   assert.match(source, /snapWorld\(pose\.x \+ spread\.x, step\)/)
   assert.doesNotMatch(source, /0xf2e2b0/)
   assert.doesNotMatch(source, /shotSphere/)
