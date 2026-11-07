@@ -275,10 +275,9 @@ input[type="text"], input:not([type="radio"]) {
 .sack {
   position: absolute;
   transform: translate(-50%, -100%);
-  width: 5.6rem;
-  min-height: 4.4rem;
+  width: 4.2rem;
   box-sizing: border-box;
-  padding: 1.35rem 0.25rem 0.4rem;
+  padding: 0 0.15rem 0.15rem;
   text-align: center;
   color: #f6e6c4;
   font-size: 0.62rem;
@@ -287,14 +286,17 @@ input[type="text"], input:not([type="radio"]) {
   line-height: 1.15;
   white-space: pre-line;
   text-shadow: 1px 1px 0 #1a1008;
-  background-color: transparent;
+  background: transparent;
   border: 0;
-  border-radius: 46% 46% 42% 42%;
-  background-image:
-    radial-gradient(ellipse 34% 18% at 50% 14%, #f0d7a4 0 46%, #6b4424 50% 70%, transparent 74%),
-    radial-gradient(ellipse 86% 70% at 50% 68%, #e0b070 0 18%, #a56b38 42%, #6a4124 78%, #3d2616 100%);
-  box-shadow: 0 3px 0 #2a1810;
 }
+.sack img, #hud .build img {
+  display: block;
+  margin: 0 auto 0.05rem;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+.sack img { width: 24px; height: 24px; }
+#hud .build img { width: 28px; height: 28px; }
 .hint-arrow.beacon { color: #f0d090; }
 .roster {
   flex-direction: column;
@@ -604,15 +606,15 @@ html.touch-play .stick { display: block; }
 #start-screen[hidden] { display: none !important; }
 .start-title {
   position: absolute;
-  top: 0.8rem;
-  left: 0;
-  right: 0;
-  margin: 0;
-  text-align: center;
-  font-size: clamp(1.6rem, 4vw, 3rem);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  text-shadow: 3px 3px 0 #140c08;
+  top: 0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(382px, 90vw);
+  height: auto;
+  max-height: 18vh;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 #start-screen [data-class] {
   position: absolute;
@@ -667,7 +669,7 @@ html.touch-play .stick { display: block; }
 .start-scores h2 { margin: 0 0 0.3rem; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; }
 @media (max-height: 500px) {
   .start-scores { display: none; }
-  .start-title { font-size: 1.2rem; top: 0.3rem; }
+  .start-title { top: 0.15rem; width: min(240px, 48vw); max-height: 13vh; }
   .start-card {
     left: auto;
     right: 4.4rem;

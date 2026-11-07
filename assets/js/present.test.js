@@ -37,3 +37,24 @@ test("a monster with a bad position is not drawn", () => {
   const view = present({ monsters: [{ id: 1, kind: "goblin", x: null, y: 10 }] })
   assert.deepEqual(view.monsters, [])
 })
+
+test("a snapshot vagrant is drawn, and a missing list draws none", () => {
+  const view = present({
+    vagrants: [{ id: 7, hero: "warrior", x: 40, y: -12, hp: 90, max: 120, alive: true }]
+  })
+  assert.equal(view.vagrants.length, 1)
+  assert.equal(view.vagrants[0].hero, "warrior")
+  assert.equal(view.vagrants[0].x, 40)
+  assert.equal(view.vagrants[0].y, -12)
+  assert.equal(view.vagrants[0].hp, 90)
+  assert.equal(view.vagrants[0].max, 120)
+  assert.equal(view.vagrants[0].alive, true)
+  assert.equal(Number.isFinite(view.vagrants[0].facing), true)
+  assert.deepEqual(present({ players: [] }).vagrants, [])
+  assert.deepEqual(present(null).vagrants, [])
+})
+
+test("a vagrant with a bad position is not drawn", () => {
+  const view = present({ vagrants: [{ id: 1, hero: "mage", x: 10, y: null }] })
+  assert.deepEqual(view.vagrants, [])
+})

@@ -46,6 +46,46 @@
    }
   }
  ],
+ "attack": "swings the iron hammer in his right hand down in front of him and brings it back up, the planks staying on his back",
+ "death": "staggers, sinks to his knees and falls onto his side, the hammer staying in his hand and the planks staying on his back",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "idle": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
  "turntable": {
   "seconds": 8,
   "fps": 24,

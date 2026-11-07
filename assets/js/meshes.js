@@ -4,7 +4,6 @@ const spheres = new Map()
 const burstPool = []
 const tracked = new Set()
 const flightRoles = new Set(["shot", "burst", "spawn"])
-let burstGeometry = null
 
 export function trackGeometry(geometry) {
   if (!geometry || tracked.has(geometry)) return geometry
@@ -19,6 +18,14 @@ export function geometryCensus(root) {
   let settled = 0
   if (root && typeof root.traverse === "function") {
     root.traverse((node) => {
+      // Chest cards are sprites, and every sprite shares one geometry. Counting
+      // that geometry once hides a chest, so the quiet-build check sees zero
+      // chests while the snapshot still lists one. Each chest sprite is a chest.
+      if (node.isSprite && node.userData && node.userData.role === "chest") {
+        byRole.chest = (byRole.chest || 0) + 1
+        settled += 1
+        return
+      }
       const geometry = node.geometry
       if (!geometry || inScene.has(geometry)) return
       inScene.add(geometry)
@@ -55,10 +62,19 @@ export function releaseGeometries(root) {
   root.traverse((node) => {
     const geometry = node.geometry
     // Each card uploads its own atlas. The plane itself is shared, so disposing it blanks every card.
-    if (node.isSprite && node.material) {
+    // A chest, a keep card, and an elite mark share one material. Disposing
+    // that copy blanks every sprite still using it. Only a card that owns
+    // its map (a hero atlas, a rim, a shot clone) is dropped with the mesh.
+    if (node.isSprite && node.material && node.userData && node.userData.ownsMap) {
       const map = node.material.map
       node.material.dispose()
       if (map) map.dispose()
+    }
+    // A sheet card owns a clone of the shared sheet texture; dropping the clone
+    // leaves the shared image for the other cards.
+    if (node.isMesh && node.userData.ownsMap && node.material) {
+      if (node.material.map) node.material.map.dispose()
+      node.material.dispose()
     }
     if (!geometry || seen.has(geometry) || geometry.userData.pooled || node.isSprite) return
     seen.add(geometry)
@@ -76,28 +92,19 @@ export function shotSphere(radius) {
   return geometry
 }
 
-function burstSphere() {
-  if (!burstGeometry) {
-    burstGeometry = trackGeometry(new THREE.SphereGeometry(8, 6, 5))
-    burstGeometry.userData.pooled = true
-  }
-  return burstGeometry
-}
-
-export function takeBurst(color) {
+export function takeBurst(kind) {
   let mesh = burstPool.pop()
   if (mesh) {
-    mesh.material.color.set(color)
-    mesh.material.opacity = 0.9
-    mesh.scale.setScalar(1)
+    mesh.userData.kind = kind
     mesh.visible = true
   } else {
-    mesh = new THREE.Mesh(
-      burstSphere(),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9 })
+    mesh = new THREE.Sprite(
+      new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.4, depthWrite: false })
     )
+    mesh.center.set(0.5, 0.5)
+    mesh.userData.role = "burst"
+    mesh.userData.kind = kind
   }
-  mesh.userData.role = "burst"
   return mesh
 }
 

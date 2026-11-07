@@ -20,6 +20,16 @@ function angleGap(left, right) {
   return Math.min(span, Math.PI * 2 - span)
 }
 
+export const PINE_WU = 40
+export const PINE_PX = 110
+
+// Centre-to-centre of one forest-wall ring, scaled back to a full pine
+// (40 world units, 110 px). The barrier strip is rebuilt at that pitch.
+// The live wall stays individual pines until that strip exists.
+export function barrierPitch(ring = { dist: 258, count: 62, scale: 0.8 }) {
+  return ((2 * Math.PI * ring.dist) / ring.count) / ring.scale
+}
+
 export function forestWall() {
   return {
     rings: [

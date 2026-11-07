@@ -37,6 +37,46 @@
    "idle": "robe hem moves very slightly"
   }
  ],
+ "attack": "thrusts the staff in their right hand forward and draws it back",
+ "death": "staggers, sinks to their knees and falls onto their side, the staff staying in their hand",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "idle": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
  "turntable": {
   "seconds": 8,
   "fps": 24,

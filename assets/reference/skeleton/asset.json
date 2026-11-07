@@ -1,0 +1,254 @@
+{
+ "_note": "Second monster (docs/ART-REDO.md). The concept crop is the skeleton group in monsters.jpg (the registry crop 260,328,260,246); the views draw one skeleton with one sword (no shield, no second skeleton). MARKS ribs and blade: the open ribcage and a long straight sword. The concept's two shoulder plates become one, on the sword arm, so the iron in every pose sits on the sword side and the prop check keeps a side. The sword hangs low at his side, so the 60 px figure height is skull top to feet. World height 22 is monsterHeights.skeleton; at the hero texel (32/88) that is 60 px. The cell is 88, not 80: the side slash and the collapse are wider than the goblin's jab and fall. The sword item is visible: true, the goblin lesson (its first view-E lost the spear), so every view and clip prompt asks for the sword in full view.",
+ "type": "monster",
+ "noun": "skeleton",
+ "possessive": "his",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [
+   260,
+   328,
+   520,
+   574
+  ]
+ },
+ "source_note": "the reference shows three skeletons; draw only one skeleton with their look, holding one sword and nothing else, no shield",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets and a grim toothy jaw, an open ribcage with clear separate ribs, a bony spine and pelvis, thin bony arms and legs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt holding a frayed dark purple-brown cloth loincloth",
+ "feet": "bony feet",
+ "gait": "Stiff jerky skeleton march: knees bent, legs alternating clearly, bony arms swinging a little, slight body bob",
+ "items": [
+  {
+   "name": "long straight iron sword with a notched grey blade",
+   "at": "right hand",
+   "visible": true,
+   "walk": "sword held low and angled forward in his right hand, blade below his shoulders",
+   "still": "sword"
+  }
+ ],
+ "attack": "raises the sword to his shoulder and slashes it across in front of him toward the facing direction",
+ "death": "rattles, drops the sword and collapses straight down into a loose heap of bones on the ground",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "check": {
+  "_note": "anchors: concept colours (hero_sprites.py skeleton colours) the palette keeps within dE 15. roles, tuned on the eight start poses as the sheet quantizes them: the clips draw the bone warmer than the concept (hue 33-36, chroma 0.10-0.17), so every warm tan lighter than 0.3 is bone whether or not it is grey, and darker warm greys are shadow; iron is the near-colourless grey (chroma at most 0.045) of the blade and the shoulder plate; leather the dark red-brown belt; cloth the dark purple-brown loincloth (hue 350-15, a grey under 0.25 light). prop: the sword; prop_side_below 0.3 measures its side only below the top 30% of the body, because the iron shoulder plate sits on the torso in the W and E views and pulled the start pose itself to the midline; presence still counts every iron px. prop_dirs: all eight. bounds: each floor is 0.64 x the start pose's value in its sheet cell (0.64 is the goblin's loosest floor-to-pose ratio, its face): N loincloth 91 -> 58; S skull 161 -> 103, ribs 219 -> 140, blade 62 -> 39. No ceiling on the back: at 60 px the sockets are 1-3 px and the head's darkest px count the same front and back (17 on both start poses), so a socket ceiling cannot tell them apart.",
+  "anchors": {
+   "bone": [
+    143,
+    135,
+    126
+   ],
+   "bone shade": [
+    123,
+    115,
+    106
+   ],
+   "socket dark": [
+    48,
+    44,
+    42
+   ]
+  },
+  "roles": [
+   {
+    "name": "cloth",
+    "neutral": true,
+    "hue": [
+     350,
+     15
+    ],
+    "chroma_gt": 0.03,
+    "light_lt": 0.25
+   },
+   {
+    "name": "bone",
+    "neutral": true,
+    "hue": [
+     20,
+     60
+    ],
+    "chroma_gt": 0.045,
+    "light_gt": 0.3
+   },
+   {
+    "name": "shadow",
+    "neutral": true,
+    "hue": [
+     20,
+     60
+    ],
+    "chroma_gt": 0.045
+   },
+   {
+    "name": "iron",
+    "neutral": true,
+    "light_gt": 0.28
+   },
+   {
+    "name": "shadow",
+    "neutral": true
+   },
+   {
+    "name": "bone",
+    "hue": [
+     25,
+     60
+    ],
+    "light_gt": 0.3
+   },
+   {
+    "name": "leather",
+    "hue": [
+     10,
+     45
+    ]
+   },
+   {
+    "name": "cloth",
+    "hue": [
+     260,
+     10
+    ]
+   }
+  ],
+  "prop": [
+   "sword",
+   "iron"
+  ],
+  "prop_dirs": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "prop_side_below": 0.3,
+  "back": {
+   "title": "back view N keeps the loincloth back",
+   "bounds": [
+    [
+     "loincloth",
+     [
+      "count",
+      "cloth"
+     ],
+     58,
+     null
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps the skull, the ribs and the blade",
+   "bounds": [
+    [
+     "skull",
+     [
+      "head",
+      "bone"
+     ],
+     103,
+     null
+    ],
+    [
+     "ribs",
+     [
+      "inside",
+      "shadow",
+      "bone"
+     ],
+     140,
+     null
+    ],
+    [
+     "blade",
+     [
+      "count",
+      "iron"
+     ],
+     39,
+     null
+    ]
+   ]
+  }
+ },
+ "sheet": {
+  "world_height": 22,
+  "height": 60,
+  "cell": 88
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets, an open ribcage with clear separate ribs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt with a frayed dark purple-brown cloth loincloth, long straight iron sword with a notched grey blade held low in his right hand, always fully visible"
+ },
+ "clip_overrides": {
+  "_note": "Retakes of the clips that failed precheck. Take 2: walk-SW and walk-NW crouched: an upright march at full height. walk-NW hid the blade: it stays beside the body. attack-NW slashed too close to the body: a wide full-arm sweep. attack-S raised the sword over the skull: it stops at the shoulder. death-S lunged toward the camera: the bones pile up where the feet were. Take 3: walk-E still swung the sword behind the legs with the arm swing: the gait names the sword arm still and only the left arm swings (walk: [] drops the item walk text, the gait carries it). attack-E and attack-W struck under the walk-step floor in profile: a big overhead chop leaning into the blow. death-W's sword and heap reached the cell edge: the sword falls under the feet and the bones stay a compact pile.",
+  "walk-SW": {
+   "gait": "Stiff upright skeleton march at full standing height: knees only slightly bent, never crouching or lowering the body, legs alternating clearly, bony arms swinging a little, very slight body bob"
+  },
+  "walk-NW": {
+   "gait": "Stiff upright skeleton march at full standing height: knees only slightly bent, never crouching or lowering the body, legs alternating clearly, bony arms swinging a little, very slight body bob",
+   "walk": [
+    "sword held low and angled forward in his right hand, blade below his shoulders, the blade clearly visible beside his body in every frame, never hanging straight down or hidden behind him"
+   ]
+  },
+  "walk-E": {
+   "gait": "Stiff jerky skeleton march: knees bent, legs alternating clearly, slight body bob; his right arm stays still, bent at the elbow and held forward, the sword pointing forward and down ahead of his front foot like a fixed rod the whole time, blade below his shoulders; only his left arm swings, the sword arm never swings back",
+   "walk": []
+  },
+  "attack-S": {
+   "attack": "raises the sword only to his shoulder, never above or in front of his head, so his skull stays fully visible and uncovered the whole time, and slashes it across in front of his chest toward the facing direction"
+  },
+  "attack-W": {
+   "attack": "raises the sword high above his head with the arm fully up, then chops it down in a big overhead arc far out in front of him toward the facing direction, leaning his torso forward into the blow, until the blade points straight out ahead at waist height, the arm fully extended"
+  },
+  "attack-NW": {
+   "attack": "raises the sword to his shoulder and swings it in a big, wide, full-arm sweep far out in front of him toward the facing direction, the arm fully extended and the blade reaching well beyond his body"
+  },
+  "attack-E": {
+   "attack": "raises the sword high above his head with the arm fully up, then chops it down in a big overhead arc far out in front of him toward the facing direction, leaning his torso forward into the blow, until the blade points straight out ahead at waist height, the arm fully extended"
+  },
+  "death-S": {
+   "death": "rattles, lets the sword drop beside its feet, and collapses straight down in place into a loose heap of bones on the exact spot where it stood. It does not leap, lunge, step or fall forward toward the camera; the bones pile up where its feet were"
+  },
+  "death-W": {
+   "death": "rattles, lets the sword fall straight down so it lies flat right under his feet, crosswise to his facing, and crumples down onto his knees and then into a compact pile of bones no wider than his standing stride, on the exact spot where he stood. He does not tip, lean or fall forward; the bones pile up where his feet were"
+  }
+ }
+}

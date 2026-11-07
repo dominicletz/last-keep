@@ -1,0 +1,38 @@
+{
+ "hero": "flowers",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the flower clump from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows undergrowth in a dark forest; it is a style reference only: draw one small clump of wildflowers and nothing else. Same design: a tiny clump of a few wildflowers with short green stems and leaves. Small white and yellow wildflowers on short green stems. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole flower clump from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single flower clump only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/flowers/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "flowers-a.png"
+   },
+   "save_as": "assets/reference/flowers/views/a.png",
+   "then": "python3 script/hero_sprites.py flowers build"
+  },
+  {
+   "id": "image-b",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the flower clump from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows undergrowth in a dark forest; it is a style reference only: draw one small clump of wildflowers and nothing else. Same design: a tiny clump of a few wildflowers with short green stems and leaves. Small purple wildflowers on short green stems. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole flower clump from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single flower clump only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/flowers/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "flowers-b.png"
+   },
+   "save_as": "assets/reference/flowers/views/b.png",
+   "then": "python3 script/hero_sprites.py flowers build"
+  }
+ ],
+ "type": "static"
+}

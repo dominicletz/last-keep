@@ -39,6 +39,7 @@ test("a dropped hero leaves the shared sprite plane", () => {
   bar.dispose = () => {
     bars += 1
   }
+  card.userData.ownsMap = true
   card.add(new THREE.Mesh(bar))
   let maps = 0
   card.material.map = { dispose: () => { maps += 1 } }
@@ -83,7 +84,7 @@ test("an in-flight effect stays out of the settled count and a leaked mesh break
   assert.equal(earlier.settled, 1)
   assert.equal(earlier.orphans, 0)
 
-  scene.add(takeBurst(0xffcc66))
+  scene.add(takeBurst("boom"))
   const spawn = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(1, 1, 1)))
   spawn.userData.role = "spawn"
   scene.add(spawn)
@@ -105,6 +106,45 @@ test("an in-flight effect stays out of the settled count and a leaked mesh break
   releaseGeometries(spawn)
 })
 
+test("dropping one chest leaves the shared sprite material in place", () => {
+  const material = new THREE.SpriteMaterial()
+  const map = new THREE.Texture()
+  material.map = map
+  let materials = 0
+  let maps = 0
+  material.dispose = () => {
+    materials += 1
+  }
+  map.dispose = () => {
+    maps += 1
+  }
+  const chest = new THREE.Sprite(material)
+  chest.userData.role = "chest"
+  releaseGeometries(chest)
+  assert.equal(materials, 0)
+  assert.equal(maps, 0)
+  const owned = new THREE.Sprite(material)
+  owned.userData.ownsMap = true
+  releaseGeometries(owned)
+  assert.equal(materials, 1)
+  assert.equal(maps, 1)
+})
+
+test("each chest sprite counts even though sprites share one geometry", () => {
+  const scene = new THREE.Scene()
+  const tree = new THREE.Sprite()
+  tree.userData.role = "tree"
+  const first = new THREE.Sprite()
+  first.userData.role = "chest"
+  const second = new THREE.Sprite()
+  second.userData.role = "chest"
+  scene.add(tree, first, second)
+  const census = geometryCensus(scene)
+  assert.equal(first.geometry, second.geometry)
+  assert.equal(census.byRole.chest, 2)
+  assert.equal(census.settled, 3)
+})
+
 test("a portal batch counts each living door", () => {
   const scene = new THREE.Scene()
   const mesh = new THREE.InstancedMesh(
@@ -124,12 +164,13 @@ test("a portal batch counts each living door", () => {
   assert.equal(live.settled, 3)
 })
 
-test("a burst sphere is reused and takes the next color", () => {
-  const first = takeBurst(0xff0000)
+test("a burst sprite is reused and takes the next event", () => {
+  const first = takeBurst("boom")
+  assert.equal(first.isSprite, true)
+  assert.equal(first.userData.role, "burst")
   giveBurst(first)
-  const second = takeBurst(0x00ff00)
+  const second = takeBurst("slam")
   assert.equal(second, first)
-  assert.equal(second.material.color.getHex(), 0x00ff00)
-  assert.equal(second.material.opacity, 0.9)
+  assert.equal(second.userData.kind, "slam")
   assert.equal(second.visible, true)
 })

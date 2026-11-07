@@ -1,0 +1,153 @@
+{
+ "_note": "Retake 2 for the take-1 faults that are the swing leaving the standing silhouette, or a death that slides out of the cell. The same checks, not a wider limit. Each call is the take-1 GenerateVideo with one sentence added. Attack: the weapon stays inside the first frame's height and width. Death: the body falls straight down under the head and no wider than the first frame. Left for final review, not in this file: scout death-N (the last half second still moves, 441 px against a limit of 86, after the sentence that already says to lie still) and farmer attack-SW (the retake starts 215 px off its pose, limit 217, and the height runs 79 to 90). Paths are absolute under /workspace/lk-art-redo.",
+ "calls": [
+  {
+   "id": "warrior-attack-S",
+   "asset": "warrior",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The armored knight keeps exactly the facing direction of the first frame (facing the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it swings the sword in his right hand across in front of him and brings it back, the shield staying on his left arm, then returns exactly to the starting pose and holds it for the last frames. The weapon stays inside the height and the width of the first frame: it never rises above the head, the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. Props stay where the first frame has them: sword in his right hand (on the image-left side); blue kite shield with a gold cross on his left arm (on the image-right side); red cape on his back (partly hidden behind the body). The armored knight stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/S.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "warrior-attack-S.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/warrior/video/attack-S.mp4"
+  },
+  {
+   "id": "warrior-death-W",
+   "asset": "warrior",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The armored knight starts exactly in the pose and facing of the first frame (facing screen-left, his left side toward the camera). It is struck down: it staggers, drops to one knee and falls onto his side, the sword and the shield staying with him. The body falls straight down, staying under where the head started and no wider than the first frame, not sliding to either side. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "warrior-death-W.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/warrior/video/death-W.mp4"
+  },
+  {
+   "id": "warrior-attack-N",
+   "asset": "warrior",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The armored knight keeps exactly the facing direction of the first frame (seen from directly behind, back to the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it swings the sword in his right hand across in front of him and brings it back, the shield staying on his left arm, then returns exactly to the starting pose and holds it for the last frames. The weapon stays inside the height and the width of the first frame: it never rises above the head, the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. Props stay where the first frame has them: sword in his right hand (on the image-right side); blue kite shield with a gold cross on his left arm (on the image-left side); red cape on his back (toward the camera). The armored knight stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/N.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "warrior-attack-N.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/warrior/video/attack-N.mp4"
+  },
+  {
+   "id": "warrior-death-N",
+   "asset": "warrior",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The armored knight starts exactly in the pose and facing of the first frame (seen from directly behind, back to the camera). It is struck down: it staggers, drops to one knee and falls onto his side, the sword and the shield staying with him. The body falls straight down, staying under where the head started and no wider than the first frame, not sliding to either side. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "warrior-death-N.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/warrior/video/death-N.mp4"
+  },
+  {
+   "id": "warrior-attack-NE",
+   "asset": "warrior",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The armored knight keeps exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it swings the sword in his right hand across in front of him and brings it back, the shield staying on his left arm, then returns exactly to the starting pose and holds it for the last frames. The weapon stays inside the height and the width of the first frame: it never rises above the head, the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. Props stay where the first frame has them: sword in his right hand (on the image-right side, toward the camera); blue kite shield with a gold cross on his left arm (on the image-left side, partly hidden behind the body); red cape on his back (on the image-left side, toward the camera). The armored knight stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/NE.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "warrior-attack-NE.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/warrior/video/attack-NE.mp4"
+  },
+  {
+   "id": "warrior-attack-E",
+   "asset": "warrior",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The armored knight keeps exactly the facing direction of the first frame (facing screen-right, his right side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it swings the sword in his right hand across in front of him and brings it back, the shield staying on his left arm, then returns exactly to the starting pose and holds it for the last frames. The weapon stays inside the height and the width of the first frame: it never rises above the head, the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. Props stay where the first frame has them: sword in his right hand (toward the camera); blue kite shield with a gold cross on his left arm (partly hidden behind the body); red cape on his back (on the image-left side). The armored knight stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/E.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/warrior/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "warrior-attack-E.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/warrior/video/attack-E.mp4"
+  },
+  {
+   "id": "mage-attack-NW",
+   "asset": "mage",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. The weapon stays inside the height and the width of the first frame: it never rises above the head, the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-left side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/mage/video/dirs/NW.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/mage/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-NW.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/mage/video/attack-NW.mp4"
+  },
+  {
+   "id": "mage-attack-N",
+   "asset": "mage",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The mage keeps exactly the facing direction of the first frame (seen from directly behind, back to the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the staff in their right hand forward and draws it back, then returns exactly to the starting pose and holds it for the last frames. The weapon stays inside the height and the width of the first frame: it never rises above the head, the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. Props stay where the first frame has them: wooden staff topped with a cyan crystal in their right hand (on the image-right side). The mage stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: the cyan crystal keeps exactly the same brightness and colour in every frame, no glow, no halo. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/mage/video/dirs/N.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/mage/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "mage-attack-N.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/mage/video/attack-N.mp4"
+  },
+  {
+   "id": "scout-attack-NW",
+   "asset": "scout",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The scout keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it draws the longbow in their right hand and releases the string, then lowers the bow, with no arrow leaving the frame, the spyglass staying at their left hip, then returns exactly to the starting pose and holds it for the last frames. The weapon stays inside the height and the width of the first frame: it never rises above the head, the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. Props stay where the first frame has them: wooden longbow in their right hand (on the image-right side, partly hidden behind the body); brass and blue spyglass at their left hip (on the image-left side, toward the camera); quiver of arrows over their right shoulder (on the image-right side); green cloak on their back (on the image-right side, toward the camera). The scout stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/scout/video/dirs/NW.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/scout/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-attack-NW.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/scout/video/attack-NW.mp4"
+  },
+  {
+   "id": "farmer-attack-S",
+   "asset": "farmer",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (facing the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. The weapon stays inside the height and the width of the first frame: it never rises above the head, the figure does not crouch, and nothing reaches wider than the body and what the first frame already holds. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (on the image-left side); burlap grain sack on his back (partly hidden behind the body). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/farmer/video/dirs/S.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/farmer/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "farmer-attack-S.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/farmer/video/attack-S.mp4"
+  }
+ ]
+}

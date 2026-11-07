@@ -1,0 +1,31 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 48 is the tower card's (yard_cards.js 28x48), 132 px at the hero texel; cell 112x144. Shots leave from the lookout platform. The concept box is the tall tower at the top of theme.jpg. views/a.png was generated with the front wording and came out a three-quarter view (corner toward the camera), the angle of the concept painting every yard card is cut from; \"view\": \"three_quarter\" makes the prompt ask for that angle (docs/ART-REDO.md open question).",
+ "type": "static",
+ "noun": "watchtower",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   580,
+   20,
+   720,
+   240
+  ]
+ },
+ "source_note": "The reference shows a stone watchtower in a village with houses, trees and figures around it; draw only the single tower and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a tall square watchtower of grey stone blocks with a few small dark arrow-slit windows, a wooden lookout platform on top with a wooden railing and four corner posts holding a pointed dark wooden shingle roof, a small wooden door at its foot",
+ "world_height": 48,
+ "cell": [
+  112,
+  144
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "seen square from the front, the door at the centre of its foot"
+  }
+ ],
+ "view": "three_quarter"
+}

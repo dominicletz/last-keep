@@ -1,0 +1,31 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 3). world_height 40 and the 30-unit width are the wall card's (yard_cards.js 30x40); the concept box is the west palisade run of theme.jpg. One variant: the front-on section; an end-on view for runs that turn is left for later. views/a.png was generated with the front wording and came out a three-quarter view (corner toward the camera), the angle of the concept painting every yard card is cut from; \"view\": \"three_quarter\" makes the prompt ask for that angle (docs/ART-REDO.md open question).",
+ "type": "static",
+ "noun": "palisade wall section",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   250,
+   350,
+   400,
+   525
+  ]
+ },
+ "source_note": "The reference shows a sharpened wooden palisade running around a village with buildings, trees and figures nearby; draw only one short straight section of the palisade and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a short straight section of a wooden palisade: five or six upright sharpened log stakes of dark weathered brown wood, side by side, tied together by two horizontal rope or plank bands, their pointed tops at slightly uneven heights, seen front-on so the section runs left to right across the image",
+ "world_height": 40,
+ "cell": [
+  128,
+  120
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "the section is about as wide as it is tall, its left and right ends cut straight so sections can stand side by side"
+  }
+ ],
+ "view": "three_quarter"
+}

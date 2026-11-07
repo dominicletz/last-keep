@@ -60,6 +60,83 @@ defmodule LastKeep.Game.FogTest do
     assert Jason.encode!(at_table)
   end
 
+  test "a discovered quarry, camp or shrine is sent with its kind and position" do
+    spots =
+      5
+      |> World.generate()
+      |> Map.fetch!(:pois)
+      |> Enum.filter(&(&1.kind in [:quarry, :camp, :shrine]))
+
+    assert Enum.frequencies_by(spots, & &1.kind) == %{quarry: 3, camp: 4, shrine: 2}
+
+    camp = Enum.find(spots, &(&1.kind == :camp and &1.x == -3852 and &1.y == -3384))
+    shrine = Enum.find(spots, &(&1.kind == :shrine and &1.x == 4140 and &1.y == 0))
+    assert camp
+    assert shrine
+
+    state =
+      "POI"
+      |> Sim.new(seed: 5)
+      |> join("ada", :farmer)
+      |> Sim.tick()
+
+    near = Snapshot.deliver(state)
+
+    for poi <- near.pois do
+      assert poi.kind in ["quarry", "camp", "shrine"]
+      assert is_integer(poi.id)
+      assert is_number(poi.x) and is_number(poi.y)
+      refute Map.has_key?(poi, :stone)
+      assert MapSet.member?(state.world.discovered, World.chunk_coord(poi.x, poi.y))
+    end
+
+    refute Enum.any?(near.pois, &(&1.id == camp.id))
+    refute Enum.any?(near.pois, &(&1.id == shrine.id))
+
+    found =
+      state
+      |> put_hero("ada", camp.x * 1.0, camp.y * 1.0)
+      |> Sim.tick()
+
+    seen = Snapshot.deliver(found)
+    full = Snapshot.render(found)
+
+    assert Enum.any?(seen.pois, fn poi ->
+             poi.kind == "camp" and poi.id == camp.id and poi.x == camp.x and poi.y == camp.y
+           end)
+
+    assert Enum.any?(full.pois, &(&1.id == shrine.id and &1.kind == "shrine"))
+    refute Enum.any?(seen.pois, &(&1.id == shrine.id))
+    refute Enum.any?(seen.pois, &(&1.kind == "merchant"))
+  end
+
+  test "the merchant is sent when his chunk is discovered and stays off the poi list" do
+    merchant = Enum.find(World.generate(5).pois, &(&1.kind == :merchant))
+    refute merchant == nil
+
+    state =
+      "MERCHANT"
+      |> Sim.new(seed: 5)
+      |> join("ada", :farmer)
+      |> Sim.tick()
+
+    hidden = Snapshot.deliver(state)
+    assert hidden.merchant == nil
+    refute Enum.any?(hidden.pois, &(&1.kind == "merchant"))
+    assert Snapshot.render(state).merchant == %{id: merchant.id, x: merchant.x, y: merchant.y}
+
+    found =
+      state
+      |> put_hero("ada", merchant.x * 1.0, merchant.y * 1.0)
+      |> Sim.tick()
+
+    seen = Snapshot.deliver(found)
+    assert seen.merchant == %{id: merchant.id, x: merchant.x, y: merchant.y}
+    refute Map.has_key?(seen.merchant, :kind)
+    refute Enum.any?(seen.pois, &(&1.kind == "merchant"))
+    refute Map.has_key?(seen, :hermit)
+  end
+
   test "a hero past the last chunk does not discover the void" do
     state =
       "EDGE"

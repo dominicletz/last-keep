@@ -1,0 +1,395 @@
+{
+ "hero": "skeleton",
+ "paths": "relative to the repository root",
+ "calls": [
+  {
+   "id": "view-S",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the skeleton from the reference image, front view, facing the camera. The reference shows three skeletons; draw only one skeleton with their look, holding one sword and nothing else, no shield. Same design exactly: gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets and a grim toothy jaw, an open ribcage with clear separate ribs, a bony spine and pelvis, thin bony arms and legs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt holding a frayed dark purple-brown cloth loincloth. Long straight iron sword with a notched grey blade in his right hand (on the image-left side, in full view). The long straight iron sword with a notched grey blade stays clearly visible in full in this view, held out clear of his body: not hidden behind the body, not dropped, not cut off. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its design. Whole figure from the top of the head to the bony feet, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/skeleton/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "skeleton-v-S.png"
+   },
+   "save_as": "assets/reference/skeleton/video/views/v-S.png"
+  },
+  {
+   "id": "view-N",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the skeleton from the reference image, back view, seen from directly behind, back to the camera. The reference shows three skeletons; draw only one skeleton with their look, holding one sword and nothing else, no shield. Same design exactly: gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets and a grim toothy jaw, an open ribcage with clear separate ribs, a bony spine and pelvis, thin bony arms and legs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt holding a frayed dark purple-brown cloth loincloth. Long straight iron sword with a notched grey blade in his right hand (on the image-right side, in full view). The long straight iron sword with a notched grey blade stays clearly visible in full in this view, held out clear of his body: not hidden behind the body, not dropped, not cut off. Whole figure from the top of the head to the bony feet, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/skeleton/concept.png",
+     "assets/reference/skeleton/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "skeleton-v-N.png"
+   },
+   "save_as": "assets/reference/skeleton/video/views/v-N.png"
+  },
+  {
+   "id": "view-W",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the skeleton from the reference image, left profile view, facing screen-left, his left side toward the camera. The reference shows three skeletons; draw only one skeleton with their look, holding one sword and nothing else, no shield. Same design exactly: gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets and a grim toothy jaw, an open ribcage with clear separate ribs, a bony spine and pelvis, thin bony arms and legs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt holding a frayed dark purple-brown cloth loincloth. Long straight iron sword with a notched grey blade in his right hand (in full view). The long straight iron sword with a notched grey blade stays clearly visible in full in this view, held out clear of his body: not hidden behind the body, not dropped, not cut off. Whole figure from the top of the head to the bony feet, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/skeleton/concept.png",
+     "assets/reference/skeleton/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "skeleton-v-W.png"
+   },
+   "save_as": "assets/reference/skeleton/video/views/v-W.png"
+  },
+  {
+   "id": "view-E",
+   "step": "views",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Full-body game character reference of the skeleton from the reference image, right profile view, facing screen-right, his right side toward the camera. The reference shows three skeletons; draw only one skeleton with their look, holding one sword and nothing else, no shield. Same design exactly: gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets and a grim toothy jaw, an open ribcage with clear separate ribs, a bony spine and pelvis, thin bony arms and legs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt holding a frayed dark purple-brown cloth loincloth. Long straight iron sword with a notched grey blade in his right hand (toward the camera, in full view). The long straight iron sword with a notched grey blade stays clearly visible in full in this view, held out clear of his body: not hidden behind the body, not dropped, not cut off. Whole figure from the top of the head to the bony feet, standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, no other figures. One single view only, not a sheet of several views.",
+    "reference_image_paths": [
+     "assets/reference/skeleton/concept.png",
+     "assets/reference/skeleton/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "skeleton-v-E.png"
+   },
+   "save_as": "assets/reference/skeleton/video/views/v-E.png",
+   "then": "hero_sprites.py views"
+  },
+  {
+   "id": "turntable",
+   "step": "dirs",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game character turnaround reference. The skeleton stands perfectly still in a neutral idle pose on an invisible turntable and rotates a full 360 degrees at a constant speed, turning to show his left side, then his back, then his right side, then front again. Locked-off camera, slightly elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white background, even soft lighting. The design stays exactly identical: gaunt skeleton warrior of pale weathered bone, blocky skull with dark hollow eye sockets, an open ribcage with clear separate ribs, one dented grey iron shoulder plate on his right shoulder, a worn brown leather belt with a frayed dark purple-brown cloth loincloth, long straight iron sword with a notched grey blade held low in his right hand, always fully visible. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, no text.",
+    "image_path": "assets/reference/skeleton/video/views/k-S.png",
+    "last_frame_path": "assets/reference/skeleton/video/views/k-S.png",
+    "keyframes": [
+     {
+      "image_path": "assets/reference/skeleton/video/views/k-W.png",
+      "timestamp_s": 2
+     },
+     {
+      "image_path": "assets/reference/skeleton/video/views/k-N.png",
+      "timestamp_s": 4
+     },
+     {
+      "image_path": "assets/reference/skeleton/video/views/k-E.png",
+      "timestamp_s": 6
+     }
+    ],
+    "duration": 8,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-turntable.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/turntable.mp4",
+   "then": "hero_sprites.py dirs"
+  },
+  {
+   "id": "walk-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The skeleton walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Stiff jerky skeleton march: knees bent, legs alternating clearly, bony arms swinging a little, slight body bob, sword held low and angled forward in his right hand, blade below his shoulders. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-left side, in full view). The skeleton stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/skeleton/video/dirs/S.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-walk-S.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/walk-S.mp4"
+  },
+  {
+   "id": "attack-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The skeleton keeps exactly the facing direction of the first frame (facing the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it raises the sword only to his shoulder, never above or in front of his head, so his skull stays fully visible and uncovered the whole time, and slashes it across in front of his chest toward the facing direction, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-left side, in full view). The skeleton stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/skeleton/video/dirs/S.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-attack-S.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/attack-S.mp4"
+  },
+  {
+   "id": "death-S",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The skeleton starts exactly in the pose and facing of the first frame (facing the camera). It is struck down: it rattles, lets the sword drop beside its feet, and collapses straight down in place into a loose heap of bones on the exact spot where it stood. It does not leap, lunge, step or fall forward toward the camera; the bones pile up where its feet were. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/skeleton/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-death-S.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/death-S.mp4"
+  },
+  {
+   "id": "walk-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The skeleton walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Stiff upright skeleton march at full standing height: knees only slightly bent, never crouching or lowering the body, legs alternating clearly, bony arms swinging a little, very slight body bob, sword held low and angled forward in his right hand, blade below his shoulders. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-left side, in full view). The skeleton stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/skeleton/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-walk-SW.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/walk-SW.mp4"
+  },
+  {
+   "id": "attack-SW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The skeleton keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it raises the sword to his shoulder and slashes it across in front of him toward the facing direction, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-left side, in full view). The skeleton stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/skeleton/video/dirs/SW.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/SW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-attack-SW.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/attack-SW.mp4"
+  },
+  {
+   "id": "walk-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The skeleton walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-left, his left side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Stiff jerky skeleton march: knees bent, legs alternating clearly, bony arms swinging a little, slight body bob, sword held low and angled forward in his right hand, blade below his shoulders. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (in full view). The skeleton stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/skeleton/video/dirs/W.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-walk-W.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/walk-W.mp4"
+  },
+  {
+   "id": "attack-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The skeleton keeps exactly the facing direction of the first frame (facing screen-left, his left side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it raises the sword high above his head with the arm fully up, then chops it down in a big overhead arc far out in front of him toward the facing direction, leaning his torso forward into the blow, until the blade points straight out ahead at waist height, the arm fully extended, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (in full view). The skeleton stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/skeleton/video/dirs/W.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-attack-W.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/attack-W.mp4"
+  },
+  {
+   "id": "death-W",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The skeleton starts exactly in the pose and facing of the first frame (facing screen-left, his left side toward the camera). It is struck down: it rattles, lets the sword fall straight down so it lies flat right under his feet, crosswise to his facing, and crumples down onto his knees and then into a compact pile of bones no wider than his standing stride, on the exact spot where he stood. He does not tip, lean or fall forward; the bones pile up where his feet were. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/skeleton/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-death-W.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/death-W.mp4"
+  },
+  {
+   "id": "walk-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The skeleton walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Stiff upright skeleton march at full standing height: knees only slightly bent, never crouching or lowering the body, legs alternating clearly, bony arms swinging a little, very slight body bob, sword held low and angled forward in his right hand, blade below his shoulders, the blade clearly visible beside his body in every frame, never hanging straight down or hidden behind him. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-right side, in full view). The skeleton stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/skeleton/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-walk-NW.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/walk-NW.mp4"
+  },
+  {
+   "id": "attack-NW",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The skeleton keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it raises the sword to his shoulder and swings it in a big, wide, full-arm sweep far out in front of him toward the facing direction, the arm fully extended and the blade reaching well beyond his body, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-right side, in full view). The skeleton stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/skeleton/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-attack-NW.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/attack-NW.mp4"
+  },
+  {
+   "id": "walk-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The skeleton walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from directly behind, back to the camera). Holding exactly the body angle of the first frame: torso does not twist. Stiff jerky skeleton march: knees bent, legs alternating clearly, bony arms swinging a little, slight body bob, sword held low and angled forward in his right hand, blade below his shoulders. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-right side, in full view). The skeleton stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/skeleton/video/dirs/N.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-walk-N.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/walk-N.mp4"
+  },
+  {
+   "id": "attack-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The skeleton keeps exactly the facing direction of the first frame (seen from directly behind, back to the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it raises the sword to his shoulder and slashes it across in front of him toward the facing direction, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-right side, in full view). The skeleton stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/skeleton/video/dirs/N.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-attack-N.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/attack-N.mp4"
+  },
+  {
+   "id": "death-N",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The skeleton starts exactly in the pose and facing of the first frame (seen from directly behind, back to the camera). It is struck down: it rattles, drops the sword and collapses straight down into a loose heap of bones on the ground. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/skeleton/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-death-N.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/death-N.mp4"
+  },
+  {
+   "id": "walk-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The skeleton walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Stiff jerky skeleton march: knees bent, legs alternating clearly, bony arms swinging a little, slight body bob, sword held low and angled forward in his right hand, blade below his shoulders. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-right side, toward the camera, in full view). The skeleton stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/skeleton/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-walk-NE.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/walk-NE.mp4"
+  },
+  {
+   "id": "attack-NE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The skeleton keeps exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it raises the sword to his shoulder and slashes it across in front of him toward the facing direction, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-right side, toward the camera, in full view). The skeleton stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/skeleton/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-attack-NE.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/attack-NE.mp4"
+  },
+  {
+   "id": "walk-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The skeleton walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-right, his right side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Stiff jerky skeleton march: knees bent, legs alternating clearly, slight body bob; his right arm stays still, bent at the elbow and held forward, the sword pointing forward and down ahead of his front foot like a fixed rod the whole time, blade below his shoulders; only his left arm swings, the sword arm never swings back. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (toward the camera, in full view). The skeleton stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/skeleton/video/dirs/E.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-walk-E.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/walk-E.mp4"
+  },
+  {
+   "id": "attack-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The skeleton keeps exactly the facing direction of the first frame (facing screen-right, his right side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it raises the sword high above his head with the arm fully up, then chops it down in a big overhead arc far out in front of him toward the facing direction, leaning his torso forward into the blow, until the blade points straight out ahead at waist height, the arm fully extended, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (toward the camera, in full view). The skeleton stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/skeleton/video/dirs/E.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-attack-E.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/attack-E.mp4"
+  },
+  {
+   "id": "death-E",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The skeleton starts exactly in the pose and facing of the first frame (facing screen-right, his right side toward the camera). It is struck down: it rattles, drops the sword and collapses straight down into a loose heap of bones on the ground. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/skeleton/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-death-E.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/death-E.mp4"
+  },
+  {
+   "id": "walk-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The skeleton walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Stiff jerky skeleton march: knees bent, legs alternating clearly, bony arms swinging a little, slight body bob, sword held low and angled forward in his right hand, blade below his shoulders. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-left side, toward the camera, in full view). The skeleton stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/skeleton/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-walk-SE.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/walk-SE.mp4"
+  },
+  {
+   "id": "attack-SE",
+   "step": "precheck",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The skeleton keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it raises the sword to his shoulder and slashes it across in front of him toward the facing direction, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: long straight iron sword with a notched grey blade in his right hand (on the image-left side, toward the camera, in full view). The skeleton stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/skeleton/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/skeleton/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "skeleton-attack-SE.mp4"
+   },
+   "save_as": "assets/reference/skeleton/video/attack-SE.mp4",
+   "then": "hero_sprites.py precheck"
+  }
+ ],
+ "type": "monster"
+}

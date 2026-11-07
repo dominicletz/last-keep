@@ -67,19 +67,36 @@ const BUILD_FACE = {
   mage_tower: ["6", "Spire"]
 }
 
+// Crops of variant a. The mage tower has no sheet, so it stays text.
+export const BUILD_ICON = {
+  wall: "/images/ui/build-wall.png",
+  tower: "/images/ui/build-tower.png",
+  trap: "/images/ui/build-trap.png",
+  field: "/images/ui/build-field.png",
+  forge: "/images/ui/build-forge.png"
+}
+
+export const SACK_ICON = {
+  wood: "/images/ui/wood.png",
+  food: "/images/ui/food.png",
+  gold: "/images/ui/gold.png"
+}
+
 export function buildFace(kind, cost, touch) {
   const row = BUILD_FACE[kind] || ["", "Build"]
   const title = touch ? row[1] : `${row[0]} ${row[1]}`
-  if (!cost) return { title, price: "" }
+  const icon = BUILD_ICON[kind] || ""
+  if (!cost) return { title, price: "", icon }
   const gold = Number(cost.gold) || 0
   const price = `${Number(cost.wood) || 0} wood${gold ? ` ${gold} gold` : ""}`
-  return { title, price }
+  return { title, price, icon }
 }
 
 export function sackLine(resources = {}) {
   return ["wood", "food", "gold"].map((key) => ({
     key,
     text: sackText(key, resources[key]),
+    icon: SACK_ICON[key],
     x: SACK_SPOT[key].x,
     y: SACK_SPOT[key].y
   }))

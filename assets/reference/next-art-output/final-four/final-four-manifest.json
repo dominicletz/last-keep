@@ -1,0 +1,169 @@
+[
+ {
+  "id": "ground-plaza",
+  "asset": "ground",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of worn plaza grass, seen from directly above, with even light and no horizon. The reference is a grass tile. It has no trees, no path, and no sky, and the new tile keeps that. It is more worn than the reference: small stones, pebbles, and bare patches, so it is not a flat wash. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. One square tile only. Do not draw a tree, a path, a canopy, or a skyline.",
+   "reference_image_paths": [
+    "assets/reference/next-art-refs/plaza-grass.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-plaza.png"
+  },
+  "save_as": "assets/reference/ground/plaza.png",
+  "then": "Wire only if the column seam holds and the plaza disc spread at pixelStep(168, 400) is at least 8. A scene, a path, or a canopy does not wire.",
+  "args_sent": {
+   "description": "Seamless ground tile of worn plaza grass, seen from directly above, with even light and no horizon. The reference is a grass tile. It has no trees, no path, and no sky, and the new tile keeps that. It is more worn than the reference: small stones, pebbles, and bare patches, so it is not a flat wash. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. One square tile only. Do not draw a tree, a path, a canopy, or a skyline.",
+   "reference_image_paths": [
+    "/workspace/lk/final-four-art/run-1794006558/x/next-art-refs/plaza-grass.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-plaza.png"
+  },
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/c375e1f80380aadb449c81cf9b5b3b108e47951376a69f1ba0663014e4defc1a.jpg",
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/final-four-art/run-1794006558/stage/ground/plaza.png",
+  "archive_path": "ground/plaza.png",
+  "metrics": {
+   "col_wrap": 84,
+   "col_interior": 99,
+   "row_wrap": 100,
+   "row_interior": 96
+  },
+  "verdict": "FAIL row seam (100>96); column seam passes (84<=99). Semantic: overhead worn grass/dirt, no scene/canopy/path; has raised voxel grass cubes. Plaza disc spread at pixelStep(168,400) not measured (needs repo tool)."
+ },
+ {
+  "id": "forest_barrier-strip",
+  "asset": "forest_barrier",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless tiling strip of pine forest. The square is the wall itself. The reference is one pine, for its needle colour and block size only. Do not copy its white background. Do not draw a forest scene, a skeleton, a field, or a sky. Pines fill the square from the left edge to the right edge. The left column of pixels continues the right column. There is no white margin on either side. The tops are the pine tips and the bottoms are the trunks. One repeat, about as wide as the pines are tall: the wall pitch is 90 px when a pine is 110 px tall. Not a panorama and not one tree standing in a white frame.",
+   "reference_image_paths": [
+    "assets/reference/next-art-refs/pine-crown.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "forest-barrier-strip.png"
+  },
+  "save_as": "assets/reference/forest_barrier/views/d.png",
+  "then": "Add it as a variant only if seam_holds passes on the file. The outer columns must be tree pixels, not white. Do not replace the live pines until that passes.",
+  "args_sent": {
+   "description": "Seamless tiling strip of pine forest. The square is the wall itself. The reference is one pine, for its needle colour and block size only. Do not copy its white background. Do not draw a forest scene, a skeleton, a field, or a sky. Pines fill the square from the left edge to the right edge. The left column of pixels continues the right column. There is no white margin on either side. The tops are the pine tips and the bottoms are the trunks. One repeat, about as wide as the pines are tall: the wall pitch is 90 px when a pine is 110 px tall. Not a panorama and not one tree standing in a white frame.",
+   "reference_image_paths": [
+    "/workspace/lk/final-four-art/run-1794006558/x/next-art-refs/pine-crown.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "forest-barrier-strip.png"
+  },
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/db9b49f381f32950417b89cec71fe6ab41a35e4a8c2179607e678aa7bbf5d780.jpg",
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/final-four-art/run-1794006558/stage/forest_barrier/views/d.png",
+  "archive_path": "forest_barrier/views/d.png",
+  "metrics": {
+   "col_wrap": 255,
+   "col_interior": 245,
+   "row_wrap": 3,
+   "row_interior": 220,
+   "left_col_opaque_frac": 0.87,
+   "right_col_opaque_frac": 0.937,
+   "opaque_col_mismatch_rows": 68,
+   "opaque_rows": [
+    18,
+    1005
+   ]
+  },
+  "verdict": "FAIL column seam (255>245); edge columns not fully opaque (left 0.87, right 0.937, 68 rows mismatch). Semantic: dense pine wall, no scene, white band only above tips/below trunks."
+ },
+ {
+  "id": "reeds-a",
+  "asset": "reeds",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "One reed clump on a plain white background. The reference is a grass tuft, for the green and the voxel shading only. Its blades are too thick. Each reed stalk is a single pixel-wide column, with white gaps between the stalks, and three brown cattail heads. The clump is 25 px tall in the game, so the stalks stay thin at that size. Do not draw a solid bundle and do not match a person's thickness. No ground, no trees, no sky, no other objects. Upright, centred, nothing cropped. One clump only.",
+   "reference_image_paths": [
+    "assets/reference/next-art-refs/reed-green.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "reeds-a.png"
+  },
+  "save_as": "assets/reference/reeds/views/thin-a.png",
+  "then": "Replace views/a.png only if a stalk is about one pixel wide once the clump is 25 px tall. The current views/a.png stays until then.",
+  "args_sent": {
+   "description": "One reed clump on a plain white background. The reference is a grass tuft, for the green and the voxel shading only. Its blades are too thick. Each reed stalk is a single pixel-wide column, with white gaps between the stalks, and three brown cattail heads. The clump is 25 px tall in the game, so the stalks stay thin at that size. Do not draw a solid bundle and do not match a person's thickness. No ground, no trees, no sky, no other objects. Upright, centred, nothing cropped. One clump only.",
+   "reference_image_paths": [
+    "/workspace/lk/final-four-art/run-1794006558/x/next-art-refs/reed-green.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "reeds-a.png"
+  },
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/3305373580d8a3ba69b3a8456d48f97d5a3c30c6fed7c8f5521087ddd4b23f8c.jpg",
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/final-four-art/run-1794006558/stage/reeds/views/thin-a.png",
+  "archive_path": "reeds/views/thin-a.png",
+  "metrics": {
+   "col_wrap": 4,
+   "col_interior": 209,
+   "row_wrap": 3,
+   "row_interior": 207,
+   "scaled_size": [
+    10,
+    25
+   ],
+   "stalk_run_widths_rows8-21": {
+    "1": 3,
+    "5": 1,
+    "6": 1,
+    "7": 3,
+    "8": 6,
+    "10": 3
+   }
+  },
+  "verdict": "FAIL semantic: at 25px tall clump is 10px wide and stalks merge into 7-10px solid runs; not 1px stalks."
+ },
+ {
+  "id": "reeds-b",
+  "asset": "reeds",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "One smaller reed clump on a plain white background, leaning. The reference is a grass tuft, for the green and the voxel shading only. Its blades are too thick. Each reed stalk is a single pixel-wide column, with white gaps between the stalks, and one brown cattail head. The clump is shorter than 25 px in the game. Do not draw a solid bundle and do not match a person's thickness. No ground, no trees, no sky, no other objects. Centred, nothing cropped. One clump only.",
+   "reference_image_paths": [
+    "assets/reference/next-art-refs/reed-green.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "reeds-b.png"
+  },
+  "save_as": "assets/reference/reeds/views/thin-b.png",
+  "then": "Replace views/b.png only if a stalk is about one pixel wide at that scale. The current views/b.png stays until then.",
+  "args_sent": {
+   "description": "One smaller reed clump on a plain white background, leaning. The reference is a grass tuft, for the green and the voxel shading only. Its blades are too thick. Each reed stalk is a single pixel-wide column, with white gaps between the stalks, and one brown cattail head. The clump is shorter than 25 px in the game. Do not draw a solid bundle and do not match a person's thickness. No ground, no trees, no sky, no other objects. Centred, nothing cropped. One clump only.",
+   "reference_image_paths": [
+    "/workspace/lk/final-four-art/run-1794006558/x/next-art-refs/reed-green.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "reeds-b.png"
+  },
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/6d60e13084465cc371b746b966bcdb151a89bc7c77a8f381f3d7d10a366b6dbb.jpg",
+  "returned_format": "JPEG",
+  "staged_path": "/workspace/lk/final-four-art/run-1794006558/stage/reeds/views/thin-b.png",
+  "archive_path": "reeds/views/thin-b.png",
+  "metrics": {
+   "col_wrap": 4,
+   "col_interior": 203,
+   "row_wrap": 4,
+   "row_interior": 218,
+   "scaled_size": [
+    7,
+    25
+   ],
+   "stalk_run_widths_rows8-21": {
+    "1": 13,
+    "3": 1,
+    "4": 2,
+    "5": 6,
+    "6": 1,
+    "7": 1
+   }
+  },
+  "verdict": "FAIL semantic: at 25px mostly 4-7px merged runs (13 one-px runs exist); also upright, not leaning as prompted."
+ }
+]

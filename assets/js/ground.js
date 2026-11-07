@@ -1,12 +1,14 @@
 import { pixelStep } from "./art_score.js"
 import { grassAt } from "./tiles.js"
+import { sampleGroundTile } from "./seam_tiles.js"
 
 // Grass, path, pine shade, stone, and the sunset band. Hexes are the STYLE.md tokens.
-// The base is the concept clearing tile.
+// The base is the yard-grass tile (it passed seamHolds). The buffer stays on
+// pixelStep(168, 400) = 0.84. A SHEET_TEXEL buffer (32/88) drops the plaza
+// spread to 4.72, under the floor of 8, and the keep-disc comment records the
+// same step dropping day contrast to 24.7. Those floors stay.
 // The outer plane covers the camera. The plaza disc covers the flat town circle
 // the camera stands on, without replacing that circle's mesh.
-// pixelStep(168, 400) is 0.84. That is the hero texel. The yard textures use the
-// same step, so a hero pixel and a ground pixel cover one world distance.
 export const HERO_TEXEL = pixelStep(168, 400)
 export const GROUND_SPAN = 760
 export const GROUND_TEX = Math.round(GROUND_SPAN / HERO_TEXEL)
@@ -26,6 +28,27 @@ function mix(a, b, t) {
     Math.round(a[1] + (b[1] - a[1]) * clamped),
     Math.round(a[2] + (b[2] - a[2]) * clamped)
   ]
+}
+
+// A seamless tile: the wrap from the last column to the first is no larger
+// than the biggest step between adjacent interior columns.
+export function seamHolds(pixels, width, height, stride = 4) {
+  let interior = 0
+  for (let x = 1; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      const a = (y * width + x) * stride
+      const b = a - stride
+      for (let c = 0; c < 3; c++) interior = Math.max(interior, Math.abs(pixels[a + c] - pixels[b + c]))
+    }
+  }
+  let wrap = 0
+  const last = (width - 1) * stride
+  for (let y = 0; y < height; y++) {
+    const a = y * width * stride
+    const b = a + last
+    for (let c = 0; c < 3; c++) wrap = Math.max(wrap, Math.abs(pixels[a + c] - pixels[b + c]))
+  }
+  return wrap <= interior
 }
 
 function hash(x, y) {
@@ -64,8 +87,16 @@ function paint(phase, size, span) {
       const jigReach = keepDisc ? 0 : 48
       const jigX = Math.floor(hash(bx, bz) * jigReach)
       const jigY = Math.floor(hash(bz, bx + 3) * jigReach)
-      let color = grassAt(ix + jigX, iy + jigY, phase)
-      if (n2 < 0.07) color = STONE
+      // The plaza disc is the spread check (floor 8). Yard-grass under that
+      // disc measures 3.75, so the plaza keeps grassAt. The yard plane is
+      // wider than the plaza and takes the tile by day. Dusk and night keep
+      // grassAt: the day tile under the scout at (160, 0) at night measures
+      // contrast 28.72, under the floor of 29. The live mesh is the day paint.
+      const tiled = phase === "day" && span > PLAZA_SPAN ? sampleGroundTile("yard", worldX, worldZ) : null
+      let color = tiled || grassAt(ix + jigX, iy + jigY, phase)
+      // The dirt tile replaces the flat stone fleck. A missing tile keeps STONE.
+      // Pebbles stay the course colour. The path band below is still PATH.
+      if (n2 < 0.07) color = sampleGroundTile("dirt", worldX, worldZ) || STONE
       else if (n2 < 0.12) color = PEBBLE
       // The inner pine crown is a few pixels. The dusk sample around it is mostly
       // the ground behind that crown. Sunset flecks there pull the pine hue onto

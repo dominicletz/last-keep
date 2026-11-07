@@ -1,0 +1,40 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9, cliff face). The concept has no cliff, so the box is the theme.jpg rocks at the south road for their stone colours. World height 16 (44 px), the biomeLift step. a and b are the committed block and pillar and stay in the sheet. c is the seamless tiling rock texture for that 44 px step. The column seam on the 1024 tile is wrap 129, interior 169.",
+ "type": "static",
+ "view": "front",
+ "noun": "rock cliff face segment",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   620,
+   610,
+   720,
+   690
+  ]
+ },
+ "source_note": "The reference shows no cliff: it is only the dark forest scene whose palette, evening light and voxel style the cliff must match; draw only one cliff and nothing else, no trees, no figures; use the reference rocks only for the colours of the stone",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a steep wall of rough grey-brown stone in chunky blocky ledges and cracks, darker in the cracks, lighter on the lit top edge, a few tufts of dark grass on the ledges, the strip much wider than it is tall",
+ "world_height": 16,
+ "cell": [
+  128,
+  56
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "an even, blocky face"
+  },
+  {
+   "id": "b",
+   "note": "a face with a deep crack and a jutting ledge"
+  },
+  {
+   "id": "c",
+   "note": "a seamless tiling rock texture for one 44 px cliff step",
+   "framing": "A seamless tiling rock texture for one 44 px step of the cliff. The left edge continues the right edge and the top edge continues the bottom. Not a freestanding block and not a pillar"
+  }
+ ]
+}

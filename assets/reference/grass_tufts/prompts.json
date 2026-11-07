@@ -1,0 +1,54 @@
+{
+ "hero": "grass_tufts",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the grass tuft from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows a patch of grassy ground with rocks and stones in it; draw only one small tuft of grass and nothing else. Same design: a small clump of dark green grass blades, lighter yellow-green tips on the lit side. A round tuft. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole grass tuft from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single grass tuft only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/grass_tufts/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "grass_tufts-a.png"
+   },
+   "save_as": "assets/reference/grass_tufts/views/a.png",
+   "then": "python3 script/hero_sprites.py grass_tufts build"
+  },
+  {
+   "id": "image-b",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the grass tuft from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows a patch of grassy ground with rocks and stones in it; draw only one small tuft of grass and nothing else. Same design: a small clump of dark green grass blades, lighter yellow-green tips on the lit side. A tuft with a few tall blades. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole grass tuft from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single grass tuft only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/grass_tufts/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "grass_tufts-b.png"
+   },
+   "save_as": "assets/reference/grass_tufts/views/b.png",
+   "then": "python3 script/hero_sprites.py grass_tufts build"
+  },
+  {
+   "id": "image-c",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the grass tuft from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows a patch of grassy ground with rocks and stones in it; draw only one small tuft of grass and nothing else. Same design: a small clump of dark green grass blades, lighter yellow-green tips on the lit side. A tiny low tuft. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole grass tuft from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single grass tuft only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/grass_tufts/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "grass_tufts-c.png"
+   },
+   "save_as": "assets/reference/grass_tufts/views/c.png",
+   "then": "python3 script/hero_sprites.py grass_tufts build"
+  }
+ ],
+ "type": "static"
+}

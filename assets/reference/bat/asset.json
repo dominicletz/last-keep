@@ -1,0 +1,201 @@
+{
+ "_note": "Fourth monster and the first flier (docs/ART-REDO.md). The concept crop is the big bat in monsters.jpg, box 418,66,682,206. It is not the registry card crop (408,68,260,96): that one cuts the bat off below its eyes, which is fine for the old card but would hide the body, snout, fangs and feet from the views. World height 16 is monsterHeights.bat; at the hero texel (32/88) that is 44 px, ear and wing tips to feet, in the start pose with the wings spread. The wingspan is about twice that, about 88 px, and a wingbeat lifts the wings above and sweeps them below the start pose, so the cell is 112. flies: true makes the walk a wingbeat in place (no treadmill, two wingbeats), the attack hang at one height instead of planting feet, and the turntable hold the bat in the air with its wings frozen. view_height 240: spread wings make the front view about 1.9 times as wide as tall in the concept and up to about 2.6 in a flat spread; 240 x 2.6 = 624 still fits normalize_view's 640. view_pose keeps the wolf lesson: it names the height only and pins the body along the view direction, so the front view is not three-quarter. No held item: the fangs are the weapon, so items is empty and the check profile will set prop null. In game the bat is drawn at lift 22 above a shadow disc; the sheet's foot line is the lowest pixel of the hovering start pose (its feet or a wing tip), and the death drops it onto the ground right below, so the client lowers the lift as it falls (see docs/ART-REDO.md). Take 5: attack-N passes (head bowed, no red). attack-S rose 24 px a fifth time and attack-NW, with full wing strokes, 34 px. Root cause: every start pose stands on the view's foot line, its feet 80 px above the bottom of the 720 px frame, and in both clips the bat climbs until its body sits at the frame's vertical centre (attack-S body core from y 562 to 395 at frame 18, NW from 481 to 327 at frame 24: both end up within 35 px of the centre, y 360, out of a 720 px frame), then sinks back to the forced last frame. The walks and the other attacks stay put; a bite that is the clip's action pulls the subject to the middle. So attack-S and attack-NW start and end on video/mid/<d>.png, the start pose moved up to the frame's centre (`centred_attacks`); the sheet anchors a flier attack on its own frame 0, so the move does not change the sheet. Wording unchanged from take 5 (take 5 kept in /workspace/lk/bat-take5). Take 6 (take 5 kept in /workspace/lk/bat-take5): attack-S and attack-NW start and end on the centred start pose (centred_attacks). attack-NW passes. attack-S now holds the hover but barely moved: its largest silhouette change was 420 px against the S walk step median 1305, the steady hover wingbeat and a head jerk being all it did. So take 7 gives attack-S the full, wide wing strokes that made attack-NW pass (take 6 kept in /workspace/lk/bat-take6).",
+ "type": "monster",
+ "noun": "bat",
+ "possessive": "its",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [
+   418,
+   66,
+   682,
+   206
+  ]
+ },
+ "source_note": "the reference shows one big bat with parts of two smaller bats at its lower corners; draw only the big bat and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "savage cave bat with large leathery dark brown-grey wings stretched on thick bony finger struts, a stocky furry dark grey-brown body, big pointed ears, glowing red eyes, a blunt pig-like snout with small white fangs, and little clawed feet",
+ "feet": "feet",
+ "flies": true,
+ "view_pose": "Whole bat from the tips of its ears and wings down to its feet, hovering in the air with both wings spread wide and held still, body upright, head level, little clawed feet hanging below, nothing cropped; the body faces exactly along the view direction, so in a front or back view the two wings spread out symmetric to the left and right, not turned three-quarter, and in a profile view the wings reach straight toward and away from the camera, seen edge-on",
+ "mirror_views": {
+  "W": "E"
+ },
+ "view_height": 240,
+ "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it, the body stays level with only a slight bob, ears up, feet hanging; it never flies forward, up or down",
+ "items": [],
+ "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one snapping bite, fangs bared, with one hard wingbeat, then pulls back; it does not fly forward, it bites from where it hovers",
+ "death": "shrieks, its wings fold and go limp and it drops straight down onto the ground just below where it hovered, landing on its back with its wings spread out flat on the ground and its head down. It does not fly off, glide, spin or tumble toward the camera; it lands right below where it hovered",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "check": {
+  "_note": "Tuned on the start poses (dirs/) and on the take-1 trial build. anchors: concept colours (hero_sprites.py bat colours) the palette keeps within dE 15: the dark brown fur and its shade, the wing membrane mid and light tones, the pale highlight, and the red of the eyes and open mouth with its bright tip. The brightest red (203, 53, 43, 0.2% of the concept) is not anchored: dE 13 from the nearest palette colour, and at 44 px an eye is one px. roles: every brown is a grey (chroma under 0.12): light is every grey over 0.27, the lit membrane and chest; fur is the rest; red is any colour of hue 340-30 above chroma 0.12, the eyes and mouth. prop: null, the teeth are the weapon. bounds: the face is too few px to hold a floor (S shows 11 red px on dirs/S.png but 5 in its sheet start cell and 0-13 across the walk and attack), but the back never shows it: N has 0 red in every start pose, walk and attack frame, so the back ceiling is 2 and a bat that turns to face the camera fails. The front floor is light: S start cell 71 -> 0.64 x 71 = 45 (the skeleton's rule; take-1 S frames 65-126, N frames 12-73).",
+  "anchors": {
+   "fur": [
+    55,
+    46,
+    42
+   ],
+   "fur shade": [
+    45,
+    37,
+    33
+   ],
+   "membrane": [
+    80,
+    69,
+    64
+   ],
+   "membrane light": [
+    93,
+    81,
+    76
+   ],
+   "highlight": [
+    108,
+    97,
+    92
+   ],
+   "red": [
+    112,
+    40,
+    36
+   ],
+   "red light": [
+    177,
+    52,
+    46
+   ]
+  },
+  "roles": [
+   {
+    "name": "red",
+    "hue": [
+     340,
+     30
+    ]
+   },
+   {
+    "name": "light",
+    "neutral": true,
+    "light_gt": 0.27
+   },
+   {
+    "name": "fur",
+    "neutral": true
+   }
+  ],
+  "prop": null,
+  "back": {
+   "title": "back view N shows no face",
+   "bounds": [
+    [
+     "red",
+     [
+      "count",
+      "red"
+     ],
+     null,
+     2
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps its pale chest and lit wings",
+   "bounds": [
+    [
+     "light",
+     [
+      "count",
+      "light"
+     ],
+     45,
+     null
+    ]
+   ]
+  }
+ },
+ "sheet": {
+  "world_height": 16,
+  "height": 44,
+  "cell": 128
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "savage cave bat with large leathery dark brown-grey wings spread wide on thick bony finger struts, a stocky furry dark grey-brown body, big pointed ears, glowing red eyes, a blunt pig-like snout with small white fangs, and little clawed feet hanging below"
+ },
+ "clip_overrides": {
+  "_note": "Take 2 (take 1 kept in /workspace/lk/bat-take1). Take-1 checks on the 128 px cell, body core vs the start pose with the hover limit 0.3 x 44 = 13 px: walk-S rose 30 px, walk-SW 30, walk-NW 28 (two wingbeats bobbing with the 'slight bob' the gait allowed); walk-SE rose 13 px and its spread wings touched the cell edge in frame 5; attack-S rose 22 px, attack-NW 36, attack-N 15, attack-NE 17, attack-E 25, attack-SE 17 (swooping up into the bite); attack-SW touched the cell edge and its bite changed the silhouette 1218 px against the walk step median 1242. So the walks hang at one height with no bob and the attacks bite without rising, wings kept in, with a bigger lunge. walk-W/N/NE/E, attack-W and the deaths passed and keep their text. Take 3 (take 2 kept in /workspace/lk/bat-take2): the four walk retakes and attack-SW pass (the flier foot line now sits 24 px over the cell bottom, FLIER_FOOT_MARGIN: the downstroke reached 7 px under frame 0's lowest pixel, into the edge). The bites still left the hover: attack-N rose 32 px, SE 25, NE 20, S 16, and E dropped 14 (limit 13); attack-NW, wings held in, changed its silhouette 662 px against the walk step median 897. So the bite keeps the hover's steady wingbeat (the wings are most of a flier's motion) and names drop and dip as well as rise. Take 4 (take 3 kept in /workspace/lk/bat-take3): attack-E and the rest pass. attack-S, NW, N, NE and SE have now left the hover on three takes (take 3: S 15 px, SE 23, N 24, NE 31, NW 36, limit 13), whatever the wording said about the height. Not the measure: the body core and an independent one (the centre of the largest inscribed disc) agree within 3 px, and the frames show the body itself moving. The root cause is the lunge every take asked for: a flier lunging its head and chest toward the facing direction carries its body with it, and toward the back views (N, NE, NW) that is up the frame; attack-N also turned to face the camera for the bite. So take 4 drops the lunge: the bat bites on the spot with a jaw snap and a short head jerk only, keeps its wingbeat (the strike check's motion), never turns, and N keeps its back to the camera. Take 5 (take 4 kept in /workspace/lk/bat-take4): attack-NE and SE now pass, and attack-N stayed level (core within 4 px), so for the back views the lunge was the cause. attack-S rose 16 px again, its fourth take on the hover check, with no lunge: the one view that faces the camera keeps rising, so it reads 'bite toward the facing direction' as coming up toward the elevated camera; take 5 names the target at its own height below the camera and holds its feet at the first frame's height. attack-N tipped its head back so its open red mouth showed over its head (5 px, back ceiling 2); take 5 keeps the head bowed away from the camera. attack-NW, with only a head jerk, changed its silhouette 785 px against the walk step median 897 (take 3's lunge carried that change); take 5 gives it full, wide wing strokes, bigger than the hover. Take 8 (take 7 kept in /workspace/lk/bat-take7): attack-S held the hover and its strike grew from 420 to 1228 px but stayed under the S walk step median 1305. No frame of the clip got there (the largest change from frame 0 is frame 31, so frame picking cannot fix it): its wings folded in against its body on the downstroke. So attack-S keeps its wings fully spread, reaching high above its ears and far below its feet.",
+  "walk-S": {
+   "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down"
+  },
+  "walk-SW": {
+   "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down"
+  },
+  "walk-NW": {
+   "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down"
+  },
+  "walk-SE": {
+   "gait": "Steady wingbeat on the spot: both wings sweep down together below the body and back up above it. The body hangs at exactly the same height in every frame: it does not bob, rise or sink, only the wings move. Ears up, feet hanging; it never flies forward, up or down"
+  },
+  "attack-S": {
+   "attack": "stays hovering on the exact spot and bites without moving its body: its wings beat in full, wide strokes, from high above its back down to low below its body, bigger than its hover wingbeat: they stay fully spread, never folded against its body, so at the top of each stroke both wings reach straight up high above its ears and at the bottom both reach straight down far below its feet, and it opens its jaws wide, fangs bared, and snaps them shut twice, only its head jerking a short way forward and back. There is no lunge: its body, chest and feet stay on the same spot in the frame at exactly the same height from the first frame to the last; it does not rise, climb, swoop, drop, dip or move toward or away from the camera, and it keeps facing the same way and never turns. It bites at something right in front of it at its own height, down below the camera: it never comes up toward the camera, and its feet stay at the same height in the frame as in the first frame"
+  },
+  "attack-SW": {
+   "attack": "pulls its head back, then lunges its head and chest forward toward the facing direction in one big snapping bite, fangs bared, with one hard wingbeat, then pulls back. Its body stays at exactly the same height the whole time: it does not rise, swoop up or dip, and its wings stay close in to the body. It does not fly forward, it bites from where it hovers"
+  },
+  "attack-NW": {
+   "attack": "stays hovering on the exact spot and bites without moving its body: its wings beat in full, wide strokes, from high above its back down to low below its body, bigger than its hover wingbeat, and it opens its jaws wide, fangs bared, and snaps them shut twice, only its head jerking a short way forward and back. There is no lunge: its body, chest and feet stay on the same spot in the frame at exactly the same height from the first frame to the last; it does not rise, climb, swoop, drop, dip or move toward or away from the camera, and it keeps facing the same way and never turns"
+  },
+  "attack-N": {
+   "attack": "stays hovering on the exact spot and bites without moving its body: its wings keep the same steady wingbeat as its hover, and it opens its jaws wide, fangs bared, and snaps them shut twice, only its head jerking a short way forward and back. There is no lunge: its body, chest and feet stay on the same spot in the frame at exactly the same height from the first frame to the last; it does not rise, climb, swoop, drop, dip or move toward or away from the camera, and it keeps facing the same way and never turns. Its back stays toward the camera the whole time, so its face is never seen. Its head stays bowed forward, away from the camera, all through the bite, never tipped back, so its open mouth stays hidden behind its head and only the back of its head and its ears show"
+  },
+  "attack-NE": {
+   "attack": "stays hovering on the exact spot and bites without moving its body: its wings keep the same steady wingbeat as its hover, and it opens its jaws wide, fangs bared, and snaps them shut twice, only its head jerking a short way forward and back. There is no lunge: its body, chest and feet stay on the same spot in the frame at exactly the same height from the first frame to the last; it does not rise, climb, swoop, drop, dip or move toward or away from the camera, and it keeps facing the same way and never turns"
+  },
+  "attack-E": {
+   "attack": "pulls its head back, then snaps its head and chest forward toward the facing direction in one big biting lunge, jaws wide, fangs bared, then pulls back. Its wings keep flapping in the same steady wingbeat as its hover all through the bite, and its body stays at exactly the same height the whole time: it does not rise, climb, swoop up, drop or dip. It does not fly forward, it bites from where it hovers"
+  },
+  "attack-SE": {
+   "attack": "stays hovering on the exact spot and bites without moving its body: its wings keep the same steady wingbeat as its hover, and it opens its jaws wide, fangs bared, and snaps them shut twice, only its head jerking a short way forward and back. There is no lunge: its body, chest and feet stay on the same spot in the frame at exactly the same height from the first frame to the last; it does not rise, climb, swoop, drop, dip or move toward or away from the camera, and it keeps facing the same way and never turns"
+  }
+ },
+ "centred_attacks": [
+  "S",
+  "NW"
+ ]
+}

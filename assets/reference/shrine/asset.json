@@ -1,0 +1,31 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 4, shrine). The concept has no shrine, so the box is the theme.jpg masonry crop (640,100,48,64) for its stone colours. world height 24 (66 px) is under a hero (32) and under the camp (28), and above the large rock (16): a wayside shrine you stand beside, not the watchtower (48). Cell 96x80. No relic. The relic icon is variant c in ART-REDO and is not a variant here.",
+ "type": "static",
+ "view": "three_quarter",
+ "noun": "wayside shrine",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   640,
+   100,
+   688,
+   164
+  ]
+ },
+ "source_note": "The reference shows no shrine: it is only a patch of keep masonry; draw only one wayside shrine and nothing else, no tower, no figures; use the reference only for the colours of the stone",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a small wayside shrine of grey stone blocks, a squat pillar with a little peaked stone roof and one shallow empty niche, no relic, no statue and no banner",
+ "world_height": 24,
+ "cell": [
+  96,
+  80
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "the niche facing the camera, the peaked roof above it, the niche empty"
+  }
+ ]
+}

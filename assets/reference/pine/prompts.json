@@ -1,0 +1,38 @@
+{
+ "hero": "pine",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the pine tree from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows one pine in a dark forest with other trees and figures at its edges; draw only the single pine tree and nothing else. Same design: a tall dark evergreen pine tree with a narrow conical crown of layered dark green needle tiers, lighter yellow-green tips on the lit side, a pointed top, and a short dark brown trunk visible under the lowest branches. A full, mature pine, its crown widest near the ground. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole pine tree from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single pine tree only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/pine/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "pine-a.png"
+   },
+   "save_as": "assets/reference/pine/views/a.png",
+   "then": "python3 script/hero_sprites.py pine build"
+  },
+  {
+   "id": "image-b",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the pine tree from the reference image, seen from the front at the game's camera angle, slightly from above. The reference shows one pine in a dark forest with other trees and figures at its edges; draw only the single pine tree and nothing else. Same design: a tall dark evergreen pine tree with a narrow conical crown of layered dark green needle tiers, lighter yellow-green tips on the lit side, a pointed top, and a short dark brown trunk visible under the lowest branches. A slender pine standing alone, with sparse, widely spaced needle tiers and a long bare trunk below the lowest tier. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole pine tree from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single pine tree only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/pine/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "pine-b.png"
+   },
+   "save_as": "assets/reference/pine/views/b.png",
+   "then": "python3 script/hero_sprites.py pine build"
+  }
+ ],
+ "type": "static"
+}

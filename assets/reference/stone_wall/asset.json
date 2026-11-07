@@ -1,0 +1,30 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 3). stone_wall has no card today (cardFallback draws the wall card). world_height 40 matches the wall card it replaces, so a stone wall stands as tall as a palisade (open question in docs/ART-REDO.md); the concept box is the stone wall at the east of theme.jpg. Cell widened to 144: the generated section is 130 px wide with its outline.",
+ "type": "static",
+ "noun": "stone wall section",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   700,
+   470,
+   900,
+   590
+  ]
+ },
+ "source_note": "The reference shows a curved dry-stone wall around a village with fields, trees and figures nearby; draw only one short straight section of the stone wall and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a short straight section of a dry-stone wall of large rough grey stones stacked without mortar, a slightly uneven top edge, darker moss in some gaps, seen front-on so the section runs left to right across the image",
+ "world_height": 40,
+ "cell": [
+  144,
+  120
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "the section is about as wide as it is tall, its left and right ends straight so sections can stand side by side"
+  }
+ ]
+}

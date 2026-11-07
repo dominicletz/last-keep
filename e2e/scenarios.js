@@ -739,11 +739,10 @@ async function twoPlayerNight(browser) {
   const town = await page.evaluate(() => window.__lastKeep.townLook)
   expect(town.rank).toBe(0)
   expect(town.path).toBe(true)
-  expect(town.keep).toContain("roof")
-  expect(town.keep).toContain("brazier")
-  expect(town.keep).not.toContain("battlement")
-  expect(town.keep).toContain("course")
-  expect(town.keepColors).toEqual(expect.arrayContaining([0x4b3c33, 0x654e41, 0x2c2a2a]))
+  expect(town.keep).toEqual(["sheet"])
+  expect(town.keepSheet).toBe("0")
+  expect(town.torch).toBe(true)
+  expect(town.brazier).toBe(true)
   expect(town.bestiary).toEqual(["goblin", "skeleton", "wolf", "troll", "bat", "boss"])
   const forest = await page.evaluate(() => window.__lastKeep.forestLook)
   expect(forest.trunks).toBe(70)
@@ -2414,6 +2413,7 @@ async function readMatch(page) {
       census: perf.census || { inScene: 0, orphans: 0, pooled: 0, byRole: {}, settled: 0 },
       chests: (game.chests || []).length,
       portals: (game.portals || []).length,
+      merchant: game.merchant ? 1 : 0,
       p95: null,
       paints: perf.paints || [],
       maxStep: perf.maxStep || 0,

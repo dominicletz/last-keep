@@ -1,0 +1,54 @@
+{
+ "hero": "rock",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the rock from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows rocks on the forest floor with figures and trees nearby; draw only one rock and nothing else. Same design: a rough grey stone with flat chipped faces, lighter grey on the lit top, darker moss in the cracks. A large rough boulder, wider than tall. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole rock from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single rock only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/rock/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "rock-a.png"
+   },
+   "save_as": "assets/reference/rock/views/a.png",
+   "then": "python3 script/hero_sprites.py rock build"
+  },
+  {
+   "id": "image-b",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the rock from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows rocks on the forest floor with figures and trees nearby; draw only one rock and nothing else. Same design: a rough grey stone with flat chipped faces, lighter grey on the lit top, darker moss in the cracks. A medium rock, rounded. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole rock from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single rock only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/rock/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "rock-b.png"
+   },
+   "save_as": "assets/reference/rock/views/b.png",
+   "then": "python3 script/hero_sprites.py rock build"
+  },
+  {
+   "id": "image-c",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the rock from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows rocks on the forest floor with figures and trees nearby; draw only one rock and nothing else. Same design: a rough grey stone with flat chipped faces, lighter grey on the lit top, darker moss in the cracks. A small flat stone. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole rock from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single rock only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/rock/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "rock-c.png"
+   },
+   "save_as": "assets/reference/rock/views/c.png",
+   "then": "python3 script/hero_sprites.py rock build"
+  }
+ ],
+ "type": "static"
+}

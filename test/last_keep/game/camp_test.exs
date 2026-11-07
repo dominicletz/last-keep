@@ -1,7 +1,7 @@
 defmodule LastKeep.Game.CampTest do
   use ExUnit.Case, async: true
 
-  alias LastKeep.Game.{Rules, Sim}
+  alias LastKeep.Game.{Rules, Sim, Snapshot}
 
   test "a camp spends 8 gold once and the ally is not a seat" do
     state = stand("ada", :warrior)
@@ -49,6 +49,30 @@ defmodule LastKeep.Game.CampTest do
     assert state.resources.gold == 8
     assert vagrants(state) == []
     assert map_size(state.players) == 5
+  end
+
+  test "the snapshot sends the ally without a facing" do
+    state = stand("ada", :warrior)
+    camp = hd(state.world.camps)
+    state = move_player(state, "ada", camp.x, camp.y)
+    state = purse(state, 8)
+    state = Sim.tick(state)
+    [ally] = vagrants(state)
+    snap = Snapshot.render(state)
+    [row] = snap.vagrants
+
+    assert row.id == ally.id
+    assert row.hero == Atom.to_string(ally.hero)
+    assert row.x == ally.x
+    assert row.y == ally.y
+    assert row.hp == ally.hp
+    assert row.max == ally.max_hp
+    assert row.alive == true
+    refute Map.has_key?(row, :facing)
+
+    kinds = Enum.map(snap.pois, & &1.kind)
+    refute "merchant" in kinds
+    refute "hermit" in kinds
   end
 
   test "the ally steps toward the nearest living hero and strikes" do

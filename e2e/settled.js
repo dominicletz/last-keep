@@ -10,8 +10,11 @@ function settledHolds(first, later) {
   for (const sample of [first, later]) {
     if (roleCount(sample, "chest") !== sample.chests) return false
     if (roleCount(sample, "portal") !== sample.portals) return false
+    if (roleCount(sample, "merchant") !== (sample.merchant || 0)) return false
   }
-  const extra = later.chests + later.portals - (first.chests + first.portals)
+  const extra =
+    later.chests + later.portals + (later.merchant || 0) -
+    (first.chests + first.portals + (first.merchant || 0))
   const delta = later.census.settled - first.census.settled
   return delta <= extra
 }

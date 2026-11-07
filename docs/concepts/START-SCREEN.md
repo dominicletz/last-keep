@@ -12,7 +12,7 @@ Triangle Strategy's title is a still of the party. Choosing units is a list: a p
 
 ## What Last Keep takes from that
 
-The yard at dusk is the screen. The same HD-2D picture draws it, with a camera of its own. That camera sits low and to the side, close enough that the hero is about two fifths of the window, and the keep, the trees, and the sky sit in layers behind. The card height is an integer multiple of the 160px source, and the textures stay nearest, so the pixels stay square. On a short landscape window the hero stands left of centre and the class card sits on the right. Left and right are the only class control, on every device:
+The yard at dusk is the screen. The title above it is the pixel wordmark, `priv/static/images/hd2d/title.png`, 382 px wide. On a short window it shrinks so the class card still fits. The same HD-2D picture draws the yard, with a camera of its own. That camera sits low and to the side, close enough that the hero is about two fifths of the window, and the keep, the trees, and the sky sit in layers behind. The card height is an integer multiple of the 160px source, and the textures stay nearest, so the pixels stay square. On a short landscape window the hero stands left of centre and the class card sits on the right. Left and right are the only class control, on every device:
 
 - Arrow keys, and A and D, while the name field is not being edited.
 - On-screen arrows, for the mouse and for a tap.

@@ -1,0 +1,229 @@
+{
+ "_note": "Sixth monster (docs/ART-REDO.md), the boss: the dark rider in monsters.jpg, rider and horse as one figure. The concept box is the registry crop (1000,70,275,520) widened left to 915 so the halberd head is in it; it shows a wolf at its lower left, so the views draw the rider and his horse and nothing else. MARKS helm and horse. World height 34 is monsterHeights.boss; at the hero texel (32/88) that is 94 px, from the top of the helm's spikes to the hooves. The cell is 192, not 110 (94 + 16): side-on the horse and rider are wider than tall, the chop raises the halberd high over the helm, and dead, the horse lies on its side about 1.5 times as long as the figure is tall. view_height is 360: the side view with the horse's length and the halberd is the widest view (at most 640 px on the 720 canvas). The clips start from the skeleton, wolf, bat and troll lessons: every motion stays on the spot, the horse never rears (a rear lifts the figure off its start height), the chop lands beside the horse without a step, and the death holds the start pose for a moment and only moves down. The rider stays slumped on the horse as it sinks onto its belly (the wolf's death-E would not lie on its side): one body, settling low, so the last frame stays under DEATH_DOWN. The halberd is in his right hand, as the concept holds it, and is visible; sides.W says where the far hand holds it in the left profile (the troll's view-E lesson). The concept's purple smoke at the hooves and wisps on the cape are left out: the death prompt forbids particles, and loose wisps break the silhouette checks. view-S came out three-quarter on both take-1 and take-2 runs (kept in /workspace/lk/boss-viewS-takes), the horse's head turned toward image-left, though view_pose asks for the spine along the view direction: the reference image is itself three-quarter and pulls the front view with it. view_notes.S names the front view's symmetry outright: the horse's head straight at the camera with both eyes equally visible, the rider centred behind it and the halberd upright beside the horse's head on the image-left side. view-N, W and E use v-S as their reference, so they wait for a front view that passes. view-S take 3 is square-on and is v-S. view-N gets the same symmetry spelled out from behind (view_notes.N), so it does not follow the three-quarter reference image either. View-N (take 1) and view-W (take 1) are right. View-E take 1 came out facing left, the same as view-W (kept in /workspace/lk/boss-viewE-takes), so view_notes.E names the right edge for the horse's head and the rider's face and puts the tail on image-left, as the troll's E note does. E is not mirrored from W (mirror_views): the halberd is in his right hand, and a flipped W would move it to his left hand in E only, so it would jump sides as he turns from SE through E to NE. Even at 94 px, the halberd is the largest shape after the horse. Turntable take 2 (take 1 kept in /workspace/lk/boss-turntable-take1 with its dirs and contact sheets): take 1 turned cleanly and `dirs` picked SW 34, NW 75, NE 119 and SE 165, but the halberd vanished twice. Around NW (frames 72-78) it was hidden behind his back. Around SE (frames 156-165) it faded out while jumping from the image-right side to the image-left side. So dirs/NW and dirs/SE showed no halberd. The turntable design now keeps the halberd in his right hand, its blade high above his helm in every frame. Turntable take 2 (kept in /workspace/lk/boss-turntable-take2) lost the halberd in exactly the same two places: dirs NW (frame 77) and SE (frame 167). The cause is the keyframes, not the prompt. W holds it forward beside the horse's neck (image-left) and N holds it at his right shoulder (image-right), so on the way from W to N it must pass behind his back. From E to S it crosses in front of his dark chest and helm and is lost against them. Frames near the band that show it are 5-9 frames (9-17 degrees) off the diagonal, so no pin. Take 3 keys the turntable on two new views as well, NW at 3 s and SE at 7 s, each with the halberd's blade clear above the helm. dirs/NW and dirs/SE are those views, as the cardinals are theirs. GenerateVideo takes at most 4 keyframes, so the 5-keyframe take-3 turntable call was refused. The NW and SE views do not need to key the turntable, because dirs/NW and dirs/SE are those views (`diagonal_views`), just as the cardinals are theirs. The turntable now only supplies SW and NE. Take 2 got those right (SW 35, NE 117, the halberd in view), so it stays, and its keyframes are W, N and E again. No new turntable call.",
+ "type": "monster",
+ "noun": "dark rider",
+ "possessive": "his",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [
+   915,
+   70,
+   1280,
+   600
+  ]
+ },
+ "source_note": "the reference shows the dark rider on his horse with a wolf at its lower left edge; draw only the rider on his horse with his halberd and nothing else, no wolf, no smoke",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "armoured dark knight riding a black armoured warhorse: a dark iron great helm crowned with tall spikes and a narrow glowing purple visor slit, spiked dark iron pauldrons, dark plate armour with a brown leather belt, a long tattered charcoal cape over his back, armoured legs in the stirrups; the horse is black with dark iron plate barding on its head, neck and chest, a glowing purple eye, a short dark mane, a long dark tail and dark hooves",
+ "feet": "hooves",
+ "view_pose": "Whole rider and horse from the tips of the helm's spikes down to the hooves, the rider sitting upright in the saddle, the horse standing square on all four hooves in a neutral alert pose, head level, all four legs visible, nothing cropped; the horse's spine points exactly along the view direction, so in a front or back view the horse is foreshortened straight behind its head with its two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways",
+ "diagonal_pose": "Whole rider and horse from the tips of the helm's spikes down to the hooves, the rider sitting upright in the saddle, the horse standing square on all four hooves in a neutral alert pose, head level, all four legs visible, nothing cropped; the horse is turned exactly three-quarter, its spine at 45 degrees to the camera, so its near side and its front or back both show",
+ "diagonal_views": [
+  "NW",
+  "SE"
+ ],
+ "view_height": 360,
+ "gait": "Steady horse trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, the horse's back level and head held level, the rider sitting upright in the saddle and rising and falling slightly with the horse, the cape swaying a little; the horse's body never moves forward",
+ "items": [
+  {
+   "name": "long dark iron halberd with a broad axe blade and a spike",
+   "at": "right hand",
+   "walk": "halberd held upright in his right hand, its blade above his helm",
+   "still": "halberd",
+   "visible": true,
+   "sides": {
+    "W": "his far hand, held upright beside the horse's neck so the shaft and the blade of the halberd show above the horse's head on the image-left side",
+    "NW": "his far right hand, held upright beside his right shoulder so the shaft and the broad axe blade of the halberd rise high above his helm on the image-right side, clear against the white background",
+    "SE": "his near right hand, held upright beside his right shoulder so the shaft and the broad axe blade of the halberd rise high above his helm on the image-left side, clear against the white background, never in front of his helm or chest"
+   }
+  },
+  {
+   "name": "glowing purple eyes",
+   "at": "body",
+   "glows": "the purple glow of his visor and of the horse's eye"
+  }
+ ],
+ "attack": "keeps the horse standing on all four hooves on the same spot and swings the halberd up high over his helm, then chops it down hard beside the horse's head in the facing direction, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle",
+ "death": "holds the exact first-frame pose still for a moment, then the rider slumps forward over the horse's neck, the halberd falls flat to the ground beside the horse, and the horse's legs fold under it and it sinks straight down onto its belly and settles low on the ground on the exact spot where it stood, the rider still slumped on its back. Horse and rider only ever move down, never up. The horse never rears up, leaps or falls forward toward the camera, and the rider never falls off; it lies where its hooves were",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "sheet": {
+  "world_height": 34,
+  "height": 94,
+  "cell": 192
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "armoured dark knight on a black armoured warhorse: dark iron great helm with tall spikes and a glowing purple visor slit, spiked pauldrons, dark plate armour, a long tattered charcoal cape, a long dark iron halberd held upright in his right hand the whole time, so tall that its axe blade stands high above his helm and shows in every frame of the turn, never hidden behind his body or cape, never fading out and never changing hands; the horse black with dark iron barding on its head, neck and chest, a glowing purple eye, a short dark mane, a long dark tail, standing square on all four hooves"
+ },
+ "view_notes": {
+  "S": "Seen exactly from the front, not three-quarter like the reference image: the horse's head points straight at the camera with both of its eyes equally visible and the head, neck and armoured chest square and symmetric about the image's vertical centre line, its body hidden straight behind its chest, its two front legs side by side; the rider sits centred straight behind the horse's head, facing the camera, and holds the halberd upright beside the horse's head on the image-left side",
+  "N": "Seen exactly from behind, the mirror of the square front view in the second reference image, not three-quarter: the horse's rump and long tail point straight at the camera, square and symmetric about the image's vertical centre line, its two hind legs side by side and its head hidden straight behind its body except for the tips of its ears; the rider sits centred straight above the rump with his back and cape to the camera, and holds the halberd upright beside his shoulder on the image-right side",
+  "E": "Seen exactly from the right side, facing screen-right: the horse's head, muzzle and glowing eye point to the right edge of the image and its rump and long tail are on the image-left side; the rider faces the right edge too, his right side and the horse's right side nearest the camera. This is the mirror image of a left profile, not the same view: nothing faces the left edge. He holds the halberd upright in his right hand, nearest the camera, beside the horse's neck, so its shaft and blade show above the horse's head on the image-right side",
+  "NW": "Seen from behind and to the left, exactly halfway between the left profile and the back view in the reference images: the horse's rump and tail are nearest the camera at the lower image-right, its head, neck and one glowing eye point up and to the image-left, so its spine runs diagonally at 45 degrees, neither sideways nor straight away from the camera; the rider faces the same way, his back, cape and left side toward the camera. This is a three-quarter view, not a profile and not a back view",
+  "SE": "Seen from the front and to the right, exactly halfway between the right profile and the front view in the reference images: the horse's head, chest and glowing eye point down and to the image-right, nearest the camera, its rump and tail behind it at the upper image-left, so its spine runs diagonally at 45 degrees, neither sideways nor straight at the camera; the rider faces the same way, his visor, chest and right side toward the camera. This is a three-quarter view, not a profile and not a front view"
+ },
+ "clip_overrides": {
+  "_note": "Take 2 of walk-N (take 1 kept in /workspace/lk/boss-clips-take1 with attack-N). Take-1 walk-N failed the precheck start check by 84 px (limit 55 = 0.2 x its walk median 274): seen from behind the trot barely moved. Take 2 passed the precheck (median 857, start 82 px, limit 171) and attack-N passed with it (87 px), but on the trial sheet (kept as boss-clips-take1/trial-sheet.png) take 2 bounced: walk-N 85-107 px tall (94 +-4), and walk-NE rose to 103 px. Take 3 of walk-N and take 2 of walk-NE keep the legs clearly moving and the body level. attack-N and attack-SW chopped too little (largest change 781 and 958 px against the walk step medians 857 and 1107), so take 2 swings the halberd wide and far out to the side and back. death-N ended 58 px tall (at most 56) and its lowest row rose 4 px as the legs folded (death feet +-3), so take 2 folds the legs with the hooves on the ground and ends lying flat on its belly with its neck and head on the ground (not on its side: the wolf's death-E would not lie on its side). Every take is kept in /workspace/lk/boss-clips-take1 (walk-N take 2 as walk-N-take2.mp4). No limit was changed. Take 3 precheck (takes 2 kept in /workspace/lk/boss-clips-take2): attack-SW, walk-NE pass. walk-N take 3 is level but its legs barely move (walk median 200, so start limit 40) and it starts 88 px off; attack-N starts 87 px off (limit 40 from the same median) and turns his lit front armour to the camera (steel 117); death-N's lowest row reaches 188 (target 185 +-3). The first frames match dirs/N by eye: the start difference is the encode, about 85 px every take, so the N clips need a walk-N median of at least 440. Take 4 of walk-N keeps the body level but the legs stepping high and wide; attack-N take 3 swings out to the side with his back kept to the camera; death-N take 3 keeps the hooves on the ground line as the horse sinks. Take 4/3 precheck (previous takes in /workspace/lk/boss-clips-take3): walk-N take 4 passes (median 445, start limit 89, starts 84 px off). attack-N take 3 keeps his back to the camera, but at the wind-up he holds the halberd level over his helm, so its lit blade and its brown shaft show side-on: steel 116 and leather 80 px against the back ceilings 114/59 (prop null counts the halberd as armour). Take 4 lifts it upright and chops down and out to his right side, never level over the helm. death-N take 3 rises 3 px (row 182) as the rider slumps, then its hind legs reach back toward the camera to row 189 (185 +-3); take 4 folds them forward under the belly with the hooves never lifting.",
+  "walk-N": {
+   "gait": "Clearly visible horse trot on the spot, big and seen from behind: the diagonal pairs of legs move together, each hind hoof lifts high toward the belly and steps far out to the side in turn under the horse's tail, the tail swishing side to side and the cape swaying wide; only the legs, tail and cape move: the horse's back, its rump and the rider's helm stay level at exactly the same height in every frame, the horse never bobs, bounces or rears; the horse's body never moves forward"
+  },
+  "walk-NE": {
+   "gait": "Steady horse trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, the cape swaying a little; the horse's back, its rump and the rider's helm stay level at exactly the same height in every frame, the horse never bobs, bounces or rears; the horse's body never moves forward"
+  },
+  "attack-N": {
+   "attack": "keeps his back and cape to the camera the whole time, never turning toward the camera, keeps the horse standing on all four hooves on the same spot and lifts the halberd straight up, upright above his helm with the blade edge-on, then chops it down in a big, wide arc hard and far out to his right side, ending low beside the horse's flank with the blade pointing at the ground, then lifts it back upright; the halberd's shaft never lies level across or over his helm; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle"
+  },
+  "attack-SW": {
+   "attack": "keeps the horse standing on all four hooves on the same spot and swings the halberd in a big, wide arc: up high over his helm, then far down and out to his side in one hard chop that sweeps the whole blade clearly away from his body, then lifts it back; the horse's hooves stay planted on the same spot, it does not step, rear up or jump, and the rider stays in the saddle"
+  },
+  "death-N": {
+   "death": "holds the exact first-frame pose still for a moment, then the rider slumps forward over the horse's neck, the halberd falls flat to the ground beside the horse, and the horse's legs fold under it with its hooves staying on the ground, it sinks straight down onto its belly with its legs tucked under it and lowers its neck and head flat onto the ground, lying completely flat and low on the exact spot where it stood, the rider slumped low and flat along its back. Horse and rider only ever move down, never up. The horse never rears up, leaps or falls toward the camera, and the rider never falls off; it lies where its hooves were; the hooves and the horse's belly never sink below the ground line of the first frame: the lowest point stays exactly where the hooves stand; the hind legs bend at the hocks and fold forward under the belly, they never stretch back toward the camera, and the hooves never lift off the ground"
+  }
+ },
+ "check": {
+  "_note": "anchors: concept colours (hero_sprites.py boss colours) the palette keeps within dE 15: the dark iron of the armour and barding, its mid and lit tones, the dark violet-black of the cape, and the purple glow of the visor and the horse's eye. roles, tuned on the trial sheet of all 20 take-1/take-2 clips (/workspace/lk/boss-trial): the rider and horse are almost all greys (chroma under 0.12). steel is the lit armour greys (light over 0.3): helm, pauldrons and the horse's chest plate catch the light from the front. leather is the brown greys (hue 10-40): belt, saddle, breast strap and reins, mostly on the front. glow is the saturated purple (hue 255-300, chroma over 0.12) of the visor and eye. prop: null: the halberd is the same dark iron as the armour, so no colour follows it alone. bounds: the glow cannot bound a view (S walk/attack frames hold 4-23 glow px, N 0-6: they overlap), and the troll's 0.2 x start pose ceiling would fail the back's own frames (N steel up to 109 px against 0.2 x the S start pose's 165 = 33). Measured per frame on walk and attack rows: steel S 120-208, N 58-109; leather S 66-119, N 27-53. Each bound sits between the two columns: front floors steel 115 and leather 60, back ceilings steel 114 and leather 59, so a front column turned away and a back column turned to the camera both fail. Open question: the margins are thin (5-7 px from the measured extremes), much thinner than the troll's 48/96.",
+  "anchors": {
+   "iron dark": [
+    45,
+    41,
+    46
+   ],
+   "iron": [
+    64,
+    60,
+    66
+   ],
+   "iron lit": [
+    88,
+    82,
+    89
+   ],
+   "cape": [
+    40,
+    30,
+    49
+   ],
+   "glow": [
+    142,
+    66,
+    167
+   ]
+  },
+  "roles": [
+   {
+    "name": "steel",
+    "neutral": true,
+    "light_gt": 0.3
+   },
+   {
+    "name": "leather",
+    "neutral": true,
+    "hue": [
+     10,
+     40
+    ]
+   },
+   {
+    "name": "iron",
+    "neutral": true
+   },
+   {
+    "name": "glow",
+    "hue": [
+     255,
+     300
+    ],
+    "chroma_gt": 0.12
+   },
+   {
+    "name": "leather",
+    "hue": [
+     10,
+     40
+    ]
+   }
+  ],
+  "prop": null,
+  "back": {
+   "title": "back view N shows little of the lit front armour and leather",
+   "bounds": [
+    [
+     "steel",
+     [
+      "count",
+      "steel"
+     ],
+     null,
+     114
+    ],
+    [
+     "leather",
+     [
+      "count",
+      "leather"
+     ],
+     null,
+     59
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps the lit helm, chest plate and leather straps",
+   "bounds": [
+    [
+     "steel",
+     [
+      "count",
+      "steel"
+     ],
+     115,
+     null
+    ],
+    [
+     "leather",
+     [
+      "count",
+      "leather"
+     ],
+     60,
+     null
+    ]
+   ]
+  }
+ }
+}

@@ -1,0 +1,65 @@
+{
+ "_note": "Ready to run. Paths are relative to the repository root. The refs are texture or one piece: plaza-grass is the centre of the passing yard-grass tile, pine-crown is one pine with the white field cropped away, reed-green is one grass tuft. Do not use terrain-crops/plaza.png, forest_barrier/concept.png, or theme.jpg. Those are scenes, and they produced a canopy, a skyline, and thick stalks. No path call: the path refusal is final. No hermit call: the idle-W boxes already match and the remaining miss is 2 placed pixels against a limit of 1.",
+ "calls": [
+  {
+   "id": "ground-plaza",
+   "asset": "ground",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Seamless ground tile of worn plaza grass, seen from directly above, with even light and no horizon. The reference is a grass tile. It has no trees, no path, and no sky, and the new tile keeps that. It is more worn than the reference: small stones, pebbles, and bare patches, so it is not a flat wash. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. One square tile only. Do not draw a tree, a path, a canopy, or a skyline.",
+    "reference_image_paths": [
+     "assets/reference/next-art-refs/plaza-grass.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "ground-plaza.png"
+   },
+   "save_as": "assets/reference/ground/plaza.png",
+   "then": "Wire only if the column seam holds and the plaza disc spread at pixelStep(168, 400) is at least 8. A scene, a path, or a canopy does not wire."
+  },
+  {
+   "id": "forest_barrier-strip",
+   "asset": "forest_barrier",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Seamless tiling strip of pine forest. The square is the wall itself. The reference is one pine, for its needle colour and block size only. Do not copy its white background. Do not draw a forest scene, a skeleton, a field, or a sky. Pines fill the square from the left edge to the right edge. The left column of pixels continues the right column. There is no white margin on either side. The tops are the pine tips and the bottoms are the trunks. One repeat, about as wide as the pines are tall: the wall pitch is 90 px when a pine is 110 px tall. Not a panorama and not one tree standing in a white frame.",
+    "reference_image_paths": [
+     "assets/reference/next-art-refs/pine-crown.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "forest-barrier-strip.png"
+   },
+   "save_as": "assets/reference/forest_barrier/views/d.png",
+   "then": "Add it as a variant only if seam_holds passes on the file. The outer columns must be tree pixels, not white. Do not replace the live pines until that passes."
+  },
+  {
+   "id": "reeds-a",
+   "asset": "reeds",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "One reed clump on a plain white background. The reference is a grass tuft, for the green and the voxel shading only. Its blades are too thick. Each reed stalk is a single pixel-wide column, with white gaps between the stalks, and three brown cattail heads. The clump is 25 px tall in the game, so the stalks stay thin at that size. Do not draw a solid bundle and do not match a person's thickness. No ground, no trees, no sky, no other objects. Upright, centred, nothing cropped. One clump only.",
+    "reference_image_paths": [
+     "assets/reference/next-art-refs/reed-green.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "reeds-a.png"
+   },
+   "save_as": "assets/reference/reeds/views/thin-a.png",
+   "then": "Replace views/a.png only if a stalk is about one pixel wide once the clump is 25 px tall. The current views/a.png stays until then."
+  },
+  {
+   "id": "reeds-b",
+   "asset": "reeds",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "One smaller reed clump on a plain white background, leaning. The reference is a grass tuft, for the green and the voxel shading only. Its blades are too thick. Each reed stalk is a single pixel-wide column, with white gaps between the stalks, and one brown cattail head. The clump is shorter than 25 px in the game. Do not draw a solid bundle and do not match a person's thickness. No ground, no trees, no sky, no other objects. Centred, nothing cropped. One clump only.",
+    "reference_image_paths": [
+     "assets/reference/next-art-refs/reed-green.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "reeds-b.png"
+   },
+   "save_as": "assets/reference/reeds/views/thin-b.png",
+   "then": "Replace views/b.png only if a stalk is about one pixel wide at that scale. The current views/b.png stays until then."
+  }
+ ]
+}

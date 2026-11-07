@@ -1,6 +1,8 @@
 import * as THREE from "three"
 import { trackGeometry } from "./meshes.js"
+import { treeCard, treeSheet } from "./yard_cards.js"
 import { groundColor, horizonColor, lightName, ringColor, sunsetColor } from "./scene.js"
+import { onGroundTiles, sampleGroundTile } from "./seam_tiles.js"
 
 const CELL = 36
 const CHUNK = 512
@@ -77,6 +79,14 @@ export function phash2(values) {
   return hash & 0x07ffffff
 }
 
+// Yard pines and both forest-wall rings. The variant is the hash of the
+// cell, so two trees on the same spot agree and a rebuilt ring does not
+// stripe a, b, a, b.
+export function pineVariant(x, z) {
+  const variants = treeSheet.variants
+  return variants[phash2([Math.round(x), Math.round(z)]) % variants.length]
+}
+
 function inside(i, j) {
   const x = i * CELL
   const y = j * CELL
@@ -119,11 +129,49 @@ function rgb(hex) {
   return [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]
 }
 
-function biomeRgb(name) {
-  if (name === "pine" || name === "river") return rgb(SHADE)
-  if (name === "cliff" || name === "ruins") return rgb(ringColor)
-  if (name === "hill") return rgb(sunsetColor)
-  if (name === "mountain") return rgb(horizonColor)
+// Meadow, ruins, pine, cliff, river, ford, hill and mountain sample the tiles
+// that passed the column seam. A missing tile keeps the old flat colour.
+// Hill and mountain keep their lifts.
+export function biomeColor(name, worldX = 0, worldZ = 0) {
+  if (name === "meadow") {
+    const sample = sampleGroundTile("meadow", worldX, worldZ)
+    if (sample) return sample
+  }
+  if (name === "ford") {
+    const sample = sampleGroundTile("ford", worldX, worldZ)
+    if (sample) return sample
+    const meadow = sampleGroundTile("meadow", worldX, worldZ)
+    if (meadow) return meadow
+  }
+  if (name === "ruins") {
+    const sample = sampleGroundTile("ruins", worldX, worldZ)
+    if (sample) return sample
+  }
+  if (name === "pine") {
+    const sample = sampleGroundTile("pine", worldX, worldZ)
+    if (sample) return sample
+  }
+  if (name === "cliff") {
+    const sample = sampleGroundTile("cliff", worldX, worldZ)
+    if (sample) return sample
+  }
+  if (name === "river") {
+    const sample = sampleGroundTile("river", worldX, worldZ)
+    if (sample) return sample
+    return rgb(SHADE)
+  }
+  if (name === "pine") return rgb(SHADE)
+  if (name === "cliff") return rgb(ringColor)
+  if (name === "hill") {
+    const sample = sampleGroundTile("hill", worldX, worldZ)
+    if (sample) return sample
+    return rgb(sunsetColor)
+  }
+  if (name === "mountain") {
+    const sample = sampleGroundTile("mountain", worldX, worldZ)
+    if (sample) return sample
+    return rgb(horizonColor)
+  }
   return rgb(groundColor)
 }
 
@@ -151,7 +199,7 @@ function paintWindow(seed, attempt, originX, originZ) {
       const v = (iy + 0.5) / HORIZON_TEX
       const worldX = originX + (u - 0.5) * WINDOW
       const worldZ = originZ - (v - 0.5) * WINDOW
-      const [r, g, b] = biomeRgb(pictureCell(seed, attempt, worldX, worldZ))
+      const [r, g, b] = biomeColor(pictureCell(seed, attempt, worldX, worldZ), worldX, worldZ)
       const o = (iy * HORIZON_TEX + ix) * 4
       rgba[o] = r
       rgba[o + 1] = g
@@ -162,55 +210,38 @@ function paintWindow(seed, attempt, originX, originZ) {
   return rgba
 }
 
-function pineGeometry() {
-  const w = 7
-  const h = 18
-  const positions = []
-  const push = (x, y, z) => positions.push(x, y, z)
-  push(-w, 0, 0)
-  push(w, 0, 0)
-  push(0, h, 0)
-  push(-w, 0, 0)
-  push(0, h, 0)
-  push(w, 0, 0)
-  push(0, 0, -w)
-  push(0, 0, w)
-  push(0, h, 0)
-  push(0, 0, -w)
-  push(0, h, 0)
-  push(0, 0, w)
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
-  geometry.computeVertexNormals()
+// One upright quad per far pine, the pine sheet's variant cut, feet at y 0.
+// Two triangles a tree (the old cones were four), one draw call per variant.
+function pineGeometry(variant) {
+  const card = treeCard(variant)
+  const geometry = new THREE.PlaneGeometry(card.w, card.h)
+  geometry.translate(0, card.h * (0.5 - card.centerY), 0)
   return trackGeometry(geometry)
 }
 
-function gateGeometry() {
-  const positions = []
-  const colors = []
-  const box = (w, h, d, x, y, z, color) => {
-    const source = new THREE.BoxGeometry(w, h, d)
-    const pos = source.getAttribute("position")
-    const index = source.getIndex()
-    for (let i = 0; i < index.count; i++) {
-      const v = index.getX(i)
-      positions.push(pos.getX(v) + x, pos.getY(v) + y, pos.getZ(v) + z)
-      colors.push(color[0], color[1], color[2])
+// The far pines around a camera: pine cells of the picture outside the yard
+// within reach, at most TREE_CAP, chosen by hash so they do not shift as the
+// camera moves inside one chunk. Each carries the sheet variant it draws.
+export function farPines(seed, attempt, camX, camZ, reach) {
+  const [i0, i1] = cellRange(camX, reach)
+  const [j0, j1] = cellRange(camZ, reach)
+  const found = []
+  for (let j = j0; j <= j1; j++) {
+    for (let i = i0; i <= i1; i++) {
+      const x = i * CELL
+      const z = j * CELL
+      if (Math.abs(x) < YARD && Math.abs(z) < YARD) continue
+      if (Math.hypot(x - camX, z - camZ) > reach) continue
+      if (pictureCell(seed, attempt, x, z) !== "pine") continue
+      found.push({ x, z, hash: phash2([seed, i, j, attempt]) })
     }
-    source.dispose()
   }
-  const stoneDark = [0.18, 0.12, 0.1]
-  const glow = [1, 0.28, 0.04]
-  box(12, 56, 12, -22, 28, 0, stoneDark)
-  box(12, 56, 12, 22, 28, 0, stoneDark)
-  box(56, 12, 12, 0, 56, 0, stoneDark)
-  box(28, 36, 6, 0, 26, -4, glow)
-  const geometry = new THREE.BufferGeometry()
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3))
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3))
-  geometry.computeVertexNormals()
-  return trackGeometry(geometry)
+  found.sort((a, b) => a.hash - b.hash)
+  const vs = treeSheet.variants
+  return found.slice(0, TREE_CAP).map((t) => ({ ...t, variant: vs[t.hash % vs.length] }))
 }
+
+export const FAR_PINE_CAP = TREE_CAP
 
 // The yard tile already covers ±380. Shading the horizon under that square
 // doubled the ground fill on the software rasterizer and pushed the night
@@ -246,7 +277,7 @@ function cellRange(origin, reach) {
   return [min, max]
 }
 
-export function mountPicture(scene) {
+export function mountPicture(scene, options = {}) {
   const bytes = paintWindow(1, 0, 0, 0)
   const map = new THREE.DataTexture(bytes, HORIZON_TEX, HORIZON_TEX)
   map.colorSpace = THREE.SRGBColorSpace
@@ -327,34 +358,37 @@ export function mountPicture(scene) {
   ridge.frustumCulled = false
   scene.add(ridge)
 
-  const trees = new THREE.InstancedMesh(
-    pineGeometry(),
-    new THREE.MeshBasicMaterial({ color: SHADE, side: THREE.DoubleSide }),
-    TREE_CAP
-  )
-  trees.count = 0
-  trees.frustumCulled = false
-  trees.userData.role = "far-pine"
-  scene.add(trees)
-
-  const gateMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    vertexColors: true,
-    fog: false
-  })
-  const gate = new THREE.InstancedMesh(gateGeometry(), gateMaterial, 8)
-  gate.count = 0
-  gate.frustumCulled = false
-  gate.castShadow = false
-  gate.receiveShadow = false
-  gate.userData.role = "portal"
-  scene.add(gate)
+  const loadMap = options.loadMap || ((url) => new THREE.TextureLoader().load(url))
+  const trees = {}
+  for (const variant of treeSheet.variants) {
+    const card = treeCard(variant)
+    const tex = loadMap("/" + treeSheet.url)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.magFilter = THREE.NearestFilter
+    tex.minFilter = THREE.NearestFilter
+    tex.repeat.set(card.repeat[0], card.repeat[1])
+    tex.offset.set(card.offset[0], card.offset[1])
+    const mesh = new THREE.InstancedMesh(
+      pineGeometry(variant),
+      new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, transparent: false, side: THREE.DoubleSide }),
+      TREE_CAP
+    )
+    mesh.count = 0
+    mesh.frustumCulled = false
+    mesh.userData.role = "far-pine"
+    mesh.userData.variant = variant
+    scene.add(mesh)
+    trees[variant] = mesh
+  }
 
   const dummy = new THREE.Object3D()
   const ahead = new THREE.Vector3()
   let windowKey = ""
   let mistKey = ""
   let treeKey = ""
+  onGroundTiles(() => {
+    windowKey = ""
+  })
 
   function paint(seed, attempt, camera) {
     let lookX = 0
@@ -410,44 +444,18 @@ export function mountPicture(scene) {
     const key = `${seed}:${attempt}:${cx}:${cz}:${Math.round(reach)}`
     if (key === treeKey) return
     treeKey = key
-    const [i0, i1] = cellRange(camera.position.x, reach)
-    const [j0, j1] = cellRange(camera.position.z, reach)
-    const found = []
-    for (let j = j0; j <= j1; j++) {
-      for (let i = i0; i <= i1; i++) {
-        const x = i * CELL
-        const z = j * CELL
-        if (Math.abs(x) < YARD && Math.abs(z) < YARD) continue
-        if (Math.hypot(x - camera.position.x, z - camera.position.z) > reach) continue
-        if (pictureCell(seed, attempt, x, z) !== "pine") continue
-        found.push({ x, z, hash: phash2([seed, i, j, attempt]) })
-      }
-    }
-    found.sort((a, b) => a.hash - b.hash)
-    const picks = found.slice(0, TREE_CAP)
-    trees.count = picks.length
-    for (let n = 0; n < picks.length; n++) {
-      dummy.position.set(picks[n].x, 0, picks[n].z)
-      dummy.rotation.set(0, 0, 0)
-      dummy.scale.set(1.8, 2.6, 1.8)
-      dummy.updateMatrix()
-      trees.setMatrixAt(n, dummy.matrix)
-    }
-    trees.instanceMatrix.needsUpdate = true
-  }
-
-  function placeGates(portals) {
-    const rows = (portals || []).slice(0, gate.instanceMatrix.count)
-    gate.count = rows.length
-    for (let n = 0; n < rows.length; n++) {
-      const row = rows[n]
-      dummy.position.set(row.x, 0, row.y)
-      dummy.lookAt(0, 0, 0)
+    const picks = farPines(seed, attempt, camera.position.x, camera.position.z, reach)
+    for (const mesh of Object.values(trees)) mesh.count = 0
+    for (const t of picks) {
+      const mesh = trees[t.variant]
+      // Face the camera once per placement; the key changes with the chunk.
+      dummy.position.set(t.x, 0, t.z)
+      dummy.rotation.set(0, Math.atan2(camera.position.x - t.x, camera.position.z - t.z), 0)
       dummy.scale.set(1, 1, 1)
       dummy.updateMatrix()
-      gate.setMatrixAt(n, dummy.matrix)
+      mesh.setMatrixAt(mesh.count++, dummy.matrix)
     }
-    gate.instanceMatrix.needsUpdate = true
+    for (const mesh of Object.values(trees)) mesh.instanceMatrix.needsUpdate = true
   }
 
   return {
@@ -461,7 +469,6 @@ export function mountPicture(scene) {
       horizonFogNear.value = span * 1.15
       horizonFogFar.value = span * 2.2
       if (camera) placeTrees(camera, seed, attempt, halfH || 168)
-      placeGates(seeded ? snap.portals : [])
     }
   }
 }

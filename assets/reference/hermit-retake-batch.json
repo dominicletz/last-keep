@@ -1,0 +1,35 @@
+{
+ "_note": "Hermit idles that fail the start pose, copied from hermit-motion-batch.json. Prompts and save_as are unchanged. idle-W is 6 px against a limit of 2. idle-N is 2 px against a limit of 0. idle-S and idle-E pass and are not here. Paths are absolute under /workspace/lk-art-redo.",
+ "calls": [
+  {
+   "id": "hermit-idle-W",
+   "asset": "hermit",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The hermit holds exactly the pose, angle and facing of the first frame (facing screen-left, his left side toward the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/hermit/video/dirs/W.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/hermit/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "hermit-idle-W.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/hermit/video/idle-W.mp4"
+  },
+  {
+   "id": "hermit-idle-N",
+   "asset": "hermit",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Nearly static game sprite idle loop. The hermit holds exactly the pose, angle and facing of the first frame (seen from directly behind, back to the camera) for the whole clip. Only a very small breathing motion: chest and shoulders rise and fall by a few pixels. Arms do not move, body does not turn, feet do not move, head does not turn. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked camera, no zoom, plain flat white background, even lighting, crisp frames.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/hermit/video/dirs/N.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/hermit/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "hermit-idle-N.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/hermit/video/idle-N.mp4"
+  }
+ ]
+}

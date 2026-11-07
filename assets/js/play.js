@@ -837,8 +837,8 @@ function start(code, seat, ui) {
       const kind = button.dataset.build
       const cost = me?.costs?.[kind]
       const face = buildFace(kind, cost, document.documentElement.classList.contains("touch-play"))
-      const faceHtml = `${escapeHtml(face.title)}<small>${escapeHtml(face.price)}</small>`
-      if (button.innerHTML !== faceHtml) button.innerHTML = faceHtml
+      const html = `${faceHtml(face)}<small>${escapeHtml(face.price)}</small>`
+      if (button.innerHTML !== html) button.innerHTML = html
       button.classList.toggle("on", kind === armed)
     })
     const cost = armed && me?.costs ? me.costs[armed] : null
@@ -965,7 +965,10 @@ function hudMarkup() {
         `<div class="skill" data-chrome data-skill="${key}"><b>${label}</b><small data-skill-name="${key}"></small><div class="cool"></div></div>`
     )
     .join("")
-  const builds = BUILD.map((kind) => `<button type="button" class="build" data-chrome data-build="${kind}">${buildFace(kind, null, false).title}</button>`).join("")
+  const builds = BUILD.map((kind) => {
+    const face = buildFace(kind, null, false)
+    return `<button type="button" class="build" data-chrome data-build="${kind}">${faceHtml(face)}</button>`
+  }).join("")
   return `
     <div class="hud-top">
       <div class="actions">
@@ -1002,10 +1005,19 @@ function thumbMarkup() {
   return `<div class="thumb-pad" data-touch-pad hidden>${slots}<button type="button" class="thumb context" data-touch-context hidden></button></div><div class="stick" data-stick hidden><div class="stick-knob" data-stick-knob></div></div>`
 }
 
+function faceHtml(face) {
+  const icon = face.icon ? `<img alt="" draggable="false" width="28" height="28" src="${face.icon}">` : ""
+  return `${icon}${escapeHtml(face.title)}`
+}
+
+function sackHtml(mark) {
+  return `<div class="sack" data-sack="${mark.key}"><img alt="" draggable="false" width="24" height="24" src="${mark.icon}">${escapeHtml(mark.text)}</div>`
+}
+
 function drawSacks(stock, resources) {
   if (!stock) return
   const marks = sackLine(resources)
-  const html = marks.map((mark) => `<div class="sack" data-sack="${mark.key}">${escapeHtml(mark.text)}</div>`).join("")
+  const html = marks.map(sackHtml).join("")
   if (stock.dataset.drawn !== html) {
     stock.innerHTML = html
     stock.dataset.drawn = html

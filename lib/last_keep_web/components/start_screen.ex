@@ -2,13 +2,24 @@ defmodule LastKeepWeb.StartScreen do
   @moduledoc false
   use Phoenix.Component
 
+  use Phoenix.VerifiedRoutes,
+    endpoint: LastKeepWeb.Endpoint,
+    router: LastKeepWeb.Router,
+    statics: LastKeepWeb.static_paths()
+
   attr :mode, :string, required: true
   attr :hidden, :boolean, default: false
 
   def start_screen(assigns) do
     ~H"""
     <form id="start-screen" data-hero="warrior" hidden={@hidden}>
-      <p class="start-title">Last Keep</p>
+      <img
+        class="start-title"
+        src={~p"/images/hd2d/title.png"}
+        width="382"
+        height="83"
+        alt="Last Keep"
+      />
       <button type="button" data-class="prev" aria-label="Previous class">‹</button>
       <button type="button" data-class="next" aria-label="Next class">›</button>
       <div class="start-card">

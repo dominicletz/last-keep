@@ -1,0 +1,86 @@
+{
+ "hero": "keep",
+ "calls": [
+  {
+   "id": "image-0",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Each rank was drawn from yard-concept/crops/keep-N.png. World height 235 is the live rank-4 top. The scales are the live tops 165, 179, 193, 207 and 235 over that. Same design: the keep of that rank from its concept crop, the same masses and the same base. Rank 0, live top 165. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single keep only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/keep/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "keep-0.png"
+   },
+   "save_as": "assets/reference/keep/views/0.png",
+   "then": "python3 script/hero_sprites.py keep build"
+  },
+  {
+   "id": "image-1",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Each rank was drawn from yard-concept/crops/keep-N.png. World height 235 is the live rank-4 top. The scales are the live tops 165, 179, 193, 207 and 235 over that. Same design: the keep of that rank from its concept crop, the same masses and the same base. Rank 1, live top 179. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single keep only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/keep/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "keep-1.png"
+   },
+   "save_as": "assets/reference/keep/views/1.png",
+   "then": "python3 script/hero_sprites.py keep build"
+  },
+  {
+   "id": "image-2",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Each rank was drawn from yard-concept/crops/keep-N.png. World height 235 is the live rank-4 top. The scales are the live tops 165, 179, 193, 207 and 235 over that. Same design: the keep of that rank from its concept crop, the same masses and the same base. Rank 2, live top 193. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single keep only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/keep/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "keep-2.png"
+   },
+   "save_as": "assets/reference/keep/views/2.png",
+   "then": "python3 script/hero_sprites.py keep build"
+  },
+  {
+   "id": "image-3",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Each rank was drawn from yard-concept/crops/keep-N.png. World height 235 is the live rank-4 top. The scales are the live tops 165, 179, 193, 207 and 235 over that. Same design: the keep of that rank from its concept crop, the same masses and the same base. Rank 3, live top 207. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single keep only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/keep/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "keep-3.png"
+   },
+   "save_as": "assets/reference/keep/views/3.png",
+   "then": "python3 script/hero_sprites.py keep build"
+  },
+  {
+   "id": "image-4",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the keep from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. Each rank was drawn from yard-concept/crops/keep-N.png. World height 235 is the live rank-4 top. The scales are the live tops 165, 179, 193, 207 and 235 over that. Same design: the keep of that rank from its concept crop, the same masses and the same base. Rank 4, live top 235. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole keep from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single keep only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/keep/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "keep-4.png"
+   },
+   "save_as": "assets/reference/keep/views/4.png",
+   "then": "python3 script/hero_sprites.py keep build"
+  }
+ ],
+ "type": "static"
+}

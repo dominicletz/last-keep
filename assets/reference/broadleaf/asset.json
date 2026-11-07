@@ -1,0 +1,38 @@
+{
+ "_note": "Static piece (docs/ART-REDO.md section 9, broadleaf tree). The concept box is the round leafy tree inside the palisade at the left of theme.jpg (houses and stakes at its edges excluded by source_note). world height 40 like the pine (110 px). b is a retake: a different silhouette from a, shape_iou 0.85. The committed sheet stays until that view exists.",
+ "type": "static",
+ "view": "front",
+ "noun": "broadleaf tree",
+ "concept": {
+  "source": "docs/concept/theme.jpg",
+  "box": [
+   258,
+   262,
+   388,
+   412
+  ]
+ },
+ "source_note": "The reference shows one leafy tree behind a palisade with houses at its edges; draw only the single tree and nothing else",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a broad leafy deciduous tree with a full rounded crown of dark green leaf clusters, lighter yellow-green leaves on the lit top, and a short thick dark brown trunk",
+ "world_height": 40,
+ "cell": [
+  136,
+  120
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "a wide, round oak-like crown"
+  },
+  {
+   "id": "b",
+   "note": "a tall narrow poplar, a column of leaves on a slim trunk, a different silhouette from the round oak, not a smaller copy of it",
+   "scale": 0.85
+  }
+ ],
+ "match": "pine",
+ "shape_iou": 0.85
+}

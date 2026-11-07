@@ -1,0 +1,52 @@
+{
+  "_note": "NPC (docs/ART-REDO.md section 4). The concept sheets have no merchant, so the box is the theme.jpg wheat and the stone beside it for the sack colours, and the source_note says so. type is monster because a figure that is not a seated hero is asset.json on that path. World height 32 is a person, 88 px; the cell is 128. Clips are idle on S W N E and no walk. v-S is a slight three-quarter turn, recorded for the final review: views only scales the figure, so that facing is not a retake. After the still-idle floor every idle passes: idle-S start 2 step 51 floor 12; idle-W start 6 step 20 floor 8; idle-N start 1 step 8 floor 34; idle-E start 3 step 1 floor 7. The check uses the built sheet. Face is the skin in the top 30% (lightness over 0.58, hue 20 to 40). S holds 66 to 73 of those pixels, so the floor is 40. N holds 0 to 3, so the ceiling is 4. The snapshot sends the merchant when his chunk is discovered. The hermit stays off.",
+  "type": "monster",
+  "noun": "merchant",
+  "possessive": "his",
+  "concept": {
+    "source": "docs/concept/theme.jpg",
+    "box": [840, 320, 1020, 450]
+  },
+  "source_note": "The reference shows no merchant: it is wheat and a stone wall; draw one merchant and nothing else, no wheat, no wall and no torch; use the reference only for the colours of the sacks and the coat",
+  "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+  "design": "a traveling merchant with a short brown beard, a warm brown hooded coat the colour of ripe wheat, a leather satchel of tied grain sacks at the hip, a small coin pouch on the belt, brown boots, empty hands, no weapon",
+  "feet": "boots",
+  "sheet": {"world_height": 32, "height": 88, "cell": 128},
+  "items": [],
+  "clips": {
+    "idle": ["S", "W", "N", "E"]
+  },
+  "turntable": {
+    "seconds": 8,
+    "fps": 24,
+    "keyframes": {"W": 2, "N": 4, "E": 6},
+    "design": "a traveling merchant with a short brown beard, a warm brown hooded coat the colour of ripe wheat, a leather satchel of tied grain sacks at the hip, a small coin pouch on the belt, brown boots, empty hands, no weapon"
+  },
+  "check": {
+    "_note": "No merchant on the concept sheets, so the anchors are colours of the built sheet. Face is the skin (hue 20 to 40, lightness over 0.58). It is listed before the coat so the skin is not counted as wheat. prop is null: the hands are empty. The front floor is 40, under the S start pose's 66 face pixels in the top 30%. The back ceiling is 4, over N's measured 0 to 3.",
+    "anchors": {
+      "coat": [229, 163, 55],
+      "skin": [224, 155, 94],
+      "leather": [100, 63, 14],
+      "boot": [69, 43, 22]
+    },
+    "roles": [
+      {"name": "face", "hue": [20, 40], "light_gt": 0.58},
+      {"name": "coat"},
+      {"name": "coat", "neutral": true}
+    ],
+    "prop": null,
+    "back": {
+      "title": "back view N hides the face",
+      "bounds": [
+        ["face", ["head", "face"], null, 4]
+      ]
+    },
+    "front": {
+      "title": "front view S shows the face",
+      "bounds": [
+        ["face", ["head", "face"], 40, null]
+      ]
+    }
+  }
+}

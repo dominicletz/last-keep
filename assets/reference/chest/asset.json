@@ -1,0 +1,19 @@
+{
+ "type": "static",
+ "noun": "chest",
+ "concept": {
+  "source": "assets/reference/yard-concept/crops/chest-closed.png",
+  "box": [0, 0, 224, 224]
+ },
+ "source_note": "The closed and open crops are yard-concept/crops/chest-closed.png and chest-open.png (the yard-concept sheet, 4 px pad). The closed crop is the concept. Tight sheet boxes: closed [38, 114, 238, 294], open [270, 75, 480, 305]. World height 15 is the open lid; the closed chest is scale 0.8 so it stays 12, the gold box it replaces. The live chest is always closed (the sim removes it when it is opened). The open cell stays on the sheet.",
+ "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+ "design": "a wooden chest bound in dark iron bands, with a lock on the front and a curved lid",
+ "world_height": 15,
+ "cell": [48, 56],
+ "variants": [
+  {"id": "closed", "scale": 0.8, "note": "the lid shut, world height 12"},
+  {"id": "open", "note": "the same chest with the lid raised"}
+ ],
+ "view": "three_quarter",
+ "_note": "Static piece from the yard-concept sheet (docs/ART-REDO.md). Closed and open views passed the silhouette check against their crops."
+}

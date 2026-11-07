@@ -1,0 +1,1557 @@
+"""Static art ("type": "static" in asset.json): config, prompts and the build."""
+import contextlib
+import io
+import json
+import math
+import os
+import sys
+import tempfile
+import unittest
+
+import numpy as np
+from PIL import Image
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hero_sprites as hs  # noqa: E402
+import sprite_from_video as sv  # noqa: E402
+
+BASE = {"type": "static", "noun": "pine tree", "concept": {"file": "docs/concept/theme.jpg"},
+        "design": "a pine", "world_height": 40, "cell": [128, 120],
+        "variants": [{"id": "a", "note": "full"}, {"id": "b", "note": "young", "scale": 0.85}]}
+
+
+def pine_image(w=720, h=720, top=60, foot=680, half=170, seed=0):
+    """A synthetic generated image: a green triangle with shaded tiers and a
+    brown trunk on white, like a GenerateImage result."""
+    rng = np.random.default_rng(seed)
+    img = np.full((h, w, 3), 255, np.uint8)
+    trunk = foot - (foot - top) // 8
+    for y in range(top, trunk):
+        r = int(half * (y - top) / (trunk - top)) + 2
+        g = 60 + 40 * ((y // 20) % 2)
+        img[y, w // 2 - r:w // 2 + r] = (30, g, 35)
+        img[y, w // 2: w // 2 + r // 3] = (90, g + 50, 40)
+    img[trunk:foot, w // 2 - 12:w // 2 + 12] = (80, 50, 30)
+    noise = rng.integers(-6, 7, img.shape)
+    body = img.min(2) < 250
+    img[body] = np.clip(img[body].astype(int) + noise[body], 0, 255).astype(np.uint8)
+    return img
+
+
+class StaticTest(unittest.TestCase):
+    def config(self, **over):
+        tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(tmp, "p"))
+        with open(os.path.join(tmp, "p", "asset.json"), "w") as fh:
+            json.dump(dict(BASE, **over), fh)
+        return hs.load_config("p", reference=tmp)
+
+    def test_a_flat_decal_keeps_its_footprint_and_shape_variants_must_differ(self):
+        cfg = self.config(world_width=46, world_height=26, cell=[136, 80], view="top_down",
+                          variants=[{"id": "a"}, {"id": "b"}])
+        self.assertEqual((cfg["width"], cfg["height"]), (126, 72))
+        img = np.full((100, 200, 3), 255, np.uint8)
+        img[10:90, 20:80] = (20, 80, 20)
+        _rgb, keep = hs.static_cut(img, 72, fit_width=126)
+        self.assertEqual(keep.shape, (70, 124))
+        with self.assertRaises(SystemExit):
+            self.config(world_width=46, world_height=26, cell=[128, 80])
+        same = self.config(shape_iou=0.85, variants=[{"id": "a"}, {"id": "b"}])
+        image = np.full((200, 200, 3), 255, np.uint8)
+        image[20:180, 60:140] = (20, 80, 30)
+        sheet = hs.static_sheet(same, {"a": image, "b": image})
+        self.assertIn("shape variants differ", [n for ok, n, _ in hs.static_checks(same, sheet) if not ok])
+        other = image.copy()
+        other[:] = 255
+        other[40:160, 20:50] = (20, 80, 30)
+        sheet = hs.static_sheet(same, {"a": image, "b": other})
+        self.assertNotIn("shape variants differ", [n for ok, n, _ in hs.static_checks(same, sheet) if not ok])
+        five = [{"id": chr(ord("a") + i)} for i in range(5)]
+        with self.assertRaises(SystemExit):
+            self.config(variants=five)
+        self.assertEqual(len(self.config(variant_cap=5, variants=five)["variants"]), 5)
+
+    def test_a_static_config_loads_with_its_height_at_the_hero_texel(self):
+        cfg = self.config()
+        self.assertEqual(cfg["type"], "static")
+        self.assertEqual(cfg["height"], hs.sheet_height(40))
+        self.assertEqual(cfg["height"], 110)
+        self.assertEqual([hs.static_height(cfg, v) for v in cfg["variants"]], [110, 94])
+
+    def test_bad_static_configs_are_refused(self):
+        bad = [{"world_height": 0}, {"world_height": "40"}, {"cell": [128, 112]}, {"cell": [130, 120]},
+               {"cell": [128]}, {"variants": []}, {"variants": [{"id": "a"}] * 2},
+               {"variants": [{"id": f"v{i}"} for i in range(5)]}, {"variants": [{"id": "A"}]},
+               {"variants": [{"id": "a", "scale": 0.3}]}, {"variants": [{"id": "a", "scale": 1.2}]},
+               {"variants": [{"id": "a", "colour": "red"}]}, {"variants": [{"id": "a", "pick": "middle"}]},
+               {"variants": [{"id": "a", "squash_of": "a"}]}, {"variants": [{"id": "a", "squash_of": "z"}]},
+               {"variants": [{"id": "a"}, {"id": "b", "squash_of": "a"}, {"id": "c", "squash_of": "b"}]},
+               {"view": "top"}]
+        for over in bad:
+            with self.assertRaises(SystemExit, msg=over):
+                self.config(**over)
+        tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(tmp, "p"))
+        with open(os.path.join(tmp, "p", "asset.json"), "w") as fh:
+            json.dump({k: v for k, v in BASE.items() if k != "variants"}, fh)
+        with self.assertRaises(SystemExit):
+            hs.load_config("p", reference=tmp)
+
+    def test_a_static_piece_only_runs_its_own_steps(self):
+        for step in ("views", "dirs", "precheck"):
+            with self.assertRaises(SystemExit):
+                hs.main(["pine", step])
+
+    def test_the_build_pixelizes_outlines_and_stands_every_variant_on_the_ground_row(self):
+        cfg = self.config()
+        sheet = hs.static_sheet(cfg, {"a": pine_image(), "b": pine_image(half=120, seed=1)})
+        self.assertEqual(sheet.shape, (120, 256, 4))
+        res = hs.static_checks(cfg, sheet)
+        self.assertEqual([n for ok, n, _ in res if not ok], [], res)
+        self.assertGreaterEqual(len(res), 4 + 4 * 2)
+        a = sheet[..., 3] > 0
+        self.assertFalse(a[:, :4].any() or a[:4].any())  # transparent around the figure
+        for i, want in enumerate((110, 94)):
+            ys, _ = np.nonzero(a[:, i * 128:(i + 1) * 128])
+            self.assertEqual((ys.min(), ys.max()), (115 - want + 1, 115))
+        # The outline is the shared outline colour, the palette at most 28 + outline.
+        body = {tuple(c) for c in sheet[a][:, :3].tolist()} - {sv.OUTLINE}
+        self.assertLessEqual(len(body), sv.COLOURS)
+        self.assertIn(sv.OUTLINE, {tuple(c) for c in sheet[a][:, :3].tolist()})
+
+    def test_pick_keeps_one_figure_of_a_pair_and_drops_specks(self):
+        big = pine_image(half=120)
+        small = pine_image(top=300, half=70, seed=2)
+        pair = np.full((720, 1440, 3), 255, np.uint8)
+        pair[:, :720], pair[:, 720:] = big, small
+        pair[20:24, 1400:1404] = 0  # a speck at the far right is not a figure
+        cfg = self.config(variants=[{"id": "a", "pick": "left"}, {"id": "b", "pick": "right"}])
+        _, left = hs.static_cut(pair, 110, "left")
+        _, right = hs.static_cut(pair, 110, "right")
+        _, alone = hs.static_cut(small, 110)
+        self.assertEqual(right.shape, alone.shape)  # the right tree, cut as if it were alone
+        self.assertEqual(left.shape, hs.static_cut(big, 110)[1].shape)
+        sheet = hs.static_sheet(cfg, {"a": pair, "b": pair})
+        self.assertEqual([n for ok, n, _ in hs.static_checks(cfg, sheet) if not ok], [])
+        # Without a pick the pair is two pieces and too wide for the cell.
+        with self.assertRaises(ValueError):
+            hs.static_sheet(self.config(), {"a": pair, "b": pair})
+
+    def test_the_pine_b_variant_is_picked_from_the_committed_pair(self):
+        cfg = hs.load_config("pine")
+        b = cfg["variants"][1]
+        self.assertEqual((b["id"], b["pick"], b["scale"]), ("b", "right", 0.85))
+        for word in ("younger", "narrower"):  # contrast wording made the model draw pairs
+            self.assertNotIn(word, b["note"])
+        from scipy import ndimage
+        raw = np.asarray(Image.open(os.path.join(cfg["dir"], "views", "b.png")).convert("RGB"))
+        self.assertGreaterEqual(ndimage.label(sv.cut_out(raw))[1], 2)  # the raw pair, not a hand crop
+        with open(os.path.join(hs.ROOT, "priv/static/images/hd2d/pine-sheet.png"), "rb") as fh:
+            committed = fh.read()
+        tmp = tempfile.mkdtemp()
+        out = os.path.join(tmp, "s.png")
+        bad = hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None)
+        self.assertEqual(bad, 0)
+        with open(out, "rb") as fh:
+            self.assertEqual(fh.read(), committed)
+
+    def test_the_build_is_deterministic(self):
+        cfg = self.config()
+        imgs = {"a": pine_image(), "b": pine_image(half=120, seed=1)}
+        self.assertTrue(np.array_equal(hs.static_sheet(cfg, imgs), hs.static_sheet(cfg, imgs)))
+
+    def test_a_figure_too_wide_for_its_cell_is_refused_not_cropped(self):
+        cfg = self.config()
+        with self.assertRaises(ValueError) as e:
+            hs.static_sheet(cfg, {"a": pine_image(top=500, half=340), "b": pine_image()})
+        self.assertIn("never crop", str(e.exception))
+
+    def test_the_checks_catch_a_short_figure_a_hole_in_the_outline_and_a_floating_one(self):
+        cfg = self.config()
+        good = hs.static_sheet(cfg, {"a": pine_image(), "b": pine_image(half=120, seed=1)})
+        names = lambda s: [n for ok, n, _ in hs.static_checks(cfg, s) if not ok]
+        lifted = np.zeros_like(good)
+        lifted[:-2] = good[2:]
+        self.assertIn("a stands on the cell's ground row", names(lifted))
+        holed = good.copy()
+        ys, xs = np.nonzero(holed[:, :128, 3])
+        holed[ys[0], xs[0], :3] = (200, 0, 0)
+        self.assertIn("1 px outline on every silhouette edge", names(holed))
+        cut = good.copy()
+        cut[:30, :128] = 0
+        self.assertIn("a height 110 px", names(cut))
+        self.assertIn("sheet size", names(good[:, :128]))
+
+    def test_static_build_writes_the_sheet_and_approval_files(self):
+        tmp = tempfile.mkdtemp()
+        os.makedirs(os.path.join(tmp, "p", "views"))
+        with open(os.path.join(tmp, "p", "asset.json"), "w") as fh:
+            json.dump(BASE, fh)
+        cfg = hs.load_config("p", reference=tmp)
+        Image.fromarray(pine_image()).save(os.path.join(tmp, "p", "views", "a.png"))
+        Image.fromarray(pine_image(half=120, seed=1)).save(os.path.join(tmp, "p", "views", "b.png"))
+        out, appr = os.path.join(tmp, "sheet.png"), os.path.join(tmp, "appr")
+        with contextlib.redirect_stdout(io.StringIO()):
+            bad = hs.static_build(cfg, out=out, approval=appr, log=lambda *a, **k: None)
+        self.assertEqual(bad, 0)
+        self.assertEqual(sorted(os.listdir(appr)), ["check.txt", "contact.png", "sheet.png"])
+        with open(out, "rb") as a, open(os.path.join(appr, "sheet.png"), "rb") as b:
+            self.assertEqual(a.read(), b.read())
+        self.assertEqual(Image.open(out).size, (256, 120))
+
+    def test_the_pine_is_the_tree_card_at_the_hero_texel_and_its_prompts_are_current(self):
+        cfg = hs.load_config("pine")
+        self.assertEqual(cfg["type"], "static")
+        self.assertEqual(cfg["world_height"], 40)  # yard_cards.js tree h
+        root = hs.ROOT
+        with open(os.path.join(root, "assets/js/yard_cards.js")) as fh:
+            self.assertIn("tree: { w: 48, h: 40,", fh.read())
+        self.assertEqual(cfg["height"], 110)
+        self.assertEqual(cfg["cell"], [128, 120])
+        self.assertEqual([v["id"] for v in cfg["variants"]], ["a", "b"])
+        p = hs.build_prompts(cfg)
+        with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+            self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n")
+        with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+            self.assertEqual(fh.read(), hs.prompts_markdown(p))
+        for c, v in zip(p["calls"], ("a", "b")):
+            self.assertEqual(c["tool"], "GenerateImage")
+            self.assertEqual(c["save_as"], f"assets/reference/pine/views/{v}.png")
+            self.assertEqual(c["args"]["reference_image_paths"],
+                             ["assets/reference/pine/concept.png", "assets/reference/engineer/video/views/v-S.png"])
+            d = c["args"]["description"]
+            for phrase in ("Plain flat white background", "nothing cropped", "One single pine tree only",
+                           "draw only the single pine tree"):
+                self.assertIn(phrase, d)
+        concept = np.asarray(Image.open(os.path.join(cfg["dir"], "concept.png")))
+        self.assertEqual(concept.shape[:2], (720 - 536, 392 - 278))
+
+    def test_the_building_pieces_match_their_cards_and_their_prompts_are_current(self):
+        import re
+        with open(os.path.join(hs.ROOT, "assets/js/yard_cards.js")) as fh:
+            cards = {k: (int(w), int(h)) for k, w, h in re.findall(r"(\w+): \{ w: (\d+), h: (\d+),", fh.read())}
+        want = {"wall": 40, "stone_wall": 40, "tower": 48, "house": 64, "forge": 36, "trap": 20}
+        for name, wh in want.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["type"], "static", name)
+            self.assertEqual(cfg["world_height"], wh, name)
+            if name in cards:  # stone_wall has no card: it falls back to the wall's 40
+                self.assertEqual(cards[name][1], wh, name)
+            self.assertEqual(cfg["height"], hs.sheet_height(wh), name)
+            # The cell holds the card's width at the hero texel with the margins.
+            w = cards.get(name, cards["wall"])[0]
+            self.assertGreaterEqual(cfg["cell"][0], hs.sheet_height(w) + 2 * hs.STATIC_MARGIN, name)
+            p = hs.build_prompts(cfg)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+            for c in p["calls"]:
+                self.assertIn(f"One single {cfg['noun']} only", c["args"]["description"], name)
+            box = cfg["concept"]["box"]
+            concept = np.asarray(Image.open(os.path.join(cfg["dir"], "concept.png")))
+            self.assertEqual(concept.shape[:2], (box[3] - box[1], box[2] - box[0]), name)
+        trap = hs.load_config("trap")
+        self.assertEqual([hs.static_height(trap, v) for v in trap["variants"]], [55, 33])
+
+    def test_squash_of_builds_a_variant_from_another_without_an_image_or_a_prompt(self):
+        cfg = self.config(variants=[{"id": "a"}, {"id": "b", "squash_of": "a", "scale": 0.6}])
+        self.assertEqual([c["id"] for c in hs.static_prompts(cfg)["calls"]], ["image-a"])
+        sheet = hs.static_sheet(cfg, {"a": pine_image()})
+        self.assertEqual([n for ok, n, _ in hs.static_checks(cfg, sheet) if not ok], [])
+        a = sheet[..., 3] > 0
+        wa = np.nonzero(a[:, :128].any(0))[0]
+        wb = np.nonzero(a[:, 128:].any(0))[0]
+        self.assertEqual(len(wa), len(wb))  # same width: only the height is squashed
+        hb = np.nonzero(a[:, 128:].any(1))[0]
+        self.assertEqual(len(hb), 66)
+
+    def test_the_view_key_sets_the_camera_wording_and_front_stays_the_default(self):
+        front = hs.static_prompts(self.config())["calls"][0]["args"]["description"]
+        self.assertIn("seen from the front at the game's camera angle, slightly from above.", front)
+        tq = hs.static_prompts(self.config(view="three_quarter"))["calls"][0]["args"]["description"]
+        self.assertIn("three-quarter view with one corner toward the camera", tq)
+        self.assertNotIn("seen from the front", tq)
+        flat = hs.static_prompts(self.config(view="top_down", world_width=46, world_height=26,
+                                             cell=[136, 80]))["calls"][0]["args"]["description"]
+        self.assertIn("seen from directly above as a flat plan", flat)
+        self.assertIn("126 by 72 pixel footprint", flat)
+        self.assertNotIn("upright", flat)
+
+    def test_every_committed_static_sheet_rebuilds_byte_for_byte(self):
+        views = {"pine": "front", "stone_wall": "front", "wall": "three_quarter", "tower": "three_quarter",
+                 "house": "three_quarter", "forge": "three_quarter", "trap": "three_quarter",
+                 "bush": "three_quarter", "rock": "three_quarter", "flowers": "three_quarter",
+                 "broadleaf": "front", "forest_barrier": "front",
+                 "stump_log": "three_quarter", "cliff_face": "front", "grass_tufts": "three_quarter",
+                 "reeds": "three_quarter", "dead_tree": "front",
+                 "ruin_stones": "three_quarter", "map_table": "three_quarter",
+                 "quarry": "three_quarter", "camp": "three_quarter", "shrine": "three_quarter"}
+        for name, view in views.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg.get("view", "front"), view, name)
+            live = os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")
+            before = open(live, "rb").read()
+            tmp = tempfile.mkdtemp()
+            out = os.path.join(tmp, "s.png")
+            code = hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None)
+            self.assertEqual(open(live, "rb").read(), before, name)
+            if code:
+                self.assertEqual(name, "broadleaf")
+                text = open(os.path.join(tmp, "a", "check.txt")).read()
+                self.assertEqual(text.count("FAIL"), 1, text)
+                self.assertIn("FAIL  shape variants differ", text)
+                self.assertFalse(os.path.exists(out))
+            else:
+                with open(out, "rb") as a:
+                    self.assertEqual(a.read(), before, name)
+        trap = hs.load_config("trap")
+        self.assertEqual(trap["variants"][1]["squash_of"], "a")
+        self.assertFalse(os.path.exists(os.path.join(trap["dir"], "views", "b.png")))
+
+    def test_the_flora_pieces_are_set_up_and_their_prompts_are_current(self):
+        want = {"bush": (14, 3), "rock": (16, 3), "flowers": (6, 2)}
+        for name, (wh, n) in want.items():
+            cfg = hs.load_config(name)
+            self.assertEqual((cfg["world_height"], len(cfg["variants"])), (wh, n), name)
+            self.assertLess(wh, 32, name)  # under a hero, so heroes read over it
+            self.assertGreaterEqual(cfg["cell"][1], cfg["height"] + 2 * hs.STATIC_MARGIN, name)
+            p = hs.build_prompts(cfg)
+            self.assertEqual(len(p["calls"]), n, name)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+
+        # Sizes come from scale, not from the generated image: rock c is drawn
+        # small though its view filled the frame like a and b.
+        rock = hs.load_config("rock")
+        hs_ = [hs.static_height(rock, v) for v in rock["variants"]]
+        self.assertEqual(hs_, sorted(hs_, reverse=True))
+        self.assertLessEqual(hs_[2], hs_[0] * 0.55)
+
+    def test_match_scales_saturation_and_value_to_the_reference_means(self):
+        rng = np.random.default_rng(3)
+        rgb = rng.integers(60, 250, (20, 20, 3), dtype=np.uint8)
+        keep = np.ones((20, 20), bool)
+        keep[:5] = False
+        target = (120.0, 50.0)
+        out = hs.match_hsv([(rgb, keep), (rgb, keep)], target)
+        s, v = hs.hsv_means(np.concatenate([o for o, _ in out]), np.concatenate([k for _, k in out]))
+        self.assertLess(abs(s - target[0]), 3)
+        self.assertLess(abs(v - target[1]), 2)
+        self.assertTrue(np.array_equal(out[0][0], hs.match_hsv([(rgb, keep)], target)[0][0]))
+        for m in ("no such", 3, "p"):  # "p" is the piece itself
+            with self.assertRaises(SystemExit, msg=m):
+                self.config(match=m)
+
+    def test_the_bush_matches_the_pine_sheet_and_the_built_flora_stands_small(self):
+        bush = hs.load_config("bush")
+        self.assertEqual(bush["match"], "pine")
+        sheet = lambda n: np.asarray(Image.open(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{n}-sheet.png")).convert("RGBA"))
+        ps, pv = hs.sheet_hsv_means(sheet("pine"))
+        bs, bv = hs.sheet_hsv_means(sheet("bush"))
+        # The palette quantize moves the means a little off the pine's.
+        self.assertLess(abs(bs - ps), 8)
+        self.assertLess(abs(bv - pv), 6)
+        for name in ("bush", "rock", "flowers"):
+            cfg = hs.load_config(name)
+            self.assertEqual([n for ok, n, _ in hs.static_checks(cfg, sheet(name)) if not ok], [], name)
+
+    def test_the_terrain_and_scenery_pieces_are_set_up_and_their_prompts_are_current(self):
+        # name: (world height, variants, drawn from text with only the concept's palette)
+        want = {"broadleaf": (40, 2, False), "field": (26, 2, False), "forest_barrier": (32, 2, False),
+                "stump_log": (10, 2, True), "cliff_face": (16, 3, True), "grass_tufts": (5, 3, False),
+                "reeds": (9, 2, True), "dead_tree": (36, 1, True)}
+        for name, (wh, n, text_only) in want.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["type"], "static", name)
+            self.assertEqual((cfg["world_height"], len(cfg["variants"])), (wh, n), name)
+            self.assertLessEqual(wh, 40, name)  # no scenery piece outgrows the pine
+            self.assertGreaterEqual(cfg["cell"][1], cfg["height"] + 2 * hs.STATIC_MARGIN, name)
+            self.assertEqual(cfg["concept"]["source"], "docs/concept/theme.jpg", name)
+            box = cfg["concept"]["box"]
+            concept = np.asarray(Image.open(os.path.join(cfg["dir"], "concept.png")))
+            self.assertEqual(concept.shape[:2], (box[3] - box[1], box[2] - box[0]), name)
+            p = hs.build_prompts(cfg)
+            self.assertEqual(len(p["calls"]), n, name)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+            for c in p["calls"]:
+                d = c["args"]["description"]
+                self.assertIn(f"One single {cfg['noun']} only", d, name)
+                self.assertEqual("The reference shows no " in d, text_only, name)
+        # Greens are matched to the pine forest, as the bush is.
+        for name in ("broadleaf", "forest_barrier", "grass_tufts", "reeds"):
+            self.assertEqual(hs.load_config(name)["match"], "pine", name)
+        field = hs.load_config("field")
+        self.assertEqual(field["view"], "top_down")
+        self.assertEqual((field["world_width"], field["world_height"]), (46, 26))
+        self.assertEqual((field["width"], field["height"]), (126, 72))
+        self.assertEqual([v["id"] for v in field["variants"]], ["a", "b"])
+        self.assertNotIn("awaiting_art", field)
+        live = os.path.join(hs.ROOT, "priv/static/images/hd2d/field-sheet.png")
+        before = open(live, "rb").read()
+        tmp = tempfile.mkdtemp()
+        out = os.path.join(tmp, "s.png")
+        self.assertEqual(hs.static_build(field, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None), 0)
+        self.assertEqual(open(live, "rb").read(), before)
+        self.assertEqual(open(out, "rb").read(), before)
+        cliff = hs.load_config("cliff_face")
+        self.assertNotIn("pending", cliff["variants"][-1])
+        self.assertIn("seamless tiling", cliff["variants"][-1]["framing"])
+        broad = hs.load_config("broadleaf")
+        self.assertEqual(broad["shape_iou"], 0.85)
+        self.assertIn("poplar", broad["variants"][1]["note"])
+        settings = json.load(open(os.path.join(hs.ROOT, "assets/reference/yard-concept/settings.json")))
+        self.assertNotIn("box", settings)
+        self.assertTrue(all("box" not in piece for piece in settings["pieces"]))
+        self.assertEqual([p["id"] for p in settings["pieces"]], ["chest", "portal", "keep", "mage_tower"])
+        self.assertEqual(settings["pieces"][2]["ranks"], [0, 1, 2, 3, 4])
+        self.assertEqual(settings["felled_wood"], "stump_log variant b")
+        self.assertEqual(hs.STATIC_VARIANTS, 4)
+
+    def test_framing_replaces_the_upright_sentence_and_pending_variants_wait_outside_the_sheet(self):
+        cfg = self.config(variants=[{"id": "a"}, {"id": "b", "framing": "the whole log lying flat along the ground",
+                                                  "pending": True}])
+        a, b = [c["args"]["description"] for c in hs.static_prompts(cfg)["calls"]]
+        self.assertIn("from its top to the ground it stands on, upright", a)
+        self.assertNotIn("upright", b)
+        self.assertIn("The whole log lying flat along the ground.", b)
+        # b's image does not exist: the build leaves b out instead of refusing.
+        os.makedirs(os.path.join(cfg["dir"], "views"))
+        Image.fromarray(pine_image()).save(os.path.join(cfg["dir"], "views", "a.png"))
+        tmp = tempfile.mkdtemp()
+        out = os.path.join(tmp, "s.png")
+        self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "x"), log=lambda *a, **k: None), 0)
+        self.assertEqual(Image.open(out).size, (128, 120))
+        rank = self.config(variants=[{"id": "0"}, {"id": "a"}])
+        self.assertEqual([v["id"] for v in rank["variants"]], ["0", "a"])
+        for bad in ([{"id": "a", "pending": True}], [{"id": "a", "pending": "yes"}], [{"id": "a", "framing": 3}],
+                    [{"id": "a", "pending": True}, {"id": "b", "squash_of": "a"}], [{"id": "A"}]):
+            with self.assertRaises(SystemExit, msg=bad):
+                self.config(variants=bad)
+
+    def test_the_lying_log_has_its_own_framing_and_the_built_scenery_stands_on_its_foot_row(self):
+        log = hs.load_config("stump_log")
+        b = log["variants"][1]
+        self.assertNotIn("pending", b)  # take 3 lies flat
+        d = hs.static_prompts(log)["calls"][1]["args"]["description"]
+        self.assertIn("lying flat along the ground, much longer than it is tall", d)
+        self.assertNotIn("upright, centred", d)
+        sizes = {"broadleaf": [110, 94], "forest_barrier": [88, 88], "stump_log": [28, 28],
+                 "cliff_face": [44, 44, 44], "grass_tufts": [14, 11, 9], "reeds": [25, 20], "dead_tree": [99]}
+        for name, want in sizes.items():
+            cfg = hs.load_config(name)
+            sheet = np.asarray(Image.open(os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")).convert("RGBA"))
+            cw, ch = cfg["cell"]
+            self.assertEqual(sheet.shape[:2], (ch, cw * len(want)), name)
+            got = []
+            for i in range(len(want)):
+                rows = np.nonzero((sheet[:, i * cw:(i + 1) * cw, 3] > 0).any(1))[0]
+                self.assertEqual(rows[-1], ch - 1 - hs.STATIC_MARGIN, name)
+                got.append(int(rows[-1] - rows[0] + 1))
+            self.assertEqual(got, want, name)
+            built = dict(cfg, variants=[v for v in cfg["variants"] if not v.get("pending")])
+            self.assertEqual([n for ok, n, _ in hs.static_checks(built, sheet) if not ok], [], name)
+        cliff_sheet = np.asarray(Image.open(os.path.join(hs.ROOT, "priv/static/images/hd2d/cliff_face-sheet.png")).convert("RGBA"))
+        cliff_w = []
+        for i, cw in enumerate((128, 128, 128)):
+            cols = np.nonzero((cliff_sheet[:, i * cw:(i + 1) * cw, 3] > 0).any(0))[0]
+            cliff_w.append(int(cols[-1] - cols[0] + 1))
+        self.assertEqual(cliff_w, [51, 35, 44])  # a block, b pillar, c the downscaled tile
+        field_sheet = np.asarray(Image.open(os.path.join(hs.ROOT, "priv/static/images/hd2d/field-sheet.png")).convert("RGBA"))
+        self.assertEqual(field_sheet.shape[:2], (80, 272))
+        field_cfg = hs.load_config("field")
+        cw = field_cfg["cell"][0]
+        for i, vid in enumerate(("a", "b")):
+            cell = field_sheet[:, i * cw:(i + 1) * cw]
+            ys, xs = np.nonzero(cell[..., 3] > 0)
+            self.assertEqual(int(ys.max() - ys.min() + 1), 72, vid)
+            self.assertEqual(int(xs.max() - xs.min() + 1), 126, vid)
+
+    def test_ground_tiles_and_the_cliff_face_keep_the_column_seam(self):
+        # Column wrap versus the largest interior column step. Rows are not the gate.
+        want = {
+            "ground/yard-grass.png": (102, 147, True),
+            "ground/meadow.png": (65, 123, True),
+            "ground/pine.png": (94, 104, True),
+            "ground/ruins.png": (148, 156, True),
+            "cliff_face/views/c.png": (129, 169, True),
+            "ground/river.png": (31, 83, True),
+            "ground/ford.png": (120, 142, True),
+            "ground/dirt.png": (68, 77, True),
+            "ground/hill.png": (50, 56, True),
+            "ground/mountain.png": (25, 81, True),
+        }
+        for name, (wrap, interior, holds) in want.items():
+            rgb = np.asarray(Image.open(os.path.join(hs.ROOT, "assets/reference", name)).convert("RGB"))
+            got_i = int(np.abs(rgb[:, 1:].astype(int) - rgb[:, :-1].astype(int)).max())
+            got_w = int(np.abs(rgb[:, :1].astype(int) - rgb[:, -1:].astype(int)).max())
+            self.assertEqual((got_w, got_i, hs.seam_holds(rgb)), (wrap, interior, holds), name)
+        cliff = hs.load_config("cliff_face")
+        self.assertNotIn("pending", cliff["variants"][-1])
+
+    def test_the_yard_pieces_whose_views_match_their_crops_rebuild(self):
+        built = {
+            "chest": {"cell": [48, 56], "heights": [33, 41], "variants": ["closed", "open"],
+                      "crop": "assets/reference/yard-concept/crops/chest-closed.png"},
+            "hell_door": {"cell": [144, 168], "heights": [154], "variants": ["a"],
+                          "crop": "assets/reference/yard-concept/crops/hell-door.png"},
+            "mage_tower": {"cell": [96, 112], "heights": [99], "variants": ["a"],
+                           "crop": "assets/reference/yard-concept/crops/mage-tower.png"},
+            "portal": {"cell": [144, 168], "heights": [154], "variants": ["a"],
+                       "crop": "assets/reference/yard-concept/crops/portal.png"},
+        }
+        for name, want in built.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["cell"], want["cell"], name)
+            self.assertEqual([v["id"] for v in cfg["variants"]], want["variants"], name)
+            with open(os.path.join(cfg["dir"], "concept.png"), "rb") as fh:
+                concept = fh.read()
+            with open(os.path.join(hs.ROOT, want["crop"]), "rb") as fh:
+                self.assertEqual(concept, fh.read(), name)
+            sheet_path = os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")
+            before = open(sheet_path, "rb").read()
+            tmp = tempfile.mkdtemp()
+            out = os.path.join(tmp, "s.png")
+            self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None), 0, name)
+            self.assertEqual(open(sheet_path, "rb").read(), before, name)
+            self.assertEqual(open(out, "rb").read(), before, name)
+            sheet = np.asarray(Image.open(sheet_path).convert("RGBA"))
+            cw, ch = want["cell"]
+            self.assertEqual(sheet.shape[:2], (ch, cw * len(want["heights"])), name)
+            got = []
+            for i in range(len(want["heights"])):
+                rows = np.nonzero((sheet[:, i * cw:(i + 1) * cw, 3] > 0).any(1))[0]
+                self.assertEqual(int(rows[-1]), ch - 1 - hs.STATIC_MARGIN, name)
+                got.append(int(rows[-1] - rows[0] + 1))
+            self.assertEqual(got, want["heights"], name)
+            p = hs.build_prompts(cfg)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+        # The hell door stays the door drawn on portal rows. The portal sheet is a separate piece.
+        with open(os.path.join(hs.ROOT, "assets/js/yard_cards.js")) as fh:
+            cards = fh.read()
+        self.assertIn("hell_door", cards)
+        with open(os.path.join(hs.ROOT, "assets/js/render.js")) as fh:
+            page = fh.read()
+        self.assertIn('staticCard("hell_door", "a")', page)
+        self.assertNotIn('staticCard("portal"', page)
+        self.assertIn('staticCard("keep", variant)', page)
+        self.assertIn('sync("portal", (snap.portals || []).slice(0, 8)', page)
+        self.assertIn('staticCard("chest", "closed")', page)
+        self.assertIn("buildingSheet(row.kind)", page)
+        with open(os.path.join(hs.ROOT, "assets/js/horizon.js")) as fh:
+            self.assertNotIn("gateGeometry", fh.read())
+
+    def test_the_keep_sheet_uses_the_live_tops_and_the_mesh_stays(self):
+        # The new views match the crop silhouettes. Their canvas heights are
+        # not the world heights: the sheet uses the live tops, which sit inside
+        # the scale floor. The mesh stays, torch and all.
+        cfg = hs.load_config("keep")
+        live = [165, 179, 193, 207, 235]
+        self.assertEqual(cfg["world_height"], live[-1])
+        self.assertEqual(cfg["cell"], [648, 656])
+        self.assertEqual([hs.static_height(cfg, v) for v in cfg["variants"]],
+                         [hs.sheet_height(h) for h in live])
+        self.assertTrue(all(hs.STATIC_SCALE[0] <= v["scale"] <= hs.STATIC_SCALE[1] for v in cfg["variants"]))
+        root = os.path.join(hs.ROOT, "assets/reference")
+        views = [(809, 647), (864, 710), (730, 917), (896, 932), (945, 956)]
+        crops = [(60, 46), (128, 103), (157, 194), (251, 259), (309, 305)]
+
+        def box(rel):
+            mask = sv.cut_out(np.asarray(Image.open(os.path.join(root, rel)).convert("RGB")))
+            ys, xs = np.nonzero(mask)
+            return (int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1))
+
+        for rank, (view, crop) in enumerate(zip(views, crops)):
+            self.assertEqual(box(f"keep/views/{rank}.png"), view, rank)
+            self.assertEqual(box(f"yard-concept/crops/keep-{rank}.png"), crop, rank)
+            self.assertLess(abs(view[0] / view[1] - crop[0] / crop[1]), 0.06, rank)
+        sheet_path = os.path.join(hs.ROOT, "priv/static/images/hd2d/keep-sheet.png")
+        before = open(sheet_path, "rb").read()
+        tmp = tempfile.mkdtemp()
+        out = os.path.join(tmp, "s.png")
+        self.assertEqual(hs.static_build(cfg, out=out, approval=os.path.join(tmp, "a"), log=lambda *a, **k: None), 0)
+        self.assertEqual(open(sheet_path, "rb").read(), before)
+        self.assertEqual(open(out, "rb").read(), before)
+        with open(os.path.join(hs.ROOT, "assets/js/render.js")) as fh:
+            page = fh.read()
+        self.assertIn('staticCard("keep", variant)', page)
+        self.assertIn("keep.scale.y = 1", page)
+        self.assertNotIn("keepParts(rank)", page)
+
+
+# Pieces prepped with no generated image yet. Heights are the world units in
+# asset.json; the batch lists every GenerateImage call for them.
+UNBUILT = {
+    "ruin_stones": {"world_height": 20, "cell": [200, 64], "variants": ["a", "b", "c"],
+                    "box": [640, 100, 688, 164]},
+    "map_table": {"world_height": 16, "cell": [160, 56], "variants": ["a"],
+                  "box": [740, 220, 840, 315]},
+    "quarry": {"world_height": 32, "cell": [176, 96], "variants": ["a", "b"],
+               "box": [620, 610, 720, 690]},
+    "camp": {"world_height": 28, "cell": [160, 88], "variants": ["a"],
+             "box": [519, 488, 619, 581]},
+    "shrine": {"world_height": 24, "cell": [96, 80], "variants": ["a"],
+               "box": [640, 100, 688, 164]},
+}
+ART_ROOT = "/workspace/lk-art-redo"
+
+
+def unbuilt_batch():
+    """The combined GenerateImage list. Paths are absolute under ART_ROOT,
+    and save_as is the file the build reads."""
+    calls = []
+    for name in UNBUILT:
+        for call in hs.static_prompts(hs.load_config(name))["calls"]:
+            args = json.loads(json.dumps(call["args"]))
+            args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
+            calls.append({"id": f"{name}-{call['id']}", "asset": name, "tool": "GenerateImage",
+                          "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])})
+    return {"_note": "GenerateImage calls for the unbuilt static pieces. Paths are absolute under "
+            "/workspace/lk-art-redo. save_as is the file `hero_sprites.py <asset> build` reads.",
+            "calls": calls}
+
+
+class UnbuiltStaticTest(unittest.TestCase):
+    def test_the_remaining_static_pieces_keep_their_prompts(self):
+        style = ["assets/reference/engineer/video/views/v-S.png"]
+        for name, want in UNBUILT.items():
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["type"], "static", name)
+            self.assertEqual(cfg.get("view"), "three_quarter", name)
+            self.assertEqual(cfg["world_height"], want["world_height"], name)
+            self.assertEqual(cfg["height"], hs.sheet_height(want["world_height"]), name)
+            self.assertEqual(cfg["cell"], want["cell"], name)
+            self.assertEqual([v["id"] for v in cfg["variants"]], want["variants"], name)
+            self.assertEqual(cfg["concept"]["box"], want["box"], name)
+            self.assertEqual(cfg["concept"]["source"], "docs/concept/theme.jpg", name)
+            self.assertEqual(cfg["style_refs"], style, name)
+            self.assertTrue(cfg["source_note"].startswith("The reference shows no "), name)
+            with Image.open(os.path.join(cfg["dir"], "concept.png")) as image:
+                concept = np.asarray(image)
+            box = want["box"]
+            self.assertEqual(concept.shape[:2], (box[3] - box[1], box[2] - box[0]), name)
+            p = hs.build_prompts(cfg)
+            self.assertEqual(len(p["calls"]), len(want["variants"]), name)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+            for call, vid in zip(p["calls"], want["variants"]):
+                self.assertEqual(call["save_as"], f"assets/reference/{name}/views/{vid}.png", name)
+                self.assertIn(f"One single {cfg['noun']} only", call["args"]["description"], name)
+                self.assertIn("The reference shows no ", call["args"]["description"], name)
+            sheet = os.path.join(hs.ROOT, f"priv/static/images/hd2d/{name}-sheet.png")
+            self.assertTrue(os.path.exists(sheet), name)
+
+        ruin = hs.load_config("ruin_stones")
+        self.assertEqual([v.get("scale", 1) for v in ruin["variants"]], [1, 0.55, 0.5])
+        column = hs.static_prompts(ruin)["calls"][1]["args"]["description"]
+        self.assertIn("lying flat along the ground", column)
+        self.assertNotIn("upright, centred", column)
+        table = hs.static_prompts(hs.load_config("map_table"))["calls"][0]["args"]["description"]
+        self.assertIn("no map", table)
+        shrine = hs.static_prompts(hs.load_config("shrine"))["calls"][0]["args"]["description"]
+        self.assertIn("no relic", shrine)
+
+    def test_the_static_batch_lists_every_call_with_absolute_paths(self):
+        path = os.path.join(hs.ROOT, "assets/reference/static-batch-2.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        want = unbuilt_batch()
+        self.assertEqual(batch, want)
+        self.assertEqual(len(batch["calls"]), 8)
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateImage")
+            for ref in call["args"]["reference_image_paths"]:
+                self.assertTrue(ref.startswith(ART_ROOT + "/"), ref)
+                self.assertTrue(os.path.exists(os.path.join(hs.ROOT, ref[len(ART_ROOT) + 1:])), ref)
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/assets/reference/"))
+            self.assertTrue(call["save_as"].endswith(".png"))
+
+
+NPCS = ("vagrant", "merchant")
+
+
+def npc_views_batch():
+    """The four views of the vagrant and the merchant. Paths are absolute
+    under ART_ROOT. save_as is the file `hero_sprites.py <name> views` reads.
+    The front view (S) takes the engineer style reference. The other three
+    take that front view, which is what build_prompts emits. No video."""
+    calls = []
+    for name in NPCS:
+        for call in hs.build_prompts(hs.load_config(name))["calls"]:
+            if call["tool"] != "GenerateImage":
+                continue
+            args = json.loads(json.dumps(call["args"]))
+            args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
+            calls.append({"id": f"{name}-{call['id']}", "asset": name, "tool": "GenerateImage",
+                          "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])})
+    return {"_note": "GenerateImage calls for the vagrant and the merchant, four views each "
+            "(front S, back N, left W, right E). Paths are absolute under /workspace/lk-art-redo. "
+            "save_as is the file `hero_sprites.py <name> views` reads. The front view uses the "
+            "engineer style reference; the other three use that front view. No video.",
+            "calls": calls}
+
+
+def npc_motion_batch():
+    """Turntable plus the clips ART-REDO lists for these two NPCs.
+
+    The vagrant gets idle on S W N E and walk on eight directions. The
+    merchant gets idle on S W N E and no walk. Neither gets an attack or a
+    death. Paths are absolute under ART_ROOT. save_as is the file the next
+    pipeline step reads."""
+    calls = []
+    for name in NPCS:
+        for call in hs.build_prompts(hs.load_config(name))["calls"]:
+            if call.get("tool") != "GenerateVideo":
+                continue
+            kind = call["id"].split("-", 1)[0]
+            if kind not in ("turntable", "idle", "walk"):
+                continue
+            fixed = hs.absolute({"calls": [{key: call[key] for key in ("id", "tool", "args", "save_as")}]},
+                                root=ART_ROOT)["calls"][0]
+            calls.append({"id": f"{name}-{call['id']}", "asset": name, "tool": "GenerateVideo",
+                          "args": fixed["args"], "save_as": fixed["save_as"]})
+    return {"_note": "GenerateVideo calls for the vagrant and the merchant. The vagrant is a turntable, "
+            "idle on S W N E and walk on eight directions. The merchant is a turntable and idle on S W N E. "
+            "No attack and no death. Paths are absolute under /workspace/lk-art-redo. save_as is the file "
+            "the next pipeline step reads. The turntable reads video/views/k-<DIR>.png. A clip reads "
+            "video/dirs/<DIR>.png, which `hero_sprites.py <name> dirs` writes after the turntable.",
+            "calls": calls}
+
+
+class NpcViewsTest(unittest.TestCase):
+    def test_the_vagrant_and_the_merchant_are_palette_crops_and_the_views_batch(self):
+        boxes = {"vagrant": [740, 220, 840, 315], "merchant": [840, 320, 1020, 450]}
+        style = ["assets/reference/engineer/video/views/v-S.png"]
+        for name in NPCS:
+            cfg = hs.load_config(name)
+            self.assertEqual(cfg["type"], "monster", name)
+            self.assertEqual(cfg["concept"]["source"], "docs/concept/theme.jpg", name)
+            self.assertEqual(cfg["concept"]["box"], boxes[name], name)
+            self.assertTrue(cfg["source_note"].startswith("The reference shows no "), name)
+            self.assertEqual(cfg["style_refs"], style, name)
+            self.assertEqual(cfg["items"], [], name)
+            self.assertEqual(cfg["sheet"]["world_height"], 32, name)
+            self.assertEqual(cfg["sheet"]["height"], hs.sheet_height(32), name)
+            self.assertEqual(cfg["sheet"]["cell"], 128, name)
+            with Image.open(os.path.join(cfg["dir"], "concept.png")) as image:
+                concept = np.asarray(image)
+            box = boxes[name]
+            self.assertEqual(list(concept.shape[:2]), [box[3] - box[1], box[2] - box[0]], name)
+            views = [c for c in hs.build_prompts(cfg)["calls"] if c["id"].startswith("view-")]
+            self.assertEqual([c["id"] for c in views], ["view-S", "view-N", "view-W", "view-E"], name)
+            self.assertEqual(views[0]["args"]["reference_image_paths"][1], style[0], name)
+            for call in views[1:]:
+                self.assertEqual(call["args"]["reference_image_paths"][1],
+                                 f"assets/reference/{name}/video/views/v-S.png", name)
+            self.assertIn("The reference shows no ", views[0]["args"]["description"], name)
+        self.assertEqual(hs.load_config("vagrant")["clips"]["walk"],
+                         ["S", "SW", "W", "NW", "N", "NE", "E", "SE"])
+        self.assertEqual(sorted(hs.load_config("vagrant")["clips"]), ["idle", "walk"])
+        self.assertEqual(hs.load_config("merchant")["clips"], {"idle": ["S", "W", "N", "E"]})
+        path = os.path.join(hs.ROOT, "assets/reference/npc-views-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_views_batch())
+        self.assertEqual(len(batch["calls"]), 8)
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateImage")
+            self.assertNotIn("GenerateVideo", json.dumps(call))
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/assets/reference/"))
+            self.assertTrue(call["save_as"].endswith(".png"))
+            front = call["id"].endswith("-view-S")
+            for ref in call["args"]["reference_image_paths"]:
+                self.assertTrue(ref.startswith(ART_ROOT + "/"), ref)
+                if front or not ref.endswith("/video/views/v-S.png"):
+                    self.assertTrue(os.path.exists(os.path.join(hs.ROOT, ref[len(ART_ROOT) + 1:])), ref)
+
+    def test_the_motion_batch_is_the_turntable_and_the_listed_clips(self):
+        want = {
+            "vagrant": ["turntable"] + [f"{k}-{d}" for d in hs.COLUMNS for k in ("walk", "idle")
+                                        if d in hs.load_config("vagrant")["clips"].get(k, ())],
+            "merchant": ["turntable", "idle-S", "idle-W", "idle-N", "idle-E"],
+        }
+        for name, ids in want.items():
+            cfg = hs.load_config(name)
+            p = hs.build_prompts(cfg)
+            with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+                self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n", name)
+            with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+                self.assertEqual(fh.read(), hs.prompts_markdown(p), name)
+            kinds = {c["id"].split("-", 1)[0] for c in p["calls"] if c["tool"] == "GenerateVideo"}
+            self.assertEqual(kinds, set(i.split("-", 1)[0] for i in ids), name)
+            for d in "SNWE":
+                with Image.open(os.path.join(cfg["video"], "views", f"k-{d}.png")) as image:
+                    self.assertEqual(image.size, (720, 720), f"{name} k-{d}")
+        path = os.path.join(hs.ROOT, "assets/reference/npc-motion-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_motion_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]],
+                         [f"{name}-{i}" for name, ids in want.items() for i in ids])
+        self.assertEqual(len(batch["calls"]), 18)
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateVideo")
+            self.assertNotIn("attack", call["id"])
+            self.assertNotIn("death", call["id"])
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/assets/reference/"))
+            self.assertTrue(call["save_as"].endswith(".mp4"))
+            args = call["args"]
+            for key in ("image_path", "last_frame_path"):
+                if key in args:
+                    self.assertTrue(args[key].startswith(ART_ROOT + "/"), args[key])
+            if call["id"].endswith("-turntable"):
+                self.assertEqual(args["duration"], 8)
+                self.assertTrue(args["image_path"].endswith("/video/views/k-S.png"))
+                self.assertEqual(args["last_frame_path"], args["image_path"])
+                for frame in args["keyframes"]:
+                    self.assertTrue(frame["image_path"].startswith(ART_ROOT + "/"), frame["image_path"])
+                    self.assertTrue(os.path.exists(os.path.join(
+                        hs.ROOT, frame["image_path"][len(ART_ROOT) + 1:])), frame["image_path"])
+            else:
+                self.assertEqual(args["duration"], 2)
+                self.assertIn("/video/dirs/", args["image_path"])
+                self.assertEqual(args["last_frame_path"], args["image_path"])
+
+    def test_the_retake_batch_is_the_clips_that_failed_and_nothing_else(self):
+        for name in NPCS:
+            self.assertIn("slight three-quarter", hs.load_config(name)["_note"])
+        path = os.path.join(hs.ROOT, "assets/reference/npc-retake-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_retake_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]], list(RETAKE_IDS))
+        motion = {c["id"]: c for c in npc_motion_batch()["calls"]}
+        for call in batch["calls"]:
+            self.assertEqual(call, motion[call["id"]])
+
+    def test_the_hermit_is_a_palette_crop_and_a_views_batch(self):
+        cfg = hs.load_config("hermit")
+        box = [20, 100, 150, 250]
+        self.assertEqual(cfg["type"], "monster")
+        self.assertEqual(cfg["concept"]["source"], "docs/concept/theme.jpg")
+        self.assertEqual(cfg["concept"]["box"], box)
+        self.assertTrue(cfg["source_note"].startswith("The reference shows no "))
+        self.assertEqual(cfg["style_refs"], ["assets/reference/engineer/video/views/v-S.png"])
+        self.assertEqual(cfg["items"], [])
+        self.assertEqual(cfg["clips"], {"idle": ["S", "W", "N", "E"]})
+        self.assertNotIn("walk", cfg["clips"])
+        self.assertEqual(cfg["sheet"]["world_height"], 32)
+        self.assertEqual(cfg["sheet"]["height"], hs.sheet_height(32))
+        with Image.open(os.path.join(cfg["dir"], "concept.png")) as image:
+            self.assertEqual(list(np.asarray(image).shape[:2]), [box[3] - box[1], box[2] - box[0]])
+        self.assertEqual(cfg["mirror_views"], {"E": "W"})
+        for name in NPCS:
+            self.assertNotIn("mirror_views", hs.load_config(name), name)
+        prompts = hs.build_prompts(cfg)["calls"]
+        views = [c for c in prompts if c["id"].startswith("view-")]
+        self.assertEqual([c["id"] for c in views], ["view-S", "view-N", "view-W"])
+        self.assertEqual(views[-1]["then"], "hero_sprites.py views")
+        video = [c for c in prompts if c["tool"] == "GenerateVideo"]
+        self.assertEqual({c["id"].split("-", 1)[0] for c in video}, {"turntable", "idle"})
+        px = lambda path: np.asarray(Image.open(path).convert("RGB"))
+        views_dir = os.path.join(cfg["video"], "views")
+        self.assertTrue(np.array_equal(px(os.path.join(views_dir, "v-E.png")),
+                                       px(os.path.join(views_dir, "v-W.png"))[:, ::-1]))
+        for d in "SNWE":
+            with Image.open(os.path.join(views_dir, f"k-{d}.png")) as image:
+                self.assertEqual(image.size, (720, 720), f"hermit k-{d}")
+        path = os.path.join(hs.ROOT, "assets/reference/hermit-views-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, hermit_views_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]],
+                         ["hermit-view-S", "hermit-view-N", "hermit-view-W"])
+        self.assertTrue(all(c["tool"] == "GenerateImage" for c in batch["calls"]))
+        self.assertNotIn("view-E", json.dumps(batch["calls"]))
+        self.assertNotIn("GenerateVideo", json.dumps(batch["calls"]))
+
+    def test_the_second_retake_is_only_the_clips_that_still_fail(self):
+        path = os.path.join(hs.ROOT, "assets/reference/npc-retake2-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_retake2_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]], list(RETAKE2_IDS))
+        motion = {c["id"]: c for c in npc_motion_batch()["calls"]}
+        for call in batch["calls"]:
+            self.assertEqual(call, motion[call["id"]])
+
+    def test_the_third_retake_is_the_merchant_idles_that_still_fail(self):
+        path = os.path.join(hs.ROOT, "assets/reference/npc-retake3-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, npc_retake3_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]], list(RETAKE3_IDS))
+        motion = {c["id"]: c for c in npc_motion_batch()["calls"]}
+        for call in batch["calls"]:
+            self.assertEqual(call, motion[call["id"]])
+
+    def test_the_hermit_retake_is_the_idles_that_miss_the_start_pose(self):
+        path = os.path.join(hs.ROOT, "assets/reference/hermit-retake-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, hermit_retake_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]], list(HERMIT_RETAKE_IDS))
+        motion = {c["id"]: c for c in hermit_motion_batch()["calls"]}
+        for call in batch["calls"]:
+            self.assertEqual(call, motion[call["id"]])
+
+    def test_the_hermit_west_idle_retake_is_the_pipeline_prompt(self):
+        cfg = hs.load_config("hermit")
+        sent = next(c for c in hs.build_prompts(cfg)["calls"] if c["id"] == "idle-W")
+        with open(os.path.join(hs.ROOT, "assets/reference/hermit-idle-w-retake-batch.json")) as fh:
+            batch = json.load(fh)
+        self.assertEqual([c["id"] for c in batch["calls"]], ["idle-W"])
+        self.assertEqual(batch["calls"][0], sent)
+        self.assertEqual(sent["args"]["duration"], 2)
+        self.assertIn("limit 1", batch["_note"])
+
+    def test_the_hermit_motion_batch_is_the_turntable_and_four_idles(self):
+        cfg = hs.load_config("hermit")
+        p = hs.build_prompts(cfg)
+        with open(os.path.join(cfg["dir"], "prompts.json")) as fh:
+            self.assertEqual(fh.read(), json.dumps(p, indent=1) + "\n")
+        with open(os.path.join(cfg["dir"], "prompts.md")) as fh:
+            self.assertEqual(fh.read(), hs.prompts_markdown(p))
+        path = os.path.join(hs.ROOT, "assets/reference/hermit-motion-batch.json")
+        with open(path) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, hermit_motion_batch())
+        self.assertEqual([c["id"] for c in batch["calls"]],
+                         ["hermit-turntable", "hermit-idle-S", "hermit-idle-W", "hermit-idle-N", "hermit-idle-E"])
+        for call in batch["calls"]:
+            self.assertEqual(call["tool"], "GenerateVideo")
+            self.assertNotIn("attack", call["id"])
+            self.assertNotIn("death", call["id"])
+            self.assertNotIn("walk", call["id"])
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/assets/reference/hermit/"))
+            self.assertTrue(call["save_as"].endswith(".mp4"))
+            args = call["args"]
+            if call["id"].endswith("-turntable"):
+                self.assertEqual(args["duration"], 8)
+                self.assertTrue(args["image_path"].endswith("/video/views/k-S.png"))
+                self.assertEqual(args["last_frame_path"], args["image_path"])
+                for frame in args["keyframes"]:
+                    self.assertTrue(os.path.exists(os.path.join(
+                        hs.ROOT, frame["image_path"][len(ART_ROOT) + 1:])), frame["image_path"])
+            else:
+                self.assertEqual(args["duration"], 2)
+                self.assertIn("/video/dirs/", args["image_path"])
+                self.assertEqual(args["last_frame_path"], args["image_path"])
+
+
+RETAKE_IDS = ("vagrant-walk-W", "merchant-idle-W", "merchant-idle-N", "merchant-idle-E")
+RETAKE2_IDS = ("vagrant-walk-W", "merchant-idle-W", "merchant-idle-E")
+RETAKE3_IDS = ("merchant-idle-W", "merchant-idle-E")
+HERMIT_RETAKE_IDS = ("hermit-idle-W", "hermit-idle-N")
+
+
+def npc_retake_batch():
+    """The clips the checks refused, copied from the motion batch.
+
+    Prompts, image paths and save_as are the motion-batch calls. Nothing
+    else is in the list, and the wording is not rewritten."""
+    by_id = {c["id"]: c for c in npc_motion_batch()["calls"]}
+    return {"_note": "The clips the checks refused, copied from npc-motion-batch.json. "
+            "Prompts and save_as are unchanged. vagrant-walk-W fails the sheet walk height "
+            "88 ±4 (min 83). merchant idle-W, idle-N and idle-E fail the start pose "
+            "(8 px limit 2, 3 px limit 2, 4 px limit 0). v-S stays a slight three-quarter "
+            "and is not in this list. Paths are absolute under /workspace/lk-art-redo.",
+            "calls": [by_id[i] for i in RETAKE_IDS]}
+
+
+def npc_retake2_batch():
+    """The clips that still fail after the first retake, copied from the motion batch.
+
+    walk-W is still short of the hero walk height. idle-N now passes, so it
+    is not here. Prompts and save_as are the motion-batch calls."""
+    by_id = {c["id"]: c for c in npc_motion_batch()["calls"]}
+    return {"_note": "The clips that still fail, copied from npc-motion-batch.json. "
+            "Prompts and save_as are unchanged. vagrant-walk-W still fails the sheet walk height "
+            "88 ±4 (frame 1 is 83 px). merchant idle-W and idle-E still fail the start pose "
+            "(5 px, limit 0). idle-N now passes and is not here. Paths are absolute under "
+            "/workspace/lk-art-redo.",
+            "calls": [by_id[i] for i in RETAKE2_IDS]}
+
+
+def npc_retake3_batch():
+    """Merchant idles that still miss the start pose, copied from the motion batch."""
+    by_id = {c["id"]: c for c in npc_motion_batch()["calls"]}
+    return {"_note": "Merchant idles that still fail the start pose, copied from npc-motion-batch.json. "
+            "Prompts and save_as are unchanged. idle-W is 5 px against a limit of 0. idle-E is 4 px "
+            "against a limit of 0. idle-S and idle-N pass and are not here. The vagrant walk-W fault "
+            "is the clip leaving its profile, not dirs/W.png, so it is not in this list. Paths are "
+            "absolute under /workspace/lk-art-redo.",
+            "calls": [by_id[i] for i in RETAKE3_IDS]}
+
+
+def hermit_retake_batch():
+    """Hermit idles that miss the start pose, copied from the hermit motion batch."""
+    by_id = {c["id"]: c for c in hermit_motion_batch()["calls"]}
+    return {"_note": "Hermit idles that fail the start pose, copied from hermit-motion-batch.json. "
+            "Prompts and save_as are unchanged. idle-W is 6 px against a limit of 2. idle-N is 2 px "
+            "against a limit of 0. idle-S and idle-E pass and are not here. Paths are absolute under "
+            "/workspace/lk-art-redo.",
+            "calls": [by_id[i] for i in HERMIT_RETAKE_IDS]}
+
+
+def hermit_views_batch():
+    """The hermit's generated views. view-E is not a call: mirror_views writes
+    it as the flip of v-W. No video. Paths are absolute under ART_ROOT."""
+    calls = []
+    for call in hs.build_prompts(hs.load_config("hermit"))["calls"]:
+        if call["tool"] != "GenerateImage":
+            continue
+        args = json.loads(json.dumps(call["args"]))
+        args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
+        calls.append({"id": f"hermit-{call['id']}", "asset": "hermit", "tool": "GenerateImage",
+                      "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])})
+    return {"_note": "GenerateImage calls for the hermit: front S, back N, left W. "
+            "view-E is not a call. mirror_views {\"E\": \"W\"} writes v-E.png as the horizontal "
+            "flip of v-W.png, and views normalizes that. Paths are absolute under "
+            "/workspace/lk-art-redo. save_as is the file `hero_sprites.py hermit views` reads. "
+            "The front view uses the engineer style reference; the other two use that front view. "
+            "No video. The sim stores one hermit and does not send it.",
+            "calls": calls}
+
+
+def hermit_motion_batch():
+    """Turntable plus idle on S W N E. No walk, attack or death. Paths are
+    absolute under ART_ROOT. save_as is the file the next pipeline step reads."""
+    calls = []
+    for call in hs.build_prompts(hs.load_config("hermit"))["calls"]:
+        if call.get("tool") != "GenerateVideo":
+            continue
+        kind = call["id"].split("-", 1)[0]
+        if kind not in ("turntable", "idle"):
+            continue
+        fixed = hs.absolute({"calls": [{key: call[key] for key in ("id", "tool", "args", "save_as")}]},
+                            root=ART_ROOT)["calls"][0]
+        calls.append({"id": f"hermit-{call['id']}", "asset": "hermit", "tool": "GenerateVideo",
+                      "args": fixed["args"], "save_as": fixed["save_as"]})
+    return {"_note": "GenerateVideo calls for the hermit: a turntable and idle on S W N E. "
+            "No walk, no attack and no death. Paths are absolute under /workspace/lk-art-redo. "
+            "save_as is the file the next pipeline step reads. The turntable reads "
+            "video/views/k-<DIR>.png. A clip reads video/dirs/<DIR>.png, which "
+            "`hero_sprites.py hermit dirs` writes after the turntable. view-E is the flip of "
+            "view-W, so k-E and dirs/E.png come from that flip.",
+            "calls": calls}
+
+
+def _abs_image(name, call):
+    args = json.loads(json.dumps(call["args"]))
+    args["reference_image_paths"] = [os.path.join(ART_ROOT, p) for p in args["reference_image_paths"]]
+    return {"id": f"{name}-{call['id']}", "asset": name, "tool": "GenerateImage",
+            "args": args, "save_as": os.path.join(ART_ROOT, call["save_as"])}
+
+
+def approved_image_batch():
+    """GenerateImage calls approved on 2026-11-06. Paths are absolute under
+    ART_ROOT. Nothing here is wired, and no crop is invented."""
+    calls = []
+    for call in hs.static_prompts(hs.load_config("field"))["calls"]:
+        calls.append(_abs_image("field", call))
+    for call in hs.static_prompts(hs.load_config("cliff_face"))["calls"]:
+        if call["id"] == "image-c":
+            calls.append(_abs_image("cliff_face", call))
+    for call in hs.static_prompts(hs.load_config("broadleaf"))["calls"]:
+        if call["id"] == "image-b":
+            calls.append(_abs_image("broadleaf", call))
+    refs = [os.path.join(ART_ROOT, p) for p in (
+        "assets/reference/engineer/video/views/v-S.png", "docs/concept/theme.jpg")]
+    tiles = (
+        ("ground-yard-grass", "the concept clearing's grass, the shared base of the yard",
+         "assets/reference/ground/yard-grass.png"),
+        ("ground-meadow", "meadow grass, the open land around the keep",
+         "assets/reference/ground/meadow.png"),
+        ("ground-pine", "a pine forest floor of needles and moss",
+         "assets/reference/ground/pine.png"),
+        ("ground-ruins", "broken flagstones of a ruins floor",
+         "assets/reference/ground/ruins.png"),
+    )
+    for cid, subject, save in tiles:
+        calls.append({
+            "id": cid, "asset": "ground", "tool": "GenerateImage",
+            "args": {
+                "description": (
+                    f"Seamless ground tile of {subject}, at the hero texel (32 world units over 88 px, "
+                    "the same constant as the hero sheets). Seen from directly above. The left edge continues "
+                    "the right edge and the top edge continues the bottom, with no border and no figure. "
+                    "Match the rendering style of the first reference image and the palette of the second: "
+                    "chunky voxel pixel-art, soft evening light. One square tile only."
+                ),
+                "reference_image_paths": refs,
+                "aspect_ratio": "1:1",
+                "filename": f"{cid}.png",
+            },
+            "save_as": os.path.join(ART_ROOT, save),
+        })
+    calls.append({
+        "id": "yard-concept-sheet", "asset": "yard-concept", "tool": "GenerateImage",
+        "args": {
+            "description": (
+                "One concept sheet in the theme style of the reference images. Crops come later; draw the "
+                "pieces on this one sheet, separated, on a flat white ground: a closed chest and the same "
+                "chest open; a portal and a hell door; a stone keep at ranks 0, 1, 2, 3 and 4, each rank a "
+                "fuller keep than the one before; and a mage tower in the mage's blue and violet palette. "
+                "No labels and no text. Match the chunky voxel pixel-art and the evening light of the references."
+            ),
+            "reference_image_paths": refs,
+            "aspect_ratio": "1:1",
+            "filename": "yard-concept-sheet.png",
+        },
+        "save_as": os.path.join(ART_ROOT, "assets/reference/yard-concept/sheet.png"),
+    })
+    return {"_note": "GenerateImage calls approved 2026-11-06. Field ripe and sown (126x72 top-down), "
+            "cliff variant c (seamless 44 px rock tile), broadleaf b (a different silhouette), "
+            "four ground tiles at the hero texel, and one yard concept sheet. No crops. "
+            "Paths are absolute under /workspace/lk-art-redo. Do not wire these until the images exist.",
+            "calls": calls}
+
+
+def approved_video_batch():
+    """Scout death-N with the still final second, and one rabbit walk-NW.
+    Deer run is not here: CLIP_KINDS has no run, and the deer attack slot is graze."""
+    root = hs.ROOT
+    with open(os.path.join(root, "assets/reference/hero-attack-death-batch.json")) as fh:
+        scout = next(c for c in json.load(fh)["calls"] if c["id"] == "scout-death-N")
+    old = "it staggers, sinks to their knees and falls onto their side, the bow staying in their hand."
+    held = ("it flinches and holds the exact first-frame pose perfectly still for a moment, "
+            "then sinks straight down onto their knees and falls onto their side on the exact spot where they stood, "
+            "the bow staying in their hand. Their body only ever gets lower, frame by frame, never higher. "
+            "It never springs, hops, or stretches up; it does not move away from the camera, up the frame or toward the camera.")
+    if old not in scout["args"]["prompt"]:
+        raise AssertionError("scout death-N prompt no longer has the sentence this retake replaces")
+    scout["args"]["prompt"] = scout["args"]["prompt"].replace(old, held)
+    with open(os.path.join(root, "assets/reference/rabbit/prompts.json")) as fh:
+        rabbit = next(c for c in json.load(fh)["calls"] if c["id"] == "walk-NW")
+    hop = ("Quick rabbit hop on the spot, two hops a second: the long hind feet push off together and the "
+           "front paws land first, ears upright, back arching and stretching with each hop; its body never moves forward.")
+    flat = ("Short hops on the spot, ears flat, two short hops a second: the long hind feet push off together and the "
+            "front paws land first, ears held flat along the back, back arching a little with each hop; its body never moves forward.")
+    if hop not in rabbit["args"]["prompt"]:
+        raise AssertionError("rabbit walk-NW prompt no longer has the hop sentence this retake replaces")
+    rabbit["args"]["prompt"] = rabbit["args"]["prompt"].replace(hop, flat)
+    fixed = hs.absolute({"calls": [rabbit]}, root=ART_ROOT)["calls"][0]
+    return {"_note": "GenerateVideo calls approved 2026-11-06. Scout death-N holds the first frame still, "
+            "then only moves down, and lies still for the last half second (the wolf and troll wording). "
+            "Rabbit walk-NW is one last retake: ears flat, short hops. Drop the rabbit if this fails; "
+            "do not copy another direction over it. Deer run is not in this list: CLIP_KINDS has no run kind, "
+            "and the deer attack slot is already graze. Paths are absolute under /workspace/lk-art-redo.",
+            "calls": [scout, {"id": "rabbit-walk-NW", "asset": "rabbit", "tool": "GenerateVideo",
+                              "args": fixed["args"], "save_as": fixed["save_as"]}]}
+
+
+# theme.jpg boxes. The tile prompts use these crops as the first reference.
+TERRAIN_BOXES = {
+    "plaza": (680, 608, 760, 680),
+    "path": (590, 540, 680, 630),
+    "dirt": (610, 555, 670, 615),
+    "ford": (595, 548, 650, 615),
+    "river": (1140, 640, 1260, 710),
+    "hill": (900, 56, 1260, 86),
+    "mountain": (900, 42, 1260, 70),
+}
+
+PRESERVE = (" Preserve the silhouette and the proportions of the first reference exactly. "
+            "The outline, the height-to-width ratio, and the number of masses stay as they are in that image.")
+
+
+def barrier_pitch_px():
+    """scenery.js barrierPitch of the outer ring, in pixels of a full pine."""
+    return ((2 * math.pi * 258) / 62 / 0.8) * 110 / 40
+
+
+def _stand_on_the_reference(call, crop):
+    """The stock prop prompt drops the ground. A keep and a portal include
+    their base, so that clause is replaced and the silhouette sentence is added."""
+    refs = list(call["args"]["reference_image_paths"])
+    refs[0] = crop
+    call["args"]["reference_image_paths"] = refs
+    old = "Plain flat white background, no ground, no grass, no shadow, no text, no other objects."
+    new = ("Plain flat white background, no text, no other objects. Keep the base, the steps and the "
+           "ground that are part of the first reference. The subject stands on that base. It does not float.")
+    if old not in call["args"]["description"]:
+        raise AssertionError("static prompt no longer has the ground sentence")
+    call["args"]["description"] = call["args"]["description"].replace(old, new) + PRESERVE
+    return call
+
+
+def _prop(hero, noun, design, crop, variant, save_as):
+    cfg = {"hero": hero, "noun": noun, "design": design, "view": "three_quarter",
+           "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+           "variants": [{"id": variant}]}
+    call = hs.static_prompts(cfg)["calls"][0]
+    _stand_on_the_reference(call, crop)
+    call["id"] = f"{hero}-{variant}"
+    call["save_as"] = save_as
+    return {"id": call["id"], "asset": hero, "tool": "GenerateImage",
+            "args": call["args"], "save_as": save_as}
+
+
+def next_art_batch():
+    """The next GenerateImage calls. Each crop is the first reference.
+    Reeds wait on the river tile. Birds stay deferred. Fish and rabbits stay dropped."""
+    style = "assets/reference/engineer/video/views/v-S.png"
+    calls = []
+    tiles = (
+        ("river", "dark water. The reference has no river: it is the dark green forest floor, and the tile is water of that colour",
+         "assets/reference/ground/river.png"),
+        ("ford", "a ford of shallow water over the path's stones. The reference has no water: keep these stones and put shallow water over them",
+         "assets/reference/ground/ford.png"),
+        ("plaza", "the plaza's grass, the ring inside the palisade",
+         "assets/reference/ground/plaza.png"),
+        ("path", "the trodden path through the yard",
+         "assets/reference/ground/path.png"),
+        ("dirt", "worn dirt and small pebbles, the bare earth of the path",
+         "assets/reference/ground/dirt.png"),
+        ("hill", "the near slope under the ridge. Draw that slope's dark ground, not the trees and not the sky",
+         "assets/reference/ground/hill.png"),
+        ("mountain", "rock in the colour of the distant ridge. Draw a ground tile, not a picture of the skyline and not the sky",
+         "assets/reference/ground/mountain.png"),
+    )
+    for name, subject, save in tiles:
+        calls.append({
+            "id": f"ground-{name}", "asset": "ground", "tool": "GenerateImage",
+            "args": {
+                "description": (
+                    f"Seamless ground tile of {subject}, at the hero texel (32 world units over 88 px, "
+                    "the same constant as the hero sheets). The first reference is the colour and the texture. "
+                    "Preserve its colours, its block size and its proportions. Seen from directly above. "
+                    "The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. "
+                    "Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. "
+                    "One square tile only. Do not draw a landscape or a freestanding object."
+                ),
+                "reference_image_paths": [f"assets/reference/terrain-crops/{name}.png", style],
+                "aspect_ratio": "1:1",
+                "filename": f"ground-{name}.png",
+            },
+            "save_as": save,
+        })
+    keep = "a stone keep of the first reference, the same masses and the same base"
+    for rank in range(5):
+        calls.append(_prop(
+            "keep", "keep", keep,
+            f"assets/reference/yard-concept/crops/keep-{rank}.png", str(rank),
+            f"assets/reference/keep/views/{rank}.png"))
+    calls.append(_prop(
+        "portal", "portal",
+        "the grounded stone arch of the first reference, with its steps and the glow inside the opening",
+        "assets/reference/yard-concept/crops/portal.png", "a",
+        "assets/reference/portal/views/a.png"))
+    calls[-1]["args"]["description"] += " The arch stands on its steps. It is not a floating ring."
+    pitch = round(barrier_pitch_px())
+    barrier = hs.load_config("forest_barrier")
+    framed = dict(barrier, variants=list(barrier["variants"]) + [{
+        "id": "c",
+        "framing": (f"a seamless tiling strip {pitch} px wide at a 110 px pine, one outer-ring pitch. "
+                    "The left edge continues the right edge and the pines run off both side edges. "
+                    "Not a single tree and not a row that stops inside the frame"),
+    }])
+    strip = next(c for c in hs.static_prompts(framed)["calls"] if c["id"] == "image-c")
+    strip["args"]["description"] += PRESERVE
+    calls.append({"id": "forest_barrier-image-c", "asset": "forest_barrier", "tool": "GenerateImage",
+                  "args": strip["args"], "save_as": strip["save_as"]})
+    boxes = {k: list(v) for k, v in TERRAIN_BOXES.items()}
+    return {
+        "_note": "GenerateImage calls. The parent runs the tool. Each reference_image_paths entry is "
+        "relative to the repository root, and the first image is the piece's own crop. "
+        "Keep and the portal keep the base in the crop: the stock 'no ground' sentence is replaced so the "
+        "arch is not a floating ring and a rank is not a different keep. "
+        f"Terrain boxes on theme.jpg: {boxes}. "
+        "The forest barrier strip on disk does not tile (variant a has 2 opaque pixels on each side edge, "
+        f"variant b has 4 and 8). Variant c is one outer-ring pitch, {pitch} px at a 110 px pine. "
+        "Reeds wait until the river tile exists. Birds stay deferred. Fish stay dropped. Rabbits stay dropped. "
+        "Do not build a keep or portal sheet from the views these calls replace.",
+        "calls": calls,
+    }
+
+
+class ApprovedBatchTest(unittest.TestCase):
+    def test_the_approved_image_and_video_batches_match_the_calls(self):
+        image = json.load(open(os.path.join(hs.ROOT, "assets/reference/approved-image-batch.json")))
+        video = json.load(open(os.path.join(hs.ROOT, "assets/reference/approved-video-batch.json")))
+        self.assertEqual(image, approved_image_batch())
+        self.assertEqual(video, approved_video_batch())
+        self.assertEqual(len(image["calls"]), 9)
+        self.assertEqual(len(video["calls"]), 2)
+        self.assertTrue(all(c["tool"] == "GenerateImage" for c in image["calls"]))
+        self.assertTrue(all(c["tool"] == "GenerateVideo" for c in video["calls"]))
+        ids = [c["id"] for c in image["calls"]]
+        self.assertEqual(ids, [
+            "field-image-a", "field-image-b", "cliff_face-image-c", "broadleaf-image-b",
+            "ground-yard-grass", "ground-meadow", "ground-pine", "ground-ruins", "yard-concept-sheet"])
+        self.assertEqual([c["id"] for c in video["calls"]], ["scout-death-N", "rabbit-walk-NW"])
+        self.assertNotIn("deer", [c["asset"] for c in video["calls"]])
+        self.assertIn("CLIP_KINDS has no run kind", video["_note"])
+        for call in image["calls"] + video["calls"]:
+            self.assertTrue(call["save_as"].startswith(ART_ROOT + "/"), call["id"])
+            text = call["args"].get("description") or call["args"].get("prompt")
+            self.assertTrue(text and text.strip(), call["id"])
+        sheet = next(c for c in image["calls"] if c["id"] == "yard-concept-sheet")
+        self.assertNotIn("box", sheet["args"])
+        self.assertIn("ranks 0, 1, 2, 3 and 4", sheet["args"]["description"])
+        self.assertIn("mage", sheet["args"]["description"])
+        broad = next(c for c in image["calls"] if c["id"] == "broadleaf-image-b")
+        self.assertIn("poplar", broad["args"]["description"])
+        cliff = next(c for c in image["calls"] if c["id"] == "cliff_face-image-c")
+        self.assertIn("Not a freestanding block and not a pillar", cliff["args"]["description"])
+        field = next(c for c in image["calls"] if c["id"] == "field-image-a")
+        self.assertIn("126 by 72", field["args"]["description"])
+        death = video["calls"][0]["args"]["prompt"]
+        self.assertIn("holds the exact first-frame pose perfectly still", death)
+        self.assertIn("lies still on the ground for the last half second", death)
+        self.assertIn("ears held flat", video["calls"][1]["args"]["prompt"])
+        self.assertNotIn("ears upright", video["calls"][1]["args"]["prompt"])
+
+
+class NextArtBatchTest(unittest.TestCase):
+    def test_the_next_batch_uses_each_crop_and_keeps_its_silhouette(self):
+        batch = next_art_batch()
+        path = os.path.join(hs.ROOT, "assets/reference/next-art-batch.json")
+        with open(path) as fh:
+            self.assertEqual(json.load(fh), batch)
+        ids = [c["id"] for c in batch["calls"]]
+        self.assertEqual(ids, [
+            "ground-river", "ground-ford", "ground-plaza", "ground-path", "ground-dirt",
+            "ground-hill", "ground-mountain",
+            "keep-0", "keep-1", "keep-2", "keep-3", "keep-4", "portal-a",
+            "forest_barrier-image-c",
+        ])
+        self.assertTrue(all(c["tool"] == "GenerateImage" for c in batch["calls"]))
+        for dropped in ("reeds", "bird", "fish", "rabbit"):
+            self.assertNotIn(dropped, ids)
+        self.assertIn("Reeds wait", batch["_note"])
+        self.assertIn("Rabbits stay dropped", batch["_note"])
+        theme = Image.open(os.path.join(hs.ROOT, "docs/concept/theme.jpg"))
+        for name, box in TERRAIN_BOXES.items():
+            crop = Image.open(os.path.join(hs.ROOT, "assets/reference/terrain-crops", f"{name}.png"))
+            self.assertEqual(crop.size, (box[2] - box[0], box[3] - box[1]), name)
+            self.assertEqual(list(crop.getdata()), list(theme.crop(box).getdata()), name)
+            call = next(c for c in batch["calls"] if c["id"] == f"ground-{name}")
+            self.assertEqual(call["args"]["reference_image_paths"][0],
+                             f"assets/reference/terrain-crops/{name}.png")
+            self.assertIn("32 world units over 88 px", call["args"]["description"])
+            self.assertIn("left edge continues the right edge", call["args"]["description"])
+        for rank in range(5):
+            call = next(c for c in batch["calls"] if c["id"] == f"keep-{rank}")
+            self.assertEqual(call["args"]["reference_image_paths"][0],
+                             f"assets/reference/yard-concept/crops/keep-{rank}.png")
+            self.assertIn("Preserve the silhouette", call["args"]["description"])
+            self.assertIn("does not float", call["args"]["description"])
+            self.assertNotIn("no ground", call["args"]["description"])
+            self.assertTrue(os.path.exists(os.path.join(hs.ROOT, call["args"]["reference_image_paths"][0])))
+        portal = next(c for c in batch["calls"] if c["id"] == "portal-a")
+        self.assertEqual(portal["args"]["reference_image_paths"][0],
+                         "assets/reference/yard-concept/crops/portal.png")
+        self.assertIn("not a floating ring", portal["args"]["description"])
+        self.assertIn("stands on its steps", portal["args"]["description"])
+        strip = next(c for c in batch["calls"] if c["id"] == "forest_barrier-image-c")
+        self.assertEqual(strip["args"]["reference_image_paths"][0],
+                         "assets/reference/forest_barrier/concept.png")
+        self.assertIn("left edge continues the right edge", strip["args"]["description"])
+        self.assertIn(f"{round(barrier_pitch_px())} px", strip["args"]["description"])
+        self.assertIn("Preserve the silhouette", strip["args"]["description"])
+        self.assertTrue(os.path.exists(os.path.join(hs.ROOT, "assets/reference/keep/asset.json")))
+        self.assertTrue(os.path.exists(os.path.join(hs.ROOT, "assets/reference/portal/asset.json")))
+
+    def test_keep_ranks_fit_the_scale_floor_only_at_the_live_heights(self):
+        # The concept crops are the approved silhouettes. Their heights are not
+        # one object at a scale the floor allows. The live keep is.
+        crops = []
+        for rank in range(5):
+            mask = sv.cut_out(np.asarray(Image.open(os.path.join(
+                hs.ROOT, "assets/reference/yard-concept/crops", f"keep-{rank}.png")).convert("RGB")))
+            ys, xs = np.nonzero(mask)
+            crops.append((int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1)))
+        self.assertEqual(crops, [(60, 46), (128, 103), (157, 194), (251, 259), (309, 305)])
+        self.assertEqual(hs.STATIC_SCALE, (0.5, 1.0))
+        tall = crops[4][1]
+        host = StaticTest()
+        for rank in (0, 1):
+            ratio = crops[rank][1] / tall
+            self.assertLess(ratio, hs.STATIC_SCALE[0])
+            with self.assertRaises(SystemExit):
+                host.config(world_height=235, cell=[128, 656], variants=[{"id": str(rank), "scale": ratio}])
+        with self.assertRaises(SystemExit):
+            host.config(variants=[{"id": "a", "world_height": 165}])
+        live = [165, 179, 193, 207, 235]
+        cfg = host.config(world_height=live[-1], cell=[128, 656], variant_cap=5,
+                          variants=[{"id": str(i), "scale": h / live[-1]} for i, h in enumerate(live)])
+        self.assertEqual([hs.static_height(cfg, v) for v in cfg["variants"]],
+                         [hs.sheet_height(h) for h in live])
+
+    def test_the_batch_names_its_wire_point_and_does_not_install_the_files(self):
+        # The parent is generating these. The live copies stay absent, so nothing samples them.
+        batch = {c["id"]: c for c in next_art_batch()["calls"]}
+        save_as = {
+            "ground-river": "assets/reference/ground/river.png",
+            "ground-ford": "assets/reference/ground/ford.png",
+            "ground-plaza": "assets/reference/ground/plaza.png",
+            "ground-path": "assets/reference/ground/path.png",
+            "ground-dirt": "assets/reference/ground/dirt.png",
+            "ground-hill": "assets/reference/ground/hill.png",
+            "ground-mountain": "assets/reference/ground/mountain.png",
+            "portal-a": "assets/reference/portal/views/a.png",
+            "forest_barrier-image-c": "assets/reference/forest_barrier/views/c.png",
+        }
+        for rank in range(5):
+            save_as[f"keep-{rank}"] = f"assets/reference/keep/views/{rank}.png"
+        self.assertEqual(set(save_as), set(batch))
+        for name, src in save_as.items():
+            self.assertEqual(batch[name]["save_as"], src)
+        # River, ford, dirt, hill and mountain are installed. The keep sheet is
+        # the live keep. The portal sheet is an approved variant that is not
+        # drawn: the spawn stays the hell door. Plaza and path are not tiles.
+        for dest in (
+            "priv/static/images/hd2d/ground-river.png",
+            "priv/static/images/hd2d/ground-ford.png",
+            "priv/static/images/hd2d/ground-dirt.png",
+            "priv/static/images/hd2d/ground-hill.png",
+            "priv/static/images/hd2d/ground-mountain.png",
+            "priv/static/images/hd2d/keep-sheet.png",
+            "priv/static/images/hd2d/portal-sheet.png",
+        ):
+            self.assertTrue(os.path.exists(os.path.join(hs.ROOT, dest)), dest)
+        for dest in (
+            "priv/static/images/hd2d/ground-plaza.png",
+            "priv/static/images/hd2d/ground-path.png",
+            "assets/reference/ground/path.png",
+        ):
+            self.assertFalse(os.path.exists(os.path.join(hs.ROOT, dest)), dest)
+        pack = os.path.join(hs.ROOT, "assets/reference/next-art-output")
+        plaza = np.asarray(Image.open(os.path.join(pack, "ground/plaza.png")).convert("RGB"))
+        row_interior = int(np.abs(plaza[1:].astype(int) - plaza[:-1].astype(int)).max())
+        row_wrap = int(np.abs(plaza[:1].astype(int) - plaza[-1:].astype(int)).max())
+        self.assertEqual((row_wrap, row_interior, row_wrap <= row_interior), (208, 150, False))
+        barrier = np.asarray(Image.open(os.path.join(hs.ROOT, "assets/reference/forest_barrier/views/c.png")).convert("RGB"))
+        mask = sv.cut_out(barrier)
+        self.assertEqual(int(mask[:, 0].sum()), 0)
+        self.assertEqual(int(mask[:, -1].sum()), 0)
+        b_interior = int(np.abs(barrier[:, 1:].astype(int) - barrier[:, :-1].astype(int)).max())
+        b_wrap = int(np.abs(barrier[:, :1].astype(int) - barrier[:, -1:].astype(int)).max())
+        self.assertEqual((b_wrap, b_interior, hs.seam_holds(barrier)), (241, 220, False))
+        with open(os.path.join(hs.ROOT, "assets/reference/forest_barrier/asset.json")) as fh:
+            barrier = json.load(fh)
+        self.assertEqual([v["id"] for v in barrier["variants"]], ["a", "b"])
+
+    def test_the_generation_record_keeps_the_path_refusal(self):
+        root = os.path.join(hs.ROOT, "assets/reference")
+        with open(os.path.join(root, "next-art-generation-summary.json")) as fh:
+            summary = json.load(fh)
+        with open(os.path.join(root, "next-art-retake-manifest.v2.json")) as fh:
+            manifest = json.load(fh)
+        self.assertEqual(summary["final_ground"], {
+            "river": "initial pass",
+            "plaza": "initial pass",
+            "ford": "retake1 pass",
+            "dirt": "retake1 pass",
+            "hill": "retake1 pass",
+            "mountain": "retake1 pass",
+            "path": "UNRESOLVED (retake1 fail, retake2 provider refusal)",
+        })
+        self.assertEqual(summary["hermit_idle_W_video"], "needs parent videoReview, not watched")
+        initial = {row["id"]: row["seam"] for row in summary["initial"]["results"] if "seam" in row}
+        self.assertEqual(initial, {
+            "ground-river": {"wrap_max": 31, "interior_max": 83, "pass": True},
+            "ground-ford": {"wrap_max": 113, "interior_max": 70, "pass": False},
+            "ground-plaza": {"wrap_max": 142, "interior_max": 158, "pass": True},
+            "ground-path": {"wrap_max": 128, "interior_max": 105, "pass": False},
+            "ground-dirt": {"wrap_max": 94, "interior_max": 62, "pass": False},
+            "ground-hill": {"wrap_max": 74, "interior_max": 59, "pass": False},
+            "ground-mountain": {"wrap_max": 181, "interior_max": 104, "pass": False},
+        })
+        self.assertEqual([(row["id"], row["attempt"]) for row in manifest], [
+            ("ground-ford", 1), ("ground-path", 1), ("ground-dirt", 1),
+            ("ground-hill", 1), ("ground-mountain", 1), ("ground-path", 2),
+        ])
+        refused = manifest[-1]
+        self.assertIn("content policy", refused["error"])
+        self.assertEqual(refused["status"], "unresolved; refusal not bypassed")
+        self.assertIsNone(refused["seam_pass"])
+        self.assertEqual(refused["tool"], "GenerateImage")
+        self.assertTrue(refused["args"]["description"].strip())
+        with open(os.path.join(root, "next-art-batch.json")) as fh:
+            batch = json.load(fh)
+        self.assertEqual(batch, next_art_batch())
+        self.assertNotIn("content policy", json.dumps(batch))
+        with open(os.path.join(root, "reeds-retake-batch.json")) as fh:
+            reeds = json.load(fh)
+        cfg = hs.load_config("reeds")
+        self.assertEqual(reeds["calls"], hs.static_prompts(cfg)["calls"])
+        self.assertIn("tall thin", reeds["calls"][0]["args"]["description"])
+        self.assertEqual([c["id"] for c in reeds["calls"]], ["image-a", "image-b"])
+        with open(os.path.join(root, "retake-manifest.json")) as fh:
+            retake = json.load(fh)
+        by_id = {}
+        for row in retake:
+            by_id.setdefault(row["id"], []).append(row)
+        self.assertEqual(by_id["ground-ford"][0]["seam_wrap"], 120)
+        self.assertEqual(by_id["ground-ford"][0]["seam_interior"], 142)
+        self.assertTrue(by_id["ground-ford"][0]["seam_pass"])
+        self.assertEqual(by_id["ground-dirt"][0]["seam_wrap"], 68)
+        self.assertEqual(by_id["ground-hill"][0]["seam_wrap"], 50)
+        self.assertEqual(by_id["ground-mountain"][0]["seam_wrap"], 25)
+        self.assertEqual(by_id["ground-path"][0]["seam_wrap"], 101)
+        self.assertEqual(by_id["ground-path"][0]["seam_interior"], 46)
+        self.assertFalse(by_id["ground-path"][0]["seam_pass"])
+        refused = by_id["ground-path"][1]
+        self.assertEqual(refused["attempt"], 2)
+        self.assertIsNone(refused["seam_pass"])
+        self.assertIn("content policy", refused["error"])
+        self.assertIn("not retried", refused["error"])
+        with open(os.path.join(root, "next-art-ready-batch.json")) as fh:
+            ready = json.load(fh)
+        ids = [c["id"] for c in ready["calls"]]
+        self.assertEqual(ids, ["ground-plaza", "forest_barrier-strip", "reeds-a", "reeds-b"])
+        blob = json.dumps([c["args"]["reference_image_paths"] for c in ready["calls"]])
+        for banned in ("terrain-crops/plaza.png", "forest_barrier/concept.png", "theme.jpg"):
+            self.assertNotIn(banned, blob, banned)
+        refs = {
+            "ground-plaza": "assets/reference/next-art-refs/plaza-grass.png",
+            "forest_barrier-strip": "assets/reference/next-art-refs/pine-crown.png",
+            "reeds-a": "assets/reference/next-art-refs/reed-green.png",
+            "reeds-b": "assets/reference/next-art-refs/reed-green.png",
+        }
+        for call in ready["calls"]:
+            self.assertEqual(call["args"]["reference_image_paths"], [refs[call["id"]]], call["id"])
+            self.assertTrue(os.path.exists(os.path.join(hs.ROOT, refs[call["id"]])), call["id"])
+        self.assertNotIn("Plain flat white background", ready["calls"][0]["args"]["description"])
+        self.assertNotIn("Plain flat white background", ready["calls"][1]["args"]["description"])
+        self.assertIn("left column of pixels continues the right column", ready["calls"][1]["args"]["description"])
+        self.assertIn("single pixel-wide column", ready["calls"][2]["args"]["description"])
+
+    def test_the_four_call_results_stay_unwired(self):
+        # Plaza columns pass and the disc spread clears 8. Three rows wrap at
+        # 100 against an interior of 96, so the tile does not. The barrier
+        # edges are not both tree. The reeds still merge at 25 px. None of
+        # these files is a live source, and the edges are not rewritten.
+        root = os.path.join(hs.ROOT, "assets/reference/next-art-output/final-four")
+        plaza = np.asarray(Image.open(os.path.join(root, "ground/plaza.png")).convert("RGB"))
+        self.assertTrue(hs.seam_holds(plaza))
+        row_interior = int(np.abs(plaza[1:].astype(int) - plaza[:-1].astype(int)).max())
+        row_wrap = int(np.abs(plaza[:1].astype(int) - plaza[-1:].astype(int)).max())
+        self.assertEqual(row_interior, 96)
+        self.assertEqual(row_wrap, 100)
+        self.assertGreater(row_wrap, row_interior)
+        with open(os.path.join(hs.ROOT, "assets/js/seam_tiles.js")) as fh:
+            tiles = fh.read()
+        self.assertNotIn("plaza", tiles)
+        barrier = json.load(open(os.path.join(hs.ROOT, "assets/reference/forest_barrier/asset.json")))
+        self.assertEqual([v["id"] for v in barrier["variants"]], ["a", "b"])
+        self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "assets/reference/forest_barrier/views/d.png")))
+        self.assertTrue(os.path.exists(os.path.join(root, "forest_barrier/views/d.png")))
+        self.assertTrue(os.path.exists(os.path.join(root, "reeds/views/thin-a.png")))
+        self.assertTrue(os.path.exists(os.path.join(hs.ROOT, "assets/reference/reeds/views/a.png")))
+        self.assertFalse(os.path.exists(os.path.join(hs.ROOT, "priv/static/images/hd2d/ground-plaza.png")))
+
+
+if __name__ == "__main__":
+    unittest.main()

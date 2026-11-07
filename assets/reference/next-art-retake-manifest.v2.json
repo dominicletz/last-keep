@@ -1,0 +1,151 @@
+[
+ {
+  "id": "ground-ford",
+  "attempt": 1,
+  "root_cause_fixed": "original refs showed scene/skyline or mixed verge; replaced primary ref with tight texture-only crop and explicit orthographic/even-lighting prompt",
+  "primary_ref": "retake/crops/ford.png",
+  "crop_provenance": "terrain-crops/ford.png box (15,10,55,50) water-free stone/earth area, nearest x12.8",
+  "style_ref": "engineer/video/views/v-S.png",
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/4e2e1d7827d30187c62eb1f5cd6b2abd55087ebc5cafe11055e2f397ada52a8b.jpg",
+  "returned_format": "JPEG",
+  "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/ford.png",
+  "seam_wrap": 120,
+  "seam_interior": 142,
+  "seam_pass": true,
+  "semantic": "pass: top-down shallow water over stones, no horizon",
+  "save_as": "assets/reference/ground/ford.png",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of a ford: shallow clear water over the path's stones and earth, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is a tight texture-only crop of that ground: preserve its colours and block size, and lay a thin film of shallow water over it. Strictly straight-down orthographic top view, flat edge-to-edge material filling the whole square. No horizon, no sky, no perspective, no reflections of a landscape, no depth fade. Uniform even lighting across the whole tile with no gradient, vignette or bright corner; features evenly scattered and small. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/retake/crops/ford.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-ford-r1.png"
+  }
+ },
+ {
+  "id": "ground-path",
+  "attempt": 1,
+  "root_cause_fixed": "original refs showed scene/skyline or mixed verge; replaced primary ref with tight texture-only crop and explicit orthographic/even-lighting prompt",
+  "primary_ref": "retake/crops/path.png",
+  "crop_provenance": "terrain-crops/path.png box (25,30,75,80), nearest upscale",
+  "style_ref": "engineer/video/views/v-S.png",
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/97c17a52937ad6d423c8d709c773ff6d77fb9b07898d3c2b1473eb21cc6ad092.jpg",
+  "returned_format": "JPEG",
+  "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/path.png",
+  "seam_wrap": 101,
+  "seam_interior": 46,
+  "seam_pass": false,
+  "semantic": "FAIL: blurry oversized blocks, dark verge band on right",
+  "save_as": "assets/reference/ground/path.png",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of the trodden path through the yard, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is a tight texture-only crop of that path: preserve its colours, its block size and its mix of packed earth and sparse grass. Strictly straight-down orthographic top view, flat edge-to-edge material filling the whole square. No horizon, no sky, no perspective, no path edges or verges inside the tile. Uniform even lighting across the whole tile with no gradient, vignette or bright corner; features evenly scattered and small. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/retake/crops/path.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-path-r1.png"
+  }
+ },
+ {
+  "id": "ground-dirt",
+  "attempt": 1,
+  "root_cause_fixed": "original refs showed scene/skyline or mixed verge; replaced primary ref with tight texture-only crop and explicit orthographic/even-lighting prompt",
+  "primary_ref": "retake/crops/dirt.png",
+  "crop_provenance": "terrain-crops/dirt.png box (5,5,45,45) avoids dark corner",
+  "style_ref": "engineer/video/views/v-S.png",
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/77bdde2bf6ba20fa0d21b67d0b037a9818dbf6da06b1ca5fe6224b665a8dd7f2.jpg",
+  "returned_format": "JPEG",
+  "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/dirt.png",
+  "seam_wrap": 68,
+  "seam_interior": 77,
+  "seam_pass": true,
+  "semantic": "pass (note: some grass clumps at left/bottom edges)",
+  "save_as": "assets/reference/ground/dirt.png",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of worn dirt and small pebbles, the bare earth of the path, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is a tight texture-only crop of that earth: preserve its colours and block size. Strictly straight-down orthographic top view, flat edge-to-edge material filling the whole square. No horizon, no sky, no perspective, no grass patches or edges inside the tile. Uniform even lighting across the whole tile with no gradient, vignette or bright corner; pebbles evenly scattered and small. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/retake/crops/dirt.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-dirt-r1.png"
+  }
+ },
+ {
+  "id": "ground-hill",
+  "attempt": 1,
+  "root_cause_fixed": "original refs showed scene/skyline or mixed verge; replaced primary ref with tight texture-only crop and explicit orthographic/even-lighting prompt",
+  "primary_ref": "retake/crops/hill.png",
+  "crop_provenance": "terrain-crops/hill.png rows 10-30 (below tree/sky line), 3 x120px column chunks stacked",
+  "style_ref": "engineer/video/views/v-S.png",
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/01f65437d79c8808e912aed302a88fab34db45c0b592a5d8dd1b45953e13d4dc.jpg",
+  "returned_format": "JPEG",
+  "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/hill.png",
+  "seam_wrap": 50,
+  "seam_interior": 56,
+  "seam_pass": true,
+  "semantic": "pass: dark purple-brown soil with scrub",
+  "save_as": "assets/reference/ground/hill.png",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of the dark earth of the near slope under the ridge, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is a tight texture-only swatch of that slope's dark ground (no trees, no sky): preserve its dark muted purple-brown colours and block size. Strictly straight-down orthographic top view, flat edge-to-edge soil and low scrub filling the whole square. No horizon, no sky, no trees, no perspective, no terraces or ledges. Uniform even lighting across the whole tile with no gradient, vignette or bright corner; features evenly scattered and small. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/retake/crops/hill.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-hill-r1.png"
+  }
+ },
+ {
+  "id": "ground-mountain",
+  "attempt": 1,
+  "root_cause_fixed": "original refs showed scene/skyline or mixed verge; replaced primary ref with tight texture-only crop and explicit orthographic/even-lighting prompt",
+  "primary_ref": "retake/crops/mountain.png",
+  "crop_provenance": "terrain-crops/mountain.png rows 20-28 (ridge body, no sky), 3 x120px chunks stacked",
+  "style_ref": "engineer/video/views/v-S.png",
+  "returned_path": "/cursor/stores/user/grok-bot/agents/8bebaa1d-3cfa-4fa2-b1bd-3af9085b836a/assets/1dfe27e16afcb0d16a2ffbc22d98c132a4db82053cb3fa5148ee2f8d4955701f.jpg",
+  "returned_format": "JPEG",
+  "png": "/workspace/lk/next-art-generation/run-1794004007/retake/r1/mountain.png",
+  "seam_wrap": 25,
+  "seam_interior": 81,
+  "seam_pass": true,
+  "semantic": "pass: grey-purple rock, no sky",
+  "save_as": "assets/reference/ground/mountain.png",
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of bare rock in the colour of the distant ridge, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is a tight texture-only swatch of the ridge rock (no sky, no skyline): preserve its dark muted grey-purple colours and block size. Strictly straight-down orthographic top view, flat edge-to-edge rock surface filling the whole square, with small cracks and stones. No horizon, no sky, no sunset, no mountains, no trees, no perspective. Uniform even lighting across the whole tile with no gradient, vignette or bright corner; features evenly scattered and small. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/retake/crops/mountain.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-mountain-r1.png"
+  }
+ },
+ {
+  "id": "ground-path",
+  "attempt": 2,
+  "primary_ref": "retake/crops/path-r2.png",
+  "crop_provenance": "terrain-crops/path.png box (40,10,70,40) brownest earth-only area, nearest x17",
+  "error": "Failed to generate image, error: The image provider blocked this request under its content policy. This often happens when the description names trademarked characters, brands, or real people. Try describing the subject in your own words instead.",
+  "seam_pass": null,
+  "tool": "GenerateImage",
+  "args": {
+   "description": "Seamless ground tile of the trodden path through the yard: packed brown earth with small stones and a few tiny grass tufts, at the hero texel (32 world units over 88 px, the same constant as the hero sheets). The first reference is a tight earth-only crop of the path centre: preserve its warm brown colours, rendered crisply as small voxel blocks (about 16 px blocks), not blurry. Strictly straight-down orthographic top view, flat edge-to-edge material filling the whole square. No horizon, no sky, no perspective, no grass verge, no dark band or edge along any side. Uniform even lighting and an even mix across the whole tile with no gradient, vignette or dark side; features evenly scattered and small. The left edge continues the right edge and the top edge continues the bottom, with no border and no figure. Match the rendering style of the second reference image: chunky voxel pixel-art, soft evening light. One square tile only.",
+   "reference_image_paths": [
+    "/workspace/lk/next-art-generation/run-1794004007/retake/crops/path-r2.png",
+    "/workspace/lk/next-art-generation/run-1794004007/art-redo-next/refs/assets/reference/engineer/video/views/v-S.png"
+   ],
+   "aspect_ratio": "1:1",
+   "filename": "ground-path-r2.png"
+  },
+  "status": "unresolved; refusal not bypassed"
+ }
+]

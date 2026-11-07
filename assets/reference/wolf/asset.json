@@ -1,0 +1,198 @@
+{
+ "_note": "Third monster and the first quadruped (docs/ART-REDO.md). The concept crop is the wolf group in monsters.jpg (the registry crop 760,340,270,245); it shows two wolves with the goblin spear tip at its left edge and the dark rider at its right, so the views draw one wolf and nothing else. MARKS muzzle and tail. World height 18 is monsterHeights.wolf; at the hero texel (32/88) that is 50 px, ear tips to paws, the same in every view. A wolf is about twice as long as it is tall: side-on it is about 95 px nose to tail, and the lunge bite reaches about 15 px further forward; lying on its side in the S death it is as wide as it is long. So the cell is 128 (the hero cell), not 80: 50 + 16 would fit the height but not the length. view_height 300: at the default 520 px a side view would be about 1000 px wide on the 720 canvas; at 300 it is about 600 (normalize_view refuses anything wider than 640). No held item: the jaws are the weapon, so items is empty and no prompt has a props line. view_pose replaces the person's 'arms relaxed' sentence; it names no nose-to-tail extent (that pushed the first two view-S takes to three-quarter) and pins the spine along the view direction. The clips follow the skeleton precheck lessons from the first take: every motion stays on the spot (trot on a treadmill, the bite lunges from planted hind paws, the collapse lies down where it stood), starts and ends on the start pose, and the tail stays low and close so it cannot leave the frame. death_picks \"motion\": every wolf death holds the start pose for most of its fall time and then drops in a few frames, and evenly timed picks showed death-E standing for four frames and flat in the fifth (picks 0, 5, 13, 16, 22, 29); spaced by motion they are 0, 21, 23, 26, 28, 29, from the same clips.",
+ "type": "monster",
+ "noun": "wolf",
+ "possessive": "its",
+ "concept": {
+  "source": "docs/concept/monsters.jpg",
+  "box": [
+   760,
+   340,
+   1030,
+   585
+  ]
+ },
+ "source_note": "the reference shows two wolves, with parts of other monsters at its edges; draw only one wolf with their look and nothing else, no rider, no weapon",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "lean savage dire wolf with shaggy charcoal-grey fur that bristles into sharp spiky tufts along its neck, shoulders and back, a lighter ash-grey muzzle, throat and legs, glowing red eyes, pointed ears, a snarling open jaw with white fangs, big pale grey paws, and a bushy dark grey tail hanging low behind it",
+ "feet": "paws",
+ "view_pose": "Whole animal from the tips of its ears down to its paws, standing square on all four paws in a neutral alert pose, head level, tail hanging low and close, all four legs visible, nothing cropped; the spine points exactly along the view direction, so in a front or back view the body is foreshortened straight behind the head with the two front legs side by side and symmetric, not turned three-quarter, and in a profile view the spine runs exactly sideways",
+ "view_height": 300,
+ "gait": "Steady wolf trot on the spot: the diagonal pairs of legs move together, all four legs clearly alternating, back level, head held level and low, tail hanging low and close behind it, slight body bob; its body never moves forward",
+ "items": [],
+ "attack": "crouches back onto its hind legs, then lunges its head, neck and chest forward toward the facing direction in one snapping bite, jaws wide open, front paws lifting a little off the ground while the hind paws stay planted on the same spot, then draws back",
+ "death": "yelps, its legs buckle and it collapses down onto its side on the exact spot where it stood, legs stretched out, head down, tail flat on the ground. It does not leap, roll, slide or fall forward toward the camera; it lies where its paws were",
+ "clips": {
+  "walk": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "attack": [
+   "S",
+   "SW",
+   "W",
+   "NW",
+   "N",
+   "NE",
+   "E",
+   "SE"
+  ],
+  "death": [
+   "S",
+   "W",
+   "N",
+   "E"
+  ]
+ },
+ "check": {
+  "_note": "anchors: concept colours (hero_sprites.py wolf colours) the palette keeps within dE 15: the charcoal fur and its shade, the warm brown-grey underfur, the ash grey of the muzzle and legs, the pale paw, the dark red of the open mouth and the eye red (147, 47, 23). The bright eye glow (186, 92, 70, 0.2% of the concept) is not anchored: at 50 px an eye is one px and no take keeps it. roles, tuned on the eight start poses as the sheet quantizes them: the fur, ash and paws are all greys (chroma under 0.12), so those roles are neutral. mouth is the red of the open jaw: the dark red-brown grey of the start poses (hue 340-40, chroma over 0.06, light under 0.25) and any stronger red (hue 340-40); ash is every grey lighter than 0.32, the muzzle, throat, legs and paws; fur is the rest. prop: null, the jaws are the weapon. bounds: each floor is 0.64 x the start pose's value in its sheet cell (the skeleton's rule): S ash 159 -> 102. The back has no floor worth keeping (N ash 21), so it gets ceilings: no ash in the top 30% (the muzzle; 0 on the N start pose, 2 as the goblin's eyes), and at most half the front floor of ash in all (51; N start pose 21, worst N walk or attack frame 43), so a wolf that turns to face the camera fails. The mouth cannot bound the back: rearing in attack-N lifts the snout tip above the head and shows 8-9 mouth px.",
+  "anchors": {
+   "fur": [
+    52,
+    50,
+    56
+   ],
+   "fur shade": [
+    40,
+    39,
+    45
+   ],
+   "underfur": [
+    48,
+    43,
+    40
+   ],
+   "ash": [
+    102,
+    97,
+    97
+   ],
+   "paw": [
+    134,
+    123,
+    120
+   ],
+   "mouth": [
+    76,
+    27,
+    19
+   ],
+   "eye": [
+    147,
+    47,
+    23
+   ]
+  },
+  "roles": [
+   {
+    "name": "mouth",
+    "neutral": true,
+    "hue": [
+     340,
+     40
+    ],
+    "chroma_gt": 0.06,
+    "light_lt": 0.25
+   },
+   {
+    "name": "ash",
+    "neutral": true,
+    "light_gt": 0.32
+   },
+   {
+    "name": "fur",
+    "neutral": true
+   },
+   {
+    "name": "mouth",
+    "hue": [
+     340,
+     40
+    ]
+   }
+  ],
+  "prop": null,
+  "back": {
+   "title": "back view N shows no muzzle and little ash",
+   "bounds": [
+    [
+     "muzzle",
+     [
+      "head",
+      "ash"
+     ],
+     null,
+     2
+    ],
+    [
+     "ash",
+     [
+      "count",
+      "ash"
+     ],
+     null,
+     51
+    ]
+   ]
+  },
+  "front": {
+   "title": "front view S keeps the ash muzzle, throat and legs",
+   "bounds": [
+    [
+     "ash",
+     [
+      "count",
+      "ash"
+     ],
+     102,
+     null
+    ]
+   ]
+  }
+ },
+ "sheet": {
+  "world_height": 18,
+  "height": 50,
+  "cell": 128
+ },
+ "turntable": {
+  "seconds": 8,
+  "fps": 24,
+  "keyframes": {
+   "W": 2,
+   "N": 4,
+   "E": 6
+  },
+  "design": "lean savage dire wolf with shaggy charcoal-grey fur bristling into sharp spiky tufts along its neck, shoulders and back, a lighter ash-grey muzzle, throat and legs, glowing red eyes, pointed ears, a snarling open jaw with white fangs, big pale grey paws, a bushy dark grey tail hanging low and close behind it, standing on all four paws"
+ },
+ "clip_overrides": {
+  "_note": "Take 2 retook walk-SW and the four deaths (take 1 kept in /workspace/lk/wolf-take1): walk-SW trotted fast and its loop missed by 120 silhouette px (limit 111); the take-1 deaths reared, leapt or ended with the head or tail raised. Take 3 (take 2 kept in /workspace/lk/wolf-take2): death-E still sprang forward off its paws before dropping (feet 18 px above the line, limit 3) and death-S rose 5 px onto its hind legs; death-N started 20 px off the start pose again (limit 18). So the deaths hold the first-frame pose still for a moment and keep all four paws on the ground: the body only ever moves down. death-W passed take 2 and keeps its text. Take 4 (take 3 kept in /workspace/lk/wolf-take3): death-S passed. death-N's start had failed every take by about 20 px; that was the precheck, not the clip: the death clips come back 960 px and the 720 px pose was placed on another sub-pixel grid (now pose_at scales the pose to the clip first: 20 -> 1 px). Take 3 death-N then still hopped up mid-fall (feet 11 px over the line, limit 3), so its legs fold hind-first and its back only gets lower; death-E ended with its head lifted (31 px tall, limit 30), so its head stays flat to the end. Take 5 (take 4 kept in /workspace/lk/wolf-take4): death-N passes. death-E ended 32 px tall (limit 30) on its second take on that check, though its head lay flat: it never tipped onto its side but rested on its belly with its legs tucked, haunch and shoulder mane up (the clip settles at 31 px over its last 10 frames, so the rest pick costs about 1 px, not the fail). take 3 and 4 added 'All four paws stay on the ground the whole time' against the take-2 spring, and a wolf on its side has its paws off the ground; take 5 drops that sentence for death-E and has it roll onto its side, legs toward the camera, ending lower than lying on its belly. Take 6 (take 5 kept in /workspace/lk/wolf-take5): death-E ended 31 px tall again, the third take running on that check, again lying on its belly with the shoulder mane up and never on its side, whatever the wording. death-W, the same fall seen from the other side, settles flat on its belly at 27 px. So death-E now ends on death-W's last frame, flipped (death_ends {\"E\": \"W\"}, video/ends/E.png as last_frame_path), and its text describes that pose instead of a roll onto its side.",
+  "walk-SW": {
+   "gait": "Slow steady wolf trot on the spot, one full stride a second: the diagonal pairs of legs move together, all four legs clearly alternating, back level, head held level and low, tail hanging low and close behind it, slight body bob; its body never moves forward"
+  },
+  "death-S": {
+   "death": "yelps and holds the exact first-frame pose perfectly still for a moment, then its legs fold under it and it sinks straight down onto its belly, then slumps over onto its side on the exact spot where it stood and lies completely flat: head resting on the ground, legs stretched out flat, tail lying flat along the ground, nothing raised. All four paws stay on the ground the whole time and its body only ever moves down, never up. It never springs, rears up, rises on its hind legs, leaps or jumps; it does not fall forward toward the camera, it lies where its paws were"
+  },
+  "death-W": {
+   "death": "yelps, its legs fold under it and it sinks straight down onto its belly, then slumps over onto its side on the exact spot where it stood and lies completely flat: head resting on the ground, legs stretched out flat, tail lying flat along the ground, nothing raised. It never rears up, rises on its hind legs, leaps or jumps; it does not roll, slide or fall forward, it lies where its paws were"
+  },
+  "death-E": {
+   "death": "flinches and holds the exact first-frame pose perfectly still for a moment, then its legs fold under it and it sinks straight down onto its belly and settles flat and low on the ground, ending exactly in the pose of the last frame: stretched out flat on its belly, chin resting on its front paws, legs stretched out, back low, tail lying flat along the ground. Its head is never lifted again. Its body only ever moves down, never up. It never springs, rears up, rises on its hind legs, leaps or jumps; it does not slide or fall forward, it lies where its paws were"
+  },
+  "death-N": {
+   "death": "flinches and holds the exact first-frame pose perfectly still for a moment, then its hind legs fold first, then its front legs, so it sinks straight down onto its belly, then tips over onto its side on the exact spot where it stood and lies completely flat: head resting on the ground, legs stretched out flat, tail lying flat along the ground, nothing raised. All four paws stay on the ground the whole time and its back only ever gets lower, frame by frame, never higher. It never springs, hops, rears up, rises on its hind legs, stretches up, leaps or jumps; it does not move away from the camera, up the frame or toward the camera, it lies where its paws were"
+  }
+ },
+ "death_ends": {
+  "E": "W"
+ },
+ "death_picks": "motion"
+}

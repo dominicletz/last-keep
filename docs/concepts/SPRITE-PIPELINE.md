@@ -14,6 +14,10 @@ Sheet columns follow `pictureColumn`: S, SW, W, NW, N, NE, E, SE. Column 0 is th
 
 ## Procedure for a new hero
 
+Monsters, NPCs and props use the same script with an `asset.json` instead
+of `hero.json`; [`../ART-REDO.md`](../ART-REDO.md) lists every asset, its
+variant and what the script still needs.
+
 Only the GenerateImage and GenerateVideo calls are manual. Everything else is `script/hero_sprites.py`, driven by the hero's config `assets/reference/HERO/hero.json`. Each step writes the same bytes when re-run. A PNG whose pixels already match is left alone, so re-running a step never dirties git.
 
 | # | Step | Who | Command or call | Writes |
@@ -42,6 +46,9 @@ All of it needs python3 with numpy, scipy and Pillow, plus ffmpeg and ffprobe on
 - `items`: `name`, `at` (`right hand`, `left arm`, `left hip`, `back`, `right shoulder back`, or `body`), `walk` (how it moves in the walk), `still` (what must not move in the idle), `idle` (an allowed idle motion), `glows` (a light that must stay steady), and `sides` (the image side per direction, when the default is wrong).
 - `turntable`: 8 s at 24 fps, keyframes W 2, N 4, E 6. An optional `design` replaces the hero's `design` in the turntable prompt only, for example to name the held items there (the engineer).
 - `diagonals`: turntable frames pinned by eye (0-based). They override the picker.
+- `death_ends` (monsters, `{"E": "W"}` or `{"W": "E"}`): that side's death call gets a `last_frame_path`, `video/ends/<D>.png`, which `prep` writes as the other side's passing death's last frame, flipped and scaled with Lanczos to the start pose's size. For a side death that keeps ending too high whatever its wording (the wolf's death-E), or that stumbles before it lies down (the troll's death-E).
+- `centred_attacks` (fliers only, a list of attack directions such as `["S", "NW"]`): those attack calls start and end on `video/mid/<d>.png`, which `prep` writes as `dirs/<d>.png` moved up or down so the figure's box is centred in the frame. A flier's start pose stands on the view's foot line near the bottom edge, and in a bite the model pulls the bat toward the frame's centre, out of the hover. The flier build anchors walk and attack clips on frame 0, so moving a whole clip doesn't change the sheet.
+- `death_picks` (monsters, only `"motion"`): the four death frames between the first and the rest frame sit at equal shares of the clip's summed frame-to-frame change instead of at equal times, so a death that holds the start pose and then falls fast shows the fall, not the hold. The wolf uses it. The goblin's deaths fail the foot-line check with it (a stagger frame 4 px up), so it isn't the default.
 - `check`: the check profile (see step 9). A hero without one can run every step except `build`.
 
 The prompts name the hand that holds each item and the side of the image it shows on. The script turns the item's body position to each facing. An item in the right hand is image-left from the front, image-right from behind, and partly hidden behind the body in the left profile (W). A `sides` entry overrides that. The mage's staff stays image-left for S, SW, W and NW, and image-right for N, NE, E and SE, because the clips hold it out to the side.
@@ -54,9 +61,13 @@ Crops the concept (a PIL crop of the box, saved with the PIL defaults) and write
 
 Run `view-S` first, with the concept as its reference. Then run `view-N`, `view-W` and `view-E` with the concept and the front still. Each profile is its own image. Save each as `video/views/v-<DIR>.png` (a `.jpg` works too). Reject a still that moves an item to the other hand, crops the feet, or adds a floor.
 
+A monster can set `"mirror_views": {"W": "E"}` or `{"E": "W"}`. `prompts.json` then has no call for the mirrored view, and `views` writes that `v-<DIR>.png` itself as the exact horizontal flip of the other side before it normalizes. Only W and E mirror. A hero is refused: its items are handed, so the screen convention above still holds for every hero. A `view_notes` entry for the mirrored view is refused too, since it would never be sent. The bat is left-right symmetric and its view-W came out three-quarter twice, so it sets `{"W": "E"}`. The hermit's view-E faced screen-left on two takes, so the hermit sets `{"E": "W"}`: `views` overwrites `v-E.png` with the flip of `v-W.png`, and a belt pouch on one side lands on the other. No other asset sets it.
+
+A turntable that keeps losing a prop at a diagonal (the boss's halberd at NW and SE, on two takes) can draw that diagonal as its own view instead: list it in `"diagonal_views"` (the boss: `["NW", "SE"]`). `prompts.json` then has a `view-<D>` GenerateImage call for it. Its references are the concept, v-S and the two neighbouring cardinal views, and it uses the asset's `diagonal_pose` instead of `view_pose` if it has one. `views` normalizes it to `k-<D>.png`, and `dirs` copies that to `dirs/<D>.png`, the way the cardinals come from their views. Only the other diagonals come from turntable frames, and `diagonals.json` lists the drawn ones under `viewed`. The turntable is not keyed on these views. One GenerateVideo call takes at most 4 keyframes (`MAX_KEYFRAMES`; the boss's 5-keyframe call was refused), and the diagonal does not need the turntable anyway. Turntable keyframes must include W, N and E, number at most 4, run in turn order and sit inside the clip (not at 0 s or the end); anything else is refused. A bad `diagonal_views` list is refused, and so is a `view_notes` entry for a diagonal that is not drawn as a view.
+
 ### 4. `views`
 
-Turns each `v-<DIR>` into `k-<DIR>.png`. The figure is min(RGB) < 225. A fragment under 2% of the figure that reaches outside the figure's box is blanked, so a speck cannot change the scale. The figure is cropped to its box, scaled with Lanczos to 520 px tall, and centred on a 720×720 white canvas with its last row at y = 639. These are the turntable keyframes and the four cardinal start poses.
+Applies `mirror_views` first, writing the mirrored `v-<DIR>.png` as the exact horizontal flip of its source, then turns each `v-<DIR>` into `k-<DIR>.png`. The figure is min(RGB) < 225. A fragment under 2% of the figure that reaches outside the figure's box is blanked, so a speck cannot change the scale. The figure is cropped to its box, scaled with Lanczos to 520 px tall, and centred on a 720×720 white canvas with its last row at y = 639. These are the turntable keyframes and the four cardinal start poses.
 
 ### 5. The turntable (manual)
 
@@ -86,8 +97,10 @@ Before the build, `precheck` names every clip to regenerate and why. It exits 1 
 
 - format: square, 24 fps, 49 frames (2 s with the last frame = the first);
 - the loop closes: the last frame's silhouette differs from the first by at most 0.5 (walk) or 0.6 (idle) of the walk median step;
-- the clip starts on its pose: the first frame differs from `dirs/<DIR>.png` by at most 0.2 of the walk median;
+- the clip starts on its pose: the first frame differs from `dirs/<DIR>.png` by at most 0.2 of the walk median. A clip that comes back at another size than the 720 px pose (the wolf's deaths are 960 px) is compared with the pose scaled to its frame size first (`pose_at`, Lanczos), so both sit on the same sub-pixel grid when they are placed in the cell;
 - an idle stays put: no frame differs from its first by more than 0.8 of the walk median. The approved idles reach at most 0.64; walks reach at least 1.04.
+- an attack, when its clip is on disk, loops like a walk (0.5 of the walk median), starts on its pose the same way, and every one of its 6 frames is 88 ±2 px on the walk's foot line. A missing attack clip is not a failure.
+- a death, when its clip is on disk, does not have to loop. It starts on its pose. Only the first of its 6 frames is held to 88 ±2. Later frames may lie down. Every frame's lowest pixel stays within 3 px of the foot line, and no frame touches the cell border. The last half second (12 frames at 24 fps) stays within the start-pose limit of the last frame. A missing death clip is not a failure.
 
 Then it builds the sheet in memory and runs every check from step 9. Each failure names the clips whose frames failed it. Height, foot line, speckles, prop side and the back and front views blame the clip of the failing row. Walk legs blame the walk, idle subtle blames the idle, and a palette anchor blames the poses. The prop side and the view checks catch a walk that turns. Facing is not judged from the clip's silhouette, because that misread approved clips.
 
@@ -110,10 +123,12 @@ How `sprite_from_video.py` works:
 
 1. Decodes each clip with ffmpeg and cuts out the white background (border-connected near-white, plus enclosed pure-white holes of 24 px or more), then keeps blobs of at least 2% of the largest.
 2. Walk: the cycle ends at the frame most like frame 0 after 55% of the clip. The 8 walk frames sit at k·cycle/8, each the sharpest frame within ±1. Idle: 4 frames evenly over the clip, each the sharpest within ±1.
-3. Places each frame in a 128 px cell with a box filter. The fill is 86 px and the 1 px outline makes the hero 88 px tall. The boots sit on row 116 and the outline on row 117. The head centre sits on x = 64. The scale is per frame, clamped to the clip's median ±5%.
+3. Places each frame in a 128 px cell with a box filter. The fill is 86 px and the 1 px outline makes the hero 88 px tall. The boots sit on row 116 and the outline on row 117. The head centre sits on x = 64. Walk and idle scale is per frame, clamped to the clip's median ±5%. Attack frames use frame 0's scale with no clamp, the same rule as a death, so a swing does not resize the body. Height 88±2 on an attack is frames 0 and last only. A lunge is not a head-line failure.
 4. Builds one palette of at most 28 colours plus the outline RGB 24 (Lab k-means, weighted toward saturated pixels so the shield blue, the gold cross, and the cape survive). The palette samples only the eight start poses in `dirs/`, so swapping a clip cannot move it. When it also sampled the clip frames, swapping the NE idle clip moved the front-view shield blue off its hue. It quantizes every frame, removes lone speckles, draws the outline, and writes the albedo and `-normal.png` (a port of `normalsFromAlbedo`). The normal alpha is the albedo alpha.
 
-The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536. The client loads it from `priv/static/images/hd2d/HERO-walk.png`.
+The sheet is 8 columns by 12 rows (8 walk, then 4 idle), 1024×1536, while any attack or death clip is missing. The client loads that file from `priv/static/images/hd2d/HERO-walk.png` and still reads those 12 rows.
+
+When all 8 attack clips and all 4 death clips (S, W, N, E) are on disk, the build adds the rows and the sheet becomes 24 rows, 1024×3072: 8 walk, 6 attack, 6 death, 4 idle. Idle moves from row 8 to row 20. The 6 and the 6 are the monster row counts (`attack_picks`, `death_picks`). Attack frames are placed like walk frames, so the 88 ±2 height check and the foot line apply to every attack frame. Death keeps frame 0's scale, so a lying pose stays short, and each frame's own lowest pixel sits on the foot row. The last death frame is the clip's last frame, the still hold. A diagonal death column reuses its cardinal clip, the same cells, never mirrored. Walk and idle pixels are copied from the 12-row sheet, so a hero with no attack or death clips rebuilds byte for byte. The committed `HERO-walk.png` stays that 12-row file until the build's checks pass. The engineer passes, so `engineer-walk.png` is the 24-row sheet and the client plays his attack and his death. Retake 2 fixed warrior attack-S, attack-E, death-W and death-N, mage attack-NW, and scout attack-NW. No other hero passes every clip, so those four sheets stay 12 rows and the client does not play an attack or a death for them. What is left is the final-review list in `docs/ART-REDO.md`, including open question 24. There is no retake 3.
 
 `check_sprite_sheet.py` checks the same things for every hero. The colours it reads come from the `check` profile in the hero's `hero.json`: roles (hue range, chroma and lightness bounds), concept anchors, the prop colour, and floors and ceilings for the back and front views. `hero_sprites.py HERO colours` lists the concept's main colours with hue, lightness and chroma to start a new profile from.
 
@@ -128,7 +143,9 @@ The mage and scout faces count only the head columns 54–74, so the staff head 
 
 - Sheet size, alpha only 0 or 255, at most 32 colours.
 - The palette keeps the profile's concept anchors within ΔE 15.
-- Every silhouette edge is outline, height 88 ±2, one foot line ±1, no lone speckles.
+- Every silhouette edge is outline, height 88 ±2, one foot line ±1, no lone speckles. On a 24-row sheet that height and foot line cover the walk and the idle, which sit at rows 0–7 and 20–23.
+- Attack rows, when the sheet has them: every frame is 88 ±2 on that same foot line, and clear of the cell border.
+- Death rows: the first frame is 88 ±2. A later frame may lie down and is not held to that height. Every frame's lowest pixel stays within 3 px of the foot line, and no frame touches the cell border.
 - The prop side for each direction is the side the start pose shows. A pose with less than 2 px of offset or no visible prop colour has no side to hold.
 - The back view and the front view hold the profile floors and ceilings above.
 - The 8 directions differ from each other and from each other's mirror by at least 300 px.
@@ -153,6 +170,40 @@ python3 script/test_hero_sprites.py        # configs, crop, views, picker, pins,
 ```
 
 `test_hero_sprites.py` requires the mage `k-*.png` to come out of the view step byte for byte, the pinned frames to reproduce every committed diagonal byte for byte, `prep`, `views` and `dirs` to write nothing on a committed hero, the committed prompt files to match the configs, and `precheck` to name a walk cut short and an idle that walks.
+
+## Static art (`"type": "static"`)
+
+Trees, rocks and buildings never walk, so they skip the views, turntable,
+clips and precheck. An `asset.json` with `"type": "static"` (the first is
+`assets/reference/pine/`) has `noun`, `concept`, `design`, optional
+`source_note` and `style_refs`, `world_height` in world units, `cell` as
+`[w, h]` px (multiples of 8, `h` at least the figure plus 4 px above and
+below), and 1-4 `variants` (`{"id", "note", "scale"?}`, scale 0.5-1.0 of
+`world_height`). Steps:
+
+1. `hero_sprites.py <name> prep` crops the concept and writes `prompts.json`
+   and `prompts.md`: one GenerateImage call per variant (front view at the
+   game's camera angle, plain white background), saved to
+   `views/<id>.png`.
+2. Generate those images (manual).
+3. `hero_sprites.py <name> build` cuts each image off its white
+   background, scales it so the figure is `sheet_height(world_height × scale)`
+   px tall with its outline (the hero texel, 32/88 units per px; a thin tip
+   keeps at least one pixel per row so the height is exact), quantizes all
+   variants to one shared palette (k-means, fixed seed), adds the 1 px
+   outline, and stands each figure centred in its cell with its lowest
+   outline row 4 px above the cell bottom, on a transparent background.
+   A figure wider than its cell is refused, never cropped.
+4. The build checks sheet size, alpha 0/255, at most 32 colours, an outline
+   on every silhouette edge, and per variant: exact height, standing on the
+   ground row, clear of the cell border, one piece. It writes the sheet to
+   `priv/static/images/hd2d/<name>-sheet.png` only when every check passes,
+   and always writes `sheet.png`, `contact.png` (4× on grey) and `check.txt`
+   to the approval folder.
+
+Every step is deterministic. `colours` and `prompts --abs` work as for a
+figure; `views`, `dirs` and `precheck` are refused. Tests:
+`script/test_static_sprites.py`.
 
 ## Lessons learned
 

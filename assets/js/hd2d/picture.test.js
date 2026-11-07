@@ -19,7 +19,7 @@ import {
   sheetCardGeometry,
   sheetHeroSize
 } from "./picture.js"
-import { spriteHeight } from "../pictures.js"
+import { sheetRow, spriteHeight } from "../pictures.js"
 
 const CALLS = ["open", "fit", "seat", "light", "dress", "present"]
 
@@ -627,6 +627,30 @@ test("dress paints the engineer from its own walk sheet beside the farmer", () =
     { ...engineer.group.userData.picture, w: 0, h: 0 },
     { directions: 8, frames: 12, walk: 8, idle: 4, attack: 0, death: 0, w: 0, h: 0 }
   )
+})
+
+test("a passing hero sheet plays its attack and its death", () => {
+  const picture = createPicture()
+  const { stoneMat, keep, floors } = stoneAndGrounds()
+  const engineer = heroGroup("engineer", "still-engineer")
+  const farmer = heroGroup("farmer", "still-farmer")
+  const engineerMap = new THREE.DataTexture(new Uint8Array([76, 47, 27, 255]), 1024, 128 * 24)
+  const farmerMap = new THREE.DataTexture(new Uint8Array([43, 62, 86, 255]), 1024, 128 * 12)
+  picture.attachStrip(engineerMap, null, "engineer")
+  picture.attachStrip(farmerMap, null, "farmer")
+  picture.dress({ grounds: floors, keep, stoneMat, heroes: [engineer.group, farmer.group] })
+  const laid = engineer.group.userData.picture
+  assert.equal(engineerMap.repeat.y, 1 / 24)
+  assert.equal(laid.frames, 24)
+  assert.equal(laid.attack, 6)
+  assert.equal(laid.death, 6)
+  assert.equal(laid.idle, 4)
+  assert.equal(sheetRow(laid, { attackAt: 1000, moving: true }, 1000), 8)
+  assert.equal(sheetRow(laid, { dead: true, deadAt: 0 }, 0), 14)
+  assert.equal(sheetRow(laid, {}, 0), 20)
+  assert.equal(farmerMap.repeat.y, 1 / 12)
+  assert.equal(farmer.group.userData.picture.attack, 0)
+  assert.equal(farmer.group.userData.picture.death, 0)
 })
 
 test("dress without a keep throws", () => {

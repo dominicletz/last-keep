@@ -35,6 +35,16 @@ function encode(raw, width, height, colorType) {
   return Buffer.concat([signature, chunk("IHDR", ihdr), chunk("IDAT", deflateSync(raw, { level: 9 })), chunk("IEND", Buffer.alloc(0))])
 }
 
+// PNG filter 4 predictor: whichever neighbour is nearest left + up - corner.
+function paeth(left, up, corner) {
+  const p = left + up - corner
+  const pa = Math.abs(p - left)
+  const pb = Math.abs(p - up)
+  const pc = Math.abs(p - corner)
+  if (pa <= pb && pa <= pc) return left
+  return pb <= pc ? up : corner
+}
+
 function decode(buffer) {
   const bytes = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
   if (bytes[0] !== 137 || bytes.toString("ascii", 1, 4) !== "PNG") throw new Error("not a png")
@@ -51,6 +61,7 @@ function decode(buffer) {
       width = data.readUInt32BE(0)
       height = data.readUInt32BE(4)
       colorType = data[9]
+      if (data[8] !== 8 || data[12] !== 0) throw new Error("png is not 8-bit and non-interlaced")
     } else if (type === "IDAT") idat.push(data)
     else if (type === "IEND") break
     offset += 12 + length
@@ -62,8 +73,20 @@ function decode(buffer) {
   const stride = width * channels
   for (let y = 0; y < height; y++) {
     const row = y * (stride + 1)
-    if (raw[row] !== 0) throw new Error("png filter is not 0")
-    pixels.set(raw.subarray(row + 1, row + 1 + stride), y * stride)
+    const filter = raw[row]
+    if (filter > 4) throw new Error(`png filter ${filter}`)
+    const out = y * stride
+    for (let x = 0; x < stride; x++) {
+      const left = x >= channels ? pixels[out + x - channels] : 0
+      const up = y > 0 ? pixels[out - stride + x] : 0
+      const corner = y > 0 && x >= channels ? pixels[out - stride + x - channels] : 0
+      let guess = 0
+      if (filter === 1) guess = left
+      else if (filter === 2) guess = up
+      else if (filter === 3) guess = (left + up) >> 1
+      else if (filter === 4) guess = paeth(left, up, corner)
+      pixels[out + x] = (raw[row + 1 + x] + guess) & 255
+    }
   }
   return { pixels, width, height, channels }
 }

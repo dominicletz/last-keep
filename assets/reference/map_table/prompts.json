@@ -1,0 +1,22 @@
+{
+ "hero": "map_table",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the wooden table from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no table: it is a village house; draw only one wooden table and nothing else, no house, no figures; use the reference only for the colours of its timber. Same design: a low rectangular table of dark timber with four square legs and a plain warm-brown cloth draped over the top, the cloth blank, with no map, no marks, no writing and no symbols. The long side and one end toward the camera, the cloth hanging a little over the near edge, the top of the cloth empty. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole wooden table from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single wooden table only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/map_table/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "map_table-a.png"
+   },
+   "save_as": "assets/reference/map_table/views/a.png",
+   "then": "python3 script/hero_sprites.py map_table build"
+  }
+ ],
+ "type": "static"
+}

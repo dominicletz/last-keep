@@ -119,10 +119,22 @@ test("the glass keeps ten controls after the sacks leave it", () => {
 })
 
 test("a touch build drops the digit and a desktop build keeps it", () => {
-  assert.deepEqual(buildFace("wall", { wood: 8, gold: 0 }, true), { title: "Wall", price: "8 wood" })
-  assert.deepEqual(buildFace("mage_tower", { wood: 18, gold: 30 }, false), { title: "6 Spire", price: "18 wood 30 gold" })
+  assert.deepEqual(buildFace("wall", { wood: 8, gold: 0 }, true), {
+    title: "Wall",
+    price: "8 wood",
+    icon: "/images/ui/build-wall.png"
+  })
+  assert.deepEqual(buildFace("mage_tower", { wood: 18, gold: 30 }, false), {
+    title: "6 Spire",
+    price: "18 wood 30 gold",
+    icon: ""
+  })
   assert.equal(buildFace("forge", null, true).title, "Forge")
   assert.equal(buildFace("forge", null, true).price, "")
+  assert.equal(buildFace("forge", null, true).icon, "/images/ui/build-forge.png")
+  for (const kind of ["wall", "tower", "trap", "field", "forge"]) {
+    assert.match(buildFace(kind, null, false).icon, new RegExp(`/images/ui/build-${kind}\\.png`))
+  }
 })
 
 test("piled sacks on a phone separate, and clear sacks stay where they were", () => {
@@ -155,6 +167,16 @@ test("piled sacks on a phone separate, and clear sacks stay where they were", ()
 test("wood, food, and gold each sit in their own sack", () => {
   const marks = sackLine({ wood: 40, food: 12, gold: 3 })
   assert.deepEqual(marks.map((mark) => mark.text), ["Wood 40", "Food 12\nFeast 10", "Gold 3"])
+  assert.deepEqual(marks.map((mark) => mark.icon), [
+    "/images/ui/wood.png",
+    "/images/ui/food.png",
+    "/images/ui/gold.png"
+  ])
+  assert.deepEqual(marks.map((mark) => ({ x: mark.x, y: mark.y })), [
+    { x: 52, y: 18 },
+    { x: 72, y: 46 },
+    { x: 34, y: 48 }
+  ])
   assert.match(marks[1].text, /Food 12/)
   assert.match(marks[1].text, /Feast 10/)
   assert.equal(new Set(marks.map((mark) => `${mark.x},${mark.y}`)).size, 3)

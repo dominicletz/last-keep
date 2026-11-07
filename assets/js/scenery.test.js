@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { fitSlack, horizontalRadius, modelParts } from "../models/registry.js"
-import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery.js"
+import { barrierPitch, forestWall, forestWallSlots, PINE_PX, PINE_WU, sceneryForest, scenerySlots } from "./scenery.js"
 
 test("the outer ring is stumps and felled logs with no wood", () => {
   const look = sceneryForest()
@@ -61,4 +61,14 @@ test("a pine wall stands inside the bare outer ring and leaves the paths open", 
     }
   }
   assert.equal(scenerySlots().length, 70)
+})
+
+test("the barrier pitch is the outer ring measured at a full pine", () => {
+  const outer = forestWall().rings[1]
+  const spacing = (2 * Math.PI * outer.dist) / outer.count
+  assert.equal(PINE_WU, 40)
+  assert.equal(PINE_PX, 110)
+  assert.equal(barrierPitch(outer), spacing / outer.scale)
+  assert.equal(barrierPitch(), barrierPitch(outer))
+  assert.ok(barrierPitch() < PINE_WU)
 })

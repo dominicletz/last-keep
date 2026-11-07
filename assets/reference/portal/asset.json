@@ -1,0 +1,31 @@
+{
+ "_note": "Approved unused variant. The view is a grounded arch on its steps (mask IoU 0.929 against the crop). World height 56 is the portal gate post. The spawn stays the hell door. There is no second portal entity and no closed state on the snapshot.",
+ "type": "static",
+ "noun": "portal",
+ "concept": {
+  "source": "assets/reference/yard-concept/crops/portal.png",
+  "box": [
+   0,
+   0,
+   289,
+   289
+  ]
+ },
+ "source_note": "The crop is yard-concept/crops/portal.png, a grounded stone arch. The view matches it. The portal rows already draw the hell door.",
+ "style_refs": [
+  "assets/reference/engineer/video/views/v-S.png"
+ ],
+ "design": "a grounded stone arch on its steps, with a blue glow in the opening",
+ "world_height": 56,
+ "cell": [
+  144,
+  168
+ ],
+ "variants": [
+  {
+   "id": "a",
+   "note": "the grounded portal"
+  }
+ ],
+ "view": "three_quarter"
+}

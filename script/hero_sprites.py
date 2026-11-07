@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
-"""One entry point for a hero's 8-direction sprite sheet.
+"""One entry point for a hero's (or another figure's) 8-direction sprite sheet.
 
     python3 script/hero_sprites.py HERO prep       # concept crop, prompts, views
-    python3 script/hero_sprites.py HERO views      # normalize views/v-*.* to k-*.png
+    python3 script/hero_sprites.py HERO views      # mirror_views flips, then normalize views/v-*.* to k-*.png
     python3 script/hero_sprites.py HERO dirs       # views + 8 start poses from the turntable
     python3 script/hero_sprites.py HERO precheck   # which clips to regenerate, before the build
     python3 script/hero_sprites.py HERO build      # sheet + checks + approval files
     python3 script/hero_sprites.py HERO colours    # concept colours, for the check profile
     python3 script/hero_sprites.py HERO prompts --abs   # prompts with absolute paths
 
-Everything is driven by assets/reference/HERO/hero.json. Only the
+Everything is driven by assets/reference/HERO/hero.json, or by
+assets/reference/ASSET/asset.json for a non-hero figure ("type": "monster"; see
+docs/ART-REDO.md) or a piece of static art ("type": "static": a few front
+images pixelized into one row of cells; it runs prep, build, colours, prompts). A non-hero asset runs prep, views, dirs and prompts; it runs
+every step, with the sheet layout from its "sheet" block. Only the
 GenerateImage and GenerateVideo calls are manual; prep writes them, with every
 input path, to assets/reference/HERO/prompts.json and prompts.md. Every step
 is deterministic: re-running it writes the same bytes, and a PNG whose pixels
@@ -17,6 +21,7 @@ already match is left alone. See docs/concepts/SPRITE-PIPELINE.md.
 """
 import argparse
 import contextlib
+import hashlib
 import io
 import json
 import math
@@ -24,6 +29,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 import numpy as np
 from PIL import Image
@@ -36,6 +42,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REFERENCE = os.path.join(ROOT, "assets/reference")
 COLUMNS = sv.COLUMNS
 CARDINALS = ["S", "W", "N", "E"]
+# The most keyframes one GenerateVideo call accepts (its schema's maxItems).
+MAX_KEYFRAMES = 4
 # Each diagonal sits between two cardinals on the turntable.
 DIAGONALS = {"SW": ("S", "W"), "NW": ("W", "N"), "NE": ("N", "E"), "SE": ("E", "S")}
 # Facing in degrees, turning from S (camera) through W (screen-left).
@@ -45,6 +53,8 @@ VIEW_MIN = 225       # min(RGB) below this is figure, for views and the picker
 VIEW_HEIGHT = 520    # normalized figure height on the 720 canvas
 VIEW_CANVAS = 720
 VIEW_FEET = 640      # the figure's last row is VIEW_FEET - 1
+VIEW_SIDE = 40       # a normalized view keeps this much white on each side
+VIEW_HEIGHT_MIN = 200  # asset.json "view_height" floor: a quadruped's side view is wide, not small
 STRAY = 0.02         # fragments under 2% of the figure outside its box are blanked
 BALANCE_BAND = 0.9   # diagonal candidates: balance within 90% of the best
 CLIP_FPS = 24
@@ -52,20 +62,224 @@ CLIP_FRAMES = 49     # 2 s at 24 fps, last frame = first
 WALK_LOOP = 0.5      # last vs first frame, silhouette px, times the walk median
 IDLE_LOOP = 0.6
 START_POSE = 0.2     # first frame vs dirs/<DIR>.png, times the walk median
+# A still idle (no walk beside it) may sit under that fraction when its own
+# step is a few pixels. The limit is then the encode noise floor instead.
+_NOISE = {}
 IDLE_DRIFT = 0.8     # any idle frame vs its first frame, times the walk median
+ATTACK_LOOP = WALK_LOOP  # a monster attack ends back on its start pose like a walk loop
 
 
 # ---------------------------------------------------------------- config
 
+# Clip kinds and their default directions. A hero has a walk and an idle in all
+# eight. An asset.json lists its own in "clips", e.g. {"walk": [...8],
+# "attack": [...8], "death": ["S", "W", "N", "E"]}.
+CLIP_KINDS = ("walk", "idle", "attack", "death")
+HERO_CLIPS = {"walk": COLUMNS, "idle": COLUMNS}
+TYPES = ("hero", "monster", "static")
+# One sheet texel in world units: the hero's 32-unit body over its 88 px.
+TEXEL = 32 / 88
+
+
+def still_idle_limit(median, noise_floor):
+    """Start limit for an idle that has no walk beside it: the larger of
+    0.2× its own step and the encode noise floor of that dirs pose."""
+    return max(START_POSE * float(median), float(noise_floor))
+
+
+def idle_start_fails(start, median, noise_floor, still):
+    """Whether a clip's first frame misses its dirs pose. A walk, an attack,
+    a death, and an idle that has a walk stay at 0.2× the walk median. The
+    noise floor applies only to a still idle."""
+    limit = still_idle_limit(median, noise_floor) if still else START_POSE * float(median)
+    return start > limit, limit
+
+
+def _posed(rgb):
+    """cut_out then place, dilated, the silhouette the start check compares."""
+    mask = sv.cut_out(np.ascontiguousarray(rgb))
+    if not mask.any():
+        return np.zeros((sv.CELL, sv.CELL), bool)
+    top, foot = sv.span(mask)
+    _, alpha = sv.place({"rgb": rgb, "mask": mask}, sv.FILL / float(foot - top + 1),
+                        sv.head_centre(mask), foot)
+    return ndimage.binary_dilation(alpha, CROSS)
+
+
+def _encode_frame(rgb):
+    """One frame through the clip codec and back. yuv420 needs even sides."""
+    h, w = rgb.shape[:2]
+    td = tempfile.mkdtemp()
+    try:
+        src, mp4, out = (os.path.join(td, n) for n in ("a.png", "a.mp4", "b.png"))
+        Image.fromarray(np.ascontiguousarray(rgb)).save(src)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", src, "-frames:v", "1",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", mp4], check=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", mp4, "-frames:v", "1", out], check=True)
+        back = np.asarray(Image.open(out).convert("RGB"))
+        if back.shape[0] != h or back.shape[1] != w:
+            back = np.asarray(Image.fromarray(back).resize((w, h), Image.BOX))
+        return back
+    finally:
+        shutil.rmtree(td)
+
+
+def pose_noise_floor(rgb):
+    """Silhouette pixels that move when a dirs pose is encoded, cut out and
+    placed again. Two calls on the same image return the same count."""
+    rgb = np.ascontiguousarray(rgb)
+    key = hashlib.sha256(rgb.tobytes()).hexdigest()
+    if key not in _NOISE:
+        _NOISE[key] = int((_posed(rgb) != _posed(_encode_frame(rgb))).sum())
+    return _NOISE[key]
+
+
+def seam_holds(rgb):
+    """A seamless tile. The wrap from the last column to the first is no
+    larger than the biggest step between adjacent interior columns."""
+    cols = np.asarray(rgb)
+    if cols.ndim == 2:
+        cols = cols[..., None]
+    interior = np.abs(cols[:, 1:].astype(int) - cols[:, :-1].astype(int)).max()
+    wrap = np.abs(cols[:, :1].astype(int) - cols[:, -1:].astype(int)).max()
+    return int(wrap) <= int(interior)
+
+
+def sheet_height(world_height):
+    """Sheet height in px (outline included) of a figure world_height units
+    tall at the hero texel, so every figure shares the hero's pixel size."""
+    return int(round(world_height / TEXEL))
+
+
 def load_config(hero, reference=REFERENCE):
     path = os.path.join(reference, hero, "hero.json")
     if not os.path.exists(path):
-        raise SystemExit(f"no {os.path.relpath(path, ROOT)}: write the hero config first")
+        path = os.path.join(reference, hero, "asset.json")
+    if not os.path.exists(path):
+        raise SystemExit(f"no {os.path.relpath(os.path.join(reference, hero, 'hero.json'), ROOT)} "
+                         f"or asset.json: write the config first")
     with open(path) as fh:
         cfg = json.load(fh)
+    name = os.path.basename(path)
+    if cfg.get("type") == "static":
+        return load_static(cfg, hero, name, reference)
     for key in ("noun", "possessive", "concept", "design", "items", "turntable"):
         if key not in cfg:
-            raise SystemExit(f"{hero}/hero.json is missing {key!r}")
+            raise SystemExit(f"{hero}/{name} is missing {key!r}")
+    kind = cfg.get("type", "hero")
+    if kind not in TYPES:
+        raise SystemExit(f"{hero}/{name}: type {kind!r} is not one of {TYPES}")
+    if (kind == "hero") != (name == "hero.json"):
+        raise SystemExit(f"{hero}/{name}: a hero config is hero.json, any other type is asset.json")
+    clips = cfg.get("clips", HERO_CLIPS)
+    for k, dirs in clips.items():
+        if k not in CLIP_KINDS or not dirs or any(d not in COLUMNS for d in dirs):
+            raise SystemExit(f"{hero}/{name}: clips {k!r} {dirs!r} (kinds {CLIP_KINDS}, directions {COLUMNS})")
+        if k in ("attack", "death") and not cfg.get(k):
+            raise SystemExit(f"{hero}/{name}: clips has {k!r} but no {k!r} motion text")
+    for item in cfg["items"]:
+        if "visible" in item and (item["visible"] is not True or item.get("at") in (None, "", "body")):
+            raise SystemExit(f"{hero}/{name}: item {item.get('name')!r}: visible is true on a held item, or absent")
+    # Turntable keyframes: W, N and E, plus at most one other direction (a
+    # GenerateVideo call takes at most MAX_KEYFRAMES), in turn order (S, SW,
+    # W, NW, N, NE, E, SE) inside the clip.
+    if "turntable" in cfg:
+        keys = cfg["turntable"].get("keyframes", {})
+        order = ["S", "SW", "W", "NW", "N", "NE", "E", "SE"]
+        times = [keys[d] for d in order if d in keys]
+        if (any(d not in order[1:] for d in keys) or any(d not in keys for d in ("W", "N", "E"))
+                or len(keys) > MAX_KEYFRAMES
+                or times != sorted(set(times)) or times[0] <= 0 or times[-1] >= cfg["turntable"]["seconds"]):
+            raise SystemExit(f"{hero}/{name}: turntable keyframes are W, N, E (and at most {MAX_KEYFRAMES} in all) "
+                             f"in turn order inside the clip, got {keys!r}")
+    # Diagonals drawn as their own views (asset.json "diagonal_views").
+    dv = cfg.get("diagonal_views", [])
+    if not isinstance(dv, list) or len(set(dv)) != len(dv) or any(d not in DIAGONALS for d in dv):
+        raise SystemExit(f"{hero}/{name}: diagonal_views lists diagonals ({', '.join(DIAGONALS)}), got {dv!r}")
+    viewed = ["S", "N", "W", "E"] + diagonal_views(cfg)
+    notes = cfg.get("view_notes", {})
+    if not isinstance(notes, dict) or any(d not in viewed or not isinstance(t, str) or not t.strip()
+                                          for d, t in notes.items()):
+        raise SystemExit(f"{hero}/{name}: view_notes maps S, N, W, E or a diagonal_views entry to one sentence, got {notes!r}")
+    # A side-view death that keeps ending too high (asset.json "death_ends",
+    # {"E": "W"}) ends on the flipped last frame of the other side's passing
+    # death: the call gets it as last_frame_path. Only E and W flip into each
+    # other, and both must be death clips.
+    ends = cfg.get("death_ends", {})
+    if not isinstance(ends, dict) or len(ends) > 1 or any(
+            (d, s_) not in (("W", "E"), ("E", "W")) or d not in clips.get("death", ()) or s_ not in clips.get("death", ())
+            for d, s_ in ends.items()):
+        raise SystemExit(f"{hero}/{name}: death_ends is {{\"E\": \"W\"}} or {{\"W\": \"E\"}} between two death clips, got {ends!r}")
+    # A flier attack that keeps climbing to the middle of the frame (asset.json
+    # "centred_attacks", e.g. ["S", "NW"]) starts and ends on its start pose
+    # moved up to the frame's vertical centre (video/mid/<d>.png): the start
+    # poses stand on the view's foot line near the bottom edge, and the bat's
+    # attack-S rose to the frame centre on five takes whatever the wording.
+    mids = cfg.get("centred_attacks", [])
+    if not isinstance(mids, list) or len(set(mids)) != len(mids) or (mids and cfg.get("flies") is not True) or any(
+            d not in clips.get("attack", ()) for d in mids):
+        raise SystemExit(f"{hero}/{name}: centred_attacks lists a flier's attack directions, got {mids!r}")
+    # Per-clip prompt overrides: a clip regenerated with different wording
+    # (asset.json "clip_overrides", e.g. {"walk-NW": {"gait": ..., "walk": [...]}})
+    # so prompts.json keeps saying exactly what was sent. A walk may override
+    # its gait and its item walk texts ([] drops them), an attack its attack, a death its death and its lead-in ("struck", default "It is struck down: it").
+    over = cfg.get("clip_overrides", {})
+    allowed = {"walk": ("gait", "walk"), "idle": (), "attack": ("attack",), "death": ("struck", "death")}
+    if not isinstance(over, dict):
+        raise SystemExit(f"{hero}/{name}: clip_overrides maps clip ids to fields, got {over!r}")
+    for cid, fields in over.items():
+        if cid.startswith("_"):
+            continue
+        k, _, d = cid.partition("-")
+        if k not in clips or d not in clips[k] or not isinstance(fields, dict) or not fields:
+            raise SystemExit(f"{hero}/{name}: clip_overrides {cid!r} is not one of its clips")
+        for f, v in fields.items():
+            ok = isinstance(v, str) and v.strip() if f != "walk" else (
+                isinstance(v, list) and all(isinstance(x, str) and x.strip() for x in v))
+            if f not in allowed[k] or not ok:
+                raise SystemExit(f"{hero}/{name}: clip_overrides {cid!r} field {f!r} (a {k} takes {allowed[k]})")
+    # A wide figure (a quadruped side-on) normalizes its views shorter so
+    # the side view fits the canvas; every view of one asset shares it.
+    vh = cfg.get("view_height", VIEW_HEIGHT)
+    if type(vh) is not int or not VIEW_HEIGHT_MIN <= vh <= VIEW_HEIGHT:
+        raise SystemExit(f"{hero}/{name}: view_height {vh!r} is a whole number of px from {VIEW_HEIGHT_MIN} to {VIEW_HEIGHT}")
+    # The views' last sentence for a figure that is not a person standing
+    # upright (a quadruped has no arms and its length matters too).
+    if "view_pose" in cfg and not (isinstance(cfg["view_pose"], str) and cfg["view_pose"].strip()):
+        raise SystemExit(f"{hero}/{name}: view_pose is one sentence, got {cfg['view_pose']!r}")
+    # A flier (the bat) hovers instead of walking: its "walk" clips are a
+    # wingbeat in place, its attack does not plant feet, and the turntable
+    # holds it in the air with its wings still (see FLIER below).
+    if "flies" in cfg and (cfg["flies"] is not True or kind == "hero"):
+        raise SystemExit(f"{hero}/{name}: flies is true on a monster, or absent")
+    # A death that holds the start pose and then falls fast spaces its picks
+    # by motion instead of time ("death_picks": "motion", sprite_from_video.death_picks).
+    if "death_picks" in cfg and (cfg["death_picks"] != "motion" or kind == "hero"):
+        raise SystemExit(f"{hero}/{name}: death_picks is \"motion\" on a monster, or absent")
+    # A left-right symmetric figure (the bat) mirrors one side view from the
+    # other instead of generating it: {"W": "E"} makes views/v-W.png the
+    # horizontal flip of v-E, and prompts.json has no view-W call. Only W and
+    # E mirror into each other; a hero holds its items in one hand, so never.
+    mirror = cfg.get("mirror_views", {})
+    if not isinstance(mirror, dict) or len(mirror) > 1 or any(
+            (d, s) not in (("W", "E"), ("E", "W")) for d, s in mirror.items()):
+        raise SystemExit(f"{hero}/{name}: mirror_views is {{\"W\": \"E\"}} or {{\"E\": \"W\"}}, got {mirror!r}")
+    if mirror and kind == "hero":
+        raise SystemExit(f"{hero}/{name}: mirror_views is for symmetric creatures; a hero's items are handed")
+    if set(mirror) & set(notes):
+        raise SystemExit(f"{hero}/{name}: view_notes for the mirrored view {sorted(set(mirror) & set(notes))} is never sent")
+    if kind != "hero":
+        sheet = cfg.get("sheet") or {}
+        for key in ("world_height", "height", "cell"):
+            if not isinstance(sheet.get(key), (int, float)):
+                raise SystemExit(f"{hero}/{name}: sheet needs {key!r}")
+        if sheet["height"] != sheet_height(sheet["world_height"]):
+            raise SystemExit(f"{hero}/{name}: sheet height {sheet['height']} is not world_height "
+                             f"{sheet['world_height']} at the hero texel ({sheet_height(sheet['world_height'])})")
+        if sheet["cell"] % 8 or sheet["cell"] < sheet["height"] + 16:
+            raise SystemExit(f"{hero}/{name}: cell {sheet['cell']} must be a multiple of 8 with 16 px over the figure")
+    cfg["type"] = kind
+    cfg["clips"] = {k: list(v) for k, v in clips.items()}
     cfg["hero"] = hero
     cfg["dir"] = os.path.join(reference, hero)
     cfg["video"] = os.path.join(reference, hero, "video")
@@ -126,9 +340,12 @@ def crop_concept(cfg):
 
 # ---------------------------------------------------------------- 2 views
 
-def normalize_view(rgb):
-    """A generated view on white -> 720x720 white canvas, figure 520 px tall,
-    centred, last figure row at y = 639. The figure is min(RGB) < 225.
+def normalize_view(rgb, height=VIEW_HEIGHT):
+    """A generated view on white -> 720x720 white canvas, figure height px
+    tall (520 unless asset.json sets "view_height"), centred, last figure row
+    at y = 639. The figure is min(RGB) < 225. A figure that would come out
+    wider than the canvas less VIEW_SIDE on each side is refused, never
+    cropped: a long body (a wolf's side view) needs a lower view_height.
     Fragments under 2% of the largest blob that reach outside its box are
     blanked, so a stray speck cannot widen the box and change the scale.
     Specks inside the box stay; the sheet build drops them."""
@@ -150,10 +367,13 @@ def normalize_view(rgb):
             mask[lab == i] = False
     ys, xs = np.nonzero(mask)
     y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
-    w = round((x1 - x0) * VIEW_HEIGHT / (y1 - y0))
-    crop = Image.fromarray(a).crop((x0, y0, x1, y1)).resize((w, VIEW_HEIGHT), Image.LANCZOS)
+    w = round((x1 - x0) * height / (y1 - y0))
+    if w > VIEW_CANVAS - 2 * VIEW_SIDE:
+        raise ValueError(f"view is {w} px wide at {height} px tall (at most {VIEW_CANVAS - 2 * VIEW_SIDE}): "
+                         f"set a lower view_height in asset.json")
+    crop = Image.fromarray(a).crop((x0, y0, x1, y1)).resize((w, height), Image.LANCZOS)
     out = Image.new("RGB", (VIEW_CANVAS, VIEW_CANVAS), "white")
-    out.paste(crop, (round((VIEW_CANVAS - w) / 2), VIEW_FEET - VIEW_HEIGHT))
+    out.paste(crop, (round((VIEW_CANVAS - w) / 2), VIEW_FEET - height))
     return np.asarray(out)
 
 
@@ -165,14 +385,87 @@ def view_source(cfg, d):
     return None
 
 
+def mirror_view(cfg, d, log=print):
+    """views/v-<d>.png as the horizontal flip of the view it mirrors
+    (asset.json "mirror_views"); None until that view is there."""
+    src = view_source(cfg, cfg["mirror_views"][d])
+    if not src:
+        return None
+    out = os.path.join(cfg["video"], "views", f"v-{d}.png")
+    for ext in ("jpg", "jpeg", "webp"):
+        stale = os.path.join(cfg["video"], "views", f"v-{d}.{ext}")
+        if os.path.exists(stale):
+            raise SystemExit(f"{rel(stale)}: v-{d} is mirrored from v-{cfg['mirror_views'][d]}; delete it")
+    wrote = save_png(out, np.asarray(Image.open(src).convert("RGB"))[:, ::-1])
+    log(f"{'wrote' if wrote else 'same '} {rel(out)} (mirror of {rel(src)})")
+    return out
+
+
+def death_end(cfg, d, log=print):
+    """video/ends/<d>.png: the last frame of the death clip asset.json
+    "death_ends" names for d, flipped left-right and scaled with Lanczos to
+    the start pose's size (the deaths come back 960 px, dirs/ is 720). It is
+    the last_frame_path of death-<d>. None until that clip is there."""
+    src = os.path.join(cfg["video"], f"death-{cfg['death_ends'][d]}.mp4")
+    pose = os.path.join(cfg["video"], "dirs", f"{d}.png")
+    if not os.path.exists(src) or not os.path.exists(pose):
+        return None
+    last = sv.run_ffmpeg_frames(src)[-1][:, ::-1]
+    img = Image.fromarray(np.ascontiguousarray(last))
+    size = Image.open(pose).size
+    if img.size != size:
+        img = img.resize(size, Image.LANCZOS)
+    out = os.path.join(cfg["video"], "ends", f"{d}.png")
+    wrote = save_png(out, np.asarray(img))
+    log(f"{'wrote' if wrote else 'same '} {rel(out)} (last frame of {rel(src)}, flipped)")
+    return out
+
+
+def mid_start(cfg, d, log=print):
+    """video/mid/<d>.png: the start pose dirs/<d>.png moved straight up (or
+    down) so its figure's box is centred vertically in the frame, on white.
+    The image_path and last_frame_path of attack-<d> for a direction in
+    asset.json "centred_attacks". None until the pose is there."""
+    pose = os.path.join(cfg["video"], "dirs", f"{d}.png")
+    if not os.path.exists(pose):
+        return None
+    rgb = np.asarray(Image.open(pose).convert("RGB"))
+    top, foot = sv.span(sv.cut_out(rgb))
+    shift = (rgb.shape[0] - 1 - top - foot) // 2
+    out_rgb = np.full_like(rgb, 255)
+    if shift >= 0:
+        out_rgb[shift:] = rgb[:rgb.shape[0] - shift]
+    else:
+        out_rgb[:shift] = rgb[-shift:]
+    out = os.path.join(cfg["video"], "mid", f"{d}.png")
+    wrote = save_png(out, out_rgb)
+    log(f"{'wrote' if wrote else 'same '} {rel(out)} ({rel(pose)} moved {shift:+d} px)")
+    return out
+
+
+def diagonal_views(cfg):
+    """Diagonals drawn as their own views (asset.json "diagonal_views"): each
+    gets a view call, and dirs/<d>.png is that view, not a turntable frame,
+    the way the cardinals are theirs. The turntable needs no keyframe for
+    them (a GenerateVideo call takes at most MAX_KEYFRAMES)."""
+    dv = cfg.get("diagonal_views", [])
+    return [d for d in DIAGONALS if d in dv]
+
+
 def make_views(cfg, log=print):
     done = []
-    for d in CARDINALS:
+    for d in cfg.get("mirror_views", {}):
+        mirror_view(cfg, d, log)
+    for d in CARDINALS + diagonal_views(cfg):
         src = view_source(cfg, d)
         if not src:
             continue
         out = os.path.join(cfg["video"], "views", f"k-{d}.png")
-        wrote = save_png(out, normalize_view(np.asarray(Image.open(src).convert("RGB"))))
+        try:
+            norm = normalize_view(np.asarray(Image.open(src).convert("RGB")), cfg.get("view_height", VIEW_HEIGHT))
+        except ValueError as e:
+            raise SystemExit(f"{rel(src)}: {e}")
+        wrote = save_png(out, norm)
         log(f"{'wrote' if wrote else 'same '} {rel(out)}")
         done.append(d)
     return done
@@ -242,7 +535,16 @@ def make_dirs(cfg, log=print):
     picked = pick_diagonals(frames, cards, key_frames(cfg, len(frames)))
     pins = cfg.get("diagonals") or {}
     used = {}
+    viewed = diagonal_views(cfg)
     for d in DIAGONALS:
+        if d in viewed:
+            k = os.path.join(cfg["video"], "views", f"k-{d}.png")
+            if not os.path.exists(k):
+                raise SystemExit(f"no {rel(k)}: generate the {d} view first")
+            dst = os.path.join(dirs, f"{d}.png")
+            used[d] = "view"
+            log(f"{'wrote' if copy_if_changed(k, dst) else 'same '} {rel(dst)}: the {d} view")
+            continue
         t = int(pins.get(d, picked[d]["frame"]))
         used[d] = t
         dst = os.path.join(dirs, f"{d}.png")
@@ -251,6 +553,8 @@ def make_dirs(cfg, log=print):
         log(f"{'wrote' if wrote else 'same '} {rel(dst)}: frame {t} ({how}; picker {picked[d]['frame']})")
     record = {"frames": len(frames), "picker": picked, "used": used,
               "pinned": sorted(d for d in DIAGONALS if d in pins)}
+    if viewed:
+        record["viewed"] = viewed
     write_text(os.path.join(cfg["video"], "diagonals.json"), json.dumps(record, indent=1, sort_keys=True) + "\n")
     return record
 
@@ -272,6 +576,12 @@ VIEW = {
     "N": "back view, seen from directly behind, back to the camera",
     "W": "left profile view, facing screen-left, {poss} left side toward the camera",
     "E": "right profile view, facing screen-right, {poss} right side toward the camera",
+    # Diagonal views, only for an asset's "diagonal_views": the boss's halberd
+    # vanished at NW and SE on two turntables.
+    "SW": "three-quarter front view, turned exactly halfway between the front view and the left profile, facing down and to screen-left, {poss} front and left side toward the camera",
+    "NW": "three-quarter back view, turned exactly halfway between the left profile and the back view, facing up and to screen-left, {poss} back and left side toward the camera",
+    "NE": "three-quarter back view, turned exactly halfway between the back view and the right profile, facing up and to screen-right, {poss} back and right side toward the camera",
+    "SE": "three-quarter front view, turned exactly halfway between the right profile and the front view, facing down and to screen-right, {poss} front and right side toward the camera",
 }
 # Where an item sits on the body, in the S view: x to image-right, z toward the camera.
 PLACE = {"right": (-1.0, 0.0), "left": (1.0, 0.0), "back": (0.0, -1.0), "front": (0.0, 1.0)}
@@ -334,7 +644,18 @@ def item_line(item, d, poss):
     if item.get("at") == "body":
         return ""
     p = placement(item, d)
+    if item.get("visible"):
+        # A weapon the figure must show in every view (the goblin's first
+        # view-E lost its spear): never "partly hidden behind the body".
+        p = ", ".join([x for x in p.split(", ") if x and x != "partly hidden behind the body"]
+                      + ["in full view"])
     return f"{item['name']} {where(item, poss)}" + (f" ({p})" if p else "")
+
+
+def visible_line(item, poss):
+    """The sentence a view adds for an item with "visible": true."""
+    return (f"The {item['name']} stays clearly visible in full in this view, held out clear of "
+            f"{poss} body: not hidden behind the body, not dropped, not cut off.")
 
 
 def sentence(text):
@@ -355,40 +676,84 @@ def steady_light(cfg):
     return "No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame."
 
 
+# The prompt words that assume a figure standing on its feet, and what a
+# flier (asset.json "flies": true) says instead. Everything else is shared.
+GROUNDED = {
+    "walk_lead": "walks in place on a treadmill",
+    "walk_beats": "Two full steps",
+    "attack_hold": "feet stay planted",
+    "turn_pose": "stands perfectly still in a neutral idle pose on an invisible turntable",
+    "turn_still": "no walking",
+}
+FLIER = {
+    "walk_lead": "hovers in place in the air, flapping its wings",
+    "walk_beats": "Two full wingbeats",
+    "attack_hold": "it hangs in the air at the same height",
+    "turn_pose": "hangs perfectly still in the air on an invisible turntable with its wings spread wide and frozen",
+    "turn_still": "no flapping",
+}
+
+
 def build_prompts(cfg):
     """Every GenerateImage / GenerateVideo call for the hero, in order, with
     the exact arguments and where to save the result. Paths are relative to
     the repository root."""
+    if cfg.get("type") == "static":
+        return static_prompts(cfg)
     h, poss, noun = cfg["hero"], cfg["possessive"], cfg["noun"]
     base = f"assets/reference/{h}"
     vid = f"{base}/video"
     design = cfg["design"]
+    words = FLIER if cfg.get("flies") else GROUNDED
     calls = []
-    for d in ("S", "N", "W", "E"):
+    mirror = cfg.get("mirror_views", {})
+    t = cfg["turntable"]
+    views = [d for d in ("S", "N", "W", "E") if d not in mirror] + diagonal_views(cfg)
+    for d in views:
         items = [item_line(i, d, poss) for i in cfg["items"]]
         items = "; ".join(x for x in items if x)
         front = view_source(cfg, "S")
         front = f"{vid}/views/{os.path.basename(front) if front else 'v-S.png'}"
-        refs = [f"{base}/concept.png"] + ([] if d == "S" else [front])
+        refs = [f"{base}/concept.png"] + (list(cfg.get("style_refs", [])) if d == "S" else [front])
+        if d in DIAGONALS:
+            # A diagonal view also sees the two cardinal views it sits between.
+            for c in DIAGONALS[d]:
+                src = view_source(cfg, c)
+                ref = f"{vid}/views/{os.path.basename(src) if src else f'v-{c}.png'}"
+                if ref not in refs:
+                    refs.append(ref)
+        source = cfg.get("source_note", "")
+        # A per-view sentence for a take that lost a prop (asset.json "view_notes").
+        note = cfg.get("view_notes", {}).get(d, "")
+        note = f" {sentence(note)}" if note else ""
+        note += "".join(f" {visible_line(i, poss)}" for i in cfg["items"] if i.get("visible"))
+        style = (" Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art "
+                 "look, block size, outline-free shading and soft lighting, but not its design."
+                 if d == "S" and cfg.get("style_refs") else "")
+        # A diagonal view's own pose (asset.json "diagonal_pose"): the boss's
+        # view_pose pins the horse's spine to a front, back or profile view.
+        pose = (cfg.get("diagonal_pose") if d in DIAGONALS else None) or cfg.get("view_pose") or (f"Whole figure from the top of the head to the {cfg.get('feet', 'boots')}, "
+                                         "standing in a neutral idle pose, arms relaxed, feet on the ground, nothing cropped")
+        # Items, notes and the style line; a figure with no items (the wolf) has none of the first two.
+        mid = f"{sentence(items)}{note}{style}".strip()
         text = (f"Full-body game character reference of the {noun} from the reference image, "
-                f"{VIEW[d].format(poss=poss)}. Same design exactly: {design}. "
-                f"{sentence(items)} "
-                "Whole figure from the top of the head to the boots, standing in a neutral idle pose, arms relaxed, "
-                "feet on the ground, nothing cropped. Plain flat white background, no floor, no shadow, no text, "
+                f"{VIEW[d].format(poss=poss)}.{(' ' + sentence(source)) if source else ''} Same design exactly: {design}. "
+                f"{mid + ' ' if mid else ''}"
+                f"{sentence(pose)} Plain flat white background, no floor, no shadow, no text, "
                 "no other figures. One single view only, not a sheet of several views.")
         calls.append({"id": f"view-{d}", "step": "views", "tool": "GenerateImage",
                       "args": {"description": text, "reference_image_paths": refs, "aspect_ratio": "1:1",
                                "filename": f"{h}-v-{d}.png"},
                       "save_as": f"{vid}/views/v-{d}.png",
-                      "then": "hero_sprites.py views" if d == "E" else None})
-    t = cfg["turntable"]
-    keys = [{"image_path": f"{vid}/views/k-{d}.png", "timestamp_s": t["keyframes"][d]} for d in ("W", "N", "E")]
-    turn = (f"Game character turnaround reference. The {noun} stands perfectly still in a neutral idle pose on an "
-            f"invisible turntable and rotates a full 360 degrees at a constant speed, turning to show {poss} left "
+                      "then": "hero_sprites.py views" if d == views[-1] else None})
+    keys = [{"image_path": f"{vid}/views/k-{d}.png", "timestamp_s": s}
+            for d, s in sorted(t["keyframes"].items(), key=lambda kv: kv[1])]
+    assert len(keys) <= MAX_KEYFRAMES, keys
+    turn = (f"Game character turnaround reference. The {noun} {words['turn_pose']} and rotates a full 360 degrees at a constant speed, turning to show {poss} left "
             f"side, then {poss} back, then {poss} right side, then front again. Locked-off camera, slightly "
             "elevated looking down, no camera movement, no zoom, no perspective change. Plain flat white "
             f"background, even soft lighting. The design stays exactly identical: {t.get('design', design)}. "
-            f"{steady_light(cfg)} Crisp sharp detail in every frame, no motion blur, no ghosting, no walking, "
+            f"{steady_light(cfg)} Crisp sharp detail in every frame, no motion blur, no ghosting, {words['turn_still']}, "
             "no text.")
     calls.append({"id": "turntable", "step": "dirs", "tool": "GenerateVideo",
                   "args": {"prompt": turn, "image_path": f"{vid}/views/k-S.png",
@@ -399,17 +764,22 @@ def build_prompts(cfg):
     walk_bits = [i["walk"] for i in cfg["items"] if i.get("walk")]
     idle_bits = [i["idle"] for i in cfg["items"] if i.get("idle")]
     stills = [i["still"] for i in cfg["items"] if i.get("still")]
+    gait = cfg.get("gait", "Steady marching walk: legs alternating clearly, slight body bob")
+    clips = cfg["clips"] if "clips" in cfg else HERO_CLIPS
+    order = [(k, d) for d in COLUMNS for k in CLIP_KINDS if d in clips.get(k, ())]
+    over = cfg.get("clip_overrides", {})
     for d in COLUMNS:
         face = DIRECTION[d].format(poss=poss)
+        ow, oa, od = (over.get(f"{k}-{d}", {}) for k in ("walk", "attack", "death"))
         props = "; ".join(x for x in (item_line(i, d, poss) for i in cfg["items"]) if x)
-        walk = (f"Game sprite walk cycle. The {noun} walks in place on a treadmill, keeping exactly the facing "
+        walk = (f"Game sprite walk cycle. The {noun} {words['walk_lead']}, keeping exactly the facing "
                 f"direction of the first frame ({face}). Holding exactly the body angle of the first frame: torso "
-                "does not twist. Steady marching walk: legs alternating clearly, slight body bob"
-                + "".join(f", {b}" for b in walk_bits) + ". "
+                "does not twist. " + ow.get("gait", gait)
+                + "".join(f", {b}" for b in ow.get("walk", walk_bits)) + ". "
                 + (f"Props stay where the first frame has them: {props}. " if props else "")
                 + f"The {noun} stays exactly centered, does not turn, move or change size. Locked-off camera, no "
-                "zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, "
-                "loops seamlessly back to the starting pose.")
+                "zoom, plain flat white background, even lighting, crisp frames, no motion blur. "
+                f"{words['walk_beats']}, loops seamlessly back to the starting pose.")
         idle = (f"Nearly static game sprite idle loop. The {noun} holds exactly the pose, angle and facing of the "
                 f"first frame ({face}) for the whole clip. Only a very small breathing motion: chest and shoulders "
                 "rise and fall by a few pixels" + "".join(f", {b}" for b in idle_bits) + ". "
@@ -417,17 +787,57 @@ def build_prompts(cfg):
                 + "rms do not move, body does not turn, feet do not move, head does not turn. "
                 + f"{steady_light(cfg)} Locked camera, no zoom, plain flat white background, even lighting, "
                 "crisp frames.")
-        for kind, text in (("walk", walk), ("idle", idle)):
+        attack = (f"Game sprite attack. The {noun} keeps exactly the facing direction of the first frame ({face}) "
+                  f"and the body angle of the first frame: torso does not twist away. In one quick motion it "
+                  f"{oa.get('attack', cfg.get('attack', ''))}, then returns exactly to the starting pose and holds it for the last "
+                  "frames. "
+                  + (f"Props stay where the first frame has them: {props}. " if props else "")
+                  + f"The {noun} stays exactly centered, {words['attack_hold']}, no turning, no change of size. "
+                  f"{steady_light(cfg)} Locked-off camera, no zoom, plain flat white background, even lighting, "
+                  "crisp frames, no motion blur, no speed lines, no effects.")
+        death = (f"Game sprite death. The {noun} starts exactly in the pose and facing of the first frame ({face}). "
+                 f"{od.get('struck', 'It is struck down: it')} {od.get('death', cfg.get('death', ''))}. It lies still on the ground for the last half "
+                 f"second. The body stays centered on the same spot and does not slide out of frame. "
+                 f"{steady_light(cfg)} No blood, no gore, no fading, no particles, no effects. Locked-off camera, "
+                 "no zoom, plain flat white background, even lighting, crisp frames, no motion blur.")
+        for kind, text in (("walk", walk), ("idle", idle), ("attack", attack), ("death", death)):
+            if d not in clips.get(kind, ()):
+                continue
+            args = {"prompt": text, "image_path": f"{vid}/dirs/{d}.png",
+                    "last_frame_path": f"{vid}/dirs/{d}.png", "duration": 2,
+                    "aspect_ratio": "1:1", "resolution": "720p", "filename": f"{h}-{kind}-{d}.mp4"}
+            if kind == "attack" and d in cfg.get("centred_attacks", []):
+                args["image_path"] = args["last_frame_path"] = f"{vid}/mid/{d}.png"
+            if kind == "death":
+                del args["last_frame_path"]  # a fall ends on the ground, not on the start pose
+                if d in cfg.get("death_ends", {}):
+                    args["last_frame_path"] = f"{vid}/ends/{d}.png"
             calls.append({"id": f"{kind}-{d}", "step": "precheck", "tool": "GenerateVideo",
-                          "args": {"prompt": text, "image_path": f"{vid}/dirs/{d}.png",
-                                   "last_frame_path": f"{vid}/dirs/{d}.png", "duration": 2,
-                                   "aspect_ratio": "1:1", "resolution": "720p", "filename": f"{h}-{kind}-{d}.mp4"},
+                          "args": args,
                           "save_as": f"{vid}/{kind}-{d}.mp4",
-                          "then": "hero_sprites.py precheck" if (kind, d) == ("idle", "SE") else None})
+                          "then": "hero_sprites.py precheck" if (kind, d) == order[-1] else None})
     for c in calls:
         if c["then"] is None:
             del c["then"]
-    return {"hero": h, "paths": "relative to the repository root", "calls": calls}
+    out = {"hero": h, "paths": "relative to the repository root", "calls": calls}
+    if cfg.get("type", "hero") != "hero":
+        out["type"] = cfg["type"]  # a hero's prompts.json carries no type key
+    return out
+
+
+def clip_batch(cfg):
+    """The GenerateVideo clip calls (walk, attack, death), without the turntable.
+
+    The shape is what a parent feeds to GenerateVideo: each call has id, tool,
+    args and save_as. Paths stay relative to the repository root, as in
+    prompts.json. `python3 -c` over this function writes
+    assets/reference/<asset>/clips-batch.json."""
+    calls = []
+    for call in build_prompts(cfg)["calls"]:
+        if call.get("tool") != "GenerateVideo" or call["id"] == "turntable":
+            continue
+        calls.append({key: call[key] for key in ("id", "tool", "args", "save_as")})
+    return {"calls": calls}
 
 
 def absolute(prompts, root=ROOT):
@@ -446,7 +856,7 @@ def absolute(prompts, root=ROOT):
 
 def prompts_markdown(p):
     lines = [f"# {p['hero']} generation calls", "",
-             "Generated by `python3 script/hero_sprites.py " + p["hero"] + " prep` from `hero.json`; do not edit.",
+             "Generated by `python3 script/hero_sprites.py " + p["hero"] + " prep` from `" + ("asset.json" if "type" in p else "hero.json") + "`; do not edit.",
              "Paths are relative to the repository root (`hero_sprites.py " + p["hero"] + " prompts --abs` prints "
              "them absolute). Save each result at `save_as`, then run the step named in `then`.", ""]
     for c in p["calls"]:
@@ -478,12 +888,94 @@ def cell_alpha(frame, scale):
     return ndimage.binary_dilation(a, CROSS)
 
 
-def pose_alpha(path):
-    pose = np.asarray(Image.open(path).convert("RGB"))
+def pose_at(path, frame):
+    """A start pose (dirs/<d>.png) as RGB at the clip's frame size. A clip
+    can come back at another size than its 720 px first frame (the wolf's
+    deaths are 960 px): the generator scaled the pose up, so the pose is
+    scaled the same way (Lanczos) before it is cut out and placed. Placing
+    the 720 px pose instead puts the outline on another sub-pixel grid: the
+    wolf death-N frame 0 was the pose itself yet differed by 20 px from it
+    on all three takes, against 1 to 4 px on the resized pose."""
+    img = Image.open(path).convert("RGB")
+    h, w = frame["rgb"].shape[:2]
+    if img.size != (w, h):
+        img = img.resize((w, h), Image.LANCZOS)
+    return np.asarray(img)
+
+
+def pose_alpha(path, frame=None):
+    pose = np.asarray(Image.open(path).convert("RGB")) if frame is None else pose_at(path, frame)
     m = sv.cut_out(pose)
     top, foot = sv.span(m)
     _, a = sv.place({"rgb": pose, "mask": m}, sv.FILL / (foot - top + 1), sv.head_centre(m), foot)
     return ndimage.binary_dilation(a, CROSS)
+
+
+def normalize_death_frames(frames):
+    """Map a death clip that is longer than 2 s onto CLIP_FRAMES without
+    dropping the fall or inventing a hold.
+
+    The last half second of the result is a nearest-frame sample of the
+    clip's own still tail: the longest suffix whose placed silhouette stays
+    within the largest difference already present in the source's last half
+    second. The frames before that are a nearest-frame sample of the whole
+    fall, from frame 0 through the first frame of that tail. Endpoints are
+    exact source frames. Nothing is blended, frozen from a moving frame, or
+    cut off the front or the back. A clip that is already CLIP_FRAMES long
+    is returned unchanged. A clip with no fall, or a still tail shorter than
+    half a second, is refused."""
+    n = len(frames)
+    if n == CLIP_FRAMES:
+        return list(frames)
+    if n < CLIP_FRAMES:
+        raise ValueError(f"death clip has {n} frames, under {CLIP_FRAMES}: a short clip is not stretched")
+    half = CLIP_FPS // 2
+    top, foot = sv.span(frames[0]["mask"])
+    scale = sv.FILL / float(foot - top + 1)
+    x0 = sv.head_centre(frames[0]["mask"])
+
+    def placed(i):
+        f = frames[i]
+        return sv.place(f, scale, x0, sv.span(f["mask"])[1])
+
+    last = ndimage.binary_dilation(placed(n - 1)[1], CROSS)
+    deltas = [int((ndimage.binary_dilation(placed(i)[1], CROSS) != last).sum()) for i in range(n)]
+    bound = max(deltas[-half:])
+    if deltas[0] <= bound:
+        raise ValueError("death clip never leaves the last pose, so there is no fall to keep")
+    tail = n - half
+    while tail > 0 and deltas[tail - 1] <= bound:
+        tail -= 1
+    if n - tail < half:
+        raise ValueError(f"still tail is {n - tail} frames, under the last half second ({half})")
+    motion_n = CLIP_FRAMES - half
+    out = []
+    for k in range(motion_n):
+        src = int(round(k * tail / (motion_n - 1)))
+        out.append(frames[src])
+    last_i = n - 1
+    for k in range(half):
+        src = tail + int(round(k * (last_i - tail) / (half - 1)))
+        out.append(frames[src])
+    if len(out) != CLIP_FRAMES or out[0] is not frames[0] or out[-1] is not frames[-1]:
+        raise ValueError("normalized death clip lost an endpoint")
+    if out[motion_n - 1] is not frames[tail]:
+        raise ValueError("normalized death clip did not land the fall on the still tail")
+    return out
+
+
+def write_clip(path, frames, fps=CLIP_FPS):
+    """Write RGB frames as a lossless rgb24 mp4 at fps. The decoded frames
+    match the arrays that were written."""
+    h, w = frames[0].shape[:2]
+    if any(f.shape != (h, w, 3) for f in frames):
+        raise ValueError(f"clip frames are not all {w}x{h}")
+    raw = b"".join(np.ascontiguousarray(f, dtype=np.uint8).tobytes() for f in frames)
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+         "-s", f"{w}x{h}", "-r", str(fps), "-i", "pipe:0",
+         "-c:v", "libx264rgb", "-qp", "0", "-pix_fmt", "rgb24", path],
+        input=raw, check=True)
 
 
 def clip_format(path):
@@ -499,7 +991,9 @@ def precheck(cfg, log=print):
     """Per-clip problems before the build: {clip: [reasons]}. Format (square,
     24 fps, 49 frames), loop closes (last frame vs first), starts on its pose,
     an idle never strays far from its first frame, then every sheet check on an in-memory build, each failure blamed on the
-    clips whose frames failed it."""
+    clips whose frames failed it. A monster goes to monster_precheck."""
+    if cfg["type"] != "hero":
+        return monster_precheck(cfg, log)
     vid = cfg["video"]
     problems = {}
 
@@ -513,10 +1007,83 @@ def precheck(cfg, log=print):
         for m in missing:
             flag(m, "missing")
         return problems
-    poses = {d: pose_alpha(os.path.join(vid, "dirs", f"{d}.png")) for d in COLUMNS}
     walk_median = {}
 
+    def note_attack(d, frames, scale, cells):
+        clip = f"attack-{d}.mp4"
+        w, h, fps = clip_format(os.path.join(vid, clip))
+        if w != h or round(fps) != CLIP_FPS or len(frames) != CLIP_FRAMES:
+            flag(clip, f"format {w}x{h} {fps:g} fps {len(frames)} frames (want square, {CLIP_FPS} fps, "
+                       f"{CLIP_FRAMES} frames: 2 s with last frame = first)")
+        med = walk_median[d]
+        first, last = cell_alpha(frames[0], scale), cell_alpha(frames[-1], scale)
+        loop = int((first != last).sum())
+        if loop > WALK_LOOP * med:
+            flag(clip, f"loop does not close: last frame differs from the first by {loop} silhouette px "
+                       f"(limit {WALK_LOOP * med:.0f} = {WALK_LOOP} x walk median {med:.0f})")
+        start = int((first != pose_alpha(os.path.join(vid, "dirs", f"{d}.png"), frames[0])).sum())
+        if start > START_POSE * med:
+            flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                       f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
+        mets = [sv.cell_metrics(*c) for c in cells]
+        heights = [m["height"] for m in mets]
+        target = sv.FOOT + 1
+        import check_sprite_sheet as cs
+        # Standing frames only. A mid-swing lunge is not a height failure, and
+        # there is no head-line gate for it.
+        standing = (heights[0], heights[-1])
+        if any(abs(h - sv.HERO) > cs.HERO_HEIGHT_TOL for h in standing):
+            flag(clip, f"height off 88 +-2 on the standing frames: {heights}")
+        if any(abs(m["foot"] - target) > 1 for m in mets):
+            flag(clip, f"foot line off row {target}: {[m['foot'] for m in mets]}")
+        if any(m["edge"] for m in mets):
+            flag(clip, "a frame touches the cell border")
+        log(f"{clip}: {len(frames)} frames, loop {loop} px, start {start} px, "
+            f"walk median {med:.0f}, height {min(heights)}..{max(heights)}")
+
+    def note_death(d, frames, scale, cells, placer):
+        clip = f"death-{d}.mp4"
+        w, h, fps = clip_format(os.path.join(vid, clip))
+        if w != h or round(fps) != CLIP_FPS or len(frames) != CLIP_FRAMES:
+            flag(clip, f"format {w}x{h} {fps:g} fps {len(frames)} frames (want square, {CLIP_FPS} fps, "
+                       f"{CLIP_FRAMES} frames)")
+        med = walk_median[d]
+        first = cell_alpha(frames[0], scale)
+        start = int((first != pose_alpha(os.path.join(vid, "dirs", f"{d}.png"), frames[0])).sum())
+        if start > START_POSE * med:
+            flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                       f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
+        mets = [sv.cell_metrics(*c) for c in cells]
+        import check_sprite_sheet as cs
+        if abs(mets[0]["height"] - sv.HERO) > cs.HERO_HEIGHT_TOL:
+            flag(clip, f"start height {mets[0]['height']} px off 88 +-2")
+        target = sv.FOOT + 1
+        feet = [m["foot"] for m in mets]
+        if any(abs(f - target) > cs.DEATH_FOOT for f in feet):
+            flag(clip, f"feet off the line: rows {feet} (target {target} +- {cs.DEATH_FOOT})")
+        if any(m["edge"] for m in mets):
+            flag(clip, "a frame touches the cell border")
+        # The last half second is the hold. It stays within the start-pose limit of the last frame.
+        half = CLIP_FPS // 2
+        last = ndimage.binary_dilation(placer(len(frames) - 1)[1], CROSS)
+        hold = max(int((ndimage.binary_dilation(placer(i)[1], CROSS) != last).sum())
+                   for i in range(len(frames) - half, len(frames)))
+        if hold > START_POSE * med:
+            flag(clip, f"last frames move: the last {half} frames differ from the last by {hold} silhouette px "
+                       f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
+        log(f"{clip}: {len(frames)} frames, no loop (death), start {start} px, "
+            f"walk median {med:.0f}, height {mets[0]['height']}..{min(m['height'] for m in mets)}, "
+            f"hold {hold} px")
+
     def inspect(d, kind, frames, picks, scale):
+        if kind == "attack":
+            _picks, scale, cells, _info = sv.hero_attack_cells(frames)
+            note_attack(d, frames, scale, cells)
+            return
+        if kind == "death":
+            _picks, scale, cells, placer, _info = sv.hero_death_cells(frames)
+            note_death(d, frames, scale, cells, placer)
+            return
         clip = f"{kind}-{d}.mp4"
         w, h, fps = clip_format(os.path.join(vid, clip))
         if w != h or round(fps) != CLIP_FPS or len(frames) != CLIP_FRAMES:
@@ -538,7 +1105,7 @@ def precheck(cfg, log=print):
             if drift > IDLE_DRIFT * med:
                 flag(clip, f"idle moves too much: a frame differs from the first by {drift} silhouette px "
                            f"(limit {IDLE_DRIFT * med:.0f} = {IDLE_DRIFT} x walk median {med:.0f})")
-        start = int((first != poses[d]).sum())
+        start = int((first != pose_alpha(os.path.join(vid, "dirs", f"{d}.png"), frames[0])).sum())
         if start > START_POSE * med:
             flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
                        f"(limit {START_POSE * med:.0f} = {START_POSE} x walk median {med:.0f})")
@@ -546,6 +1113,23 @@ def precheck(cfg, log=print):
 
     with contextlib.redirect_stderr(io.StringIO()):
         sheet, pal, plan = sv.build(vid, inspect)
+    # A partial attack or death set is checked here and is not on the sheet.
+    # build() already checked a complete set through inspect.
+    if not sv.actions_complete(vid):
+        for d in COLUMNS:
+            path = os.path.join(vid, f"attack-{d}.mp4")
+            if os.path.exists(path):
+                frames = sv.load_clip(path)
+                _picks, scale, cells, _info = sv.hero_attack_cells(frames)
+                note_attack(d, frames, scale, cells)
+                del frames
+        for d in ("S", "W", "N", "E"):
+            path = os.path.join(vid, f"death-{d}.mp4")
+            if os.path.exists(path):
+                frames = sv.load_clip(path)
+                _picks, scale, cells, placer, _info = sv.hero_death_cells(frames)
+                note_death(d, frames, scale, cells, placer)
+                del frames
     import check_sprite_sheet as cs
     hero = cs.HEROES.get(cfg["hero"])
     if hero is None:
@@ -560,6 +1144,112 @@ def precheck(cfg, log=print):
     return problems
 
 
+def monster_precheck(cfg, log=print):
+    """precheck for a monster asset: every clip in its "clips" has the format;
+    walk and attack loops close (an attack ends on its start pose); every
+    clip starts on its dirs pose; a death has no loop. Silhouettes are the
+    cells build_monster places, measured against the walk of the same
+    direction. Then run_monster_checks on the in-memory sheet."""
+    vid = cfg["video"]
+    spec, have = sv.sheet_spec(cfg), cfg["clips"]
+    problems = {}
+
+    def flag(clip, why):
+        problems.setdefault(clip, []).append(why)
+
+    missing = [f"{k}-{d}.mp4" for k, dirs in have.items() for d in dirs
+               if not os.path.exists(os.path.join(vid, f"{k}-{d}.mp4"))]
+    missing += [f"dirs/{d}.png" for d in COLUMNS if not os.path.exists(os.path.join(vid, "dirs", f"{d}.png"))]
+    missing += [f"ends/{d}.png (hero_sprites.py prep)" for d in cfg.get("death_ends", {})
+                if not os.path.exists(os.path.join(vid, "ends", f"{d}.png"))]
+    missing += [f"mid/{d}.png (hero_sprites.py prep)" for d in cfg.get("centred_attacks", [])
+                if not os.path.exists(os.path.join(vid, "mid", f"{d}.png"))]
+    for kind, _ in spec.rows:
+        for d in COLUMNS:
+            # Idle on the four views holds the start pose on the other columns.
+            if kind == "idle" and d not in have.get("idle", ()):
+                continue
+            try:
+                sv.clip_for(have, kind, d)
+            except SystemExit as e:
+                missing.append(f"{kind}-{d}.mp4 ({e})")
+    if missing:
+        for m in missing:
+            flag(m, "missing")
+        return problems
+    poses = {}
+
+    def pose(d, frame):
+        """dirs/<d>.png placed as a cell, scaled first to the clip's frame size."""
+        key = (d, frame["rgb"].shape[:2])
+        if key not in poses:
+            _, a = sv.pose_place(pose_at(os.path.join(vid, "dirs", f"{d}.png"), frame), spec)
+            poses[key] = ndimage.binary_dilation(a, CROSS)
+        return poses[key]
+    walk_median = {}
+
+    def inspect(d, kind, frames, picks, scale, placer):
+        clip = f"{kind}-{d}.mp4"
+        w, h, fps = clip_format(os.path.join(vid, clip))
+        if w != h or round(fps) != CLIP_FPS or len(frames) != CLIP_FRAMES:
+            flag(clip, f"format {w}x{h} {fps:g} fps {len(frames)} frames (want square, {CLIP_FPS} fps, "
+                       f"{CLIP_FRAMES} frames: 2 s with last frame = first)")
+
+        def alpha(i):
+            return ndimage.binary_dilation(placer(i)[1], CROSS)
+        if kind == "walk":
+            cells = [alpha(i) for i in picks]
+            walk_median[d] = float(np.median([int((cells[r] != cells[(r + 1) % len(cells)]).sum())
+                                              for r in range(len(cells))]))
+        if d in walk_median:
+            med = walk_median[d]
+        else:
+            # An idle with no walk beside it (the merchant) is measured against
+            # its own step. A still clip makes that step small, so the start
+            # check stays strict.
+            cells = [alpha(i) for i in picks]
+            med = float(np.median([int((cells[r] != cells[(r + 1) % len(cells)]).sum())
+                                   for r in range(len(cells))])) or 1.0
+        first = alpha(0)
+        loop = None
+        if kind in ("walk", "attack"):
+            loop = int((first != alpha(len(frames) - 1)).sum())
+            k = WALK_LOOP if kind == "walk" else ATTACK_LOOP
+            if loop > k * med:
+                flag(clip, f"loop does not close: last frame differs from the first by {loop} silhouette px "
+                           f"(limit {k * med:.0f} = {k} x walk median {med:.0f})")
+        start = int((first != pose(d, frames[0])).sum())
+        # The noise floor is only for a still idle. A walk fills walk_median
+        # before this test, so an idle beside a walk stays at 0.2× that median.
+        still = kind == "idle" and d not in have.get("walk", ())
+        floor = pose_noise_floor(pose_at(os.path.join(vid, "dirs", f"{d}.png"), frames[0])) if still else 0
+        fails, limit = idle_start_fails(start, med, floor, still)
+        if fails:
+            if still:
+                flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                           f"(limit {limit:.0f} = max({START_POSE} x step {med:.0f}, noise floor {floor}))")
+            else:
+                flag(clip, f"does not start on dirs/{d}.png: first frame differs by {start} silhouette px "
+                           f"(limit {limit:.0f} = {START_POSE} x walk median {med:.0f})")
+        log(f"{clip}: {len(frames)} frames, " + (f"loop {loop} px, " if loop is not None else "no loop (death), ")
+            + f"start {start} px, picks {picks}, walk median {med:.0f}"
+            + (f", noise floor {floor}" if still else ""))
+
+    with contextlib.redirect_stderr(io.StringIO()):
+        sheet, pal, plan = sv.build_monster(vid, spec, have, inspect)
+    import check_sprite_sheet as cs
+    asset = cs.ASSETS.get(cfg["hero"])
+    if asset is None:
+        log(f"{cfg['hero']}/asset.json has no check profile: sheet checks skipped (fill \"check\" first)")
+        return problems
+    rep = cs.run_monster_checks(asset, sheet, os.path.join(vid, "dirs"), quiet=True)
+    for ok, name, detail, clips in rep.results:
+        if not ok:
+            for clip in clips or ("sheet",):
+                flag(clip, f"{name}: {detail}")
+    return problems
+
+
 # ---------------------------------------------------------------- 6 build
 
 def approval_dir(hero, override=None):
@@ -570,11 +1260,14 @@ def approval_dir(hero, override=None):
 
 def build(cfg, approval=None, log=print):
     """Sheet and normal map, every check, and the approval files: contact.png,
-    walk.gif, idle.gif and check.txt. Returns the number of failing checks."""
+    walk.gif, idle.gif and check.txt (a monster: sheet.png, strip.png,
+    contact.png, one GIF per clip kind and check.txt). Returns the number of
+    failing checks."""
     import check_sprite_sheet as cs
     h = cfg["hero"]
-    if h not in cs.HEROES:
-        raise SystemExit(f"{h}/hero.json has no check profile: fill \"check\" before the build")
+    if h not in (cs.HEROES if cfg["type"] == "hero" else cs.ASSETS):
+        name = "hero.json" if cfg["type"] == "hero" else "asset.json"
+        raise SystemExit(f"{h}/{name} has no check profile: fill \"check\" before the build")
     sv.main([h])
     out = approval_dir(h, approval)
     buf = io.StringIO()
@@ -610,6 +1303,360 @@ def concept_colours(cfg, k=12):
 
 # ---------------------------------------------------------------- CLI
 
+# ---------------------------------------------------------------- static art
+
+# A static piece (asset.json "type": "static") never walks: a tree, a rock, a
+# building. It is a few generated front images (variants), each pixelized at
+# the hero texel to its world height, outlined, on a transparent background,
+# side by side in one row of cells: priv/static/images/hd2d/<name>-sheet.png.
+STATIC_VARIANTS = 4    # most variants per piece
+STATIC_MARGIN = 4      # transparent rows/columns kept around the figure in its cell
+STATIC_SAMPLES = 60000  # palette samples, every n-th body pixel in variant order
+STATIC_SCALE = (0.5, 1.0)  # a variant's "scale": its height over world_height
+# A variant's "pick": the image model sometimes draws several figures despite
+# "one single ... only". "left"/"right" keep the leftmost/rightmost figure:
+# among the connected parts at least STATIC_PICK_SHARE of the largest, the
+# one whose centre is furthest that way. Everything else is background.
+STATIC_PICKS = ("left", "right")
+STATIC_PICK_SHARE = 0.1
+# A variant with "squash_of": "<id>" has no image of its own: the build cuts
+# that variant's image at its width and squashes it to this variant's height
+# (a sprung trap is the armed one with its spikes lowered). No prompt call.
+# A piece's "view": "front" (default) or "three_quarter" (one corner toward
+# the camera, like the concept painting the yard cards are cut from).
+# A piece's "match": "<sheet>" (another built static piece, e.g. "pine")
+# scales the saturation and value of every variant, by one factor each for
+# the whole piece, so their means over the body pixels equal that sheet's.
+# The bushes came out brighter and more yellow than the dark pine forest.
+STATIC_VIEWS = {
+    "front": "seen from the front at the game's camera angle, slightly from above",
+    "three_quarter": ("seen in a three-quarter view with one corner toward the camera, at the game's camera "
+                      "angle, slightly from above, like the reference image"),
+    "top_down": "seen from directly above as a flat plan, with no standing sides",
+}
+
+
+def load_static(cfg, hero, name, reference=REFERENCE):
+    """Validate a static asset.json: noun, concept, design, world_height
+    (units; the figure is sheet_height(world_height) px tall with its
+    outline), cell [w, h] in px, variants [{"id", "note", "scale"?}]."""
+    for key in ("noun", "concept", "design", "world_height", "cell", "variants"):
+        if key not in cfg:
+            raise SystemExit(f"{hero}/{name} is missing {key!r}")
+    wh = cfg["world_height"]
+    if not isinstance(wh, (int, float)) or isinstance(wh, bool) or wh <= 0:
+        raise SystemExit(f"{hero}/{name}: world_height is a positive number of world units, got {wh!r}")
+    cap = cfg.get("variant_cap", STATIC_VARIANTS)
+    if type(cap) is not int or cap < 1:
+        raise SystemExit(f"{hero}/{name}: variant_cap is a positive integer, got {cap!r}")
+    ww = cfg.get("world_width")
+    if ww is not None and (not isinstance(ww, (int, float)) or isinstance(ww, bool) or ww <= 0):
+        raise SystemExit(f"{hero}/{name}: world_width is a positive number of world units, got {ww!r}")
+    iou = cfg.get("shape_iou")
+    if iou is not None and (not isinstance(iou, (int, float)) or isinstance(iou, bool) or not 0 < float(iou) < 1):
+        raise SystemExit(f"{hero}/{name}: shape_iou is a fraction between 0 and 1, got {iou!r}")
+    vs = cfg["variants"]
+    ids = [v.get("id") for v in vs] if isinstance(vs, list) else []
+    if (not isinstance(vs, list) or not 1 <= len(vs) <= cap or len(set(ids)) != len(ids)
+            or any(not isinstance(i, str) or not i.isalnum() or i != i.lower() for i in ids)
+            or any(not isinstance(v.get("note", ""), str) for v in vs)
+            or any(set(v) - {"id", "note", "scale", "pick", "squash_of", "framing", "pending"} for v in vs)
+            or any(not isinstance(v.get("framing", ""), str) or v.get("pending", False) not in (True, False) for v in vs)
+            or all(v.get("pending") for v in vs)
+            or any(v.get("pick", "left") not in STATIC_PICKS for v in vs)):
+        raise SystemExit(f"{hero}/{name}: variants is 1-{cap} entries "
+                         f"{{\"id\" (lowercase letters or digits, unique), \"note\", \"scale\"?, \"pick\"? {STATIC_PICKS}}}, got {vs!r}")
+    for v in vs:
+        src = v.get("squash_of")
+        if src is not None and (src not in ids or src == v["id"]
+                                or next(u for u in vs if u["id"] == src).get("squash_of")):
+            raise SystemExit(f"{hero}/{name}: variant {v['id']!r} squash_of is another variant with an image, got {src!r}")
+    for v in vs:
+        if v.get("squash_of") and next(u for u in vs if u["id"] == v["squash_of"]).get("pending"):
+            raise SystemExit(f"{hero}/{name}: variant {v['id']!r} is squashed from the pending variant {v['squash_of']!r}")
+    m = cfg.get("match")
+    if m is not None and (not isinstance(m, str) or not m.isidentifier() or m == hero):
+        raise SystemExit(f"{hero}/{name}: match names another static piece's sheet, got {m!r}")
+    if cfg.get("view", "front") not in STATIC_VIEWS:
+        raise SystemExit(f"{hero}/{name}: view is one of {sorted(STATIC_VIEWS)}, got {cfg.get('view')!r}")
+    for v in vs:
+        s = v.get("scale", 1.0)
+        if not isinstance(s, (int, float)) or isinstance(s, bool) or not STATIC_SCALE[0] <= s <= STATIC_SCALE[1]:
+            raise SystemExit(f"{hero}/{name}: variant {v['id']!r} scale {s!r} is from {STATIC_SCALE[0]} to {STATIC_SCALE[1]}")
+    cell = cfg["cell"]
+    h = sheet_height(wh)
+    width = sheet_height(float(ww)) if ww is not None else None
+    wide = width + 2 * STATIC_MARGIN if width is not None else 0
+    if (not isinstance(cell, list) or len(cell) != 2 or any(type(c) is not int or c % 8 for c in cell)
+            or cell[1] < h + 2 * STATIC_MARGIN or cell[0] < wide):
+        raise SystemExit(f"{hero}/{name}: cell is [w, h], multiples of 8, h at least {h + 2 * STATIC_MARGIN} "
+                         f"({h} px figure + {STATIC_MARGIN} px above and below)"
+                         + (f", w at least {wide}" if width is not None else "") + f", got {cell!r}")
+    cfg["type"] = "static"
+    cfg["hero"] = hero
+    cfg["dir"] = os.path.join(reference, hero)
+    cfg["height"] = h
+    cfg["width"] = width
+    return cfg
+
+
+def static_height(cfg, v):
+    """Px height, outline included, of variant v."""
+    return int(round(cfg["height"] * v.get("scale", 1.0)))
+
+
+def static_prompts(cfg):
+    """One GenerateImage call per variant, paths relative to the repository root."""
+    h, noun = cfg["hero"], cfg["noun"]
+    base = f"assets/reference/{h}"
+    refs = [f"{base}/concept.png"] + list(cfg.get("style_refs", []))
+    source = cfg.get("source_note", "")
+    style = (" Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art "
+             "look, block size, outline-free shading and soft lighting, but not its subject."
+             if cfg.get("style_refs") else "")
+    calls = []
+    for v in cfg["variants"]:
+        if v.get("squash_of"):
+            continue
+        note = f" {sentence(v['note'])}" if v.get("note") else ""
+        # A variant's "framing" replaces the upright framing sentence (a log
+        # lies along the ground; "upright" made the model draw a stump).
+        if v.get("framing"):
+            framing = sentence(v["framing"])
+        elif cfg.get("view") == "top_down" and cfg.get("width"):
+            framing = (f"A flat top-down decal of the whole {noun}, filling a {cfg['width']} by {cfg['height']} "
+                       f"pixel footprint, no standing sides, nothing cropped.")
+        else:
+            framing = f"The whole {noun} from its top to the ground it stands on, upright, centred, nothing cropped."
+        desc = (f"Game prop reference of the {noun} from the reference image, {STATIC_VIEWS[cfg.get('view', 'front')]}. {sentence(source) + ' ' if source else ''}"
+                f"Same design: {cfg['design']}.{note}{style} {framing} Plain flat white background, no ground, no grass, no "
+                f"shadow, no text, no other objects. One single {noun} only, not a sheet of several.")
+        calls.append({"id": f"image-{v['id']}", "step": "build", "tool": "GenerateImage",
+                      "args": {"description": desc, "reference_image_paths": refs, "aspect_ratio": "1:1",
+                               "filename": f"{h}-{v['id']}.png"},
+                      "save_as": f"{base}/views/{v['id']}.png",
+                      "then": f"python3 script/hero_sprites.py {h} build"})
+    return {"hero": h, "calls": calls, "type": "static"}
+
+
+def static_pick(mask, side):
+    """Keep only the leftmost/rightmost figure of mask (see STATIC_PICKS)."""
+    lab, n = ndimage.label(mask)
+    if n <= 1:
+        return mask
+    ids = np.arange(1, n + 1)
+    area = ndimage.sum(mask, lab, ids)
+    big = ids[area >= STATIC_PICK_SHARE * area.max()]
+    cx = [ndimage.center_of_mass(mask, lab, int(i))[1] for i in big]
+    keep = big[int(np.argmax(cx) if side == "right" else np.argmin(cx))]
+    return lab == keep
+
+
+def static_cut(rgb, height, pick=None, width_at=None, fit_width=None):
+    """A generated image on white -> (RGB, mask) of the figure scaled so its
+    opaque body is height - 2 px tall (the outline adds a row above and
+    below). Background is sv.cut_out's white; the figure is its bounding box.
+    pick ("left"/"right") keeps one figure of several (static_pick); the rest
+    turns white. fit_width stretches the box to that many pixels including
+    the outline, ignoring the source aspect (a flat top-down decal)."""
+    mask = sv.cut_out(rgb)
+    if not mask.any():
+        raise ValueError("no figure on the image")
+    if pick:
+        mask = static_pick(mask, pick)
+        rgb = np.where(mask[..., None], rgb, 255).astype(np.uint8)
+    ys, xs = np.nonzero(mask)
+    y0, y1, x0, x1 = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+    fill = height - 2
+    if fit_width:
+        w = max(1, fit_width - 2)
+    else:
+        w = max(1, int(round((x1 - x0) * ((width_at or height) - 2) / (y1 - y0))))
+    img = Image.fromarray(np.ascontiguousarray(rgb[y0:y1, x0:x1]))
+    small = np.asarray(img.resize((w, fill), Image.BOX), np.float64)
+    a = np.asarray(Image.fromarray((mask[y0:y1, x0:x1] * 255).astype(np.uint8)).resize((w, fill), Image.BOX))
+    keep = a >= 128
+    # A thin tip (a pine's point) can fall under the threshold: every row of
+    # the box keeps at least its most covered pixel, so the height is exact.
+    for y in np.nonzero(~keep.any(1))[0]:
+        keep[y, int(a[y].argmax())] = True
+    if fit_width:
+        for x in np.nonzero(~keep.any(0))[0]:
+            keep[int(a[:, x].argmax()), x] = True
+    return np.clip(np.round(small), 0, 255).astype(np.uint8), keep
+
+
+def hsv_means(rgb, keep):
+    """Mean (saturation, value), 0..255, of the keep pixels of an RGB array."""
+    hsv = np.asarray(Image.fromarray(np.ascontiguousarray(rgb)).convert("HSV"), np.float64)
+    return hsv[keep][:, 1].mean(), hsv[keep][:, 2].mean()
+
+
+def sheet_hsv_means(sheet):
+    """hsv_means of a built RGBA sheet's body (opaque, not the outline)."""
+    keep = (sheet[..., 3] > 0) & ~np.all(sheet[..., :3] == sv.OUTLINE, axis=-1)
+    return hsv_means(sheet[..., :3], keep)
+
+
+def match_hsv(cuts, target):
+    """Scale S and V of every cut by one factor each so the cuts' mean S and V
+    over all their keep pixels equal target. Deterministic, clipped to 0..255."""
+    hsvs = [np.asarray(Image.fromarray(np.ascontiguousarray(rgb)).convert("HSV"), np.float64) for rgb, _ in cuts]
+    body = np.concatenate([h[k] for h, (_, k) in zip(hsvs, cuts)])
+    fs, fv = target[0] / max(body[:, 1].mean(), 1e-6), target[1] / max(body[:, 2].mean(), 1e-6)
+    out = []
+    for h, (_, keep) in zip(hsvs, cuts):
+        h = h.copy()
+        h[..., 1] = np.clip(np.round(h[..., 1] * fs), 0, 255)
+        h[..., 2] = np.clip(np.round(h[..., 2] * fv), 0, 255)
+        rgb = np.asarray(Image.fromarray(h.astype(np.uint8), "HSV").convert("RGB"))
+        out.append((rgb, keep))
+    return out
+
+
+def static_sheet(cfg, images, match=None):
+    """images: variant id -> RGB array. Returns the RGBA sheet: one cell per
+    variant in config order, each figure centred, its lowest outline row
+    STATIC_MARGIN px above the cell bottom, one shared palette."""
+    cw, ch = cfg["cell"]
+    cuts = []
+    for v in cfg["variants"]:
+        src = next((u for u in cfg["variants"] if u["id"] == v.get("squash_of")), v)
+        rgb, keep = static_cut(images[src["id"]], static_height(cfg, v), src.get("pick"),
+                               static_height(cfg, src) if src is not v else None,
+                               cfg.get("width") if src is v else None)
+        if keep.shape[1] + 2 > cw - 2 * STATIC_MARGIN:
+            raise ValueError(f"{cfg['hero']} {v['id']}: {keep.shape[1] + 2} px wide with its outline, "
+                             f"cell {cw} keeps {cw - 2 * STATIC_MARGIN}: widen cell, never crop")
+        cuts.append((rgb, keep))
+    if cfg.get("match"):
+        if match is None:
+            path = os.path.join(ROOT, "priv/static/images/hd2d", f"{cfg['match']}-sheet.png")
+            match = sheet_hsv_means(np.asarray(Image.open(path).convert("RGBA")))
+        cuts = match_hsv(cuts, match)
+    samples = np.concatenate([rgb[keep] for rgb, keep in cuts]).astype(np.float64)
+    step = max(1, len(samples) // STATIC_SAMPLES)
+    pal = sv.build_palette(samples[::step], k=cfg.get("colours", sv.COLOURS))
+    pal_lab = sv.srgb_to_lab(np.array(pal, np.float64))
+    sheet = np.zeros((ch, cw * len(cuts), 4), np.uint8)
+    for i, (rgb, keep) in enumerate(cuts):
+        body = sv.quantize(rgb, keep, pal_lab, pal)
+        hh, ww = keep.shape
+        cell = np.zeros((ch, cw, 4), np.uint8)
+        top = ch - STATIC_MARGIN - 1 - hh  # the outline row under the body is ch - STATIC_MARGIN - 1
+        left = (cw - ww) // 2
+        cell[top:top + hh, left:left + ww] = body
+        sheet[:, i * cw:(i + 1) * cw] = sv.outline(cell)
+    return sheet
+
+
+def static_checks(cfg, sheet):
+    """[(ok, name, detail)] for a static sheet; the build fails on any."""
+    cw, ch = cfg["cell"]
+    n = len(cfg["variants"])
+    out = [(sheet.shape == (ch, cw * n, 4), "sheet size", f"{sheet.shape[1]}x{sheet.shape[0]} (want {cw * n}x{ch})")]
+    if not out[0][0]:
+        return out
+    alpha = sheet[..., 3]
+    out.append((set(np.unique(alpha)) <= {0, 255}, "alpha is 0 or 255", ""))
+    body = {tuple(int(x) for x in c) for c in np.unique(sheet[alpha > 0][:, :3], axis=0)} - {sv.OUTLINE}
+    out.append((len(body) <= 32, "palette size", f"{len(body)} colours + outline"))
+    a = alpha > 0
+    p = np.pad(a, 1)
+    edge = a & ~(p[:-2, 1:-1] & p[2:, 1:-1] & p[1:-1, :-2] & p[1:-1, 2:])
+    off = int((~np.all(sheet[edge][:, :3] == sv.OUTLINE, axis=1)).sum())
+    out.append((off == 0, "1 px outline on every silhouette edge", f"{off} edge pixels off-outline"))
+    for i, v in enumerate(cfg["variants"]):
+        ca = a[:, i * cw:(i + 1) * cw]
+        if not ca.any():
+            out.append((False, f"{v['id']} has a figure", "empty cell"))
+            continue
+        ys, xs = np.nonzero(ca)
+        want = static_height(cfg, v)
+        got = int(ys.max() - ys.min() + 1)
+        out.append((got == want, f"{v['id']} height {want} px", f"{got} px"))
+        out.append((ys.max() == ch - STATIC_MARGIN - 1, f"{v['id']} stands on the cell's ground row",
+                    f"lowest row {ys.max()} (want {ch - STATIC_MARGIN - 1})"))
+        clear = (ys.min() >= STATIC_MARGIN and xs.min() >= STATIC_MARGIN and xs.max() < cw - STATIC_MARGIN)
+        out.append((clear, f"{v['id']} clear of the cell border", f"rows {ys.min()}..{ys.max()}, cols {xs.min()}..{xs.max()}"))
+        _, parts = ndimage.label(ca)
+        out.append((parts == 1, f"{v['id']} is one piece", f"{parts} pieces"))
+    limit = cfg.get("shape_iou")
+    if limit is not None and n >= 2:
+        worst, pair = -1.0, ""
+        for i in range(n):
+            ai = a[:, i * cw:(i + 1) * cw]
+            for j in range(i + 1, n):
+                aj = a[:, j * cw:(j + 1) * cw]
+                inter = int(np.logical_and(ai, aj).sum())
+                union = int(np.logical_or(ai, aj).sum())
+                score = inter / union if union else 1.0
+                if score > worst:
+                    worst, pair = score, f"{cfg['variants'][i]['id']}/{cfg['variants'][j]['id']}"
+        out.append((worst < float(limit), "shape variants differ",
+                    f"{pair} IoU {worst:.3f} (want < {limit})"))
+    return out
+
+
+def static_build(cfg, out=None, approval=None, log=print):
+    """Pixelize every variant into the sheet, run static_checks, and write
+    the approval files (sheet.png, contact.png at 4x on grey, check.txt).
+    Returns the number of failing checks; the sheet is written only when
+    none fail. A variant with "pending": true (its image is being retaken)
+    is left out of the sheet until the flag is removed."""
+    if cfg.get("awaiting_art") and out is None:
+        raise SystemExit(f"{cfg['hero']}: the views are not the approved art yet; the sheet is not written")
+    cfg = dict(cfg, variants=[v for v in cfg["variants"] if not v.get("pending")])
+    images = {}
+    for v in cfg["variants"]:
+        if v.get("squash_of"):
+            continue
+        path = os.path.join(cfg["dir"], "views", f"{v['id']}.png")
+        if not os.path.exists(path):
+            raise SystemExit(f"no {rel(path)}: generate it first (see prompts.md)")
+        images[v["id"]] = np.asarray(Image.open(path).convert("RGB"))
+    sheet = static_sheet(cfg, images)
+    res = static_checks(cfg, sheet)
+    text = "".join(f"{'PASS' if ok else 'FAIL'}  {name}  {detail}\n" for ok, name, detail in res)
+    bad = sum(1 for ok, _, _ in res if not ok)
+    text += f"{'OK: 0 failing checks' if not bad else f'FAILED: {bad} failing checks'}\n"
+    log(text, end="")
+    adir = approval_dir(cfg["hero"], approval)
+    os.makedirs(adir, exist_ok=True)
+    sv.write_png(os.path.join(adir, "sheet.png"), sheet)
+    big = np.repeat(np.repeat(sheet, 4, 0), 4, 1)
+    grey = np.zeros_like(big)
+    grey[..., :3], grey[..., 3] = 128, 255
+    m = big[..., 3:] > 0
+    sv.write_png(os.path.join(adir, "contact.png"), np.where(m, big, grey))
+    write_text(os.path.join(adir, "check.txt"), text)
+    if not bad:
+        dst = out or os.path.join(ROOT, "priv/static/images/hd2d", f"{cfg['hero']}-sheet.png")
+        sv.write_png(dst, sheet)
+        log(f"wrote {rel(dst) if dst.startswith(ROOT) else dst}")
+    log(f"approval files in {adir}")
+    return bad
+
+
+def static_main(cfg, args):
+    if args.step == "prep":
+        crop_concept(cfg)
+        print(f"concept {rel(os.path.join(cfg['dir'], 'concept.png'))}")
+        write_prompts(cfg)
+        return 0
+    if args.step == "build":
+        return static_build(cfg, approval=args.approval)
+    if args.step == "colours":
+        for share, c, hh, ll, chm in concept_colours(cfg):
+            print(f"{share:6.1%}  rgb{c}  hue {hh:3d}  light {ll:.2f}  chroma {chm:.2f}")
+        return 0
+    if args.step == "prompts":
+        p = static_prompts(cfg)
+        print(json.dumps(absolute(p) if args.abs else p, indent=1))
+        return 0
+    raise SystemExit(f"{cfg['hero']} is static art: it runs prep, build, colours and prompts, not {args.step}")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("hero")
@@ -619,11 +1666,17 @@ def main(argv=None):
     ap.add_argument("--abs", action="store_true", help="prompts: print with absolute paths")
     args = ap.parse_args(argv)
     cfg = load_config(args.hero)
+    if cfg["type"] == "static":
+        return static_main(cfg, args)
     if args.step == "prep":
         crop_concept(cfg)
         print(f"concept {rel(os.path.join(cfg['dir'], 'concept.png'))}")
         write_prompts(cfg)
         make_views(cfg)
+        for d in cfg.get("death_ends", {}):
+            death_end(cfg, d)
+        for d in cfg.get("centred_attacks", []):
+            mid_start(cfg, d)
         return 0
     if args.step == "views":
         make_views(cfg)

@@ -23,6 +23,52 @@ export function walkSheetUrl(hero, normal = false) {
   return `images/hd2d/${hero}-walk${normal ? "-normal" : ""}.png`
 }
 
+// A passing hero sheet is 24 rows: walk, attack, death, idle. A sheet that
+// failed precheck stays 12 rows, walk then idle, and does not play a swing.
+// imageHeight is the texture's pixel height. Anything that is not 24 cells
+// (the 1px stand-in in tests, a 12-row sheet) keeps the walk and idle layout.
+export function heroSheetLayout(imageHeight) {
+  if (imageHeight === 128 * 24) {
+    return { directions: 8, frames: 24, walk: 8, attack: 6, death: 6, idle: 4 }
+  }
+  return { directions: 8, frames: 12, walk: 8, attack: 0, death: 0, idle: 4 }
+}
+
+// Monster sheets from script/sprite_from_video.py and assets/reference/<kind>/asset.json.
+// Eight direction columns. Rows run walk, attack, then death, top to bottom.
+// A square cell of `cell` px, the figure `figure` px tall at the start pose,
+// and its lowest outline row is `footRow`. The texel is the hero's, so the
+// goblin's and the skeleton's pixels are the same size as the heroes'
+// (docs/ART-REDO.md). The skeleton's wider cell holds the slash and the heap;
+// the wolf's 128 px cell holds its side-on length, the lunge and the body lying flat.
+// The bat is a flier: its 128 px cell holds the spread wings, and its foot line
+// (row 104, outline row 105) sits 24 px over the cell bottom so the wings'
+// downstroke stays inside the cell.
+// render.js lifts it (flierLift) and drops it to the ground through its death row.
+// The troll is the one walker taller than a hero (34 world units, under 1.75
+// keep doors): its 160 px cell holds the club slammed over his head and the
+// body lying flat across the frame.
+export const MONSTER_SHEETS = {
+  goblin: { cell: 80, figure: 50, footRow: 73, rows: { walk: 8, attack: 6, death: 6 } },
+  skeleton: { cell: 88, figure: 60, footRow: 81, rows: { walk: 8, attack: 6, death: 6 } },
+  wolf: { cell: 128, figure: 50, footRow: 121, rows: { walk: 8, attack: 6, death: 6 } },
+  bat: { cell: 128, figure: 44, footRow: 105, rows: { walk: 8, attack: 6, death: 6 } },
+  troll: { cell: 160, figure: 94, footRow: 153, rows: { walk: 8, attack: 6, death: 6 } },
+  // The dark rider and his horse: 94 px like the troll, in a 192 px cell for
+  // the side-on horse, the halberd chop over the helm and the horse lying flat.
+  boss: { cell: 192, figure: 94, footRow: 185, rows: { walk: 8, attack: 6, death: 6 } },
+  // A person at the hero height. Walk on eight directions, idle on the four
+  // cardinals. The snapshot sends vagrants; render.js draws this sheet.
+  vagrant: { cell: 128, figure: 88, footRow: 121, rows: { walk: 8, idle: 4 } },
+  // Idle on the four cardinals. The other four columns hold the start pose.
+  // The snapshot sends the merchant when his chunk is discovered.
+  merchant: { cell: 128, figure: 88, footRow: 121, rows: { idle: 4 } }
+}
+
+export function monsterSheetUrl(kind) {
+  return `images/hd2d/${kind}-sheet.png`
+}
+
 export function scaleFront(image, height) {
   const h = Math.max(1, height)
   const w = Math.max(1, Math.round((image.w * h) / image.h))
@@ -257,7 +303,9 @@ function deathOf(image) {
 }
 
 export function sheetRow(picture, pose, now) {
-  const walk = picture.walk || picture.frames
+  // walk 0 is an idle-only sheet (a merchant). A missing walk still means the
+  // whole strip, which is what a walk-only picture stores on frames.
+  const walk = Number.isInteger(picture.walk) ? picture.walk : (picture.frames || 0)
   const attack = picture.attack || 0
   const death = picture.death || 0
   if (pose.dead) {
@@ -269,9 +317,29 @@ export function sheetRow(picture, pose, now) {
     const index = Math.min(attack - 1, Math.floor((now - pose.attackAt) / 140))
     return walk + index
   }
-  if (pose.moving) return Math.floor(now / 160) % walk
+  if (pose.moving && walk) return Math.floor(now / 160) % walk
+  // A graze has no idle row. It loops the attack rows (the deer's head-down clip).
+  if (pose.graze && attack) {
+    const spun = Math.floor(now / 140) % attack
+    return walk + ((spun % attack) + attack) % attack
+  }
   if (picture.idle) return walk + attack + death + (Math.floor(now / 320) % picture.idle)
   return 0
+}
+
+// A flier (the bat) hangs `lift` world units above the ground while it
+// lives. Its death cells keep the body on the sheet foot line (the build
+// anchors each death frame on its own lowest pixel), so the fall is this
+// lift: frame 0 still hovers, then it drops faster and faster (t squared)
+// and lands as the last death frame starts. No death row: it is gone.
+export function flierLift(lift, pose, now, deathFrames) {
+  if (!lift) return 0
+  if (!pose || !pose.dead) return lift
+  if (!deathFrames) return 0
+  const started = Number.isFinite(pose.deadAt) ? pose.deadAt : now
+  const fall = Math.max(1, deathFrames - 2) * 160
+  const t = Math.min(1, Math.max(0, (now - started - 160) / fall))
+  return lift * (1 - t * t)
 }
 
 function paste(cellW, cellH, image) {

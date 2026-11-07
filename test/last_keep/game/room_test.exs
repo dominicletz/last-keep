@@ -7,7 +7,25 @@ defmodule LastKeep.Game.RoomTest do
 
   setup do
     Highscores.reset()
+    # Rooms.count is the whole supervisor. A lobby reap left by an earlier
+    # test fires during a later baseline and the count falls without a leak.
+    # Stop only the rooms this test started, after its assertions.
+    preexisting = room_pids()
+
+    on_exit(fn ->
+      for pid <- room_pids(),
+          not MapSet.member?(preexisting, pid) and Process.alive?(pid) do
+        DynamicSupervisor.terminate_child(LastKeep.Game.Supervisor, pid)
+      end
+    end)
+
     :ok
+  end
+
+  defp room_pids do
+    LastKeep.Game.Registry
+    |> Registry.select([{{:_, :"$1", :_}, [], [:"$1"]}])
+    |> MapSet.new()
   end
 
   test "create, join, leave, and reconnect keep one hero" do
@@ -225,6 +243,17 @@ defmodule LastKeep.Game.RoomTest do
     until(fn -> not Rooms.exists?(code) end, deadline)
 
     refute Rooms.exists?(code)
+    assert Rooms.count() == baseline
+  end
+
+  test "a short lobby does not stay alive for the next test" do
+    {:ok, code} = Rooms.create(idle_ms: 50, lobby_ms: 80, seed: 3)
+    assert Rooms.exists?(code)
+  end
+
+  test "the room count stays still while this test waits" do
+    baseline = Rooms.count()
+    Process.sleep(200)
     assert Rooms.count() == baseline
   end
 

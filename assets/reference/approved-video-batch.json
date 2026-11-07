@@ -1,0 +1,34 @@
+{
+ "_note": "GenerateVideo calls approved 2026-11-06. Scout death-N holds the first frame still, then only moves down, and lies still for the last half second (the wolf and troll wording). Rabbit walk-NW is one last retake: ears flat, short hops. Drop the rabbit if this fails; do not copy another direction over it. Deer run is not in this list: CLIP_KINDS has no run kind, and the deer attack slot is already graze. Paths are absolute under /workspace/lk-art-redo.",
+ "calls": [
+  {
+   "id": "scout-death-N",
+   "asset": "scout",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The scout starts exactly in the pose and facing of the first frame (seen from directly behind, back to the camera). It is struck down: it flinches and holds the exact first-frame pose perfectly still for a moment, then sinks straight down onto their knees and falls onto their side on the exact spot where they stood, the bow staying in their hand. Their body only ever gets lower, frame by frame, never higher. It never springs, hops, or stretches up; it does not move away from the camera, up the frame or toward the camera. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/scout/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "scout-death-N.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/scout/video/death-N.mp4"
+  },
+  {
+   "id": "rabbit-walk-NW",
+   "asset": "rabbit",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Short hops on the spot, ears flat, two short hops a second: the long hind feet push off together and the front paws land first, ears held flat along the back, back arching a little with each hop; its body never moves forward. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "/workspace/lk-art-redo/assets/reference/rabbit/video/dirs/NW.png",
+    "last_frame_path": "/workspace/lk-art-redo/assets/reference/rabbit/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-NW.mp4"
+   },
+   "save_as": "/workspace/lk-art-redo/assets/reference/rabbit/video/walk-NW.mp4"
+  }
+ ]
+}

@@ -1,0 +1,38 @@
+{
+ "hero": "reeds",
+ "calls": [
+  {
+   "id": "image-a",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the reed clump from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no reed clump: it is only the dark forest scene whose palette, evening light and voxel style the reed clump must match; draw only one reed clump and nothing else, no trees, no figures; use the reference grass only for its greens. Same design: a clump of tall thin dark green reeds and a few brown cattail heads, lighter yellow-green on the lit side. A dense clump with three cattails. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole reed clump from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single reed clump only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/reeds/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "reeds-a.png"
+   },
+   "save_as": "assets/reference/reeds/views/a.png",
+   "then": "python3 script/hero_sprites.py reeds build"
+  },
+  {
+   "id": "image-b",
+   "step": "build",
+   "tool": "GenerateImage",
+   "args": {
+    "description": "Game prop reference of the reed clump from the reference image, seen in a three-quarter view with one corner toward the camera, at the game's camera angle, slightly from above, like the reference image. The reference shows no reed clump: it is only the dark forest scene whose palette, evening light and voxel style the reed clump must match; draw only one reed clump and nothing else, no trees, no figures; use the reference grass only for its greens. Same design: a clump of tall thin dark green reeds and a few brown cattail heads, lighter yellow-green on the lit side. A smaller, leaning clump. Match the rendering style of the second reference image exactly: the same chunky voxel pixel-art look, block size, outline-free shading and soft lighting, but not its subject. The whole reed clump from its top to the ground it stands on, upright, centred, nothing cropped. Plain flat white background, no ground, no grass, no shadow, no text, no other objects. One single reed clump only, not a sheet of several.",
+    "reference_image_paths": [
+     "assets/reference/reeds/concept.png",
+     "assets/reference/engineer/video/views/v-S.png"
+    ],
+    "aspect_ratio": "1:1",
+    "filename": "reeds-b.png"
+   },
+   "save_as": "assets/reference/reeds/views/b.png",
+   "then": "python3 script/hero_sprites.py reeds build"
+  }
+ ],
+ "type": "static"
+}

@@ -21,6 +21,16 @@ export function present(snap) {
       max: row.max,
       elite: row.elite || null
     })),
+    vagrants: list(snap?.vagrants, (row) => ({
+      id: row.id,
+      hero: row.hero,
+      x: row.x,
+      y: row.y,
+      facing: Number.isFinite(row.facing) ? row.facing : Math.atan2(row.x, row.y),
+      hp: row.hp,
+      max: row.max,
+      alive: row.alive !== false
+    })),
     buildings: list(snap?.buildings, (row) => ({
       id: row.id,
       kind: row.kind,

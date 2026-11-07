@@ -5,7 +5,7 @@ import fs from "node:fs"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
-import { cellOffset, SHEET_HEROES, sheetRow, walkSheetUrl } from "../pictures.js"
+import { cellOffset, heroSheetLayout, SHEET_HEROES, sheetRow, walkSheetUrl } from "../pictures.js"
 import {
   WALK_COLUMNS,
   WALK_NORMAL,
@@ -72,6 +72,19 @@ test("an idle warrior uses the rows after the walk", () => {
   assert.equal(sheetRow({ walk: 4, attack: 3, death: 4 }, {}, 0), 0)
 })
 
+test("a 24-row hero sheet strikes on row 8 and falls on row 14", () => {
+  const picture = heroSheetLayout(128 * 24)
+  assert.deepEqual(picture, { directions: 8, frames: 24, walk: 8, attack: 6, death: 6, idle: 4 })
+  assert.deepEqual(heroSheetLayout(128 * 12), { directions: 8, frames: 12, walk: 8, attack: 0, death: 0, idle: 4 })
+  assert.equal(sheetRow(picture, { moving: true }, 160), 1)
+  assert.equal(sheetRow(picture, { attackAt: 1000, moving: true }, 1000), 8)
+  assert.equal(sheetRow(picture, { attackAt: 1000 }, 1000 + 5 * 140), 13)
+  assert.equal(sheetRow(picture, {}, 0), 20)
+  assert.equal(sheetRow(picture, { dead: true, deadAt: 0 }, 0), 14)
+  assert.equal(sheetRow(picture, { dead: true, deadAt: 0 }, 5 * 160), 19)
+  assert.equal(sheetRow(picture, { dead: true, deadAt: 0 }, 5000), 19)
+})
+
 // The sheet comes from Grok Imagine clips through script/sprite_from_video.py
 // (docs/concepts/SPRITE-PIPELINE.md). script/check_sprite_sheet.py is the full
 // local gate; this test reads the committed PNG so a bad sheet cannot land
@@ -80,6 +93,8 @@ const CELL = 128
 const DIRS = 8
 const WALK = 8
 const ROWS = 12
+// Every hero's clips passed precheck, so each committed sheet has the attack and death rows.
+const ACTION_HEROES = new Set(["warrior", "mage", "scout", "farmer", "engineer"])
 const HERO = 88
 const FOOT = 117
 const OUTLINE = "24,24,24"
@@ -102,13 +117,13 @@ test("every sheet hero loads its own walk sheet and normal map", () => {
   const warrior = readWalkSheet(walkSheetPath(root, "warrior"))
   const mage = readWalkSheet(walkSheetPath(root, "mage"))
   const scout = readWalkSheet(walkSheetPath(root, "scout"))
-  assert.notEqual(changedPixels(warrior.rgba, mage.rgba), 0)
-  assert.notEqual(changedPixels(mage.rgba, scout.rgba), 0)
-  assert.notEqual(changedPixels(warrior.rgba, scout.rgba), 0)
+  assert.ok(differs(warrior, mage))
+  assert.ok(differs(mage, scout))
+  assert.ok(differs(warrior, scout))
   const farmer = readWalkSheet(walkSheetPath(root, "farmer"))
-  for (const other of [warrior, mage, scout]) assert.notEqual(changedPixels(other.rgba, farmer.rgba), 0)
+  for (const other of [warrior, mage, scout]) assert.ok(differs(other, farmer))
   const engineer = readWalkSheet(walkSheetPath(root, "engineer"))
-  for (const other of [warrior, mage, scout, farmer]) assert.notEqual(changedPixels(other.rgba, engineer.rgba), 0)
+  for (const other of [warrior, mage, scout, farmer]) assert.ok(differs(other, engineer))
 })
 
 for (const hero of SHEET_HEROES) {
@@ -116,7 +131,7 @@ for (const hero of SHEET_HEROES) {
     const committed = readWalkSheet(walkSheetPath(root, hero))
     const committedNormal = readWalkSheet(walkNormalPath(root, hero))
     assert.equal(committed.width, CELL * DIRS)
-    assert.equal(committed.height, CELL * ROWS)
+    assert.equal(committed.height, CELL * rowCount(hero))
     assert.equal(committedNormal.width, committed.width)
     assert.equal(committedNormal.height, committed.height)
     for (let i = 3; i < committed.rgba.length; i += 4) {
@@ -154,6 +169,15 @@ function mirrorCell(cell) {
     }
   }
   return out
+}
+
+function rowCount(hero) {
+  return ACTION_HEROES.has(hero) ? 24 : ROWS
+}
+
+function differs(a, b) {
+  if (!a || !b || a.width !== b.width || a.height !== b.height || a.rgba.length !== b.rgba.length) return true
+  return changedPixels(a.rgba, b.rgba) !== 0
 }
 
 function changedPixels(a, b, fromRow = 0) {
@@ -256,6 +280,16 @@ function count(cell, keep) {
 function isWarm(cell, i) {
   const c = hue(cell[i], cell[i + 1], cell[i + 2])
   return c.chroma > 0.2 && c.h >= 14 && c.h <= 50 && c.light > 0.25
+}
+
+function borderTouch(cell) {
+  for (let x = 0; x < CELL; x++) {
+    if (cell[x * 4 + 3] || cell[((CELL - 1) * CELL + x) * 4 + 3]) return true
+  }
+  for (let y = 0; y < CELL; y++) {
+    if (cell[y * CELL * 4 + 3] || cell[(y * CELL + CELL - 1) * 4 + 3]) return true
+  }
+  return false
 }
 
 function span(cell) {
@@ -376,15 +410,35 @@ const HERO_MARKS = {
 for (const hero of SHEET_HEROES) {
   test(sheetTest(hero, "no direction equals another or its mirror, and the walk stays on a small outlined palette"), () => {
     const sheet = readWalkSheet(walkSheetPath(root, hero))
+    const layout = heroSheetLayout(sheet.height)
+    assert.equal(layout.frames, rowCount(hero))
+    const standing = layout.attack ? [0, 1, 2, 3, 4, 5, 6, 7, 20, 21, 22, 23] : [...Array(ROWS).keys()]
+    // Q24: attack frames 0 and last stay 88±2. A lunge between them may leave 88.
+    const attackStanding = layout.attack ? [8, 13] : []
+    const attackMid = layout.attack ? [9, 10, 11, 12] : []
+    const deathStart = layout.death ? [14] : []
+    const deathRest = layout.death ? [15, 16, 17, 18, 19] : []
+    const idleRows = layout.idle ? (layout.attack ? [20, 21, 22, 23] : [8, 9, 10, 11]) : []
+    const heldTall = new Set([...standing, ...attackStanding, ...deathStart])
     const colours = new Set()
     const blobs = []
     for (let column = 0; column < DIRS; column++) {
       const frames = []
-      for (let row = 0; row < ROWS; row++) {
+      for (let row = 0; row < layout.frames; row++) {
         const pix = cellAt(sheet.rgba, sheet.width, column, row)
         const { foot, height } = span(pix)
-        assert.ok(Math.abs(height - HERO) <= 2, `height ${height} column ${column} row ${row}`)
-        assert.ok(Math.abs(foot - FOOT) <= 1, `foot ${foot} column ${column} row ${row}`)
+        if (heldTall.has(row)) {
+          assert.ok(Math.abs(height - HERO) <= 2, `height ${height} column ${column} row ${row}`)
+          assert.ok(Math.abs(foot - FOOT) <= 1, `foot ${foot} column ${column} row ${row}`)
+        } else if (attackMid.includes(row)) {
+          assert.ok(Math.abs(foot - FOOT) <= 1, `attack foot ${foot} column ${column} row ${row}`)
+          assert.equal(borderTouch(pix), false, `attack touches the border column ${column} row ${row}`)
+        } else if (deathRest.includes(row)) {
+          // A lying frame is not held to the standing height. Its lowest pixel
+          // stays on the foot line and the body stays inside the cell.
+          assert.ok(Math.abs(foot - FOOT) <= 3, `death foot ${foot} column ${column} row ${row}`)
+          assert.equal(borderTouch(pix), false, `death touches the border column ${column} row ${row}`)
+        }
         for (let y = 0; y < CELL; y++) {
           for (let x = 0; x < CELL; x++) {
             const i = (y * CELL + x) * 4
@@ -405,8 +459,10 @@ for (const hero of SHEET_HEROES) {
         assert.ok(moved >= 16, `walk legs moved ${moved} px on column ${column}`)
       }
       assert.ok(changedPixels(frames[0], frames[4], CELL / 2) >= 16, `contacts match on column ${column}`)
-      for (let row = WALK; row < ROWS; row++) {
-        assert.ok(changedPixels(frames[row], frames[row === ROWS - 1 ? WALK : row + 1]) > 0, `idle frozen on column ${column}`)
+      for (let i = 0; i < idleRows.length; i++) {
+        const a = idleRows[i]
+        const b = idleRows[(i + 1) % idleRows.length]
+        assert.ok(changedPixels(frames[a], frames[b]) > 0, `idle frozen on column ${column}`)
       }
       blobs.push(frames)
     }
@@ -422,14 +478,14 @@ for (const hero of SHEET_HEROES) {
     }
     const marks = HERO_MARKS[hero]
     for (const [dir, sign] of Object.entries(marks.side)) {
-      for (let row = 0; row < ROWS; row++) {
+      for (const row of standing) {
         const pix = blobs[COLUMN[dir]][row]
         const prop = meanX(pix, marks.prop)
         assert.ok(prop !== null, `no ${marks.propName} on ${dir} row ${row}`)
         assert.ok((prop - meanX(pix)) * sign >= 2, `${marks.propName} side ${dir} row ${row}`)
       }
     }
-    for (let row = 0; row < ROWS; row++) {
+    for (const row of standing) {
       marks.views(blobs[COLUMN.N][row], blobs[COLUMN.S][row], row)
     }
   })

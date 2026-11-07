@@ -128,6 +128,37 @@ Save as `assets/reference/farmer/video/idle-S.mp4`.
 }
 ```
 
+## attack-S (GenerateVideo)
+
+Save as `assets/reference/farmer/video/attack-S.mp4`.
+
+```json
+{
+ "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (facing the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (on the image-left side); burlap grain sack on his back (partly hidden behind the body). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "image_path": "assets/reference/farmer/video/dirs/S.png",
+ "last_frame_path": "assets/reference/farmer/video/dirs/S.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-attack-S.mp4"
+}
+```
+
+## death-S (GenerateVideo)
+
+Save as `assets/reference/farmer/video/death-S.mp4`.
+
+```json
+{
+ "prompt": "Game sprite death. The farmer starts exactly in the pose and facing of the first frame (facing the camera). It is struck down: it staggers, sinks to his knees and falls onto his side, the pitchfork staying in his hand. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+ "image_path": "assets/reference/farmer/video/dirs/S.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-death-S.mp4"
+}
+```
+
 ## walk-SW (GenerateVideo)
 
 Save as `assets/reference/farmer/video/walk-SW.mp4`.
@@ -157,6 +188,22 @@ Save as `assets/reference/farmer/video/idle-SW.mp4`.
  "aspect_ratio": "1:1",
  "resolution": "720p",
  "filename": "farmer-idle-SW.mp4"
+}
+```
+
+## attack-SW (GenerateVideo)
+
+Save as `assets/reference/farmer/video/attack-SW.mp4`.
+
+```json
+{
+ "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (on the image-left side); burlap grain sack on his back (on the image-right side, partly hidden behind the body). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "image_path": "assets/reference/farmer/video/dirs/SW.png",
+ "last_frame_path": "assets/reference/farmer/video/dirs/SW.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-attack-SW.mp4"
 }
 ```
 
@@ -192,6 +239,37 @@ Save as `assets/reference/farmer/video/idle-W.mp4`.
 }
 ```
 
+## attack-W (GenerateVideo)
+
+Save as `assets/reference/farmer/video/attack-W.mp4`.
+
+```json
+{
+ "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (facing screen-left, his left side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (in front of the body, on the image-left side); burlap grain sack on his back (on the image-right side). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "image_path": "assets/reference/farmer/video/dirs/W.png",
+ "last_frame_path": "assets/reference/farmer/video/dirs/W.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-attack-W.mp4"
+}
+```
+
+## death-W (GenerateVideo)
+
+Save as `assets/reference/farmer/video/death-W.mp4`.
+
+```json
+{
+ "prompt": "Game sprite death. The farmer starts exactly in the pose and facing of the first frame (facing screen-left, his left side toward the camera). It is struck down: it staggers, sinks to his knees and falls onto his side, the pitchfork staying in his hand. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+ "image_path": "assets/reference/farmer/video/dirs/W.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-death-W.mp4"
+}
+```
+
 ## walk-NW (GenerateVideo)
 
 Save as `assets/reference/farmer/video/walk-NW.mp4`.
@@ -221,6 +299,22 @@ Save as `assets/reference/farmer/video/idle-NW.mp4`.
  "aspect_ratio": "1:1",
  "resolution": "720p",
  "filename": "farmer-idle-NW.mp4"
+}
+```
+
+## attack-NW (GenerateVideo)
+
+Save as `assets/reference/farmer/video/attack-NW.mp4`.
+
+```json
+{
+ "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (on the image-right side); burlap grain sack on his back (on the image-right side, toward the camera). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "image_path": "assets/reference/farmer/video/dirs/NW.png",
+ "last_frame_path": "assets/reference/farmer/video/dirs/NW.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-attack-NW.mp4"
 }
 ```
 
@@ -256,6 +350,37 @@ Save as `assets/reference/farmer/video/idle-N.mp4`.
 }
 ```
 
+## attack-N (GenerateVideo)
+
+Save as `assets/reference/farmer/video/attack-N.mp4`.
+
+```json
+{
+ "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (seen from directly behind, back to the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (on the image-right side); burlap grain sack on his back (toward the camera). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "image_path": "assets/reference/farmer/video/dirs/N.png",
+ "last_frame_path": "assets/reference/farmer/video/dirs/N.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-attack-N.mp4"
+}
+```
+
+## death-N (GenerateVideo)
+
+Save as `assets/reference/farmer/video/death-N.mp4`.
+
+```json
+{
+ "prompt": "Game sprite death. The farmer starts exactly in the pose and facing of the first frame (seen from directly behind, back to the camera). It is struck down: it staggers, sinks to his knees and falls onto his side, the pitchfork staying in his hand. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+ "image_path": "assets/reference/farmer/video/dirs/N.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-death-N.mp4"
+}
+```
+
 ## walk-NE (GenerateVideo)
 
 Save as `assets/reference/farmer/video/walk-NE.mp4`.
@@ -285,6 +410,22 @@ Save as `assets/reference/farmer/video/idle-NE.mp4`.
  "aspect_ratio": "1:1",
  "resolution": "720p",
  "filename": "farmer-idle-NE.mp4"
+}
+```
+
+## attack-NE (GenerateVideo)
+
+Save as `assets/reference/farmer/video/attack-NE.mp4`.
+
+```json
+{
+ "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (on the image-right side); burlap grain sack on his back (on the image-left side, toward the camera). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "image_path": "assets/reference/farmer/video/dirs/NE.png",
+ "last_frame_path": "assets/reference/farmer/video/dirs/NE.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-attack-NE.mp4"
 }
 ```
 
@@ -320,6 +461,37 @@ Save as `assets/reference/farmer/video/idle-E.mp4`.
 }
 ```
 
+## attack-E (GenerateVideo)
+
+Save as `assets/reference/farmer/video/attack-E.mp4`.
+
+```json
+{
+ "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (facing screen-right, his right side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (on the image-right side); burlap grain sack on his back (on the image-left side). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "image_path": "assets/reference/farmer/video/dirs/E.png",
+ "last_frame_path": "assets/reference/farmer/video/dirs/E.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-attack-E.mp4"
+}
+```
+
+## death-E (GenerateVideo)
+
+Save as `assets/reference/farmer/video/death-E.mp4`.
+
+```json
+{
+ "prompt": "Game sprite death. The farmer starts exactly in the pose and facing of the first frame (facing screen-right, his right side toward the camera). It is struck down: it staggers, sinks to his knees and falls onto his side, the pitchfork staying in his hand. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+ "image_path": "assets/reference/farmer/video/dirs/E.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-death-E.mp4"
+}
+```
+
 ## walk-SE (GenerateVideo)
 
 Save as `assets/reference/farmer/video/walk-SE.mp4`.
@@ -338,7 +510,7 @@ Save as `assets/reference/farmer/video/walk-SE.mp4`.
 
 ## idle-SE (GenerateVideo)
 
-Save as `assets/reference/farmer/video/idle-SE.mp4`. Then run `hero_sprites.py precheck`.
+Save as `assets/reference/farmer/video/idle-SE.mp4`.
 
 ```json
 {
@@ -349,5 +521,21 @@ Save as `assets/reference/farmer/video/idle-SE.mp4`. Then run `hero_sprites.py p
  "aspect_ratio": "1:1",
  "resolution": "720p",
  "filename": "farmer-idle-SE.mp4"
+}
+```
+
+## attack-SE (GenerateVideo)
+
+Save as `assets/reference/farmer/video/attack-SE.mp4`. Then run `hero_sprites.py precheck`.
+
+```json
+{
+ "prompt": "Game sprite attack. The farmer keeps exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right) and the body angle of the first frame: torso does not twist away. In one quick motion it thrusts the pitchfork in his right hand straight ahead and pulls it back, then returns exactly to the starting pose and holds it for the last frames. Props stay where the first frame has them: wooden pitchfork with iron tines in his right hand (on the image-right side); burlap grain sack on his back (on the image-left side, partly hidden behind the body). The farmer stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+ "image_path": "assets/reference/farmer/video/dirs/SE.png",
+ "last_frame_path": "assets/reference/farmer/video/dirs/SE.png",
+ "duration": 2,
+ "aspect_ratio": "1:1",
+ "resolution": "720p",
+ "filename": "farmer-attack-SE.mp4"
 }
 ```

@@ -1,0 +1,18 @@
+{
+ "type": "static",
+ "noun": "hell door",
+ "concept": {
+  "source": "assets/reference/yard-concept/crops/hell-door.png",
+  "box": [0, 0, 315, 315]
+ },
+ "source_note": "The crop is yard-concept/crops/hell-door.png (the yard-concept sheet, 4 px pad). Tight sheet box [764, 26, 1019, 317]. The crop is a wooden door in a stone arch with three skulls and two braziers. The view is the same arch: the doorway is a lava oval instead of the wooden door. Outlines match (crop aspect 0.857, view aspect 0.821, both one solid piece). World height 56 is the portal gate post. There is no hell-door entity in the sim, so the sheet is not drawn.",
+ "style_refs": ["assets/reference/engineer/video/views/v-S.png"],
+ "design": "a stone arch of dark blocks with a horned skull above the opening, skulls set in the sides, and fire at the foot",
+ "world_height": 56,
+ "cell": [144, 168],
+ "variants": [
+  {"id": "a", "note": "the hell door, lava in the arch"}
+ ],
+ "view": "three_quarter",
+ "_note": "Static piece from the yard-concept sheet. Built because the view outline matches the crop. Unwired: the sim has portals, not a hell door, and the portal view did not match its crop."
+}

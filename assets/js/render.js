@@ -1,25 +1,31 @@
 import * as THREE from "three"
 import { present } from "./present"
-import { eliteLook } from "./elite"
+import { ELITE_MARK_CELL, ELITE_MARKS, ELITE_MARK_SHEET, eliteMark } from "./elite"
+import { SHEET_TEXEL } from "./hd2d/picture.js"
 import { cameraFocus, frameFor, frameSignature, ghostLook, paintDue, paintGap, sceneKey, snapshotDue, testHooks } from "./frame"
 import { clockScore } from "./hd2d/score.js"
-import { geometryCensus, giveBurst, releaseGeometries, shotSphere, takeBurst, trackGeometry } from "./meshes"
+import { geometryCensus, giveBurst, releaseGeometries, takeBurst, trackGeometry } from "./meshes"
+import { arrowFrame, fireFrame, shotArt, shotScale, SHOT_URL } from "./shots.js"
+import { BURST_CELL, BURST_FRAMES, BURST_MS, BURST_SHEET, burstFrame, burstRow } from "./bursts.js"
 import { pixelStep, snapWorld } from "./art_score.js"
 import { nextTrack, poseAt, stepYaw } from "./motion"
+import { deadTreeSlots, DEAD_TREE_CAP, floraSlots, ruinSlots, RUIN_CAP } from "./flora.js"
+import { deerAt, deerSheetUrl, deerSlots, DEER_SHEET } from "./wildlife.js"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
-import { mountPicture } from "./horizon.js"
+import { loadGroundTilesInBrowser, onGroundTiles } from "./seam_tiles.js"
+import { mountPicture, pineVariant } from "./horizon.js"
 import { masonryBytes, propBytes } from "./tiles.js"
-import { stoneRepeat, yardCards } from "./yard_cards.js"
+import { buildingCard, buildingSheet, keepCardDrop, sheetCard as staticCard, spotVariant, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
 import { zoomFor } from "./town"
 import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
-import { SHEET_HEROES, cellOffset, pictureColumn, sheetRow } from "./pictures.js"
-import { sheetHeroSize } from "./hd2d/picture.js"
+import { MONSTER_SHEETS, SHEET_HEROES, cellOffset, flierLift, pictureColumn, sheetRow } from "./pictures.js"
+import { monsterSheetPicture, sheetCardGeometry, sheetHeroSize } from "./hd2d/picture.js"
 import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
-import { keepParts, modelParts } from "../models/registry.js"
+import { modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
 import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint.js"
@@ -82,15 +88,22 @@ export function createView(stage, picture) {
   }
 
   const opened = picture.open(stage)
+  // Pictures without monster sheets (test doubles) keep every monster on its voxel card.
+  const dressMonster = (mesh) => typeof picture.dressMonster === "function" && picture.dressMonster(mesh)
   const opening = frameFor(stage.clientWidth || 480, stage.clientHeight || 270)
   const renderer = opened.renderer
   const camera = opened.camera
+  const heldTextures = new WeakSet()
   stage.appendChild(renderer.domElement)
 
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(skyColor)
   scene.fog = new THREE.Fog(skyColor, 900, 2400)
   const probe = new THREE.Vector3()
+  // aimShot runs from the first projectile draw. These live with the other
+  // vectors so the binding is initialized before the view is returned.
+  const flightFrom = new THREE.Vector3()
+  const flightTo = new THREE.Vector3()
   const rimFrustum = new THREE.Frustum()
   const rimProj = new THREE.Matrix4()
   let viewFrame = opening
@@ -146,12 +159,6 @@ export function createView(stage, picture) {
   ground.receiveShadow = false
   ground.visible = false
   scene.add(ground)
-  const mapTable = new THREE.Mesh(
-    trackGeometry(new THREE.BoxGeometry(36, 8, 22)),
-    mat(0x43382e)
-  )
-  mapTable.position.set(0, 8, 160)
-  mapTable.userData.role = "table"
   const mapCloth = new THREE.Group()
   mapCloth.rotation.x = -Math.PI / 2
   mapCloth.position.set(0, 13.2, 160)
@@ -167,7 +174,7 @@ export function createView(stage, picture) {
   clothMarks.frustumCulled = false
   clothMarks.userData.dummy = new THREE.Object3D()
   mapCloth.add(clothBoard, clothMarks)
-  scene.add(mapTable, mapCloth)
+  scene.add(mapCloth)
   const groundBytes = groundPixels("day")
   const groundMap = new THREE.DataTexture(groundBytes, GROUND_TEX, GROUND_TEX)
   groundMap.colorSpace = THREE.SRGBColorSpace
@@ -198,6 +205,19 @@ export function createView(stage, picture) {
   plazaWear.rotation.x = -Math.PI / 2
   plazaWear.position.y = 0.24
   scene.add(plazaWear)
+  onGroundTiles(() => {
+    const next = groundPixels("day")
+    if (next.length === groundMap.image.data.length) {
+      groundMap.image.data.set(next)
+      groundMap.needsUpdate = true
+    }
+    const plazaNext = plazaPixels("day")
+    if (plazaNext.length === plazaMap.image.data.length) {
+      plazaMap.image.data.set(plazaNext)
+      plazaMap.needsUpdate = true
+    }
+  })
+  loadGroundTilesInBrowser()
   const shadowMat = new THREE.MeshBasicMaterial({
     map: contactTexture(),
     transparent: true,
@@ -236,6 +256,71 @@ export function createView(stage, picture) {
         })
       : new THREE.MeshBasicMaterial({ map, color: 0xffffff })
   }
+  // Trees and buildings with a static sheet (staticSheets) draw it; each
+  // texture fills in once loaded. name -> variant -> SpriteMaterial.
+  const staticMats = {}
+  const flatMats = {}
+  const sheetLoader = new THREE.TextureLoader()
+  const eliteMarkMats = {}
+  for (let index = 0; index < ELITE_MARKS.length; index += 1) {
+    const map = sheetLoader.load(ELITE_MARK_SHEET)
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.repeat.set(1 / ELITE_MARKS.length, 1)
+    map.offset.set(index / ELITE_MARKS.length, 0)
+    eliteMarkMats[ELITE_MARKS[index]] = new THREE.SpriteMaterial({
+      map,
+      transparent: true,
+      alphaTest: 0.4,
+      depthWrite: false
+    })
+  }
+  for (const [name, sheet] of Object.entries(staticSheets)) {
+    staticMats[name] = {}
+    for (const variant of sheet.variants) {
+      const spec = staticCard(name, variant)
+      const map = sheetLoader.load("/" + sheet.url, holdMap)
+      map.colorSpace = THREE.SRGBColorSpace
+      map.magFilter = THREE.NearestFilter
+      map.minFilter = THREE.NearestFilter
+      map.repeat.set(spec.repeat[0], spec.repeat[1])
+      map.offset.set(spec.offset[0], spec.offset[1])
+      staticMats[name][variant] = new THREE.SpriteMaterial({ map, depthTest: true, depthWrite: true, transparent: false, alphaTest: 0.5 })
+      // The hell door is a plane, not a sprite. A SpriteMaterial on a Mesh makes
+      // the renderer read object.center, which a Mesh does not have, and the paint throws.
+      if (name === "hell_door") {
+        flatMats[name] = flatMats[name] || {}
+        flatMats[name][variant] = new THREE.MeshBasicMaterial({
+          map,
+          transparent: true,
+          alphaTest: 0.5,
+          depthWrite: false,
+          side: THREE.DoubleSide
+        })
+      }
+      if (yardCards[name]?.stand === false) {
+        flatMats[name] = flatMats[name] || {}
+        flatMats[name][variant] = new THREE.MeshBasicMaterial({
+          map,
+          transparent: true,
+          alphaTest: 0.5,
+          depthWrite: true,
+          side: THREE.DoubleSide
+        })
+      }
+    }
+  }
+  const treeMats = staticMats.pine
+  const tableArt = staticCard("map_table", "a")
+  const mapTable = new THREE.Sprite(staticMats.map_table.a)
+  mapTable.center.set(0.5, tableArt.centerY)
+  mapTable.scale.set(tableArt.w, tableArt.h, 1)
+  mapTable.position.set(0, 0, 160)
+  mapTable.renderOrder = 1
+  mapTable.userData.role = "table"
+  scene.add(mapTable)
+  let treeCount = 0
   const windowMat = new THREE.SpriteMaterial({
     color: 0xeea821,
     depthTest: true,
@@ -277,6 +362,33 @@ export function createView(stage, picture) {
   scene.add(keep)
 
   const meshes = new Map()
+  const shotSources = {}
+  function loadShotSheet(name, url) {
+    sheetLoader.load(url, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.magFilter = THREE.NearestFilter
+      tex.minFilter = THREE.NearestFilter
+      tex.generateMipmaps = false
+      tex.needsUpdate = true
+      shotSources[name] = tex
+      holdMap(tex)
+      for (const mesh of meshes.values()) {
+        if (mesh.userData.shotSheet === name) bindShotMap(mesh, tex)
+      }
+    })
+  }
+  for (const [name, url] of Object.entries(SHOT_URL)) loadShotSheet(name, url)
+  let burstSource = null
+  sheetLoader.load(BURST_SHEET, (tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.magFilter = THREE.NearestFilter
+    tex.minFilter = THREE.NearestFilter
+    tex.generateMipmaps = false
+    tex.needsUpdate = true
+    burstSource = tex
+    holdMap(tex)
+    for (const burst of bursts) dressBurst(burst.mesh)
+  })
   const ghost = new THREE.Mesh(
     new THREE.BoxGeometry(30, 22, 12),
     new THREE.MeshBasicMaterial({ color: 0x7ea35a, transparent: true, opacity: 0.55 })
@@ -310,6 +422,23 @@ export function createView(stage, picture) {
   window.addEventListener("resize", onResize)
   const stageWatch = typeof ResizeObserver === "function" ? new ResizeObserver(() => onResize()) : null
   if (stageWatch) stageWatch.observe(stage)
+
+  // Declared before forestState() runs. A const later in the function is still
+  // in the temporal dead zone here, and the census reads both pools.
+  const floraPool = []
+  let floraKey = null
+  const ruinPool = []
+  let ruinKey = null
+  const deadTreePool = []
+  let deadTreeKey = null
+  const deerPool = []
+  let deerKey = null
+  let deerSource = null
+  let deerTick = 0
+  let deerTickAt = performance.now()
+  const deerLayout = monsterSheetPicture(DEER_SHEET)
+  const deerGeometry = sheetCardGeometry(DEER_SHEET.cell, DEER_SHEET.footRow)
+  const deerPos = new THREE.Vector3()
 
   const forestLook = forestState()
 
@@ -350,9 +479,207 @@ export function createView(stage, picture) {
     return group
   }
 
+  function treeSprite(scale = 1, variant = treeVariant(treeCount++)) {
+    const spec = treeCard(variant)
+    const group = new THREE.Group()
+    const card = new THREE.Sprite(treeMats[variant])
+    card.center.set(0.5, spec.centerY)
+    card.scale.set(spec.w * scale, spec.h * scale, 1)
+    card.renderOrder = 1
+    card.userData.treeVariant = variant
+    group.add(card)
+    return group
+  }
+
+  // Flora: one fixed pool of sprites sharing staticMats; a new seed or
+  // attempt only moves them and swaps their material (no per-frame work).
+  function placeFlora(seed, attempt) {
+    const key = `${seed}:${attempt}`
+    if (key === floraKey) return
+    floraKey = key
+    for (const [n, slot] of floraSlots(seed, attempt).entries()) {
+      if (!floraPool[n]) {
+        const card = new THREE.Sprite(staticMats[slot.kind][slot.variant])
+        card.renderOrder = 1
+        card.castShadow = false
+        card.receiveShadow = false
+        scene.add(card)
+        floraPool[n] = card
+      }
+      const card = floraPool[n]
+      const spec = staticCard(slot.kind, slot.variant)
+      card.material = staticMats[slot.kind][slot.variant]
+      card.center.set(0.5, spec.centerY)
+      card.scale.set(spec.w, spec.h, 1)
+      card.position.set(slot.x, 0, slot.z)
+      card.userData.flora = slot.kind + "-" + slot.variant
+    }
+  }
+
+  // Ruin stones: the ruins-biome cells in the camera window, one sprite a
+  // slot, the same sheet the yard flora uses. A new chunk only moves them.
+  function placeRuins(seed, attempt) {
+    const reach = (viewFrame.halfH / Math.tan(THREE.MathUtils.degToRad(7.5))) * 1.42
+    const key = `${seed}:${attempt}:${Math.floor(camera.position.x / 512)}:${Math.floor(camera.position.z / 512)}:${Math.round(reach)}`
+    if (key === ruinKey) return
+    ruinKey = key
+    const slots = ruinSlots(seed, attempt, camera.position.x, camera.position.z, reach)
+    for (let n = 0; n < RUIN_CAP; n++) {
+      const slot = slots[n]
+      if (!slot) {
+        if (ruinPool[n]) ruinPool[n].visible = false
+        continue
+      }
+      if (!ruinPool[n]) {
+        const card = new THREE.Sprite(staticMats.ruin_stones[slot.variant])
+        card.renderOrder = 1
+        card.castShadow = false
+        card.receiveShadow = false
+        card.userData.role = "ruin"
+        scene.add(card)
+        ruinPool[n] = card
+      }
+      const card = ruinPool[n]
+      const spec = staticCard("ruin_stones", slot.variant)
+      card.material = staticMats.ruin_stones[slot.variant]
+      card.center.set(0.5, spec.centerY)
+      card.scale.set(spec.w, spec.h, 1)
+      card.position.set(slot.x, slot.y, slot.z)
+      card.visible = true
+      card.userData.flora = "ruin_stones-" + slot.variant
+    }
+    forestLook.ruins = slots.length
+  }
+
+  // Dead trees: the next ruins cells after the stones, same lift, own pool.
+  function placeDeadTrees(seed, attempt) {
+    const reach = (viewFrame.halfH / Math.tan(THREE.MathUtils.degToRad(7.5))) * 1.42
+    const key = `${seed}:${attempt}:${Math.floor(camera.position.x / 512)}:${Math.floor(camera.position.z / 512)}:${Math.round(reach)}`
+    if (key === deadTreeKey) return
+    deadTreeKey = key
+    const slots = deadTreeSlots(seed, attempt, camera.position.x, camera.position.z, reach)
+    for (let n = 0; n < DEAD_TREE_CAP; n++) {
+      const slot = slots[n]
+      if (!slot) {
+        if (deadTreePool[n]) deadTreePool[n].visible = false
+        continue
+      }
+      if (!deadTreePool[n]) {
+        const card = new THREE.Sprite(staticMats.dead_tree[slot.variant])
+        card.renderOrder = 1
+        card.castShadow = false
+        card.receiveShadow = false
+        card.userData.role = "dead-tree"
+        scene.add(card)
+        deadTreePool[n] = card
+      }
+      const card = deadTreePool[n]
+      const spec = staticCard("dead_tree", slot.variant)
+      card.material = staticMats.dead_tree[slot.variant]
+      card.center.set(0.5, spec.centerY)
+      card.scale.set(spec.w, spec.h, 1)
+      card.position.set(slot.x, slot.y, slot.z)
+      card.visible = true
+      card.userData.flora = "dead_tree-" + slot.variant
+    }
+  }
+
+  // Deer: one pool of sheet cards. A new seed only moves their homes. Each
+  // frame steps them on sim time, walk while they travel and attack (graze)
+  // while they stand. The sheet is one image; each card clones it for its frame.
+  function faceDeer(_renderer, _scene, camera) {
+    this.getWorldPosition(deerPos)
+    this.rotation.x = 0
+    this.rotation.z = 0
+    this.rotation.y = Math.atan2(camera.position.x - deerPos.x, camera.position.z - deerPos.z)
+    this.updateMatrix()
+    if (this.parent) this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix)
+  }
+
+  function giveDeerMap(mesh) {
+    if (!deerSource || mesh.material.map) return
+    const map = deerSource.clone()
+    map.repeat.set(1 / deerLayout.directions, 1 / deerLayout.frames)
+    map.needsUpdate = true
+    mesh.material.map = map
+    mesh.material.needsUpdate = true
+    mesh.userData.ownsMap = true
+    mesh.visible = true
+  }
+
+  function placeDeer(seed, attempt) {
+    const key = `${seed}:${attempt}`
+    if (key === deerKey) return
+    deerKey = key
+    for (const [n, slot] of deerSlots(seed, attempt).entries()) {
+      if (!deerPool[n]) {
+        const mesh = new THREE.Mesh(
+          deerGeometry,
+          new THREE.MeshBasicMaterial({ alphaTest: 0.4, transparent: true })
+        )
+        mesh.castShadow = false
+        mesh.receiveShadow = false
+        mesh.visible = false
+        mesh.onBeforeRender = faceDeer
+        mesh.userData.role = "deer"
+        mesh.renderOrder = 1
+        scene.add(mesh)
+        deerPool[n] = mesh
+        giveDeerMap(mesh)
+      }
+      deerPool[n].userData.home = slot
+    }
+    forestLook.deer = deerPool.length
+  }
+
+  function deerMillis() {
+    return (deerTick + (performance.now() - deerTickAt) / 50) * 50
+  }
+
+  function noteDeerClock(snap) {
+    deerTick = snap && Number.isFinite(snap.tick) ? snap.tick : 0
+    deerTickAt = performance.now()
+  }
+
+  function stepDeer(now) {
+    for (const mesh of deerPool) {
+      const home = mesh.userData.home
+      if (!home) continue
+      const pose = deerAt(home, now)
+      mesh.position.set(pose.x, 0, pose.z)
+      const viewYaw = Math.atan2(camera.position.x - pose.x, camera.position.z - pose.z)
+      const column = pictureColumn(viewYaw, pose.facing)
+      const frame = sheetRow(deerLayout, { moving: pose.moving, graze: pose.graze }, now)
+      const row = Math.min(deerLayout.frames - 1, Math.max(0, frame))
+      const cell = cellOffset(column, row, deerLayout.directions, deerLayout.frames)
+      if (mesh.material.map) mesh.material.map.offset.set(cell.x, cell.y)
+      mesh.userData.deer = pose.moving ? "walk" : "graze"
+    }
+  }
+
+  const deerLoader = new THREE.TextureLoader()
+  deerLoader.load(
+    "/" + deerSheetUrl(),
+    (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace
+      tex.magFilter = THREE.NearestFilter
+      tex.minFilter = THREE.NearestFilter
+      tex.flipY = true
+      tex.wrapS = THREE.ClampToEdgeWrapping
+      tex.wrapT = THREE.ClampToEdgeWrapping
+      tex.generateMipmaps = false
+      tex.needsUpdate = true
+      deerSource = tex
+      holdMap(tex)
+      for (const mesh of deerPool) giveDeerMap(mesh)
+    },
+    undefined,
+    (err) => console.error(err)
+  )
+
   function addForestWall() {
-    for (const slot of forestWallSlots()) {
-      const group = sheetCard("tree", slot.scale, false)
+    for (const [i, slot] of forestWallSlots().entries()) {
+      const group = treeSprite(slot.scale, pineVariant(slot.x, slot.z))
       group.position.set(slot.x, 0, slot.z)
       group.traverse((child) => {
         child.castShadow = false
@@ -382,6 +709,8 @@ export function createView(stage, picture) {
     return {
       trunks: scenerySlots().length,
       wall: forestWallSlots().length,
+      flora: floraPool.length,
+      deer: deerPool.length,
       wood: look.wood,
       crowns: look.parts.includes("crown") || look.parts.includes("bough"),
       stumps: look.parts.includes("stump") && look.parts.includes("log"),
@@ -393,12 +722,27 @@ export function createView(stage, picture) {
     const group = new THREE.Group()
     group.userData.rank = rank
     group.userData.role = "keep"
-    for (const piece of keepParts(rank)) group.add(pieceMesh(piece))
+    const variant = String(Math.max(0, Math.min(4, rank | 0)))
+    const art = staticCard("keep", variant)
+    const card = new THREE.Sprite(staticMats.keep[variant])
+    card.center.set(0.5, art.centerY)
+    card.scale.set(art.w, art.h, 1)
+    card.position.y = -keepCardDrop(viewFrame.halfH, viewFrame.bufferHeight)
+    card.userData.sheet = "keep"
+    group.add(card)
+    group.userData.card = card
     const torch = new THREE.PointLight(0xeea821, 8, 220)
     torch.position.set(22, 40, 22)
     torch.layers.set(1)
     group.add(torch)
     group.userData.torch = torch
+    // The brazier stays a light. The sheet paints the bowl.
+    const brazier = new THREE.PointLight(0xeea821, 2200, 40, 2)
+    brazier.position.set(26, 42, 26)
+    brazier.castShadow = false
+    brazier.layers.set(1)
+    group.add(brazier)
+    group.userData.brazier = brazier
     return group
   }
 
@@ -426,6 +770,10 @@ export function createView(stage, picture) {
         mesh.userData.fade = Number.isFinite(row.opacity) ? row.opacity : 1
       }
       remember(key, row.x, row.y)
+      if (kind === "shot") {
+        mesh.userData.vx = row.vx || 0
+        mesh.userData.vy = row.vy || 0
+      }
       aimFacing(mesh, row.facing)
       if (kind === "hero") notePose(mesh, row.cds?.attack || 0, row.alive === false)
       if (kind === "monster") notePose(mesh, row.attack_cd || 0, false)
@@ -439,7 +787,7 @@ export function createView(stage, picture) {
       if (key.startsWith(`${kind}:`) && !seen.has(key)) {
         if (kind === "monster" && holdMonsterDeath(key, mesh)) continue
         scene.remove(mesh)
-        if (mesh.userData.role !== "shot") releaseGeometries(mesh)
+        releaseGeometries(mesh)
         meshes.delete(key)
         tracks.delete(key)
       }
@@ -534,8 +882,18 @@ export function createView(stage, picture) {
 
   let closed = false
 
+  function holdMap(map) {
+    if (!map || heldTextures.has(map) || typeof renderer.initTexture !== "function") return
+    const image = map.image
+    if (image && image.complete === false) return
+    renderer.initTexture(map)
+    heldTextures.add(map)
+  }
+
   function frame() {
     if (closed) return
+    if (picture.uploadSheets) picture.uploadSheets(renderer)
+    for (const material of Object.values(eliteMarkMats)) holdMap(material.map)
     // A quiet guest stays in the room through the socket and the input
     // interval. Presenting that page is the paint that fills the runner.
     // The callback stays so wake() can present again without a new loop.
@@ -561,16 +919,22 @@ export function createView(stage, picture) {
     if (pending && (window.__lastKeepArrive || boundLook())) placeCamera(pending.snap, pending.selfId)
     for (const [, mesh] of meshes) stepFacing(mesh)
     for (const [key, mesh] of meshes) placeMesh(key, mesh)
+    stepDeer(deerMillis())
     for (let i = bursts.length - 1; i >= 0; i -= 1) {
       const burst = bursts[i]
-      const age = (now - burst.at) / 520
-      if (age >= 1) {
+      const ageMs = now - burst.at
+      if (ageMs >= BURST_MS) {
         scene.remove(burst.mesh)
         giveBurst(burst.mesh)
         bursts.splice(i, 1)
       } else {
-        burst.mesh.scale.setScalar(1 + age * 3.2)
-        burst.mesh.material.opacity = 1 - age
+        const map = burst.mesh.material.map
+        const row = burstRow(burst.kind)
+        if (map && row != null) {
+          const cell = cellOffset(burstFrame(ageMs), row, BURST_FRAMES, 3)
+          map.repeat.set(cell.repeatX, cell.repeatY)
+          map.offset.set(cell.x, cell.y)
+        }
       }
     }
     const heroMesh = heroKey ? meshes.get(heroKey) : null
@@ -704,8 +1068,10 @@ export function createView(stage, picture) {
         keep = makeKeep(townRank)
         scene.add(keep)
       }
-      const keepRatio = snap.keep.max ? snap.keep.hp / snap.keep.max : 1
-      keep.scale.y = 0.65 + keepRatio * 0.35
+      keep.scale.y = 1
+      if (keep.userData.card) {
+        keep.userData.card.position.y = -keepCardDrop(viewFrame.halfH, viewFrame.bufferHeight)
+      }
 
       const drawn = present(snap)
 
@@ -714,42 +1080,60 @@ export function createView(stage, picture) {
       sync("hero", drawn.heroes, (row) => buildHero(row, selfId))
 
       const heroes = [...meshes.values()].filter((mesh) => mesh.userData.role === "hero")
-      picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes })
+      const monsterCards = [...meshes.values()].filter(
+        (mesh) => mesh.userData.role === "monster" || mesh.userData.role === "vagrant" || mesh.userData.role === "merchant"
+      )
+      picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes, monsters: monsterCards })
       dissolveYardEdge(yard)
       picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
 
       liveMonsters = snap.monsters || []
 
       sync("monster", drawn.monsters, (row) => monsterMesh(row))
+      sync("vagrant", drawn.vagrants, (row) => vagrantMesh(row))
+      sync("merchant", snap.merchant ? [snap.merchant] : [], () => merchantMesh())
 
       sync("building", drawn.buildings, (row) => buildingMesh(row))
 
-      sync("tree", snap.trees || [], () => sheetCard("tree", 1, false))
+      sync("tree", snap.trees || [], (row) => treeSprite(1, pineVariant(row.x, row.y)))
 
       paintMapCloth(mapCloth, clothMarks, snap.map)
+      sync("portal", (snap.portals || []).slice(0, 8), () => {
+        const art = staticCard("hell_door", "a")
+        const geometry = trackGeometry(new THREE.PlaneGeometry(art.w, art.h))
+        geometry.translate(0, art.h / 2 - art.centerY * art.h, 0)
+        const mesh = new THREE.Mesh(geometry, flatMats.hell_door.a)
+        mesh.userData.role = "portal"
+        return mesh
+      })
+
       sync("chest", snap.chests || [], () => {
-        const mesh = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(16, 12, 16)), mat(0xf0c14a, 0xc9a227))
-        mesh.userData.lift = 8
+        const art = staticCard("chest", "closed")
+        const mesh = new THREE.Sprite(staticMats.chest.closed)
+        mesh.center.set(0.5, art.centerY)
+        mesh.scale.set(art.w, art.h, 1)
         mesh.userData.role = "chest"
         return mesh
       })
 
-      sync("shot", snap.projectiles || [], (row) => {
-        const fire = row.kind === "fireball" || row.kind === "meteor"
-        const color = fire ? 0xff7a2a : 0xf2e2b0
-        const size = row.kind === "fireball" ? 11 : row.kind === "meteor" ? 14 : 6
-        const mesh = new THREE.Mesh(shotSphere(size), mat(color, color))
-        mesh.userData.lift = row.kind === "meteor" ? 28 : row.kind === "fireball" ? 18 : 12
-        mesh.userData.role = "shot"
+      sync("spot", snap.pois || [], (row) => {
+        const variant = spotVariant(row.kind, row.id)
+        const art = staticCard(row.kind, variant)
+        const mesh = new THREE.Sprite(staticMats[row.kind][variant])
+        mesh.center.set(0.5, art.centerY)
+        mesh.scale.set(art.w, art.h, 1)
+        mesh.userData.role = row.kind
         return mesh
       })
+
+      sync("shot", snap.projectiles || [], (row) => shotSprite(row))
 
       if (snap.tick !== lastTick) {
         lastTick = snap.tick
         for (const ev of snap.events || []) {
-          if (ev.type === "boom") addBurst(ev.x, ev.y, 0xff7a2a)
-          if (ev.type === "death") addBurst(ev.x, ev.y, 0xffe08a)
-          if (ev.type === "slam") addBurst(ev.x, ev.y, 0xc45cff)
+          if (ev.type === "boom") addBurst(ev.x, ev.y, "boom")
+          if (ev.type === "death") addBurst(ev.x, ev.y, "death")
+          if (ev.type === "slam") addBurst(ev.x, ev.y, "slam")
         }
       }
 
@@ -859,6 +1243,7 @@ export function createView(stage, picture) {
         projectiles: snap.projectiles || [],
         chests: snap.chests || [],
         portals: snap.portals || [],
+        merchant: snap.merchant || null,
         chunks: snap.chunks || [],
         map: snap.map || null,
         land: snap.land || [],
@@ -870,8 +1255,10 @@ export function createView(stage, picture) {
         smoothing: true,
         townLook: {
           rank: townRank,
-          keep: keepParts(townRank).map((part) => part.name),
-          keepColors: [...new Set(keepParts(townRank).map((part) => part.color))],
+          keep: ["sheet"],
+          keepSheet: String(townRank),
+          torch: true,
+          brazier: true,
           plaza: plazaColor,
           plazaSides,
           path: true,
@@ -1033,6 +1420,11 @@ export function createView(stage, picture) {
       cssH: viewFrame.bufferHeight
     })
     land.sync(snap, camera, viewFrame.halfH)
+    placeFlora(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+    placeRuins(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+    placeDeadTrees(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+    placeDeer(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+    noteDeerClock(snap)
   }
 
   function placeCamera(snap, selfId) {
@@ -1565,7 +1957,11 @@ export function createView(stage, picture) {
       mesh.userData.pose = pose
     }
     const picture = mesh.userData.picture
-    const span = Math.max(picture?.death || 4, 1) * 160
+    // A sheet without death rows lets the monster go at once instead of
+    // holding a standing frame.
+    const frames = picture ? picture.death : 4
+    if (!frames) return false
+    const span = frames * 160
     if (now - pose.deadAt >= span) return false
     placeMesh(key, mesh)
     return true
@@ -1599,20 +1995,98 @@ export function createView(stage, picture) {
     group.visible = true
   }
 
+  function bindShotMap(mesh, source) {
+    if (!source || !source.image) return
+    const map = source.clone()
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.generateMipmaps = false
+    map.wrapS = THREE.ClampToEdgeWrapping
+    map.wrapT = THREE.ClampToEdgeWrapping
+    map.needsUpdate = true
+    if (mesh.material.map) mesh.material.map.dispose()
+    mesh.material.map = map
+    aimShot(mesh)
+  }
+
+  function shotSprite(row) {
+    const art = shotArt(row.kind)
+    const sprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.4, depthWrite: false })
+    )
+    sprite.center.set(0.5, 0.5)
+    const world = shotScale(art, SHEET_TEXEL)
+    sprite.scale.set(world, world, 1)
+    sprite.userData.role = "shot"
+    sprite.userData.ownsMap = true
+    sprite.userData.art = art
+    sprite.userData.shotSheet = art.sheet
+    sprite.userData.lift = row.kind === "meteor" ? 28 : row.kind === "fireball" ? 18 : 12
+    sprite.userData.vx = row.vx || 0
+    sprite.userData.vy = row.vy || 0
+    const source = shotSources[art.sheet]
+    if (source) bindShotMap(sprite, source)
+    return sprite
+  }
+
+  function aimShot(mesh) {
+    const art = mesh.userData.art
+    const map = mesh.material && mesh.material.map
+    if (!art || !map) return
+    let column = 0
+    if (art.sheet === "arrow") {
+      flightFrom.copy(mesh.position)
+      flightTo.copy(mesh.position)
+      flightTo.x += mesh.userData.vx || 0
+      flightTo.z += mesh.userData.vy || 0
+      flightFrom.project(camera)
+      flightTo.project(camera)
+      column = arrowFrame(flightTo.x - flightFrom.x, flightTo.y - flightFrom.y)
+    } else if (art.frames > 1) {
+      column = fireFrame(performance.now())
+    }
+    const cell = cellOffset(column, 0, art.frames, 1)
+    map.repeat.set(cell.repeatX, cell.repeatY)
+    map.offset.set(cell.x, cell.y)
+  }
+
   function placeMesh(key, mesh) {
     const pose = smoothed(key)
     const spread = mesh.userData.spread || { x: 0, z: 0 }
     const step = worldStep()
-    mesh.position.set(snapWorld(pose.x + spread.x, step), mesh.userData.lift || 0, snapWorld(pose.z + spread.z, step))
+    const picture = mesh.userData.picture
+    const lift = flierLift(mesh.userData.lift || 0, mesh.userData.pose, performance.now(), picture && picture.death)
+    mesh.position.set(snapWorld(pose.x + spread.x, step), lift, snapWorld(pose.z + spread.z, step))
+    // A flier's shadow stays on the ground under it.
+    if (mesh.userData.shadow) mesh.userData.shadow.position.y = 0.46 - lift
+    if (mesh.userData.role === "shot") {
+      // The snapshot sends no velocity. The track is the step the bolt just took.
+      const track = tracks.get(key)
+      if (track) {
+        const dx = track.toX - track.fromX
+        const dz = track.toZ - track.fromZ
+        if (dx !== 0 || dz !== 0) {
+          mesh.userData.vx = dx
+          mesh.userData.vy = dz
+        }
+      }
+      aimShot(mesh)
+      return
+    }
+    const viewYaw = Math.atan2(camera.position.x - mesh.position.x, camera.position.z - mesh.position.z)
+    // The hell door is a bare plane, so it has no card. Yaw has to land before that return.
+    if (mesh.userData.role === "portal") {
+      mesh.rotation.y = viewYaw
+      return
+    }
     const card = mesh.userData.card
     if (!card) return
-    const picture = mesh.userData.picture
-    const viewYaw = Math.atan2(camera.position.x - mesh.position.x, camera.position.z - mesh.position.z)
     const facing = Number.isFinite(mesh.rotation.y) ? -mesh.rotation.y : 0
     const column = pictureColumn(viewYaw, facing)
     const track = tracks.get(key)
     const travel = track ? Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ) : 0
-    if (mesh.userData.role === "monster" && track && travel > 0.4) {
+    if ((mesh.userData.role === "monster" || mesh.userData.role === "vagrant") && track && travel > 0.4) {
       aimFacing(mesh, Math.atan2(track.toZ - track.fromZ, track.toX - track.fromX))
     }
     const anim = mesh.userData.pose || {}
@@ -1650,6 +2124,7 @@ export function createView(stage, picture) {
     map.needsUpdate = true
     const material = new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 })
     const card = new THREE.Sprite(material)
+    card.userData.ownsMap = true
     card.center.set(0.5, 0)
     card.scale.set(picture.w, picture.h, 1)
     card.position.y = 0
@@ -1688,6 +2163,7 @@ export function createView(stage, picture) {
     map.needsUpdate = true
     const material = new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4, depthWrite: false })
     const card = new THREE.Sprite(material)
+    card.userData.ownsMap = true
     card.center.set(0.5, 0)
     card.scale.set(picture.w * rim.scale, picture.h * rim.scale, 1)
     card.renderOrder = 0
@@ -1741,10 +2217,32 @@ export function createView(stage, picture) {
   }
 
   function buildingMesh(row) {
-    const spec = sheetKinds[row.kind]
+    const sheetKind = buildingSheet(row.kind)
+    const cardKind = buildingCard(row.kind)
+    const spec = cardKind ? sheetKinds[cardKind] : null
     const group = new THREE.Group()
-    if (spec?.stand) {
-      const card = new THREE.Sprite(sheetMats[row.kind])
+    if (sheetKind && spec && spec.stand === false) {
+      const variant = spotVariant(sheetKind, row.id || 0)
+      const mesh = new THREE.Mesh(
+        trackGeometry(new THREE.PlaneGeometry(spec.w, spec.h)),
+        flatMats[sheetKind][variant]
+      )
+      mesh.rotation.x = -Math.PI / 2
+      mesh.position.y = 0.42
+      mesh.userData.sheet = sheetKind
+      group.add(mesh)
+    } else if (sheetKind) {
+      // The window light is painted into the house sheet, so no glow sprites.
+      const variant = staticSheets[sheetKind].variants[0]
+      const art = staticCard(sheetKind, variant)
+      const card = new THREE.Sprite(staticMats[sheetKind][variant])
+      card.center.set(0.5, art.centerY)
+      card.scale.set(art.w, art.h, 1)
+      card.renderOrder = 1
+      card.userData.sheet = sheetKind
+      group.add(card)
+    } else if (spec?.stand) {
+      const card = new THREE.Sprite(sheetMats[cardKind])
       card.center.set(0.5, 0)
       card.scale.set(spec.w, spec.h, 1)
       card.renderOrder = 1
@@ -1767,7 +2265,7 @@ export function createView(stage, picture) {
         }
       }
     } else if (spec) {
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(spec.w, spec.h), sheetMats[row.kind])
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(spec.w, spec.h), sheetMats[cardKind])
       mesh.rotation.x = -Math.PI / 2
       mesh.position.y = 0.42
       group.add(mesh)
@@ -1880,11 +2378,29 @@ export function createView(stage, picture) {
     if (perf.paints.length > 400) perf.paints.shift()
   }
 
-  function addBurst(x, z, color) {
-    const mesh = takeBurst(color)
-    mesh.position.set(x, 18, z)
+  function dressBurst(mesh) {
+    if (!burstSource || !burstSource.image || mesh.userData.bound) return
+    const map = burstSource.clone()
+    map.colorSpace = THREE.SRGBColorSpace
+    map.magFilter = THREE.NearestFilter
+    map.minFilter = THREE.NearestFilter
+    map.generateMipmaps = false
+    map.wrapS = THREE.ClampToEdgeWrapping
+    map.wrapT = THREE.ClampToEdgeWrapping
+    map.needsUpdate = true
+    mesh.material.map = map
+    mesh.userData.bound = true
+  }
+
+  function addBurst(x, z, kind) {
+    const mesh = takeBurst(kind)
+    const step = worldStep()
+    const world = BURST_CELL * SHEET_TEXEL
+    mesh.scale.set(world, world, 1)
+    mesh.position.set(snapWorld(x, step), 18, snapWorld(z, step))
+    dressBurst(mesh)
     scene.add(mesh)
-    bursts.push({ mesh, at: performance.now() })
+    bursts.push({ mesh, at: performance.now(), kind })
   }
 
   function monsterMesh(row) {
@@ -1901,7 +2417,14 @@ export function createView(stage, picture) {
     mesh.userData.parts = picture.directions * picture.frames
     mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: picture.y, height: picture.h }
     mesh.userData.face = true
-    if (row.kind === "bat") mesh.userData.lift = 22
+    if (row.kind === "bat") {
+      mesh.userData.lift = 22
+      // The bat hangs in the air: a contact disc on the ground under it
+      // (placeMesh holds it at ground level) shows where it is.
+      const shadow = contactDisc(10)
+      mesh.add(shadow)
+      mesh.userData.shadow = shadow
+    }
     const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(22, 4, 2)), mat(0x1a100c))
     const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(20, 3, 2)), mat(0x7ea35a))
     plate.position.y = picture.h + 4
@@ -1909,20 +2432,80 @@ export function createView(stage, picture) {
     mesh.add(plate, fill)
     mesh.userData.hp = fill
     mesh.userData.bar = plate
-    const look = eliteLook(row)
-    if (look === "plated" || look === "lean" || look === "spiked") {
-      const markColor = look === "spiked" ? 0xf5751e : 0xd8cfc3
-      const mark = new THREE.Mesh(
-        trackGeometry(new THREE.BoxGeometry(5, 8, 5)),
-        litTokens.has(markColor) ? new THREE.MeshBasicMaterial({ color: markColor }) : mat(markColor)
-      )
-      mark.position.y = picture.h + 10
-      mesh.add(mark)
+    const mark = eliteMark(row)
+    if (mark) {
+      const icon = new THREE.Sprite(eliteMarkMats[mark.look])
+      icon.center.set(0.5, 0)
+      // 24 px cell. The figure's larger side is at most 20, so a lean chevron
+      // stays inside a goblin's width.
+      icon.scale.set(ELITE_MARK_CELL.w * SHEET_TEXEL, ELITE_MARK_CELL.h * SHEET_TEXEL, 1)
+      icon.position.y = picture.h + 6
+      mesh.add(icon)
+      mesh.userData.mark = icon
     }
     const spread = monsterSpread(row.id)
     mesh.userData.spread = spread
     mesh.userData.role = "monster"
+    mesh.userData.kind = row.kind
+    dressMonster(mesh)
     if (spread.bar && mesh.userData.hp && mesh.userData.bar) {
+      mesh.userData.hp.position.y += spread.bar
+      mesh.userData.bar.position.y += spread.bar
+      if (mesh.userData.mark) mesh.userData.mark.position.y += spread.bar
+    }
+    return mesh
+  }
+
+  function merchantMesh() {
+    const spec = MONSTER_SHEETS.merchant
+    const picture = { ...monsterSheetPicture(spec), w: 12, h: spec.figure * SHEET_TEXEL, d: 6, y: 0 }
+    const map = new THREE.DataTexture(new Uint8Array(4), 1, 1)
+    map.needsUpdate = true
+    const card = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 }))
+    card.center.set(0.5, 0)
+    card.scale.set(picture.w, picture.h, 1)
+    const mesh = new THREE.Group()
+    mesh.add(card)
+    mesh.userData.card = card
+    mesh.userData.picture = picture
+    mesh.userData.parts = picture.directions * picture.frames
+    mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: 0, height: picture.h }
+    mesh.userData.face = true
+    mesh.userData.role = "merchant"
+    mesh.userData.kind = "merchant"
+    dressMonster(mesh)
+    return mesh
+  }
+
+  function vagrantMesh(row) {
+    const spec = MONSTER_SHEETS.vagrant
+    const picture = { ...monsterSheetPicture(spec), w: 12, h: spec.figure * SHEET_TEXEL, d: 6, y: 0 }
+    const map = new THREE.DataTexture(new Uint8Array(4), 1, 1)
+    map.needsUpdate = true
+    const card = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 }))
+    card.center.set(0.5, 0)
+    card.scale.set(picture.w, picture.h, 1)
+    const mesh = new THREE.Group()
+    mesh.add(card)
+    mesh.userData.card = card
+    mesh.userData.picture = picture
+    mesh.userData.parts = picture.directions * picture.frames
+    mesh.userData.span = { w: picture.w, h: picture.h, d: picture.d, y: 0, height: picture.h }
+    mesh.userData.face = true
+    const plate = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(22, 4, 2)), mat(0x1a100c))
+    const fill = new THREE.Mesh(trackGeometry(new THREE.BoxGeometry(20, 3, 2)), mat(0x7ea35a))
+    plate.position.y = picture.h + 4
+    fill.position.set(0, picture.h + 4, 1.2)
+    mesh.add(plate, fill)
+    mesh.userData.hp = fill
+    mesh.userData.bar = plate
+    const spread = monsterSpread(row.id)
+    mesh.userData.spread = spread
+    mesh.userData.role = "vagrant"
+    mesh.userData.kind = "vagrant"
+    mesh.userData.hero = row.hero
+    dressMonster(mesh)
+    if (spread.bar) {
       mesh.userData.hp.position.y += spread.bar
       mesh.userData.bar.position.y += spread.bar
     }

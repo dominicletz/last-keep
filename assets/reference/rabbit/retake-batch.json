@@ -1,0 +1,115 @@
+{
+ "calls": [
+  {
+   "id": "walk-S",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing the camera). Holding exactly the body angle of the first frame: torso does not twist. Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/S.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-S.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-S.mp4"
+  },
+  {
+   "id": "death-S",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite death. The rabbit starts exactly in the pose and facing of the first frame (facing the camera). It is struck down where it sits: all four paws stay planted on the ground line, it does not startle-hop, rear, leap, spring or lift any paw; its legs give way and it sinks straight down onto its belly and then onto its side on the exact spot where it sat, ears folding down onto the ground; the lowest point of its body stays on the ground line its paws stood on, no part of it rises, floats or bounces, and it only ever moves downward. It lies still on the ground for the last half second. The body stays centered on the same spot and does not slide out of frame. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. No blood, no gore, no fading, no particles, no effects. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur.",
+    "image_path": "assets/reference/rabbit/video/dirs/S.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-death-S.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/death-S.mp4"
+  },
+  {
+   "id": "attack-W",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite attack. The rabbit keeps exactly the facing direction of the first frame (facing screen-left, its left side toward the camera) and the body angle of the first frame: torso does not twist away. In one quick motion it bows into a deep nibble, both ears swinging all the way down until they lie flat along its back and its nose touches the ground well in front of its front paws, a change of outline as large as one full hop, then returns exactly to the starting pose and holds it for the last frames. The rabbit stays exactly centered, feet stay planted, no turning, no change of size. No flashing, glowing or pulsing light: every colour keeps exactly the same brightness in every frame. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur, no speed lines, no effects.",
+    "image_path": "assets/reference/rabbit/video/dirs/W.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/W.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-attack-W.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/attack-W.mp4"
+  },
+  {
+   "id": "walk-NW",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the left, facing up and to screen-left). Holding exactly the body angle of the first frame: torso does not twist. Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/NW.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/NW.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-NW.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-NW.mp4"
+  },
+  {
+   "id": "walk-N",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from directly behind, back to the camera). Holding exactly the body angle of the first frame: torso does not twist. Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/N.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/N.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-N.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-N.mp4"
+  },
+  {
+   "id": "walk-NE",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (seen from behind and to the right, facing up and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/NE.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/NE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-NE.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-NE.mp4"
+  },
+  {
+   "id": "walk-E",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (facing screen-right, its right side toward the camera). Holding exactly the body angle of the first frame: torso does not twist. Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/E.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/E.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-E.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-E.mp4"
+  },
+  {
+   "id": "walk-SE",
+   "tool": "GenerateVideo",
+   "args": {
+    "prompt": "Game sprite walk cycle. The rabbit walks in place on a treadmill, keeping exactly the facing direction of the first frame (three-quarter front view, facing down and to screen-right). Holding exactly the body angle of the first frame: torso does not twist. Low rabbit hop on the spot, two hops a second: the long hind feet push off together and the front paws land first, ears upright with their tips at exactly the same height as the first frame in every frame, the back arching only slightly, never rearing up and never crouching down, the body from ear tip to paw staying within a few pixels of the first frame's height and the same size as the first frame; its body never moves forward and its paws return to the same ground line. The rabbit stays exactly centered, does not turn, move or change size. Locked-off camera, no zoom, plain flat white background, even lighting, crisp frames, no motion blur. Two full steps, loops seamlessly back to the starting pose.",
+    "image_path": "assets/reference/rabbit/video/dirs/SE.png",
+    "last_frame_path": "assets/reference/rabbit/video/dirs/SE.png",
+    "duration": 2,
+    "aspect_ratio": "1:1",
+    "resolution": "720p",
+    "filename": "rabbit-walk-SE.mp4"
+   },
+   "save_as": "assets/reference/rabbit/video/walk-SE.mp4"
+  }
+ ]
+}
