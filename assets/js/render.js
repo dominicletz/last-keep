@@ -440,6 +440,9 @@ export function createView(stage, picture) {
   const deerLayout = monsterSheetPicture(DEER_SHEET)
   const deerGeometry = sheetCardGeometry(DEER_SHEET.cell, DEER_SHEET.footRow)
   const deerPos = new THREE.Vector3()
+  // faceCard is hoisted and runs from a paint. This binding has to exist
+  // before createView returns, or the first card hits the temporal dead zone.
+  const cardFacing = new THREE.Vector3()
 
   const forestLook = forestState()
 
@@ -2111,8 +2114,6 @@ export function createView(stage, picture) {
     rim.renderOrder = seat.renderOrder
     rim.material.map.offset.set(cell.x, cell.y)
   }
-
-  const cardFacing = new THREE.Vector3()
 
   // The card is a mesh from the start. Feet sit on the group, and the plane
   // turns toward the camera the way a sprite used to.

@@ -112,6 +112,7 @@ test("the yard draws ruin stones from their sheet and the map table is a sprite 
   assert.doesNotMatch(src, /sync\("merchant"/)
   assert.doesNotMatch(src, /staticMats\.hell_door/)
   assert.match(src, /const card = new THREE\.Mesh\(geometry, material\)/)
+  assert.ok(src.indexOf("const cardFacing = new THREE.Vector3()") < src.indexOf("return viewApi"))
   for (const name of ["portal-sheet.png", "reeds-sheet.png", "forest_barrier-sheet.png"]) {
     assert.equal(fs.existsSync(new URL(`../../priv/static/images/hd2d/${name}`, import.meta.url)), false, name)
   }
