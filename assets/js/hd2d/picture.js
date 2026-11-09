@@ -648,7 +648,7 @@ function createHdPicture(env) {
     const sheet = sheetHero ? sheets.get(hero) : null
     if (sheetHero && !sheet) return
     const sprite = group.userData.card
-    if (!sprite || !sprite.isSprite) return
+    if (!sprite || !sprite.isMesh) return
     const source = group.userData.picture
     const map = sheet ? sheet.map : sprite.material.map
     if (map) {
@@ -680,6 +680,10 @@ function createHdPicture(env) {
     plane.receiveShadow = false
     plane.onBeforeRender = faceCamera
     group.remove(sprite)
+    if (sprite.geometry) sprite.geometry.dispose()
+    const oldMap = sprite.material && sprite.material.map
+    if (sprite.material) sprite.material.dispose()
+    if (oldMap && oldMap !== map) oldMap.dispose()
     group.add(plane)
     group.userData.card = plane
     group.userData.hd = sheet ? hero : "lit"
@@ -717,10 +721,10 @@ function createHdPicture(env) {
     return sprite
   }
 
-  // Swap a monster's voxel card for its sheet once the sheet has loaded. The
-  // card stays unlit like the voxel sprite it replaces. A monster that already
-  // had a rim keeps one, drawn from the sheet, so the outline still costs a
-  // sprite. Without a sheet the voxel card stays.
+  // Swap a monster's atlas mesh for its sheet once the sheet has loaded. The
+  // card stays an unlit mesh. A monster that already had a rim keeps one,
+  // drawn from the sheet, so the outline still costs a sprite. Without a
+  // sheet the atlas mesh stays.
   function dressMonster(mesh) {
     if (!mesh || !mesh.userData || mesh.userData.hd) return false
     const role = mesh.userData.role
@@ -729,7 +733,7 @@ function createHdPicture(env) {
     const spec = MONSTER_SHEETS[kind]
     const source = monsterSheets.get(kind)
     const sprite = mesh.userData.card
-    if (!spec || !source || !sprite || !sprite.isSprite) return false
+    if (!spec || !source || !sprite || !sprite.isMesh) return false
     const layout = monsterSheetPicture(spec)
     // One clone per monster: each card scrolls its own frame offset over the shared image.
     const map = source.clone()
@@ -749,6 +753,7 @@ function createHdPicture(env) {
     for (const old of [sprite, oldRim]) {
       if (!old) continue
       mesh.remove(old)
+      if (old.isMesh && old.geometry) old.geometry.dispose()
       if (old.material) {
         if (old.material.map) old.material.map.dispose()
         old.material.dispose()

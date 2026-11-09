@@ -209,7 +209,12 @@ function heroGroup(hero, id) {
   map.magFilter = THREE.LinearFilter
   map.minFilter = THREE.LinearFilter
   map.repeat.set(1 / 8, 1 / 11)
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 }))
+  const geometry = new THREE.PlaneGeometry(10, 20)
+  geometry.translate(0, 10, 0)
+  const sprite = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ map, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide })
+  )
   const group = new THREE.Group()
   group.add(sprite)
   group.userData.role = "hero"
@@ -518,7 +523,7 @@ test("grade refuses a live room before the strip resolves", () => {
   assert.throws(() => picture.grade(() => "frames"), /grade refuses a live room/)
 })
 
-test("dress leaves the hero outside the cap of two as a sprite", () => {
+test("dress leaves the hero outside the cap of two as a mesh", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const warrior = heroGroup("warrior", "z")
@@ -537,10 +542,12 @@ test("dress leaves the hero outside the cap of two as a sprite", () => {
   assert.equal(warrior.group.userData.card.isMesh, true)
   assert.equal(mage.group.userData.card.isMesh, true)
   assert.equal(atlas.group.children.includes(atlas.sprite), true)
-  assert.equal(atlas.group.userData.card.isSprite, true)
+  assert.equal(atlas.group.userData.card, atlas.sprite)
+  assert.equal(atlas.group.userData.card.isMesh, true)
+  assert.equal(atlas.group.userData.hd, undefined)
 })
 
-test("dress leaves a sheet hero as a sprite when only another hero's sheet loaded", () => {
+test("dress leaves a sheet hero on its mesh when only another hero's sheet loaded", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const mage = heroGroup("mage", "m")

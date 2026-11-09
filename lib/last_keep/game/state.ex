@@ -24,7 +24,6 @@ defmodule LastKeep.Game.State do
     enraged: false,
     world: %{
       seed: 0,
-      chunks: %{},
       discovered: MapSet.new(),
       claimed: MapSet.new(),
       cut: %{},
