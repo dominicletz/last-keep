@@ -1,6 +1,7 @@
 defmodule LastKeep.Game.Sim do
   @moduledoc false
 
+  alias LastKeep.Game.Footprint
   alias LastKeep.Game.Rules
   alias LastKeep.Game.State
   alias LastKeep.Game.Waves
@@ -273,8 +274,7 @@ defmodule LastKeep.Game.Sim do
   defp add_player(state, id, name, hero, connected) do
     n = map_size(state.players)
     angle = n * 2.2
-    x = :math.cos(angle) * 120
-    y = :math.sin(angle) * 120
+    {x, y} = clear_of_keep(:math.cos(angle) * 120, :math.sin(angle) * 120, 14.0, state.town)
     stats = Rules.kit(hero)
     public_id = "p#{n + 1}"
 
@@ -353,14 +353,15 @@ defmodule LastKeep.Game.Sim do
           {unit, rng} = :rand.uniform_s(state.rng)
           angle = unit * 2 * :math.pi()
           stats = Rules.kit(hero.hero)
+          {x, y} = clear_of_keep(:math.cos(angle) * 110, :math.sin(angle) * 110, 14.0, state.town)
 
           put_entity(%{state | rng: rng}, %{
             hero
             | alive: true,
               hp: stats.hp,
               respawn: 0,
-              x: :math.cos(angle) * 110,
-              y: :math.sin(angle) * 110
+              x: x,
+              y: y
           })
 
         true ->
@@ -1187,7 +1188,7 @@ defmodule LastKeep.Game.Sim do
       not held?(state, x, y) ->
         refuse(state, x, y, "The land is not held.")
 
-      hypot(x, y) < state.keep.r + 28 ->
+      keep_gap(state, x, y) < 6 ->
         refuse(state, x, y, "Too close to the keep")
 
       overlap?(state, x, y, Rules.building(kind).r) ->
@@ -1382,8 +1383,16 @@ defmodule LastKeep.Game.Sim do
     monster = state.entities[monster.id] || monster
     hero = aggro_hero(state, monster)
     {tx, ty, target} = monster_target(state, monster, hero)
-    reach = if target == :hero, do: monster.r + 16, else: state.keep.r + monster.r
     dist = hypot(monster.x - tx, monster.y - ty)
+
+    reach =
+      if target == :hero do
+        monster.r + 16
+      else
+        monster.r
+      end
+
+    dist = if target == :keep, do: keep_gap(state, monster.x, monster.y), else: dist
 
     state =
       if dist <= reach and monster.attack_cd <= 0 do
@@ -1402,7 +1411,7 @@ defmodule LastKeep.Game.Sim do
 
   defp monster_target(state, monster, hero) do
     to_hero = hypot(monster.x - hero.x, monster.y - hero.y)
-    to_keep = hypot(monster.x, monster.y) - state.keep.r
+    to_keep = keep_gap(state, monster.x, monster.y)
 
     if to_hero <= monster.aggro and to_hero < to_keep do
       {hero.x, hero.y, :hero}
@@ -1471,7 +1480,7 @@ defmodule LastKeep.Game.Sim do
     step = speed * 0.05
     nx = monster.x + dx * step
     ny = monster.y + dy * step
-    opts = %{ignore: monster.id, keep_pad: -6.0}
+    opts = %{ignore: monster.id, keep_pad: -6.0, from: %{x: monster.x, y: monster.y}}
 
     cond do
       not body_blocked?(state, nx, ny, monster.r, opts) ->
@@ -1597,7 +1606,7 @@ defmodule LastKeep.Game.Sim do
       MapSet.member?(state.staked, id) ->
         state
 
-      hypot(x, y) < state.keep.r + 28 or overlap?(state, x, y, Rules.building(kind).r) ->
+      keep_gap(state, x, y) < 6 or overlap?(state, x, y, Rules.building(kind).r) ->
         state
 
       kind == :field and
@@ -1969,6 +1978,7 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp slide(state, x, y, dx, dy, radius, opts) do
+    opts = Map.put(opts, :from, %{x: x, y: y})
     nx = x + dx
     ny = y + dy
 
@@ -1993,10 +2003,14 @@ defmodule LastKeep.Game.Sim do
     pass_heroes = Map.get(opts, :pass_heroes, false)
     pass_monsters = Map.get(opts, :pass_monsters, false)
     keep_pad = Map.get(opts, :keep_pad, 0.0)
+    from = Map.get(opts, :from)
 
-    (not pass_keep and hypot(x, y) < state.keep.r + radius + keep_pad) or
+    (not pass_keep and keep_hit?(state, x, y, radius + keep_pad, from)) or
       Enum.any?(blockers(state), fn building ->
-        hypot(building.x - x, building.y - y) < building.r + radius
+        shape_hit?(building, x, y, radius, from)
+      end) or
+      Enum.any?(ground_pois(state), fn poi ->
+        shape_hit?(poi, x, y, radius, from)
       end) or
       (not pass_heroes and
          Enum.any?(heroes(state), fn hero ->
@@ -2058,7 +2072,7 @@ defmodule LastKeep.Game.Sim do
       rank >= Rules.town_rank_cap() ->
         refuse(state, hero.x, hero.y, "The keep is as high as it goes")
 
-      hypot(hero.x, hero.y) >= Rules.raise_reach() ->
+      not near_keep?(state, hero.x, hero.y) ->
         refuse(state, hero.x, hero.y, "Walk to the keep")
 
       not afford?(state, Rules.keep_upgrade_cost(rank)) ->
@@ -2264,8 +2278,64 @@ defmodule LastKeep.Game.Sim do
 
   defp blockers(state) do
     Enum.filter(buildings(state), fn building ->
-      building.kind not in [:field, :trap, :house]
+      building.kind not in [:field, :trap]
     end)
+  end
+
+  defp ground_pois(state) do
+    world = state.world
+    world.portals ++ world.camps ++ world.quarries ++ world.shrines
+  end
+
+  defp keep_gap(state, x, y) do
+    Footprint.gap(:keep, Footprint.variant(:keep, state.town), x, y)
+  end
+
+  defp near_keep?(state, x, y) do
+    hypot(x, y) < Rules.raise_reach() or keep_gap(state, x, y) <= 22
+  end
+
+  defp keep_hit?(state, x, y, radius, from) do
+    radius > 0 and
+      Footprint.blocks?(:keep, Footprint.variant(:keep, state.town), x, y, radius, from)
+  end
+
+  defp shape_hit?(entity, x, y, radius, from) do
+    kind = Map.get(entity, :kind)
+    id = Map.get(entity, :id, 0)
+    local_from = if from, do: %{x: from.x - entity.x, y: from.y - entity.y}, else: nil
+
+    Footprint.blocks?(
+      kind,
+      Footprint.variant(kind, id),
+      x - entity.x,
+      y - entity.y,
+      radius,
+      local_from
+    )
+  end
+
+  defp clear_of_keep(x, y, radius, rank) do
+    variant = Footprint.variant(:keep, rank)
+
+    if not Footprint.blocks?(:keep, variant, x, y, radius) do
+      {x, y}
+    else
+      angle = :math.atan2(y, x)
+      base = hypot(x, y)
+
+      Enum.reduce_while(1..48, {x, y}, fn i, _acc ->
+        dist = base + i * 4
+        nx = :math.cos(angle) * dist
+        ny = :math.sin(angle) * dist
+
+        if Footprint.blocks?(:keep, variant, nx, ny, radius) do
+          {:cont, {nx, ny}}
+        else
+          {:halt, {nx, ny}}
+        end
+      end)
+    end
   end
 
   defp trees(state), do: for({_id, %{type: :tree} = tree} <- state.entities, do: tree)
