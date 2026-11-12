@@ -23,7 +23,7 @@ import { monsterVisible } from "./cull"
 import { heroSignature } from "./heroes"
 import { monsterParts } from "./monsters.js"
 import { MONSTER_SHEETS, SHEET_HEROES, cellOffset, flierLift, pictureColumn, sheetRow } from "./pictures.js"
-import { monsterSheetPicture, sheetCardGeometry, sheetHeroSize } from "./hd2d/picture.js"
+import { aimCard, monsterSheetPicture, sheetCardGeometry, sheetHeroSize } from "./hd2d/picture.js"
 import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
 import { modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
@@ -2118,12 +2118,7 @@ export function createView(stage, picture) {
   // The card is a mesh from the start. Feet sit on the group, and the plane
   // turns toward the camera the way a sprite used to.
   function faceCard(_renderer, _scene, camera) {
-    const parent = this.parent
-    if (!parent) return
-    parent.getWorldPosition(cardFacing)
-    this.rotation.x = 0
-    this.rotation.z = 0
-    this.rotation.y = Math.atan2(camera.position.x - cardFacing.x, camera.position.z - cardFacing.z) - parent.rotation.y
+    aimCard(this, camera, cardFacing)
   }
 
   function heroCard(picture) {

@@ -482,6 +482,19 @@ function rendererKind(renderer) {
   }
 }
 
+// onBeforeRender runs after Three.js has built matrixWorld for this draw.
+// The yaw has to land in that matrix now, or the card keeps the last facing.
+export function aimCard(card, camera, scratch) {
+  const parent = card.parent
+  if (!parent) return
+  parent.getWorldPosition(scratch)
+  card.rotation.x = 0
+  card.rotation.z = 0
+  card.rotation.y = Math.atan2(camera.position.x - scratch.x, camera.position.z - scratch.z) - parent.rotation.y
+  card.updateMatrix()
+  card.matrixWorld.multiplyMatrices(parent.matrixWorld, card.matrix)
+}
+
 function createHdPicture(env) {
   let tier = tierFor(env)
   let extras = { ...tierExtras(tier) }
@@ -527,15 +540,7 @@ function createHdPicture(env) {
   let passQuad = null
 
   function faceCamera(_renderer, _scene, camera) {
-    const parent = this.parent
-    if (!parent) return
-    parent.getWorldPosition(cardPos)
-    this.rotation.x = 0
-    this.rotation.z = 0
-    // The group yaw is the sim facing. Cancel it so the card turns toward the camera and stays upright.
-    this.rotation.y = Math.atan2(camera.position.x - cardPos.x, camera.position.z - cardPos.z) - parent.rotation.y
-    this.updateMatrix()
-    this.matrixWorld.multiplyMatrices(parent.matrixWorld, this.matrix)
+    aimCard(this, camera, cardPos)
   }
 
   function aimSpot(scene, torch, intensity) {
