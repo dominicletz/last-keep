@@ -1,9 +1,10 @@
 import { raiseInRange } from "./hud.js"
+import { footprintGap, variantFor } from "./footprint.js"
 
 export const STICK_RADIUS = 64
 
 const DEAD = 0.18
-const KEEP_CLEAR = 28
+const KEEP_CLEAR = 6
 const FEED_REACH = 100
 const FOOT = { wall: 16, tower: 16, trap: 15, field: 16, forge: 18, mage_tower: 18 }
 
@@ -71,7 +72,7 @@ export function contextAction(scene) {
     const spot = legalPlot(scene)
     if (spot && canPay(scene.resources, scene.cost)) return { id: "place", kind: scene.armed, aim: spot }
   }
-  if (scene.upgrade && !raiseInRange(scene.hero)) return { id: "raise", enabled: false }
+  if (scene.upgrade && !raiseInRange(scene.hero, scene.town || 0)) return { id: "raise", enabled: false }
   if (canRaise(scene)) return { id: "raise", enabled: true }
   if (canFeed(scene)) return { id: "feed" }
   return null
@@ -84,7 +85,7 @@ function canPay(resources, cost) {
 
 function canRaise(scene) {
   const offer = scene.upgrade
-  if (!offer || !raiseInRange(scene.hero)) return false
+  if (!offer || !raiseInRange(scene.hero, scene.town || 0)) return false
   return (scene.resources?.wood ?? 0) >= offer.wood && (scene.resources?.gold ?? 0) >= offer.gold
 }
 
@@ -95,7 +96,6 @@ function canFeed(scene) {
 function legalPlot(scene) {
   const hero = scene.hero
   const reach = hero.range || 160
-  const keepLimit = (scene.keepR ?? 54) + KEEP_CLEAR
   const foot = FOOT[scene.armed] || 16
   const dist = Math.hypot(hero.x, hero.y) || 1
   const base = Math.atan2(hero.y / dist, hero.x / dist)
@@ -107,7 +107,7 @@ function legalPlot(scene) {
       const x = snapGrid(hero.x + Math.cos(ang) * step)
       const y = snapGrid(hero.y + Math.sin(ang) * step)
       if (Math.hypot(x - hero.x, y - hero.y) > reach) continue
-      if (Math.hypot(x, y) < keepLimit) continue
+      if (footprintGap("keep", variantFor("keep", scene.town || 0), x, y) < KEEP_CLEAR) continue
       if (overlaps(x, y, foot, scene.buildings)) continue
       return { x, y }
     }

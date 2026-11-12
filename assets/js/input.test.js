@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, retainFocus, seatFromQuery, shouldSend, swingFocus } from "./input.js"
+import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keepSolid, keysAround, keysToward, retainFocus, seatFromQuery, shouldSend, swingFocus } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -137,7 +137,7 @@ function slideStep(at, keys, step = 7.4) {
   const move = axes(new Set(keys))
   const dx = move.x * step
   const dy = move.y * step
-  const solid = (x, y) => Math.hypot(x, y) < 68
+  const solid = (x, y) => keepSolid(x, y, at)
   if (!solid(at.x + dx, at.y + dy)) return { x: at.x + dx, y: at.y + dy }
   if (!solid(at.x + dx, at.y) && Math.abs(dx) > 0.2) return { x: at.x + dx, y: at.y }
   if (!solid(at.x, at.y + dy) && Math.abs(dy) > 0.2) return { x: at.x, y: at.y + dy }

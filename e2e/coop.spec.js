@@ -1,5 +1,5 @@
 const { test } = require("@playwright/test")
-const { captionsClearTheBuilds, createKeepsThePage, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, matchPaintsWithoutARead, meetTheHermit, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, theFirstMenuFrameWaitsForNoSheet, theFogEdgeIsNotAFlatFill, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
+const { captionsClearTheBuilds, createKeepsThePage, chopThePine, classSelect, exploreLand, hd2dFlag, heroSilhouettes, holdTheLand, joinFromForm, keepFloorBlocks, matchPaintsWithoutARead, meetTheHermit, oneSeat, paradeShowsEveryKind, pictureGrade, portraitHero, prepareProof, raiseNeedsTheKeep, readTheMap, scoreList, shotsDoNotGrowGeometries, sixSeatMatch, squarePixels, takeTheShrine, theFirstMenuFrameWaitsForNoSheet, theFogEdgeIsNotAFlatFill, townGrows, twoPlayerNight, wakeTheCamp } = require("./scenarios")
 
 test.beforeAll(prepareProof)
 test.use({ viewport: { width: 1280, height: 800 } })
@@ -117,6 +117,10 @@ test("six seats hold the match budgets across three waves", async ({ browser }) 
 
 test("create turns the home page into the room without a reload", async ({ browser }) => {
   await createKeepsThePage(browser)
+})
+
+test("a hero walking into the keep stays on the floor edge", async ({ browser }) => {
+  await keepFloorBlocks(browser)
 })
 
 test("a hermit reveals the next chunk ring", async ({ browser }) => {

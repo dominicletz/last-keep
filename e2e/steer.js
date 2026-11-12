@@ -1,6 +1,5 @@
-const { keysAround } = require("../assets/js/input.js")
+const { keepSolid, keysAround } = require("../assets/js/input.js")
 
-const BODY = 68
 const STEP = 12
 
 function axes(keys) {
@@ -37,7 +36,7 @@ function walkHitsKeep(here, goal) {
   const a = axes(keysFor(here, goal))
   const nx = here.x + a.x * STEP
   const ny = here.y + a.y * STEP
-  return Math.hypot(nx, ny) < BODY
+  return keepSolid(nx, ny, here)
 }
 
 // North is the way off the keep toward the west caption mark. y < -220 is

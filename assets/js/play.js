@@ -357,8 +357,8 @@ function start(code, seat, ui) {
         const reach = self.hero === "mage" || self.hero === "scout" ? 160 : 48
         const gap = Math.hypot(nearest.x - self.x, nearest.y - self.y)
         if (gap > reach) {
-          // Due west has no slide, so a chase onto the keep face sits at x 73.5
-          // and the night walks into the keep. The tangent is the same step as steer.
+          // Due west has no slide on the keep face, so a chase sits there and the
+          // night walks into the keep. The tangent is the same step as steer.
           for (const code of keysAround(self.x, self.y, nearest.x, nearest.y)) want.add(code)
         }
       }
@@ -646,7 +646,7 @@ function start(code, seat, ui) {
   function cueRaise() {
     const meNow = (latest?.players || []).find((player) => player.id === selfId)
     const offer = latest?.upgrade
-    const text = raiseHint(meNow, offer)
+    const text = raiseHint(meNow, offer, latest?.town)
     if (!text) return
     raiseCue = showReason(raiseCue, text, performance.now(), 2200, true)
     refresh()
@@ -821,7 +821,7 @@ function start(code, seat, ui) {
     const raise = ui.hud.querySelector("[data-raise]")
     if (raise) {
       raise.textContent = raiseLabel(snap.upgrade)
-      raise.disabled = !raiseReady(snap.upgrade, snap.resources, me)
+      raise.disabled = !raiseReady(snap.upgrade, snap.resources, me, snap.town)
     }
     const start = ui.hud.querySelector("[data-start]")
     start.hidden = !snap.hold
@@ -843,8 +843,8 @@ function start(code, seat, ui) {
     })
     const cost = armed && me?.costs ? me.costs[armed] : null
     const now = performance.now()
-    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, snap.upgrade) : ""
-    const preview = armed ? placementReason({ ...me, cost }, aim, snap.resources) : raiseNote
+    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, snap.upgrade, snap.town) : ""
+    const preview = armed ? placementReason({ ...me, cost, town: snap.town }, aim, snap.resources) : raiseNote
     const denied = (snap.events || []).find((ev) => ev.type === "deny" && ev.reason)
     if (denied) reasonEntry = showReason(reasonEntry, denied.reason, now, 2200, true)
     else reasonEntry = showReason(reasonEntry, preview, now)
@@ -934,6 +934,7 @@ function start(code, seat, ui) {
     if (!button) return
     touchAction = contextAction({
       hero: me ? { x: me.x, y: me.y, range: me.range } : null,
+      town: snap.town,
       keepR: snap.keep?.r,
       resources: snap.resources,
       upgrade: snap.upgrade,

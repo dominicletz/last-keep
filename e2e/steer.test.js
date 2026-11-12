@@ -1,9 +1,8 @@
 const assert = require("node:assert/strict")
 const { test } = require("node:test")
-const { keysAround } = require("../assets/js/input.js")
+const { keepSolid, keysAround } = require("../assets/js/input.js")
 const { axes, keysFor, settleFields, stoppedTick, walkHitsKeep, noteNorth, noteProgress, walkLoop } = require("./steer")
 
-const BODY = 68
 const SPEED = 155
 const DT = 0.05
 
@@ -11,7 +10,7 @@ function step(x, y, goal) {
   const a = axes(keysFor({ x, y }, goal))
   const dx = a.x * SPEED * DT
   const dy = a.y * SPEED * DT
-  const blocked = (px, py) => Math.hypot(px, py) < BODY
+  const blocked = (px, py) => keepSolid(px, py, { x, y })
   let nx = x
   let ny = y
   if (!blocked(x + dx, y + dy)) {

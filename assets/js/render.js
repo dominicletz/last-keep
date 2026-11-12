@@ -28,6 +28,7 @@ import { ARRIVE_MS, PORTRAIT_STAND } from "./portrait.js"
 import { modelParts } from "../models/registry.js"
 import { monsterSpread, rimSeat } from "./bodies"
 import { rangeRingState } from "./hud"
+import { blockingKind, footprintOf, footprintPlane, footprintSeat, footprintTable } from "./footprint.js"
 import { absorbShots, bodyPixel, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint.js"
 import {
   groundColor,
@@ -359,8 +360,10 @@ export function createView(stage, picture) {
 
   forest()
   addForestWall()
+  const footprintGeos = new Map()
   let keep = makeKeep(0)
   scene.add(keep)
+  warmFootprints()
 
   const meshes = new Map()
   const shotSources = {}
@@ -469,6 +472,49 @@ export function createView(stage, picture) {
     mesh.renderOrder = 2
     mesh.userData.contact = true
     return mesh
+  }
+
+  function footprintGeometry(poly) {
+    const key = JSON.stringify(poly)
+    const cached = footprintGeos.get(key)
+    if (cached) return cached
+    const axes = footprintTable().axes
+    const pts = poly.map(([u, v]) => [u * axes.ux + v * axes.vx, 0, u * axes.uy + v * axes.vy])
+    const data = []
+    for (let i = 1; i < pts.length - 1; i++) data.push(...pts[0], ...pts[i], ...pts[i + 1])
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(data), 3))
+    geometry.userData.pooled = true
+    trackGeometry(geometry)
+    footprintGeos.set(key, geometry)
+    return geometry
+  }
+
+  function footprintMark(kind, variant) {
+    const spec = footprintOf(kind, variant)
+    if (!spec || !spec.poly) return null
+    const mesh = new THREE.Mesh(footprintGeometry(spec.poly), shadowMat)
+    mesh.position.y = 0.46
+    mesh.renderOrder = 2
+    mesh.userData.contact = true
+    mesh.userData.role = "shadow"
+    return mesh
+  }
+
+  // The quiet-build census counts each geometry once. A portal that appears
+  // later reuses the shadow baked here, so the settled count does not rise.
+  function warmFootprints() {
+    const table = footprintTable()
+    for (const kind of table.block) {
+      const sheet = table.kinds[kind === "portal" ? "hell_door" : kind]
+      if (!sheet) continue
+      for (const variant of Object.keys(sheet)) {
+        const mark = footprintMark(kind, variant)
+        if (!mark) continue
+        mark.visible = false
+        scene.add(mark)
+      }
+    }
   }
 
   function sheetCard(kind, scale = 1, disc = true) {
@@ -731,9 +777,12 @@ export function createView(stage, picture) {
     const card = new THREE.Sprite(staticMats.keep[variant])
     card.center.set(0.5, art.centerY)
     card.scale.set(art.w, art.h, 1)
-    card.position.y = -keepCardDrop(viewFrame.halfH, viewFrame.bufferHeight)
+    const seat = footprintSeat("keep", variant)
+    card.position.set(seat.x, -keepCardDrop(viewFrame.halfH, viewFrame.bufferHeight), seat.z)
     card.userData.sheet = "keep"
     group.add(card)
+    const shadow = footprintMark("keep", variant)
+    if (shadow) group.add(shadow)
     group.userData.card = card
     const torch = new THREE.PointLight(0xeea821, 8, 220)
     torch.position.set(22, 40, 22)
@@ -1103,10 +1152,16 @@ export function createView(stage, picture) {
       paintMapCloth(mapCloth, clothMarks, snap.map)
       sync("portal", (snap.portals || []).slice(0, 8), () => {
         const art = staticCard("hell_door", "a")
+        const seat = footprintPlane("portal", "a")
         const geometry = trackGeometry(new THREE.PlaneGeometry(art.w, art.h))
-        geometry.translate(0, art.h / 2 - art.centerY * art.h, 0)
-        const mesh = new THREE.Mesh(geometry, flatMats.hell_door.a)
+        geometry.translate(seat.x, art.h / 2 - art.centerY * art.h, seat.z)
+        const door = new THREE.Mesh(geometry, flatMats.hell_door.a)
+        const mesh = new THREE.Group()
         mesh.userData.role = "portal"
+        mesh.userData.door = door
+        mesh.add(door)
+        const shadow = footprintMark("portal", "a")
+        if (shadow) mesh.add(shadow)
         return mesh
       })
 
@@ -1122,10 +1177,18 @@ export function createView(stage, picture) {
       sync("spot", snap.pois || [], (row) => {
         const variant = spotVariant(row.kind, row.id)
         const art = staticCard(row.kind, variant)
-        const mesh = new THREE.Sprite(staticMats[row.kind][variant])
-        mesh.center.set(0.5, art.centerY)
-        mesh.scale.set(art.w, art.h, 1)
+        const card = new THREE.Sprite(staticMats[row.kind][variant])
+        card.center.set(0.5, art.centerY)
+        card.scale.set(art.w, art.h, 1)
+        const seat = footprintSeat(row.kind, variant)
+        card.position.set(seat.x, 0, seat.z)
+        const mesh = new THREE.Group()
         mesh.userData.role = row.kind
+        mesh.add(card)
+        if (blockingKind(row.kind)) {
+          const shadow = footprintMark(row.kind, variant)
+          if (shadow) mesh.add(shadow)
+        }
         return mesh
       })
 
@@ -2080,7 +2143,8 @@ export function createView(stage, picture) {
     const viewYaw = Math.atan2(camera.position.x - mesh.position.x, camera.position.z - mesh.position.z)
     // The hell door is a bare plane, so it has no card. Yaw has to land before that return.
     if (mesh.userData.role === "portal") {
-      mesh.rotation.y = viewYaw
+      const door = mesh.userData.door || mesh
+      door.rotation.y = viewYaw
       return
     }
     const card = mesh.userData.card
@@ -2247,6 +2311,8 @@ export function createView(stage, picture) {
       const card = new THREE.Sprite(staticMats[sheetKind][variant])
       card.center.set(0.5, art.centerY)
       card.scale.set(art.w, art.h, 1)
+      const seat = footprintSeat(sheetKind, variant)
+      card.position.set(seat.x, 0, seat.z)
       card.renderOrder = 1
       card.userData.sheet = sheetKind
       group.add(card)
@@ -2282,7 +2348,8 @@ export function createView(stage, picture) {
       for (const piece of modelParts(row.kind)) group.add(pieceMesh(piece))
     }
     const radius = { house: 22, field: 22, forge: 18, trap: 15, tower: 16, mage_tower: 18 }[row.kind] || 12
-    group.add(contactDisc(radius))
+    const plated = sheetKind && blockingKind(sheetKind) ? footprintMark(sheetKind, staticSheets[sheetKind].variants[0]) : null
+    group.add(plated || contactDisc(radius))
     return group
   }
 

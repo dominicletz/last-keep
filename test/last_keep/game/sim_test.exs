@@ -1,6 +1,7 @@
 defmodule LastKeep.Game.SimTest do
   use ExUnit.Case, async: true
 
+  alias LastKeep.Game.Footprint
   alias LastKeep.Game.Rules
   alias LastKeep.Game.Sim
   alias LastKeep.Game.Snapshot
@@ -1058,6 +1059,39 @@ defmodule LastKeep.Game.SimTest do
 
     assert :math.sqrt((scout.x - blocked.x) ** 2 + (scout.y - blocked.y) ** 2) >=
              scout.r + blocked.r - 0.5
+  end
+
+  test "a hero cannot walk into the keep floor" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    spawn = hero(state, "ada")
+
+    state =
+      Enum.reduce(1..80, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => -1, "my" => 0})
+        |> Sim.tick()
+      end)
+
+    ada = hero(state, "ada")
+    assert ada.x < spawn.x
+    assert Footprint.gap(:keep, "0", ada.x, ada.y) >= ada.r - 0.5
+
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    state = put_hero(state, %{ada | x: -200.0, y: -200.0})
+
+    state =
+      Enum.reduce(1..80, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => 1, "my" => 1})
+        |> Sim.tick()
+      end)
+
+    ada = hero(state, "ada")
+    assert ada.x > -200.0
+    assert Footprint.gap(:keep, "0", ada.x, ada.y) >= ada.r - 0.5
   end
 
   test "the keep is solid and a monster bites it from the edge" do

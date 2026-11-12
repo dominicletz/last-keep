@@ -1338,15 +1338,15 @@ async function waitForRaiseGold(page) {
 }
 
 async function walkToRaise(page) {
-  // keysAround will not step inward, so the tangent leaves the hero outside
-  // the last 10 of the raise radius. The eight-way step walks in until the
-  // keep face stops it, which is inside that radius. The server position is
-  // the arrival. The wait stays 25 seconds.
+  // The eight-way step walks in until the footprint stops the body. That
+  // face is inside the raise radius on the near side, and against the
+  // footprint on the deep side, which can sit past radius 100. The server
+  // position is the arrival. The wait stays 25 seconds.
   return walkUntil(page, {
     timeout: 25_000,
     label: "raise ring",
     poll: 80,
-    done: (state) => state.raiseReady && Math.hypot(state.x, state.y) < 90,
+    done: (state) => state.raiseReady && Math.hypot(state.x, state.y) < 150,
     step: (current) =>
       current.evaluate(() => {
         const me = window.__lastKeep.self
@@ -1562,11 +1562,13 @@ async function assertFarCaptions(page) {
     label: "west caption",
     done: (state) => state.x < -700,
     step: async (current) => {
-      await holdCodes(current, ["KeyA", "KeyW"])
-      return current.evaluate(() => {
+      const me = await current.evaluate(() => {
         const self = window.__lastKeep.self
         return self ? { x: self.x, y: self.y } : null
       })
+      // Due west from the east yard meets a house. Step south of that ring, then west.
+      await holdCodes(current, me && me.y > -180 ? ["KeyW", "KeyD"] : ["KeyA", "KeyW"])
+      return me
     }
   })
   await expect.poll(() => page.evaluate(captionHits), { timeout: 5_000 }).toEqual([])
@@ -2266,7 +2268,7 @@ async function refuseHeld(page, x, y) {
 
 async function steerPast(page, goal, done, timeout, label) {
   // steer() holds keysAround. A cardinal via on top of that step aims due
-  // west again and sits on the face at x 73.5. The tangent is the detour.
+  // west again and sits on the keep face. The tangent is the detour.
   return steer(page, goal, done, timeout, label)
 }
 
@@ -3263,7 +3265,39 @@ async function createKeepsThePage(browser) {
   await context.close()
 }
 
+async function keepFloorBlocks(browser) {
+  const errors = []
+  const host = await createHost(browser, "Ada", "warrior")
+  watch(host.page, "host", errors)
+  const { footprintGap } = await import("../assets/js/footprint.js")
+  await host.page.waitForFunction(() => window.__lastKeep && window.__lastKeep.self)
+  const start = await host.page.evaluate(() => {
+    const me = window.__lastKeep.self
+    return { x: me.x, y: me.y, tick: window.__lastKeep.tick }
+  })
+  await host.page.evaluate(() => {
+    const me = window.__lastKeep.self
+    const keys = window.__lastKeepTest.toward(-me.x, -me.y)
+    for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, keys.includes(key))
+  })
+  await host.page.waitForFunction((tick) => window.__lastKeep.tick >= tick + 80, start.tick, { timeout: 20_000 })
+  const end = await host.page.evaluate(() => {
+    const me = window.__lastKeep.self
+    return { x: me.x, y: me.y }
+  })
+  await host.page.evaluate(() => {
+    for (const key of ["KeyW", "KeyA", "KeyS", "KeyD"]) window.__lastKeepTest.hold(key, false)
+  })
+  const gap = footprintGap("keep", "0", end.x, end.y)
+  expect(Math.hypot(end.x - start.x, end.y - start.y)).toBeGreaterThan(4)
+  // Every hero body is radius 14. The center stays outside that body.
+  expect(gap).toBeGreaterThanOrEqual(13)
+  expect(errors, errors.join("\n")).toEqual([])
+  await host.context.close()
+}
+
 module.exports = {
+  keepFloorBlocks,
   createKeepsThePage,
   liveSmoke,
   prepareProof,
