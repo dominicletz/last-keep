@@ -5,7 +5,9 @@ import * as THREE from "three"
 import { pixelStep } from "../art_score.js"
 import { cameraLift } from "../frame.js"
 import { masonryBytes } from "../tiles.js"
+import fs from "node:fs"
 import {
+  aimCard,
   circleOfConfusion,
   createPicture,
   diskOffsets,
@@ -209,7 +211,12 @@ function heroGroup(hero, id) {
   map.magFilter = THREE.LinearFilter
   map.minFilter = THREE.LinearFilter
   map.repeat.set(1 / 8, 1 / 11)
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 }))
+  const geometry = new THREE.PlaneGeometry(10, 20)
+  geometry.translate(0, 10, 0)
+  const sprite = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ map, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide })
+  )
   const group = new THREE.Group()
   group.add(sprite)
   group.userData.role = "hero"
@@ -279,6 +286,32 @@ test("dress lights the keep with a normal map and emissive windows", () => {
   assert.equal(stone.material, litStone)
   assert.equal(floors[0].material, litGround)
   assert.equal(flame.children.length, flameLights)
+})
+
+test("a card's world matrix matches the camera on the same facing call", () => {
+  const group = new THREE.Group()
+  group.rotation.y = Math.PI / 2
+  group.position.set(5, 0, 7)
+  const card = new THREE.Mesh(new THREE.PlaneGeometry(10, 20), new THREE.MeshBasicMaterial())
+  group.add(card)
+  const camera = new THREE.PerspectiveCamera()
+  const scratch = new THREE.Vector3()
+  camera.position.set(105, 30, 7)
+  aimCard(card, camera, scratch)
+  const first = new THREE.Vector3(0, 0, 1).transformDirection(card.matrixWorld)
+  assert.ok(first.x > 0.99)
+  assert.ok(Math.abs(first.y) < 1e-4)
+  const up = new THREE.Vector3(0, 1, 0).transformDirection(card.matrixWorld)
+  assert.ok(up.y > 0.99)
+  const stale = card.matrixWorld.clone()
+  camera.position.set(5, 30, 107)
+  aimCard(card, camera, scratch)
+  const next = new THREE.Vector3(0, 0, 1).transformDirection(card.matrixWorld)
+  assert.ok(next.z > 0.99, `${next.x},${next.y},${next.z}`)
+  assert.ok(Math.abs(next.x) < 1e-4)
+  assert.equal(card.matrixWorld.equals(stale), false)
+  const src = fs.readFileSync(new URL("../render.js", import.meta.url), "utf8")
+  assert.match(src, /function faceCard\([\s\S]*?aimCard\(this, camera, cardFacing\)/)
 })
 
 test("dress turns a voxel-atlas sprite into one card and does not add another", () => {
@@ -518,7 +551,7 @@ test("grade refuses a live room before the strip resolves", () => {
   assert.throws(() => picture.grade(() => "frames"), /grade refuses a live room/)
 })
 
-test("dress leaves the hero outside the cap of two as a sprite", () => {
+test("dress leaves the hero outside the cap of two as a mesh", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const warrior = heroGroup("warrior", "z")
@@ -537,10 +570,12 @@ test("dress leaves the hero outside the cap of two as a sprite", () => {
   assert.equal(warrior.group.userData.card.isMesh, true)
   assert.equal(mage.group.userData.card.isMesh, true)
   assert.equal(atlas.group.children.includes(atlas.sprite), true)
-  assert.equal(atlas.group.userData.card.isSprite, true)
+  assert.equal(atlas.group.userData.card, atlas.sprite)
+  assert.equal(atlas.group.userData.card.isMesh, true)
+  assert.equal(atlas.group.userData.hd, undefined)
 })
 
-test("dress leaves a sheet hero as a sprite when only another hero's sheet loaded", () => {
+test("dress leaves a sheet hero on its mesh when only another hero's sheet loaded", () => {
   const picture = createPicture()
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const mage = heroGroup("mage", "m")

@@ -12,7 +12,7 @@ defmodule LastKeep.Game.Snapshot do
     |> Map.put(:chests, Enum.map(visible(state.world.chests, state), &chest_view/1))
     |> Map.put(:portals, Enum.map(visible(state.world.portals, state), &portal_view/1))
     |> Map.put(:pois, Enum.map(visible(world_pois(state.world), state), &poi_view/1))
-    |> Map.put(:merchant, merchant_view(visible_merchant(state)))
+    |> Map.put(:merchant, nil)
     |> Map.put(:views, views(state))
   end
 
@@ -57,7 +57,8 @@ defmodule LastKeep.Game.Snapshot do
       chests: Enum.map(state.world.chests, &chest_view/1),
       portals: Enum.map(state.world.portals, &portal_view/1),
       pois: Enum.map(world_pois(state.world), &poi_view/1),
-      merchant: merchant_view(state.world.merchant),
+      # The shop is still planned. The world keeps the point of interest.
+      merchant: nil,
       events: Enum.map(Enum.reverse(state.events), &event/1)
     }
   end
@@ -248,20 +249,7 @@ defmodule LastKeep.Game.Snapshot do
 
   # Quarry, camp and shrine. The same discovered-chunk filter as a chest.
   # A camp or shrine leaves this list when the sim removes it. The merchant
-  # is his own row, sent when his chunk is discovered. The hermit stays off.
-  defp visible_merchant(state) do
-    case state.world.merchant do
-      nil -> nil
-      poi -> List.first(visible([poi], state))
-    end
-  end
-
-  defp merchant_view(nil), do: nil
-
-  defp merchant_view(poi) do
-    %{id: poi.id, x: round1(poi.x), y: round1(poi.y)}
-  end
-
+  # stays in the world and is not sent. The hermit stays off.
   defp world_pois(world) do
     world.quarries ++ world.camps ++ world.shrines
   end

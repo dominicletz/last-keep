@@ -61,7 +61,7 @@ export const MONSTER_SHEETS = {
   // cardinals. The snapshot sends vagrants; render.js draws this sheet.
   vagrant: { cell: 128, figure: 88, footRow: 121, rows: { walk: 8, idle: 4 } },
   // Idle on the four cardinals. The other four columns hold the start pose.
-  // The snapshot sends the merchant when his chunk is discovered.
+  // The merchant sheet stays loadable. The snapshot does not send him.
   merchant: { cell: 128, figure: 88, footRow: 121, rows: { idle: 4 } }
 }
 

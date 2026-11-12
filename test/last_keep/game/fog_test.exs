@@ -110,7 +110,7 @@ defmodule LastKeep.Game.FogTest do
     refute Enum.any?(seen.pois, &(&1.kind == "merchant"))
   end
 
-  test "the merchant is sent when his chunk is discovered and stays off the poi list" do
+  test "the merchant stays in the world and is not sent" do
     merchant = Enum.find(World.generate(5).pois, &(&1.kind == :merchant))
     refute merchant == nil
 
@@ -120,21 +120,29 @@ defmodule LastKeep.Game.FogTest do
       |> join("ada", :farmer)
       |> Sim.tick()
 
+    assert state.world.merchant.id == merchant.id
+    refute Map.has_key?(state.world, :chunks)
+    assert MapSet.size(state.world.discovered) > 0
+
     hidden = Snapshot.deliver(state)
     assert hidden.merchant == nil
     refute Enum.any?(hidden.pois, &(&1.kind == "merchant"))
-    assert Snapshot.render(state).merchant == %{id: merchant.id, x: merchant.x, y: merchant.y}
+    assert Snapshot.render(state).merchant == nil
 
     found =
       state
       |> put_hero("ada", merchant.x * 1.0, merchant.y * 1.0)
       |> Sim.tick()
 
+    assert found.world.merchant.x == merchant.x
+    assert found.world.merchant.y == merchant.y
+    refute Map.has_key?(found.world, :chunks)
+
     seen = Snapshot.deliver(found)
-    assert seen.merchant == %{id: merchant.id, x: merchant.x, y: merchant.y}
-    refute Map.has_key?(seen.merchant, :kind)
+    assert seen.merchant == nil
     refute Enum.any?(seen.pois, &(&1.kind == "merchant"))
     refute Map.has_key?(seen, :hermit)
+    assert Snapshot.render(found).merchant == nil
   end
 
   test "a hero past the last chunk does not discover the void" do

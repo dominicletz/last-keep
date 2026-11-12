@@ -1408,8 +1408,9 @@ class NextArtBatchTest(unittest.TestCase):
         for name, src in save_as.items():
             self.assertEqual(batch[name]["save_as"], src)
         # River, ford, dirt, hill and mountain are installed. The keep sheet is
-        # the live keep. The portal sheet is an approved variant that is not
-        # drawn: the spawn stays the hell door. Plaza and path are not tiles.
+        # the live keep. The portal, the reeds, and the forest barrier are not
+        # shipped: the spawn stays the hell door and the edge stays pines.
+        # Plaza and path are not tiles.
         for dest in (
             "priv/static/images/hd2d/ground-river.png",
             "priv/static/images/hd2d/ground-ford.png",
@@ -1417,12 +1418,14 @@ class NextArtBatchTest(unittest.TestCase):
             "priv/static/images/hd2d/ground-hill.png",
             "priv/static/images/hd2d/ground-mountain.png",
             "priv/static/images/hd2d/keep-sheet.png",
-            "priv/static/images/hd2d/portal-sheet.png",
         ):
             self.assertTrue(os.path.exists(os.path.join(hs.ROOT, dest)), dest)
         for dest in (
             "priv/static/images/hd2d/ground-plaza.png",
             "priv/static/images/hd2d/ground-path.png",
+            "priv/static/images/hd2d/portal-sheet.png",
+            "priv/static/images/hd2d/reeds-sheet.png",
+            "priv/static/images/hd2d/forest_barrier-sheet.png",
             "assets/reference/ground/path.png",
         ):
             self.assertFalse(os.path.exists(os.path.join(hs.ROOT, dest)), dest)

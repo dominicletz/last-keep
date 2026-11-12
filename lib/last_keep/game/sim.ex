@@ -478,7 +478,6 @@ defmodule LastKeep.Game.Sim do
     %{
       seed: seed,
       attempt: world.attempt,
-      chunks: %{},
       discovered: keep_chunks(),
       claimed: MapSet.new(),
       cut: %{},
@@ -521,29 +520,15 @@ defmodule LastKeep.Game.Sim do
   defp reveal_around(state, x, y, ring) do
     {cx, cy} = World.chunk_coord(x, y)
 
-    {discovered, chunks} =
-      Enum.reduce(-ring..ring, {state.world.discovered, state.world.chunks}, fn dx,
-                                                                                {found, chunks} ->
-        Enum.reduce(-ring..ring, {found, chunks}, fn dy, {found, chunks} ->
+    discovered =
+      Enum.reduce(-ring..ring, state.world.discovered, fn dx, found ->
+        Enum.reduce(-ring..ring, found, fn dy, found ->
           key = {cx + dx, cy + dy}
-
-          if World.chunk_in_bounds?(key) do
-            {MapSet.put(found, key), ensure_chunk(state.world.seed, chunks, key)}
-          else
-            {found, chunks}
-          end
+          if World.chunk_in_bounds?(key), do: MapSet.put(found, key), else: found
         end)
       end)
 
-    %{state | world: %{state.world | discovered: discovered, chunks: chunks}}
-  end
-
-  defp ensure_chunk(seed, chunks, {cx, cy} = key) do
-    cond do
-      Map.has_key?(chunks, key) -> chunks
-      cx < -14 or cx > 14 or cy < -14 or cy > 14 -> chunks
-      true -> Map.put(chunks, key, World.chunk(seed, cx, cy))
-    end
+    %{state | world: %{state.world | discovered: discovered}}
   end
 
   defp reveal_ring(hero) do

@@ -45,7 +45,7 @@ function stoneAndGrounds() {
   return { stoneMat, keep, floors }
 }
 
-// The voxel card render.js builds: a sprite, a rim sprite, picture and kind.
+// The atlas card render.js builds: a mesh, a rim sprite, picture and kind.
 function monsterGroup(kind) {
   const voxel = {
     directions: 8,
@@ -60,7 +60,13 @@ function monsterGroup(kind) {
     rim: { color: 0x908b8a, scale: 1.15 }
   }
   const map = new THREE.DataTexture(new Uint8Array([90, 100, 50, 255]), 1, 1)
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map, transparent: true, alphaTest: 0.4 }))
+  const geometry = new THREE.PlaneGeometry(voxel.w, voxel.h)
+  geometry.translate(0, voxel.h / 2, 0)
+  const sprite = new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ map, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide })
+  )
+  sprite.userData.ownsMap = true
   const rimMap = new THREE.DataTexture(new Uint8Array([144, 139, 138, 255]), 1, 1)
   const rim = new THREE.Sprite(new THREE.SpriteMaterial({ map: rimMap }))
   const group = new THREE.Group()
@@ -311,7 +317,7 @@ test("dress gives a sheet to goblins, skeletons, wolves, bats, trolls and the bo
   const goblin = monsterGroup("goblin")
   const dragon = monsterGroup("dragon")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, dragon.group] })
-  assert.equal(goblin.group.userData.card.isSprite, true)
+  assert.equal(goblin.group.userData.card.isMesh, true)
   picture.attachMonsterSheet(sheetTexture(), "goblin")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [goblin.group, dragon.group] })
   assert.equal(goblin.group.userData.card.isMesh, true)
@@ -321,7 +327,7 @@ test("dress gives a sheet to goblins, skeletons, wolves, bats, trolls and the bo
   // The boss on its 192 px cell, 94 px tall.
   const boss = monsterGroup("boss")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [boss.group] })
-  assert.equal(boss.group.userData.card.isSprite, true)
+  assert.equal(boss.group.userData.card.isMesh, true)
   picture.attachMonsterSheet(sheetTexture(), "boss")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [boss.group] })
   assert.equal(boss.group.userData.card.isMesh, true)
@@ -330,7 +336,7 @@ test("dress gives a sheet to goblins, skeletons, wolves, bats, trolls and the bo
   // The skeleton waits for its own sheet, then draws from it.
   const skeleton = monsterGroup("skeleton")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [skeleton.group] })
-  assert.equal(skeleton.group.userData.card.isSprite, true)
+  assert.equal(skeleton.group.userData.card.isMesh, true)
   picture.attachMonsterSheet(sheetTexture(), "skeleton")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [skeleton.group] })
   assert.equal(skeleton.group.userData.card.isMesh, true)
@@ -340,7 +346,7 @@ test("dress gives a sheet to goblins, skeletons, wolves, bats, trolls and the bo
   // The wolf too, on its own 128 px cell.
   const wolf = monsterGroup("wolf")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [wolf.group] })
-  assert.equal(wolf.group.userData.card.isSprite, true)
+  assert.equal(wolf.group.userData.card.isMesh, true)
   picture.attachMonsterSheet(sheetTexture(), "wolf")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [wolf.group] })
   assert.equal(wolf.group.userData.card.isMesh, true)
@@ -350,7 +356,7 @@ test("dress gives a sheet to goblins, skeletons, wolves, bats, trolls and the bo
   // The bat too: a flier on its 128 px cell, still lifted by render.js.
   const bat = monsterGroup("bat")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [bat.group] })
-  assert.equal(bat.group.userData.card.isSprite, true)
+  assert.equal(bat.group.userData.card.isMesh, true)
   picture.attachMonsterSheet(sheetTexture(), "bat")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [bat.group] })
   assert.equal(bat.group.userData.card.isMesh, true)
@@ -360,7 +366,7 @@ test("dress gives a sheet to goblins, skeletons, wolves, bats, trolls and the bo
   // The troll on its 160 px cell, 94 px tall.
   const troll = monsterGroup("troll")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [troll.group] })
-  assert.equal(troll.group.userData.card.isSprite, true)
+  assert.equal(troll.group.userData.card.isMesh, true)
   picture.attachMonsterSheet(sheetTexture(), "troll")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [troll.group] })
   assert.equal(troll.group.userData.card.isMesh, true)
@@ -457,7 +463,8 @@ test("dressMonster draws a merchant from the idle sheet", () => {
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const group = new THREE.Group()
   const map = new THREE.DataTexture(new Uint8Array(4), 1, 1)
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map }))
+  const sprite = new THREE.Mesh(new THREE.PlaneGeometry(12, 32), new THREE.MeshBasicMaterial({ map }))
+  sprite.userData.ownsMap = true
   group.add(sprite)
   const spec = MONSTER_SHEETS.merchant
   const layout = monsterSheetPicture(spec)
@@ -484,7 +491,8 @@ test("dressMonster draws a vagrant from the vagrant sheet", () => {
   const { stoneMat, keep, floors } = stoneAndGrounds()
   const group = new THREE.Group()
   const map = new THREE.DataTexture(new Uint8Array(4), 1, 1)
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map }))
+  const sprite = new THREE.Mesh(new THREE.PlaneGeometry(12, 32), new THREE.MeshBasicMaterial({ map }))
+  sprite.userData.ownsMap = true
   group.add(sprite)
   const spec = MONSTER_SHEETS.vagrant
   Object.assign(group.userData, {
@@ -494,7 +502,8 @@ test("dressMonster draws a vagrant from the vagrant sheet", () => {
     picture: monsterSheetPicture(spec)
   })
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [group] })
-  assert.equal(group.userData.card.isSprite, true)
+  assert.equal(group.userData.card.isMesh, true)
+  assert.equal(group.userData.card, sprite)
   picture.attachMonsterSheet(sheetTexture(), "vagrant")
   picture.dress({ grounds: floors, keep, stoneMat, heroes: [], monsters: [group] })
   assert.equal(group.userData.card.isMesh, true)
