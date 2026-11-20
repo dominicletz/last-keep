@@ -101,6 +101,28 @@ defmodule LastKeepWeb.GameChannelTest do
     assert hd(latest.players).cds.attack == 0
   end
 
+  test "a restart push is ignored before the keep falls" do
+    {:ok, code} = Rooms.create(auto_tick: false, seed: 1, build_ticks: 40)
+    {:ok, token, _public_id, _snap} = Rooms.enlist(code, %{name: "Ada", hero: :warrior})
+
+    {:ok, _reply, socket} =
+      LastKeepWeb.UserSocket
+      |> socket("user:ada", %{})
+      |> subscribe_and_join(LastKeepWeb.GameChannel, "game:" <> code, %{"token" => token})
+
+    ref = push(socket, "start", %{})
+    assert_reply ref, :ok
+    snap = Room.step(code)
+    refute snap.hold
+    assert snap.phase == "build"
+
+    ref = push(socket, "restart", %{})
+    assert_reply ref, :ok
+    after_snap = Room.snapshot(code)
+    refute after_snap.hold
+    assert after_snap.tick == snap.tick
+  end
+
   test "an unknown token cannot take a hero" do
     {:ok, code} = Rooms.create(auto_tick: false, seed: 1)
 

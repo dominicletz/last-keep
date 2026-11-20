@@ -2,7 +2,7 @@
 
 This is the source of truth for how roles touch each other. The machine-readable graph is [`interactions.json`](interactions.json). `test/last_keep/game/interactions_test.exs` checks that file against `Rules` and the simulation source. If a rule changes, change the JSON in the same commit.
 
-[`CONCEPT.md`](../CONCEPT.md) is the original pitch. Where this page and the concept disagree, the concept line is an edge marked `planned` in the JSON, and the gap is in [`playtests/BACKLOG.md`](../playtests/BACKLOG.md).
+[`CONCEPT.md`](../CONCEPT.md) is the original pitch. Where this page and the concept disagree, the concept line is an edge marked `planned` in the JSON, and the gap is in [`playtests/BACKLOG.md`](../playtests/BACKLOG.md). The Kingdom Two Crowns 3D design north star and sequenced milestones live in [`concepts/ROADMAP.md`](concepts/ROADMAP.md).
 
 ## Picture
 
@@ -178,6 +178,8 @@ The night has its own sound. Day and building play `/audio/day.mp3`. The wave pl
 ## Session
 
 The door is the yard at dusk. The camera sits low and close on the hero, with the keep, the trees, and the sky behind, and it glides to the yard camera once the seat is taken. Left and right change the class. Create and Join are that same screen, described in [concepts/START-SCREEN.md](concepts/START-SCREEN.md). A stored seat sits down without showing it, and a lost seat uses the saved name and class again. Sitting down, the host starting the night, the horn, a frenzy, a cleared night, a raise, a downed hero, a fallen keep, and a friend joining or leaving are [concepts/statechart/chart.mmd](concepts/statechart/chart.mmd). The model is [concepts/statechart/LastKeep.tla](concepts/statechart/LastKeep.tla). TLC's report is [concepts/statechart/report.md](concepts/statechart/report.md). The chart still calls that first sit `you sit down`.
+
+Restarting a room (`Sim.restart/1` and the `"restart"` channel event) only resets the keep when `phase == :over`; a restart sent before the keep falls is ignored. The host is the lowest-numbered connected seat (`Sim.host_public_id/1`), so if `p1` disconnects during the lobby hold, the next connected player can start the night. Monster health scales by `+6%` per connected hero past 2, capped at 15 (`Rules.party_hp_scale/1`). If the party destroys all six portals, the next wave from wave 2 onward rekindles the farthest outer portal (`maybe_rekindle_portal`) with wave-scaled health so an endless run never collapses into empty waves.
 
 Create turns the door into the room without loading a new page. The address becomes `/r/CODE`, the yard keeps its picture and moves to the device's detail tier, and the hero sits down. While Create waits on the server the door holds still: it paints nothing and loads no monster art until the room's first frame, so a slow machine spends its time on the new room, even when the hero art finishes loading during the wait. The door's first frame shows the hero and the ground under him before any hero art has loaded, and a window or layout change seats the camera again. If Create fails, the door moves again with the error under the button. A reload of `/r/CODE` sits down in the same seat, a shared link still opens the join card, and Back loads the door again. The picture paints whenever something on it moves, at the display's rate, and rests while nothing does. The captions over the yard are seated again only when the scene, the camera, or the window changes. That work is measured by `script/perf_probe.cjs`, and `e2e/perf.spec.js` holds its budget.
 

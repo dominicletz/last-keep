@@ -112,10 +112,9 @@ function loadNodeTiles() {
   if (!proc?.getBuiltinModule) return
   const fs = proc.getBuiltinModule("fs")
   const path = proc.getBuiltinModule("path")
-  const url = proc.getBuiltinModule("url")
   const zlib = proc.getBuiltinModule("zlib")
-  const here = path.dirname(url.fileURLToPath(import.meta.url))
-  const root = path.resolve(here, "../..")
+  const cwd = proc.cwd()
+  const root = fs.existsSync(path.join(cwd, "priv/static")) ? cwd : path.resolve(cwd, "..")
   const next = {}
   for (const [name, rel] of Object.entries(GROUND_TILE_URLS)) {
     next[name] = decodePng(fs.readFileSync(path.join(root, "priv/static", rel.slice(1))), zlib.inflateSync)

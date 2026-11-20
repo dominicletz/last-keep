@@ -156,7 +156,7 @@ defmodule LastKeep.Game.Sim do
     kind = Map.get(attrs, :kind, :goblin)
     base = Rules.monster(kind)
     wave = Map.get(attrs, :wave, max(state.wave, 1))
-    scale_hp = Rules.hp_scale(wave)
+    scale_hp = Rules.hp_scale(wave) * Rules.party_hp_scale(connected_count(state))
     scale_dmg = Rules.dmg_scale(wave)
     hp = Map.get(attrs, :hp, round(base.hp * scale_hp))
 
@@ -239,28 +239,55 @@ defmodule LastKeep.Game.Sim do
 
   def score(%State{} = state), do: waves_survived(state) * 1000 + state.kills * 10
 
+  def host_public_id(%State{players: players}) when map_size(players) == 0, do: nil
+
+  def host_public_id(%State{players: players}) do
+    connected = players |> Map.values() |> Enum.filter(& &1.connected)
+    pool = if connected == [], do: Map.values(players), else: connected
+
+    pool
+    |> Enum.min_by(&seat_number/1)
+    |> Map.fetch!(:public_id)
+  end
+
   def release(%State{hold: true} = state, id) do
+    host_id = host_public_id(state)
+
     case state.players[id] do
-      %{public_id: "p1"} -> %{state | hold: false}
+      %{public_id: ^host_id} when not is_nil(host_id) -> %{state | hold: false}
       _ -> state
     end
   end
 
   def release(%State{} = state, _id), do: state
 
-  def restart(%State{} = state) do
+  def restart(%State{phase: :over} = state) do
     fresh = new(state.code, seed: System.unique_integer([:positive]))
 
     state.players
-    |> Enum.sort_by(fn {_id, player} ->
-      player.public_id |> String.trim_leading("p") |> String.to_integer()
-    end)
-    |> Enum.reduce(fresh, fn {id, player}, sim ->
+    |> Map.values()
+    |> Enum.sort_by(&seat_number/1)
+    |> Enum.reduce(fresh, fn player, sim ->
       {:ok, sim} =
-        join(sim, %{id: id, name: player.name, hero: player.hero, connected: player.connected})
+        join(sim, %{
+          id: player.id,
+          name: player.name,
+          hero: player.hero,
+          connected: player.connected
+        })
 
       sim
     end)
+  end
+
+  def restart(%State{} = state), do: state
+
+  defp seat_number(%{public_id: public_id}) do
+    public_id |> String.trim_leading("p") |> String.to_integer()
+  end
+
+  defp connected_count(state) do
+    Enum.count(state.players, fn {_id, player} -> player.connected end)
   end
 
   defp bump(state), do: %{state | tick: state.tick + 1, events: []}
@@ -1676,6 +1703,7 @@ defmodule LastKeep.Game.Sim do
 
   defp start_wave(state) do
     wave = state.wave + 1
+    state = maybe_rekindle_portal(state, wave)
 
     {hints, rng} =
       if state.hints == [], do: Waves.plan(wave, state.rng), else: {state.hints, state.rng}
@@ -1693,6 +1721,32 @@ defmodule LastKeep.Game.Sim do
       spawn_group(state, group, wave)
     end)
   end
+
+  # Kingdom Two Crowns cliff-portal rule: breaking portals stops those bearings
+  # while any portal stands, but clearing all six rekindles the farthest outer
+  # portal on the next night so an endless run never collapses into empty waves.
+  defp maybe_rekindle_portal(%{world: %{portals: []}} = state, wave) when wave >= 2 do
+    outer =
+      state.world.seed
+      |> World.generate()
+      |> Map.fetch!(:pois)
+      |> Enum.filter(&(&1.kind == :portal))
+      |> Enum.max_by(fn poi -> {poi.x * poi.x + poi.y * poi.y, poi.id} end, fn -> nil end)
+
+    case outer do
+      nil ->
+        state
+
+      poi ->
+        hp = round(Rules.portal_hp() * Rules.hp_scale(wave))
+        rebuilt = Map.merge(poi, %{hp: hp, max_hp: hp, r: 28.0})
+
+        %{state | world: %{state.world | portals: [rebuilt]}}
+        |> event(%{type: "portal", x: poi.x, y: poi.y})
+    end
+  end
+
+  defp maybe_rekindle_portal(state, _wave), do: state
 
   defp spawn_group(state, group, wave) do
     group

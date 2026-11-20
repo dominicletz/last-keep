@@ -165,7 +165,7 @@ defmodule LastKeep.Game.Snapshot do
       hp: hero.hp,
       max: hero.max_hp,
       alive: hero.alive,
-      host: player.public_id == "p1",
+      host: player.public_id == Sim.host_public_id(state),
       range: Rules.build_range(player.hero, state.town),
       costs: costs(player.hero),
       cds: %{
