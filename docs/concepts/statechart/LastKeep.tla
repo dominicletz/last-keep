@@ -173,9 +173,10 @@ YouPressNewKeep ==
     /\ SomeoneIn
     /\ Fresh
 
-\* GameChannel accepts "restart" with no phase check. The button is only on the fallen screen.
+\* Sim.restart/1 and Room.handle_cast(:restart, ...) ignore restart outside :over.
+\* TheSocketRestarts is no longer enabled before the keep falls.
 TheSocketRestarts ==
-    /\ screen \in Playing
+    /\ screen = "fallen"
     /\ SomeoneIn
     /\ Fresh
 

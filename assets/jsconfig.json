@@ -3,6 +3,8 @@
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
+    "skipLibCheck": true,
+    "types": [],
     "module": "nodenext",
     "target": "es2022",
     "moduleResolution": "nodenext",

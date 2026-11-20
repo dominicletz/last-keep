@@ -132,6 +132,12 @@ defmodule LastKeep.Game.Rules do
   def hp_scale(wave), do: 1 + 0.14 * (wave - 1)
   def dmg_scale(wave), do: 1 + 0.08 * (wave - 1)
 
+  # WORLD.md: +6% monster HP per connected hero past 2, capped at max_players (15).
+  def party_hp_scale(connected) when is_integer(connected) do
+    extra = connected |> min(@max_players) |> max(2) |> Kernel.-(2)
+    1.0 + 0.06 * extra
+  end
+
   # Wave 1 is the onboarding night: the same goblin is slower and bites softer.
   # Later waves use the full stat line, then hp_scale and dmg_scale on top.
   def pace(:goblin, 1), do: 0.55
