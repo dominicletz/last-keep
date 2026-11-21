@@ -6,6 +6,7 @@ import { sceneKey } from "./frame"
 import { bakeMonster, loadMonsterSheets, monsterKinds, monsterParts, monsterSource, releaseMonsterSheets } from "./monsters.js"
 import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
+import { terrainWaypoint } from "./world_biome"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint"
 import { RELIC_SIGN, SEAT_CONTROLS, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, meteorLocked, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, wallUsesStone, waveAnchor, waveLabel } from "./hud"
@@ -298,7 +299,11 @@ function start(code, seat, ui) {
     around(goalX, goalY) {
       const me = window.__lastKeep && window.__lastKeep.self
       if (!me) return []
-      return keysAround(me.x, me.y, goalX, goalY)
+      const wp =
+        latest && Number.isInteger(latest.seed)
+          ? terrainWaypoint(latest.seed, latest.attempt || 0, me.x, me.y, goalX, goalY)
+          : { x: goalX, y: goalY }
+      return keysAround(me.x, me.y, wp.x, wp.y)
     },
     // Waits for the monster sheets, then has every kind's card ready.
     async pictures() {

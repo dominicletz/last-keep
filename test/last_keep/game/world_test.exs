@@ -43,7 +43,37 @@ defmodule LastKeep.Game.WorldTest do
          )}
       end
 
-    assert fingerprints == %{3 => 92_055_555, 77 => 3_496_929, 123_456 => 37_097_763}
+    assert fingerprints == %{3 => 34_375_785, 77 => 118_928_054, 123_456 => 79_111_003}
+  end
+
+  test "coherent biomes cluster into multi-cell forests and rivers carry walkable fords" do
+    world = World.generate(5)
+    stored = cells(world)
+
+    same =
+      for {{x, y}, cell} <- stored,
+          hypot({x, y}) > 480,
+          cell.biome in [:pine, :meadow, :ruins],
+          neighbor = Map.get(stored, {x + 36, y}),
+          neighbor != nil do
+        if neighbor.biome == cell.biome, do: 1, else: 0
+      end
+
+    coherence = Enum.sum(same) / max(length(same), 1)
+    assert coherence >= 0.72, "expected coherent biome clusters, got #{Float.round(coherence, 3)}"
+
+    river =
+      Enum.find(stored, fn {_coord, cell} -> cell.biome == :river and cell.blocked end)
+
+    ford =
+      Enum.find(stored, fn {_coord, cell} -> cell.biome == :ford and not cell.blocked end)
+
+    assert river != nil
+    assert ford != nil
+    {{rx, ry}, _} = river
+    {{fx, fy}, _} = ford
+    refute World.open?(5, rx, ry)
+    assert World.open?(5, fx, fy)
   end
 
   test "the keep disc stays clear" do

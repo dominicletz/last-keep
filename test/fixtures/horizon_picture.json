@@ -1,72 +1,72 @@
 [
   {
+    "attempt": 0,
+    "biome": "meadow",
+    "seed": 1,
     "x": 0,
-    "y": 0,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "meadow"
+    "y": 0
   },
   {
+    "attempt": 0,
+    "biome": "meadow",
+    "seed": 1,
     "x": 432,
-    "y": 0,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "meadow"
+    "y": 0
   },
   {
+    "attempt": 0,
+    "biome": "pine",
+    "seed": 1,
     "x": 800,
-    "y": 0,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "ruins"
+    "y": 0
   },
   {
+    "attempt": 0,
+    "biome": "meadow",
+    "seed": 1,
     "x": 2000,
-    "y": 0,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "pine"
+    "y": 0
   },
   {
+    "attempt": 0,
+    "biome": "hill",
+    "seed": 1,
     "x": 7308,
-    "y": 0,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "hill"
+    "y": 0
   },
   {
+    "attempt": 0,
+    "biome": "pine",
+    "seed": 1,
     "x": -360,
-    "y": 216,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "meadow"
+    "y": 216
   },
   {
+    "attempt": 0,
+    "biome": "pine",
+    "seed": 1,
     "x": 8000,
-    "y": -72,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "pine"
+    "y": -72
   },
   {
+    "attempt": 0,
+    "biome": "mountain",
+    "seed": 1,
     "x": 12000,
-    "y": -4000,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "mountain"
+    "y": -4000
   },
   {
+    "attempt": 0,
+    "biome": "pine",
+    "seed": 1,
     "x": -7218,
-    "y": 0,
-    "seed": 1,
-    "attempt": 0,
-    "biome": "pine"
+    "y": 0
   },
   {
-    "x": 432,
-    "y": 0,
-    "seed": 5,
     "attempt": 0,
-    "biome": "pine"
+    "biome": "pine",
+    "seed": 5,
+    "x": 432,
+    "y": 0
   }
 ]

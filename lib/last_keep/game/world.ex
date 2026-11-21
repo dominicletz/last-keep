@@ -118,6 +118,11 @@ defmodule LastKeep.Game.World do
     in_world?(i, j)
   end
 
+  def open?(seed, x, y) when is_integer(seed) and is_number(x) and is_number(y) do
+    {i, j} = cell_index(x, y)
+    in_world?(i, j) and not cell(seed, generate(seed).attempt, i, j).blocked
+  end
+
   defp skirt_biome(seed, i, j, attempt) do
     band = rem(:erlang.phash2({seed, i, j, attempt}), 100)
 
@@ -276,22 +281,70 @@ defmodule LastKeep.Game.World do
       dist2(i, j) <= @radius * @radius
   end
 
+  @smooth {0, 3, 10, 20, 32, 44, 54, 61}
+
   defp cell(seed, attempt, i, j) do
     if dist2(i, j) <= @keep * @keep do
       %{biome: :meadow, blocked: false}
     else
-      hash = :erlang.phash2({seed, i, j, attempt})
-      band = rem(hash, 100)
+      gx = Integer.floor_div(i, 8)
+      gy = Integer.floor_div(j, 8)
+      fx = i - gx * 8
+      fy = j - gy * 8
+      wx = elem(@smooth, fx)
+      wy = elem(@smooth, fy)
+
+      h00 = :erlang.phash2({seed, attempt, gx, gy})
+      h10 = :erlang.phash2({seed, attempt, gx + 1, gy})
+      h01 = :erlang.phash2({seed, attempt, gx, gy + 1})
+      h11 = :erlang.phash2({seed, attempt, gx + 1, gy + 1})
+
+      biome_val = interp9(h00, h10, h01, h11, 0, wx, wy)
+      warp_val = interp9(h00, h10, h01, h11, 9, wx, wy)
+      cliff_val = interp9(h00, h10, h01, h11, 18, wx, wy)
+
+      r_meta = :erlang.phash2({seed, attempt, 999})
+      {coord, along} = if rem(r_meta, 2) == 0, do: {i, j}, else: {j, i}
+      r1 = 28 + rem(div(r_meta, 2), 18)
+      r2 = -(28 + rem(div(r_meta, 32), 18))
+      warp = div(warp_val - 256, 24)
+      d1 = abs(coord + warp - r1)
+      d2 = abs(coord + warp - r2)
+      outside_ring = dist2(i, j) > 740 * 740
 
       cond do
-        band <= 7 and rem(hash, 5) == 0 -> %{biome: :ford, blocked: false}
-        band <= 7 -> %{biome: :river, blocked: true}
-        band <= 13 -> %{biome: :cliff, blocked: true}
-        band <= 39 -> %{biome: :pine, blocked: false}
-        band <= 51 -> %{biome: :ruins, blocked: false}
-        true -> %{biome: :meadow, blocked: false}
+        outside_ring and (d1 <= 1 or d2 <= 1) ->
+          ford_phase = rem(div(r_meta, 512), 12)
+
+          if Integer.mod(along + ford_phase, 12) <= 3 do
+            %{biome: :ford, blocked: false}
+          else
+            %{biome: :river, blocked: true}
+          end
+
+        outside_ring and cliff_val >= 415 ->
+          %{biome: :cliff, blocked: true}
+
+        biome_val < 230 ->
+          %{biome: :pine, blocked: false}
+
+        biome_val > 345 ->
+          %{biome: :ruins, blocked: false}
+
+        true ->
+          %{biome: :meadow, blocked: false}
       end
     end
+  end
+
+  defp interp9(h00, h10, h01, h11, shift, wx, wy) do
+    c00 = Bitwise.band(Bitwise.bsr(h00, shift), 511)
+    c10 = Bitwise.band(Bitwise.bsr(h10, shift), 511)
+    c01 = Bitwise.band(Bitwise.bsr(h01, shift), 511)
+    c11 = Bitwise.band(Bitwise.bsr(h11, shift), 511)
+    top = c00 * (64 - wx) + c10 * wx
+    bot = c01 * (64 - wx) + c11 * wx
+    div(top * (64 - wy) + bot * wy, 4096)
   end
 
   defp dist2(i, j) do

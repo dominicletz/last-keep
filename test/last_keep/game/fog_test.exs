@@ -10,7 +10,7 @@ defmodule LastKeep.Game.FogTest do
 
     assert Enum.any?(pois, &(&1.kind == :chest and &1.x == 216 and &1.y == 720))
     assert Enum.any?(pois, &(&1.kind == :portal and &1.x == -1116 and &1.y == -1044))
-    assert Enum.any?(pois, &(&1.kind == :portal and &1.x == 360 and &1.y == -1692))
+    assert Enum.any?(pois, &(&1.kind == :portal and &1.x == 2088 and &1.y == -864))
     assert Enum.any?(pois, &(&1.kind == :portal and &1.x == 144 and &1.y == 1944))
   end
 

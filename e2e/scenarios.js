@@ -2359,7 +2359,7 @@ async function exploreLand(browser) {
     throw new Error(`portal still stands ${JSON.stringify(broke)}`)
   }
   const living = [
-    { x: 360, y: -1692 },
+    { x: 2088, y: -864 },
     { x: 144, y: 1944 }
   ]
   await page.locator("[data-start]").click()
