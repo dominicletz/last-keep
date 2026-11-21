@@ -50,10 +50,14 @@ test("a slam is a keep hit, and a monster hit, kill, and wall are their own cues
       { type: "hit", x: 0, y: 0, amount: 40 },
       { type: "hit", x: 80, y: 12, amount: 9 },
       { type: "death", x: 80, y: 12 },
-      { type: "place", x: 40, y: 20 }
+      { type: "place", x: 40, y: 20 },
+      { type: "trade", x: 100, y: 100 },
+      { type: "ping", x: 120, y: 40 },
+      { type: "retaliate", x: -400, y: 0 },
+      { type: "fortify", x: 0, y: 0 }
     ]
   }
-  assert.deepEqual(cuesFrom(prev, next), ["keep-hit", "hit", "kill", "build"])
+  assert.deepEqual(cuesFrom(prev, next), ["keep-hit", "hit", "kill", "build", "trade", "ping", "retaliate", "fortify"])
 })
 
 test("mute and volume stay in storage, and the bus records cues while muted", () => {

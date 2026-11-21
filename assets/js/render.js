@@ -425,6 +425,9 @@ export function createView(stage, picture) {
   let liveMonsters = []
   const tracks = new Map()
   const bursts = []
+  const ringPulses = []
+  const ringPulseGeo = trackGeometry(new THREE.RingGeometry(0.82, 1.0, 24))
+  ringPulseGeo.userData.pooled = true
   let lastTick = -1
   let heroKey = null
   let stageSize = null
@@ -1002,13 +1005,30 @@ export function createView(stage, picture) {
         }
       }
     }
+    // Ping rings sit outside meshes, so the signature never sees them scale.
+    // Count them before the loop: the frame that removes the last one still paints.
+    const ringsMoving = ringPulses.length > 0
+    for (let i = ringPulses.length - 1; i >= 0; i -= 1) {
+      const pulse = ringPulses[i]
+      const age = now - pulse.at
+      if (age >= pulse.dur) {
+        scene.remove(pulse.mesh)
+        pulse.mesh.material.dispose()
+        ringPulses.splice(i, 1)
+      } else {
+        const t = age / pulse.dur
+        const radius = pulse.minScale + (pulse.maxScale - pulse.minScale) * t
+        pulse.mesh.scale.setScalar(radius)
+        pulse.mesh.material.opacity = Math.max(0, 0.78 * (1 - t))
+      }
+    }
     const heroMesh = heroKey ? meshes.get(heroKey) : null
     if (heroMesh && window.__lastKeep) {
       window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
     }
     cullActors()
     const signature = testHooks ? null : frameSignature(camera, meshes.values())
-    const changed = dirty || bursts.length > 0 || signature !== lastSignature
+    const changed = dirty || bursts.length > 0 || ringsMoving || signature !== lastSignature
     if (paintDue(testHooks, now, lastRender, lastInput, changed, held)) {
       const started = performance.now()
       paintFrame()
@@ -1212,10 +1232,21 @@ export function createView(stage, picture) {
 
       if (snap.tick !== lastTick) {
         lastTick = snap.tick
+        const now = performance.now()
         for (const ev of snap.events || []) {
-          if (ev.type === "boom") addBurst(ev.x, ev.y, "boom")
+          if (ev.type === "boom") {
+            addBurst(ev.x, ev.y, "boom")
+            addRingPulse(ev.x, ev.y, 0xf27d38, 22, 120, 420)
+          }
           if (ev.type === "death") addBurst(ev.x, ev.y, "death")
-          if (ev.type === "slam") addBurst(ev.x, ev.y, "slam")
+          if (ev.type === "slam") {
+            addBurst(ev.x, ev.y, "slam")
+            addRingPulse(ev.x, ev.y, 0xd94b3b, 24, 96, 460)
+          }
+          if (ev.type === "ping") addRingPulse(ev.x, ev.y, 0xf5c84c, 16, 72, 1100)
+          if (ev.type === "hit" && Number.isFinite(ev.x) && Number.isFinite(ev.y)) {
+            flashNear(ev.x, ev.y, now)
+          }
         }
       }
 
@@ -2079,6 +2110,8 @@ export function createView(stage, picture) {
 
   function bindShotMap(mesh, source) {
     if (!source || !source.image) return
+    const target = mesh.userData.sprite || mesh
+    if (!target.material) return
     const map = source.clone()
     map.colorSpace = THREE.SRGBColorSpace
     map.magFilter = THREE.NearestFilter
@@ -2087,8 +2120,8 @@ export function createView(stage, picture) {
     map.wrapS = THREE.ClampToEdgeWrapping
     map.wrapT = THREE.ClampToEdgeWrapping
     map.needsUpdate = true
-    if (mesh.material.map) mesh.material.map.dispose()
-    mesh.material.map = map
+    if (target.material.map) target.material.map.dispose()
+    target.material.map = map
     aimShot(mesh)
   }
 
@@ -2109,12 +2142,60 @@ export function createView(stage, picture) {
     sprite.userData.vy = row.vy || 0
     const source = shotSources[art.sheet]
     if (source) bindShotMap(sprite, source)
+    if (row.kind === "meteor") {
+      const telegraph = new THREE.Mesh(
+        ringPulseGeo,
+        new THREE.MeshBasicMaterial({ color: 0xf26430, transparent: true, opacity: 0.65, side: THREE.DoubleSide })
+      )
+      telegraph.rotation.x = -Math.PI / 2
+      telegraph.position.y = -27.4
+      telegraph.scale.setScalar(120)
+      telegraph.userData.role = "shot"
+      const group = new THREE.Group()
+      group.userData.role = "shot"
+      group.userData.ownsMap = true
+      group.userData.art = art
+      group.userData.shotSheet = art.sheet
+      group.userData.lift = 28
+      group.userData.vx = row.vx || 0
+      group.userData.vy = row.vy || 0
+      group.userData.telegraph = telegraph
+      group.userData.sprite = sprite
+      group.add(sprite)
+      group.add(telegraph)
+      return group
+    }
     return sprite
+  }
+
+  function addRingPulse(x, z, color, minScale, maxScale, dur) {
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return
+    const mesh = new THREE.Mesh(
+      ringPulseGeo,
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.78, side: THREE.DoubleSide })
+    )
+    mesh.rotation.x = -Math.PI / 2
+    mesh.position.set(x, 0.55, z)
+    mesh.scale.setScalar(minScale)
+    mesh.renderOrder = 3
+    mesh.userData.role = "burst"
+    scene.add(mesh)
+    ringPulses.push({ mesh, at: performance.now(), dur, minScale, maxScale })
+  }
+
+  function flashNear(x, z, now) {
+    for (const [key, mesh] of meshes) {
+      if (!key.startsWith("monster:") && !key.startsWith("hero:")) continue
+      if (Math.hypot(mesh.position.x - x, mesh.position.z - z) <= 32) {
+        mesh.userData.flashUntil = now + 110
+      }
+    }
   }
 
   function aimShot(mesh) {
     const art = mesh.userData.art
-    const map = mesh.material && mesh.material.map
+    const target = mesh.userData.sprite || mesh
+    const map = target.material && target.material.map
     if (!art || !map) return
     let column = 0
     if (art.sheet === "arrow") {
@@ -2176,6 +2257,10 @@ export function createView(stage, picture) {
     anim.moving = travel > 0.4
     mesh.userData.pose = anim
     if (Number.isFinite(mesh.userData.fade) && card.material) card.material.opacity = mesh.userData.fade
+    if (card.material && card.material.color) {
+      const flashed = Number.isFinite(mesh.userData.flashUntil) && performance.now() < mesh.userData.flashUntil
+      card.material.color.setHex(flashed ? 0xffc8a4 : 0xffffff)
+    }
     const frame = sheetRow(picture, anim, performance.now())
     // A 4-frame sheet has no death row. sheetRow still returns walk when death is 0.
     const row = Math.min(picture.frames - 1, Math.max(0, frame))

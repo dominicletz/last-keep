@@ -21,6 +21,9 @@ defmodule LastKeep.Game.State do
     upgrades: %{forge: false, mage_tower: false},
     kills: 0,
     events: [],
+    # Events at the head of `events` that no tick has broadcast yet. Ping and
+    # fortify append between ticks; bump keeps this many across the clear.
+    unsent: 0,
     enraged: false,
     world: %{
       seed: 0,

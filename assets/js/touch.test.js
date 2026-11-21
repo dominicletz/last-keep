@@ -151,6 +151,54 @@ test("the context button is a legal place, a paid raise, or a feed", () => {
   assert.equal(building.id, "place")
 })
 
+test("at rank 4 the context button fortifies instead of raising", () => {
+  const offer = { wood: 36, gold: 16, hp: 120 }
+  const resources = { wood: 40, gold: 20, food: 8 }
+  const near = contextAction({
+    hero: { x: 80, y: 0, range: 165 },
+    town: 4,
+    resources,
+    upgrade: null,
+    fortify: offer,
+    armed: null,
+    buildings: []
+  })
+  assert.deepEqual(near, { id: "fortify", enabled: true })
+
+  const far = contextAction({
+    hero: { x: 400, y: 0, range: 165 },
+    town: 4,
+    resources,
+    upgrade: null,
+    fortify: offer,
+    armed: null,
+    buildings: []
+  })
+  assert.deepEqual(far, { id: "fortify", enabled: false })
+
+  const broke = contextAction({
+    hero: { x: 80, y: 0, range: 165 },
+    town: 4,
+    resources: { wood: 0, gold: 0, food: 8 },
+    upgrade: null,
+    fortify: offer,
+    armed: null,
+    buildings: []
+  })
+  assert.deepEqual(broke, { id: "feed" })
+
+  const raiseStill = contextAction({
+    hero: { x: 80, y: 0, range: 165 },
+    town: 0,
+    resources: { wood: 40, gold: 10, food: 8 },
+    upgrade: { wood: 24, gold: 8 },
+    fortify: offer,
+    armed: null,
+    buildings: []
+  })
+  assert.deepEqual(raiseStill, { id: "raise", enabled: true })
+})
+
 test("a hero at the far keep face gets the feed context button", () => {
   const farFace = contextAction({
     hero: { x: -82, y: -82, range: 165 },

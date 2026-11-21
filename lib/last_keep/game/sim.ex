@@ -128,7 +128,8 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
-  def tick(%State{phase: :over} = state), do: %{state | tick: state.tick + 1, events: []}
+  def tick(%State{phase: :over} = state),
+    do: %{state | tick: state.tick + 1, events: [], unsent: 0}
 
   def tick(%State{} = state) do
     state
@@ -152,6 +153,7 @@ defmodule LastKeep.Game.Sim do
     |> economy()
     |> advance_phase()
     |> respawns()
+    |> seal_events()
   end
 
   def spawn_monster(%State{} = state, attrs) do
@@ -272,6 +274,42 @@ defmodule LastKeep.Game.Sim do
 
   def release(%State{} = state, _id), do: state
 
+  def ping(%State{phase: :over} = state, _id, _x, _y), do: state
+
+  def ping(%State{} = state, id, x, y) do
+    case state.players[id] do
+      %{connected: true} = player ->
+        px = clamp_world(x)
+        py = clamp_world(y)
+
+        event(state, %{
+          type: "ping",
+          x: px,
+          y: py,
+          name: player.name,
+          hero: Atom.to_string(player.hero)
+        })
+
+      _ ->
+        state
+    end
+  end
+
+  def fortify(%State{phase: :over} = state, _id), do: state
+
+  def fortify(%State{} = state, id) do
+    case state.players[id] do
+      %{connected: true, hero_id: hero_id} ->
+        case state.entities[hero_id] do
+          %{alive: true} = hero -> try_fortify(state, hero)
+          _ -> state
+        end
+
+      _ ->
+        state
+    end
+  end
+
   def restart(%State{phase: :over} = state) do
     fresh = new(state.code, seed: System.unique_integer([:positive]))
 
@@ -301,7 +339,15 @@ defmodule LastKeep.Game.Sim do
     Enum.count(state.players, fn {_id, player} -> player.connected end)
   end
 
-  defp bump(state), do: %{state | tick: state.tick + 1, events: []}
+  # The broadcast is the snapshot this tick returns. A ping or a fortify
+  # records its event before that, so the clear keeps those and drops events
+  # the previous snapshot already carried.
+  defp bump(%{events: events, unsent: unsent} = state) do
+    carried = Enum.take(events, unsent)
+    %{state | tick: state.tick + 1, events: carried, unsent: length(carried)}
+  end
+
+  defp seal_events(state), do: %{state | unsent: 0}
 
   defp reconnect(state, id, name, connected) do
     player = state.players[id]
@@ -1024,7 +1070,10 @@ defmodule LastKeep.Game.Sim do
     end)
     |> Enum.reduce(state, fn monster, state ->
       damage = scaled_damage(ability.damage, state, hero.hero, monster)
-      hurt_monster(state, monster.id, damage, Rules.kill_bonus(hero.hero))
+
+      state
+      |> hurt_monster(monster.id, damage, Rules.kill_bonus(hero.hero))
+      |> knockback_monster(monster.id, hero.x, hero.y, 12.0)
     end)
     |> strike_portals(hero, ability)
     |> repair_near(hero, Map.get(ability, :repair, 0))
@@ -1167,7 +1216,10 @@ defmodule LastKeep.Game.Sim do
     end)
     |> Enum.reduce(state, fn monster, state ->
       damage = scaled_damage(ability.damage, state, hero.hero, monster)
-      hurt_monster(state, monster.id, damage, Rules.kill_bonus(hero.hero))
+
+      state
+      |> hurt_monster(monster.id, damage, Rules.kill_bonus(hero.hero))
+      |> knockback_monster(monster.id, hero.x, hero.y, 12.0)
     end)
   end
 
@@ -1417,7 +1469,9 @@ defmodule LastKeep.Game.Sim do
       hypot(monster.x - projectile.x, monster.y - projectile.y) <= projectile.aoe + monster.r
     end)
     |> Enum.reduce(state, fn monster, state ->
-      hurt_monster(state, monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
+      state
+      |> hurt_monster(monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
+      |> knockback_monster(monster.id, projectile.x, projectile.y, 16.0)
     end)
     |> event(%{type: "boom", x: projectile.x, y: projectile.y})
   end
@@ -1660,7 +1714,16 @@ defmodule LastKeep.Game.Sim do
 
   defp chase(state, monster, tx, ty) do
     monster = dash_elite(monster, tx, ty)
-    {dx, dy} = norm(tx - monster.x, ty - monster.y)
+    check_terrain = not Rules.flies_over_walls?(monster.kind)
+
+    {dx, dy, stx, sty} =
+      if check_terrain and tx == 0.0 and ty == 0.0 and hypot(monster.x, monster.y) > 420.0 do
+        flow_heading(state.world.seed, monster.x, monster.y, tx, ty)
+      else
+        {ux, uy} = norm(tx - monster.x, ty - monster.y)
+        {ux, uy, tx, ty}
+      end
+
     speed = monster.speed * slow_mult(monster) * elite_speed(monster)
     step = speed * 0.05
     nx = monster.x + dx * step
@@ -1671,15 +1734,16 @@ defmodule LastKeep.Game.Sim do
       keep_pad: -6.0,
       from: %{x: monster.x, y: monster.y},
       pass_walls: Rules.flies_over_walls?(monster.kind),
-      check_terrain: not Rules.flies_over_walls?(monster.kind)
+      pass_pois: true,
+      check_terrain: check_terrain
     }
 
     cond do
       not body_blocked?(state, nx, ny, monster.r, opts) ->
-        put_entity(state, Map.put(%{monster | x: nx, y: ny}, :skirt_dir, nil))
+        put_entity(state, %{monster | x: nx, y: ny})
 
-      opts.check_terrain and not World.open?(state.world.seed, nx, ny) ->
-        skirt_terrain(state, monster, dx, dy, step, opts)
+      check_terrain and not World.open?(state.world.seed, nx, ny) ->
+        follow_flow(state, monster, step, opts)
 
       not body_blocked?(state, nx, monster.y, monster.r, opts) and abs(nx - monster.x) > 0.2 ->
         put_entity(state, %{monster | x: nx})
@@ -1688,76 +1752,62 @@ defmodule LastKeep.Game.Sim do
         put_entity(state, %{monster | y: ny})
 
       true ->
-        case sidestep(state, monster, tx, ty, dx, dy, step, opts) do
-          {:ok, sx, sy} -> put_entity(state, %{monster | x: sx, y: sy})
-          :blocked -> chew_wall(state, monster)
+        case sidestep(state, monster, stx, sty, dx, dy, step, opts) do
+          {:ok, sx, sy} ->
+            put_entity(state, %{monster | x: sx, y: sy})
+
+          :blocked ->
+            squeeze_or_chew(state, monster, dx, dy, step, opts)
         end
     end
   end
 
-  # When a river or cliff blocks the straight march toward the keep, hold one
-  # bank-follow direction toward the nearest open ford until the straight path
-  # clears, preventing oscillation on riverbanks.
-  defp skirt_terrain(state, monster, dx, dy, step, opts) do
-    px = -dy
-    py = dx
-    seed = state.world.seed
+  defp flow_heading(seed, x, y, tx, ty) do
+    case World.flow_dir(seed, x, y) do
+      {fx, fy} ->
+        {i, j} = World.cell_index(x, y)
+        goal_x = (i + trunc(fx)) * 36.0
+        goal_y = (j + trunc(fy)) * 36.0
+        {ux, uy} = norm(goal_x - x, goal_y - y)
+        {ux, uy, goal_x, goal_y}
 
-    dir =
-      Map.get(monster, :skirt_dir) ||
-        Enum.find_value(1..16, fn cells ->
-          look = cells * 36.0
+      nil ->
+        {ux, uy} = norm(tx - x, ty - y)
+        {ux, uy, tx, ty}
+    end
+  end
 
-          pos_open =
-            World.open?(
-              seed,
-              monster.x + px * look + dx * 72.0,
-              monster.y + py * look + dy * 72.0
-            )
-
-          neg_open =
-            World.open?(
-              seed,
-              monster.x - px * look + dx * 72.0,
-              monster.y - py * look + dy * 72.0
-            )
-
-          cond do
-            pos_open -> 1.0
-            neg_open -> -1.0
-            true -> nil
-          end
-        end) || if(rem(monster.id, 2) == 0, do: 1.0, else: -1.0)
-
-    nx = monster.x + px * dir * step
-    ny = monster.y + py * dir * step
+  defp follow_flow(state, monster, step, opts) do
+    {fx, fy, _gx, _gy} = flow_heading(state.world.seed, monster.x, monster.y, 0.0, 0.0)
+    nx = monster.x + fx * step
+    ny = monster.y + fy * step
 
     cond do
       not body_blocked?(state, nx, ny, monster.r, opts) ->
-        put_entity(state, Map.put(%{monster | x: nx, y: ny}, :skirt_dir, dir))
+        put_entity(state, %{monster | x: nx, y: ny})
 
-      not body_blocked?(
-        state,
-        monster.x - px * dir * step,
-        monster.y - py * dir * step,
-        monster.r,
-        opts
-      ) ->
-        put_entity(
-          state,
-          Map.put(
-            %{
-              monster
-              | x: monster.x - px * dir * step,
-                y: monster.y - py * dir * step
-            },
-            :skirt_dir,
-            -dir
-          )
-        )
+      not body_blocked?(state, nx, monster.y, monster.r, opts) and abs(nx - monster.x) > 0.2 ->
+        put_entity(state, %{monster | x: nx})
+
+      not body_blocked?(state, monster.x, ny, monster.r, opts) and abs(ny - monster.y) > 0.2 ->
+        put_entity(state, %{monster | y: ny})
 
       true ->
-        state
+        squeeze_or_chew(state, monster, fx, fy, step, opts)
+    end
+  end
+
+  # When two monsters deadlock in a narrow ford or corridor, allow squeezing
+  # past another monster at half speed without bypassing walls, heroes, or terrain.
+  defp squeeze_or_chew(state, monster, dx, dy, step, opts) do
+    sq_x = monster.x + dx * step * 0.5
+    sq_y = monster.y + dy * step * 0.5
+    sq_opts = Map.put(opts, :pass_monsters, true)
+
+    if not body_blocked?(state, sq_x, sq_y, monster.r, sq_opts) do
+      put_entity(state, %{monster | x: sq_x, y: sq_y})
+    else
+      chew_wall(state, monster)
     end
   end
 
@@ -2331,6 +2381,7 @@ defmodule LastKeep.Game.Sim do
     pass_heroes = Map.get(opts, :pass_heroes, false)
     pass_monsters = Map.get(opts, :pass_monsters, false)
     pass_walls = Map.get(opts, :pass_walls, false)
+    pass_pois = Map.get(opts, :pass_pois, false)
     check_terrain = Map.get(opts, :check_terrain, false)
     keep_pad = Map.get(opts, :keep_pad, 0.0)
     from = Map.get(opts, :from)
@@ -2345,9 +2396,10 @@ defmodule LastKeep.Game.Sim do
         not (pass_walls and building.kind in [:wall, :stone_wall]) and
           shape_hit?(building, x, y, radius, from)
       end) or
-      Enum.any?(ground_pois(state), fn poi ->
-        shape_hit?(poi, x, y, radius, from)
-      end) or
+      (not pass_pois and
+         Enum.any?(ground_pois(state), fn poi ->
+           shape_hit?(poi, x, y, radius, from)
+         end)) or
       (not pass_heroes and
          Enum.any?(heroes(state), fn hero ->
            hero.alive and hero.id != ignore and
@@ -2427,6 +2479,70 @@ defmodule LastKeep.Game.Sim do
         |> Map.update!(:town, &(&1 + 1))
         |> event(%{type: "raise", x: 0.0, y: 0.0, amount: rank + 1})
         |> stake()
+    end
+  end
+
+  defp try_fortify(state, hero) do
+    cost = Rules.fortify_cost()
+
+    cond do
+      state.town < Rules.town_rank_cap() ->
+        refuse(state, hero.x, hero.y, "Raise the keep to rank 4 first")
+
+      state.keep.max_hp >= Rules.fortify_cap() ->
+        refuse(state, hero.x, hero.y, "The keep is fully fortified")
+
+      not near_keep?(state, hero.x, hero.y) ->
+        refuse(state, hero.x, hero.y, "Walk to the keep")
+
+      not afford?(state, cost) ->
+        reason =
+          if state.resources.wood < cost.wood, do: "Not enough wood", else: "Not enough gold"
+
+        refuse(state, hero.x, hero.y, reason)
+
+      true ->
+        keep = state.keep
+        next_max = min(keep.max_hp + Rules.fortify_hp(), Rules.fortify_cap())
+        next_hp = min(keep.hp + Rules.fortify_heal(), next_max)
+
+        state
+        |> pay(cost)
+        |> Map.put(:keep, %{keep | max_hp: next_max, hp: next_hp})
+        |> event(%{type: "fortify", x: 0.0, y: 0.0, amount: Rules.fortify_hp()})
+    end
+  end
+
+  defp knockback_monster(state, id, fx, fy, dist) do
+    case state.entities[id] do
+      %{type: :monster} = monster ->
+        {ux, uy} = norm(monster.x - fx, monster.y - fy)
+
+        if ux == 0.0 and uy == 0.0 do
+          state
+        else
+          # Bosses and trolls resist half the push
+          push = if monster.kind in [:boss, :troll], do: dist * 0.4, else: dist
+          nx = monster.x + ux * push
+          ny = monster.y + uy * push
+
+          opts = %{
+            ignore: monster.id,
+            keep_pad: -6.0,
+            from: %{x: monster.x, y: monster.y},
+            pass_walls: Rules.flies_over_walls?(monster.kind),
+            check_terrain: not Rules.flies_over_walls?(monster.kind)
+          }
+
+          if not body_blocked?(state, nx, ny, monster.r, opts) do
+            put_entity(state, %{monster | x: nx, y: ny})
+          else
+            state
+          end
+        end
+
+      _ ->
+        state
     end
   end
 
@@ -2594,7 +2710,8 @@ defmodule LastKeep.Game.Sim do
   defp drop(state, id), do: %{state | entities: Map.delete(state.entities, id)}
 
   defp event(state, ev) do
-    %{state | events: Enum.take([ev | state.events], 24)}
+    events = Enum.take([ev | state.events], 24)
+    %{state | events: events, unsent: min(state.unsent + 1, length(events))}
   end
 
   defp heroes(state), do: for({_id, %{type: :hero} = hero} <- state.entities, do: hero)

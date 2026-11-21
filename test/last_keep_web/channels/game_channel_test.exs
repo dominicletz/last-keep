@@ -121,6 +121,16 @@ defmodule LastKeepWeb.GameChannelTest do
     after_snap = Room.snapshot(code)
     refute after_snap.hold
     assert after_snap.tick == snap.tick
+
+    ref = push(socket, "ping", %{"x" => 320, "y" => -120})
+    assert_reply ref, :ok
+    ping_snap = Room.snapshot(code)
+    assert Enum.any?(ping_snap.events, &(&1.type == "ping" and &1.x == 320.0))
+    stepped = Room.step(code)
+    assert Enum.any?(stepped.events, &(&1.type == "ping" and &1.x == 320.0))
+
+    ref = push(socket, "fortify", %{})
+    assert_reply ref, :ok
   end
 
   test "an unknown token cannot take a hero" do

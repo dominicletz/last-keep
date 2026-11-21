@@ -41,6 +41,10 @@ defmodule LastKeep.Game.Room do
 
   def start(code, id), do: GenServer.cast(via(code), {:start, id})
 
+  def ping(code, id, x, y), do: GenServer.cast(via(code), {:ping, id, x, y})
+
+  def fortify(code, id), do: GenServer.cast(via(code), {:fortify, id})
+
   def restart(code), do: GenServer.cast(via(code), :restart)
 
   def step(code), do: GenServer.call(via(code), :step)
@@ -138,6 +142,14 @@ defmodule LastKeep.Game.Room do
 
   def handle_cast({:start, id}, state) do
     {:noreply, %{state | sim: Sim.release(state.sim, id)}}
+  end
+
+  def handle_cast({:ping, id, x, y}, state) do
+    {:noreply, %{state | sim: Sim.ping(state.sim, id, x, y)}}
+  end
+
+  def handle_cast({:fortify, id}, state) do
+    {:noreply, %{state | sim: Sim.fortify(state.sim, id)}}
   end
 
   def handle_cast(:restart, %{sim: %{phase: :over}} = state) do

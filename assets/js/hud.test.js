@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, meteorLocked, nextLine, parkCall, parkRect, partyLine, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, wallUsesStone, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, fortifyLabel, fortifyReady, hintBeacon, hintBeacons, ignoreFocusClick, meteorLocked, nextLine, parkCall, parkRect, partyLine, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, wallUsesStone, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -100,6 +100,10 @@ test("raising the keep names the wood and gold it costs", () => {
   assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }, { x: 120, y: 0 }), false)
   assert.equal(raiseReady({ wood: 24, gold: 8 }, { wood: 48, gold: 8 }, { x: -122, y: -252 }), false)
   assert.equal(raiseReady(null, { wood: 48, gold: 8 }, near), false)
+  assert.equal(fortifyLabel({ wood: 36, gold: 16, hp: 120 }), "Fortify keep (+120 HP)  36 wood 16 gold")
+  assert.equal(fortifyLabel(null), "The keep is as high as it goes")
+  assert.equal(fortifyReady({ wood: 36, gold: 16, hp: 120 }, { wood: 36, gold: 16 }, near, 4), true)
+  assert.equal(fortifyReady({ wood: 36, gold: 16, hp: 120 }, { wood: 20, gold: 16 }, near, 4), false)
 })
 
 test("a disabled raise away from the keep says to walk there", () => {
@@ -112,6 +116,10 @@ test("a disabled raise away from the keep says to walk there", () => {
   assert.equal(raiseHint({ x: 80, y: 0 }, offer, 0, { wood: 10, gold: 10 }), "Need 24 wood")
   assert.equal(raiseHint({ x: 80, y: 0 }, offer, 0, { wood: 24, gold: 8 }), "")
   assert.equal(raiseHint({ x: -122, y: -252 }, null), "")
+  const fortify = { wood: 36, gold: 16, hp: 120 }
+  assert.equal(raiseHint({ x: 400, y: 0 }, fortify, 4), "Walk to the keep")
+  assert.equal(raiseHint({ x: 80, y: 0 }, fortify, 4, { wood: 10, gold: 16 }), "Need 36 wood")
+  assert.equal(raiseHint({ x: 80, y: 0 }, fortify, 4, { wood: 36, gold: 16 }), "")
 })
 
 test("an edge call beside the roster stops short of the names", () => {

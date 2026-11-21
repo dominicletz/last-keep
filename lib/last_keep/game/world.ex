@@ -33,13 +33,43 @@ defmodule LastKeep.Game.World do
 
     case Process.get(key) do
       nil ->
-        world = build(seed)
+        {world, flow} = build(seed)
         Process.put(key, world)
+        Process.put(flow_key(seed), flow)
         Process.put(built_key(seed), built(seed) + 1)
         world
 
       world ->
         world
+    end
+  end
+
+  # Shortest-path BFS direction toward the keep around rivers and cliffs.
+  def flow_dir(seed, x, y) when is_integer(seed) and is_number(x) and is_number(y) do
+    generate(seed)
+
+    case Process.get(flow_key(seed)) do
+      nil ->
+        nil
+
+      flow ->
+        {i, j} = cell_index(x, y)
+
+        if abs(i) > @span or abs(j) > @span do
+          nil
+        else
+          case :binary.at(flow, slot(i, j) - 1) do
+            1 -> {1.0, 0.0}
+            2 -> {-1.0, 0.0}
+            3 -> {0.0, 1.0}
+            4 -> {0.0, -1.0}
+            5 -> {1.0, 1.0}
+            6 -> {-1.0, 1.0}
+            7 -> {1.0, -1.0}
+            8 -> {-1.0, -1.0}
+            _ -> nil
+          end
+        end
     end
   end
 
@@ -59,17 +89,20 @@ defmodule LastKeep.Game.World do
   end
 
   defp built_key(seed), do: {__MODULE__, :built, seed}
+  defp flow_key(seed), do: {__MODULE__, :flow, seed}
 
   defp build(seed) do
-    {attempt, pois} = layout(seed)
+    {attempt, pois, flow} = layout(seed)
 
-    %{
+    world = %{
       seed: seed,
       attempt: attempt,
       radius: @radius,
       chunk_size: @chunk,
       pois: pois
     }
+
+    {world, flow}
   end
 
   def chunk(seed, cx, cy) when is_integer(seed) do
@@ -136,8 +169,10 @@ defmodule LastKeep.Game.World do
 
   defp layout(seed) do
     Enum.find_value(0..7, fn attempt ->
-      case place(seed, attempt, reachable(seed, attempt)) do
-        {:ok, pois} -> {attempt, pois}
+      {reached, flow} = reachable(seed, attempt)
+
+      case place(seed, attempt, reached) do
+        {:ok, pois} -> {attempt, pois, flow}
         :short -> nil
       end
     end) || raise ArgumentError, "seed #{seed} has no reachable world"
@@ -236,35 +271,72 @@ defmodule LastKeep.Game.World do
     end
   end
 
-  # Flood fill from the keep over the open cells. Same set as a MapSet walk
-  # over the full cell map, without building that map.
+  # Shortest-path 8-way BFS from the keep over the open cells. Diagonal steps
+  # require both adjacent cardinal cells to be open, so the reachable set is
+  # identical to 4-connected fill and monsters never clip river/cliff corners.
+  # Flow codes point toward {0, 0}:
+  #   0=keep/blocked, 1=+i, 2=-i, 3=+j, 4=-j, 5=+i+j, 6=-i+j, 7=+i-j, 8=-i-j.
   defp reachable(seed, attempt) do
     open = walkable(seed, attempt)
-    seen = :atomics.new(@side * @side, signed: false)
-    :atomics.put(seen, slot(0, 0), 1)
-    fill([{0, 0}], open, seen, [{0, 0}]) |> MapSet.new()
+    total = @side * @side
+    seen = :atomics.new(total, signed: false)
+    :atomics.put(seen, slot(0, 0), 9)
+    acc = bfs(:queue.from_list([{0, 0}]), open, seen, [{0, 0}])
+
+    flow =
+      for idx <- 1..total, into: <<>> do
+        val = :atomics.get(seen, idx)
+        if val in 1..8, do: <<val>>, else: <<0>>
+      end
+
+    {MapSet.new(acc), flow}
   end
 
-  defp fill([], _open, _seen, acc), do: acc
+  defp bfs(queue, open, seen, acc) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        acc
 
-  defp fill([{i, j} | rest], open, seen, acc) do
-    {stack, acc} = visit(i + 1, j, open, seen, {rest, acc})
-    {stack, acc} = visit(i - 1, j, open, seen, {stack, acc})
-    {stack, acc} = visit(i, j + 1, open, seen, {stack, acc})
-    {stack, acc} = visit(i, j - 1, open, seen, {stack, acc})
-    fill(stack, open, seen, acc)
+      {{:value, {i, j}}, queue} ->
+        # Parent direction code stored in child points BACK to {i, j}.
+        {queue, acc} = visit(i + 1, j, 2, open, seen, {queue, acc})
+        {queue, acc} = visit(i - 1, j, 1, open, seen, {queue, acc})
+        {queue, acc} = visit(i, j + 1, 4, open, seen, {queue, acc})
+        {queue, acc} = visit(i, j - 1, 3, open, seen, {queue, acc})
+        {queue, acc} = visit_diag(i, j, 1, 1, 8, open, seen, {queue, acc})
+        {queue, acc} = visit_diag(i, j, -1, 1, 7, open, seen, {queue, acc})
+        {queue, acc} = visit_diag(i, j, 1, -1, 6, open, seen, {queue, acc})
+        {queue, acc} = visit_diag(i, j, -1, -1, 5, open, seen, {queue, acc})
+        bfs(queue, open, seen, acc)
+    end
   end
 
-  defp visit(i, j, open, seen, {stack, acc}) do
+  defp visit_diag(i, j, di, dj, dir_to_parent, open, seen, state) do
+    ni = i + di
+    nj = j + dj
+
+    if abs(ni) > @span or abs(nj) > @span do
+      state
+    else
+      if :binary.at(open, slot(ni, j) - 1) == 1 and :binary.at(open, slot(i, nj) - 1) == 1 do
+        visit(ni, nj, dir_to_parent, open, seen, state)
+      else
+        state
+      end
+    end
+  end
+
+  defp visit(i, j, dir_to_parent, open, seen, {queue, acc}) do
     if abs(i) > @span or abs(j) > @span do
-      {stack, acc}
+      {queue, acc}
     else
       at = slot(i, j)
 
-      if :binary.at(open, at - 1) == 1 and :atomics.compare_exchange(seen, at, 0, 1) == :ok do
-        {[{i, j} | stack], [{i, j} | acc]}
+      if :binary.at(open, at - 1) == 1 and
+           :atomics.compare_exchange(seen, at, 0, dir_to_parent) == :ok do
+        {:queue.in({i, j}, queue), [{i, j} | acc]}
       else
-        {stack, acc}
+        {queue, acc}
       end
     end
   end
