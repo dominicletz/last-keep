@@ -111,3 +111,31 @@ test("far pines draw as pine-sheet quads: two instanced meshes, two triangles a 
   }
   assert.ok(total > 0 && total <= 180)
 })
+
+test("undiscovered mist darkens mountain rock away from the day sky clear color", async () => {
+  const { unseenMistHex } = await import("./horizon.js")
+  const clear = [0x4e, 0x46, 0x51]
+  const hex = unseenMistHex("day")
+  const dark = [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255]
+  const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+  assert.ok(luma(dark) < luma(clear) - 25, "unseen day mist should darken below sky luma")
+
+  const root = new URL("../..", import.meta.url)
+  const mountain = readRgbaPng(fs.readFileSync(new URL("priv/static/images/hd2d/ground-mountain.png", root)))
+  let oldNear = 0
+  let newNear = 0
+  let total = 0
+  for (let i = 0; i < mountain.rgba.length; i += 4 * 16) {
+    total += 1
+    const r = mountain.rgba[i]
+    const g = mountain.rgba[i + 1]
+    const b = mountain.rgba[i + 2]
+    const dist = (a, c) => Math.hypot(a[0] - c[0], a[1] - c[1], a[2] - c[2])
+    const oldMix = [r * 0.72 + clear[0] * 0.28, g * 0.72 + clear[1] * 0.28, b * 0.72 + clear[2] * 0.28]
+    const newMix = [r * 0.72 + dark[0] * 0.28, g * 0.72 + dark[1] * 0.28, b * 0.72 + dark[2] * 0.28]
+    if (dist(oldMix, clear) <= 18) oldNear += 1
+    if (dist(newMix, clear) <= 18) newNear += 1
+  }
+  assert.ok(oldNear / total > 0.3, `expected sky-tinted mist to collapse mountain rock (${oldNear}/${total})`)
+  assert.ok(newNear / total < 0.08, `darkened unseen mist should keep mountain rock clear of sky (${newNear}/${total})`)
+})
