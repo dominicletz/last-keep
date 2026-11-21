@@ -1696,6 +1696,157 @@ defmodule LastKeep.Game.SimTest do
     assert out_of_reach.resources.food == 10
   end
 
+  test "a standing party does not clear wave 4" do
+    state = Sim.new("WAVE04", seed: 5, build_ticks: 1, hold: false)
+
+    state =
+      Enum.reduce(
+        [
+          {"ada", :warrior},
+          {"lux", :mage},
+          {"pip", :scout},
+          {"nia", :farmer},
+          {"bram", :engineer}
+        ],
+        state,
+        fn {id, hero}, acc ->
+          {:ok, acc} = Sim.join(acc, player(id, hero))
+          acc
+        end
+      )
+
+    # Start wave 4 directly with the party standing idle on the join ring
+    state = %{state | wave: 3, hints: [], phase: {:build, 1}, hold: false}
+    state = Sim.tick(state)
+    assert state.wave == 4
+    assert match?({:wave, _}, state.phase)
+
+    final =
+      Enum.reduce_while(1..2_500, state, fn _, acc ->
+        acc = Sim.tick(acc)
+
+        if acc.phase == :over or match?({:build, _}, acc.phase) do
+          {:halt, acc}
+        else
+          {:cont, acc}
+        end
+      end)
+
+    assert final.phase == :over
+    assert final.keep.hp == 0
+  end
+
+  test "a troll breaks timber walls 2.5x faster than stone walls" do
+    wood_state =
+      Sim.new("WALL01", seed: 1, hold: false)
+      |> Sim.spawn_building(%{kind: :wall, x: 144, y: 0})
+      |> Sim.spawn_monster(%{kind: :troll, x: 180, y: 0, wave: 3})
+      |> Sim.tick()
+
+    stone_state =
+      Sim.new("WALL02", seed: 1, hold: false)
+      |> Sim.spawn_building(%{kind: :stone_wall, x: 144, y: 0})
+      |> Sim.spawn_monster(%{kind: :troll, x: 180, y: 0, wave: 3})
+      |> Sim.tick()
+
+    [wood_wall] = of_kind(wood_state, :wall)
+    [stone_wall] = of_kind(stone_state, :stone_wall)
+    wood_loss = wood_wall.max_hp - wood_wall.hp
+    stone_loss = stone_wall.max_hp - stone_wall.hp
+
+    assert wood_loss > 0
+    assert stone_loss > 0
+    assert wood_loss >= round(stone_loss * 2.2)
+  end
+
+  test "a bat flies over palisades and stone walls" do
+    state =
+      Sim.new("BAT001", seed: 1, hold: false)
+      |> Sim.spawn_building(%{kind: :stone_wall, x: 144, y: 0})
+      |> Sim.spawn_building(%{kind: :stone_wall, x: 144, y: 36})
+      |> Sim.spawn_building(%{kind: :stone_wall, x: 144, y: -36})
+      |> Sim.spawn_monster(%{kind: :bat, x: 190, y: 0, wave: 3})
+
+    state = Enum.reduce(1..30, state, fn _, acc -> Sim.tick(acc) end)
+    [bat] = Sim.monsters(state)
+    assert bat.x < 120.0
+    assert Enum.all?(of_kind(state, :stone_wall), &(&1.hp == &1.max_hp))
+  end
+
+  test "breaking a portal after wave 1 spawns a retaliation pack" do
+    state = Sim.new("RETAL1", seed: 5, build_ticks: 400, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    portal = hd(state.world.portals)
+    ada = hero(state, "ada")
+
+    weak_portals =
+      Enum.map(state.world.portals, fn row ->
+        if row.id == portal.id, do: %{row | hp: 10}, else: row
+      end)
+
+    state =
+      %{state | wave: 2, world: %{state.world | portals: weak_portals}}
+      |> put_hero(%{ada | x: portal.x - 24.0, y: portal.y})
+      |> push("ada", %{"attack" => true, "ax" => portal.x, "ay" => portal.y})
+      |> Sim.tick()
+
+    assert length(Sim.monsters(state)) == 3
+    assert Enum.any?(state.events, &(&1.type == "retaliate"))
+  end
+
+  test "daytime frontier sprint speeds up heroes past radius 300" do
+    base = Sim.new("RUN001", seed: 1, build_ticks: 400, hold: false)
+    {:ok, base} = Sim.join(base, player("ada", :warrior))
+    ada = hero(base, "ada")
+
+    inner =
+      base
+      |> put_hero(%{ada | x: 150.0, y: 0.0})
+      |> push("ada", %{"mx" => 1, "my" => 0})
+      |> Sim.tick()
+
+    outer =
+      base
+      |> put_hero(%{ada | x: 400.0, y: 0.0})
+      |> push("ada", %{"mx" => 1, "my" => 0})
+      |> Sim.tick()
+
+    inner_step = hero(inner, "ada").x - 150.0
+    outer_step = hero(outer, "ada").x - 400.0
+    assert_in_delta outer_step / inner_step, Rules.frontier_sprint(), 0.05
+  end
+
+  test "the host can shorten an active build timer to dusk" do
+    state = Sim.new("HORN01", seed: 1, build_ticks: 700, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    {:ok, state} = Sim.join(state, player("bo", :mage))
+
+    assert {:build, 700} = Sim.release(state, "bo").phase
+    assert {:build, 160} = Sim.release(state, "ada").phase
+  end
+
+  test "contact-based frenzy waits for perimeter contact before enraging" do
+    state = Sim.new("FRZY01", seed: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+
+    far =
+      %{state | wave: 2, phase: {:wave, 2}}
+      |> Sim.spawn_monster(%{kind: :goblin, x: 2400.0, y: 0.0, wave: 2})
+      |> Sim.tick()
+      |> Sim.tick()
+
+    assert {:wave, 0} = far.phase
+    assert far.enraged == false
+
+    near =
+      %{state | wave: 2, phase: {:wave, 2}}
+      |> Sim.spawn_monster(%{kind: :goblin, x: 400.0, y: 0.0, wave: 2})
+      |> Sim.tick()
+      |> Sim.tick()
+
+    assert near.enraged == true
+  end
+
   defp approach_and_raise(hero, wood, gold) do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", hero))

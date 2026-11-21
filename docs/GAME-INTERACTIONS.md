@@ -94,8 +94,8 @@ flowchart LR
   camp[Camp] -->|wake an ally| vagrant[Vagrant]
   shrine[Shrine] -->|one relic| relics
   hermit[Hermit] -->|reveal the next ring| scout
-  merchant[Merchant] -.->|sell food| food
-  merchant -.->|sell stone| stone
+  merchant[Merchant] -->|4 gold for 12 food| food
+  merchant -->|4 gold for 12 stone| stone
 ```
 
 ## Roles

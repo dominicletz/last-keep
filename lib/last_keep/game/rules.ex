@@ -155,6 +155,23 @@ defmodule LastKeep.Game.Rules do
   # on the next night, when the pack walks into the party.
   def meets?(wave) when is_integer(wave), do: wave >= 2
 
+  # From wave 4, bosses and skeletons halt outside the join-ring auto-bolt
+  # envelope (120 + 200 = 320) and siege the keep until heroes push out.
+  def siege_range(:boss, wave) when is_integer(wave) and wave >= 4, do: 290
+  def siege_range(:skeleton, wave) when is_integer(wave) and wave >= 4, do: 270
+  def siege_range(_kind, _wave), do: nil
+
+  # Trolls smash timber palisades 2.5x faster; stone walls resist their blows.
+  def wall_breaker_mult(:troll, :wall), do: 2.5
+  def wall_breaker_mult(_kind, _building), do: 1.0
+
+  # Winged bats fly over palisades and stone walls.
+  def flies_over_walls?(:bat), do: true
+  def flies_over_walls?(_kind), do: false
+
+  # Daytime frontier sprint outside radius 300 speeds up exploration runs.
+  def frontier_sprint, do: 1.35
+
   def bounty(:goblin), do: 1
   def bounty(:skeleton), do: 1
   def bounty(:wolf), do: 2

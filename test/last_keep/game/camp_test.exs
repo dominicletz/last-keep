@@ -35,7 +35,7 @@ defmodule LastKeep.Game.CampTest do
     assert state.resources.gold == 7
   end
 
-  test "every seated role leaves the camp asleep" do
+  test "every seated role still wakes a camp as an ally" do
     seats =
       Rules.heroes() |> Enum.with_index() |> Enum.map(fn {hero, i} -> {"seat#{i}", hero} end)
 
@@ -46,9 +46,28 @@ defmodule LastKeep.Game.CampTest do
     state = purse(state, 8)
     state = Sim.tick(state)
 
-    assert state.resources.gold == 8
-    assert vagrants(state) == []
+    assert state.resources.gold == 0
+    assert length(vagrants(state)) == 1
+    assert hd(vagrants(state)).hero in Rules.heroes()
     assert map_size(state.players) == 5
+  end
+
+  test "a monster can target and down a camp ally" do
+    state = stand("ada", :warrior)
+    camp = hd(state.world.camps)
+    state = state |> move_player("ada", camp.x, camp.y) |> purse(8) |> Sim.tick()
+    [ally] = vagrants(state)
+
+    # Park hero far away so the monster aggros the vagrant directly
+    state =
+      state
+      |> move_player("ada", -600.0, 0.0)
+      |> move(ally.id, 300.0, 0.0)
+      |> Sim.spawn_monster(%{kind: :troll, x: 316.0, y: 0.0, hp: 500, damage: 200, wave: 3})
+      |> Sim.tick()
+
+    assert vagrants(state) == []
+    assert Enum.any?(state.events, &(&1.type == "death" and &1.kind == :vagrant))
   end
 
   test "the snapshot sends the ally without a facing" do

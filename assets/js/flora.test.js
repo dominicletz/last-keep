@@ -109,7 +109,7 @@ test("the yard draws ruin stones from their sheet and the map table is a sprite 
   assert.doesNotMatch(src, /portal-sheet/)
   assert.doesNotMatch(src, /rabbit/)
   assert.doesNotMatch(src, /hermit/)
-  assert.doesNotMatch(src, /sync\("merchant"/)
+  assert.match(src, /sync\("merchant"/)
   assert.doesNotMatch(src, /staticMats\.hell_door/)
   assert.match(src, /const card = new THREE\.Mesh\(geometry, material\)/)
   assert.ok(src.indexOf("const cardFacing = new THREE.Vector3()") < src.indexOf("return viewApi"))

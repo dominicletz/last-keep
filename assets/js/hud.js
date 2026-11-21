@@ -242,7 +242,7 @@ export function meteorLocked(me, snap) {
 
 export function partyLine(room) {
   if (!room || !room.code) return ""
-  const wave = Math.max(1, Number(room.wave) || 1)
+  const wave = Math.max(1, Number(room.shown_wave ?? room.wave) || 1)
   const members = (room.party || []).map((member) => {
     const role = member.hero ? member.hero.charAt(0).toUpperCase() + member.hero.slice(1) : ""
     return role ? `${member.name} (${role})` : member.name
