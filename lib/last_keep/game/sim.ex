@@ -128,7 +128,8 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
-  def tick(%State{phase: :over} = state), do: %{state | tick: state.tick + 1, events: []}
+  def tick(%State{phase: :over} = state),
+    do: %{state | tick: state.tick + 1, events: [], unsent: 0}
 
   def tick(%State{} = state) do
     state
@@ -152,6 +153,7 @@ defmodule LastKeep.Game.Sim do
     |> economy()
     |> advance_phase()
     |> respawns()
+    |> seal_events()
   end
 
   def spawn_monster(%State{} = state, attrs) do
@@ -337,7 +339,15 @@ defmodule LastKeep.Game.Sim do
     Enum.count(state.players, fn {_id, player} -> player.connected end)
   end
 
-  defp bump(state), do: %{state | tick: state.tick + 1, events: []}
+  # The broadcast is the snapshot this tick returns. A ping or a fortify
+  # records its event before that, so the clear keeps those and drops events
+  # the previous snapshot already carried.
+  defp bump(%{events: events, unsent: unsent} = state) do
+    carried = Enum.take(events, unsent)
+    %{state | tick: state.tick + 1, events: carried, unsent: length(carried)}
+  end
+
+  defp seal_events(state), do: %{state | unsent: 0}
 
   defp reconnect(state, id, name, connected) do
     player = state.players[id]
@@ -2702,7 +2712,8 @@ defmodule LastKeep.Game.Sim do
   defp drop(state, id), do: %{state | entities: Map.delete(state.entities, id)}
 
   defp event(state, ev) do
-    %{state | events: Enum.take([ev | state.events], 24)}
+    events = Enum.take([ev | state.events], 24)
+    %{state | events: events, unsent: min(state.unsent + 1, length(events))}
   end
 
   defp heroes(state), do: for({_id, %{type: :hero} = hero} <- state.entities, do: hero)

@@ -1854,6 +1854,9 @@ defmodule LastKeep.Game.SimTest do
 
     pinged = Sim.ping(state, "ada", 420.0, -180.0)
     assert Enum.any?(pinged.events, &(&1.type == "ping" and &1.name == "ada" and &1.x == 420.0))
+    kept = Sim.tick(pinged)
+    assert Enum.any?(kept.events, &(&1.type == "ping" and &1.name == "ada" and &1.x == 420.0))
+    refute Enum.any?(Sim.tick(kept).events, &(&1.type == "ping"))
 
     # Melee strike knocks a surviving monster away from the hero
     hit_state =
@@ -1895,6 +1898,10 @@ defmodule LastKeep.Game.SimTest do
     assert fortified.resources.wood == 14
     assert fortified.resources.gold == 8
     assert Enum.any?(fortified.events, &(&1.type == "fortify" and &1.amount == 120))
+    kept = Sim.tick(fortified)
+    assert kept.keep.max_hp == 1020
+    assert Enum.any?(kept.events, &(&1.type == "fortify" and &1.amount == 120))
+    refute Enum.any?(Sim.tick(kept).events, &(&1.type == "fortify"))
   end
 
   defp approach_and_raise(hero, wood, gold) do

@@ -566,9 +566,11 @@ function start(code, seat, ui) {
       pad.place = true
       input.place = true
       fingers.set(event.pointerId, "place")
-    } else if (touchAction?.id === "raise" && touchAction.enabled === false) {
+    } else if ((touchAction?.id === "raise" || touchAction?.id === "fortify") && touchAction.enabled === false) {
       cueRaise()
       return
+    } else if (touchAction?.id === "fortify") {
+      channel.push("fortify", {})
     } else if (touchAction?.id === "raise") {
       pad.raise = true
       input.raise = true
@@ -679,7 +681,7 @@ function start(code, seat, ui) {
   const raiseHit = ui.hud.querySelector("[data-raise-hit]")
   function cueRaise() {
     const meNow = (latest?.players || []).find((player) => player.id === selfId)
-    const offer = latest?.upgrade
+    const offer = latest?.upgrade || latest?.fortify
     const text = raiseHint(meNow, offer, latest?.town, latest?.resources)
     if (!text) return
     raiseCue = showReason(raiseCue, text, performance.now(), 2200, true)
@@ -907,7 +909,8 @@ function start(code, seat, ui) {
     const armedKind = armed === "wall" && stoneWall ? "stone_wall" : armed
     const cost = armed && me?.costs ? me.costs[armedKind] || me.costs[armed] : null
     const now = performance.now()
-    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, snap.upgrade, snap.town, snap.resources) : ""
+    const raiseOffer = snap.upgrade || snap.fortify
+    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, raiseOffer, snap.town, snap.resources) : ""
     const preview = armed
       ? placementReason(
           { ...me, cost, town: snap.town },
@@ -1011,6 +1014,7 @@ function start(code, seat, ui) {
       keepR: snap.keep?.r,
       resources: snap.resources,
       upgrade: snap.upgrade,
+      fortify: snap.fortify,
       armed: build,
       cost: effectiveBuild && me?.costs ? me.costs[effectiveBuild] || me.costs[build] : null,
       buildings: snap.buildings
@@ -1023,7 +1027,14 @@ function start(code, seat, ui) {
     }
     button.hidden = false
     button.setAttribute("aria-disabled", touchAction.enabled === false ? "true" : "false")
-    button.textContent = touchAction.id === "place" ? PLACE_WORD[touchAction.kind] || "Build" : touchAction.id === "raise" ? "Raise" : "Feed"
+    button.textContent =
+      touchAction.id === "place"
+        ? PLACE_WORD[touchAction.kind] || "Build"
+        : touchAction.id === "raise"
+          ? "Raise"
+          : touchAction.id === "fortify"
+            ? "Fortify"
+            : "Feed"
   }
 }
 

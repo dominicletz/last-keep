@@ -126,6 +126,8 @@ defmodule LastKeepWeb.GameChannelTest do
     assert_reply ref, :ok
     ping_snap = Room.snapshot(code)
     assert Enum.any?(ping_snap.events, &(&1.type == "ping" and &1.x == 320.0))
+    stepped = Room.step(code)
+    assert Enum.any?(stepped.events, &(&1.type == "ping" and &1.x == 320.0))
 
     ref = push(socket, "fortify", %{})
     assert_reply ref, :ok

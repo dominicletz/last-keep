@@ -1005,6 +1005,9 @@ export function createView(stage, picture) {
         }
       }
     }
+    // Ping rings sit outside meshes, so the signature never sees them scale.
+    // Count them before the loop: the frame that removes the last one still paints.
+    const ringsMoving = ringPulses.length > 0
     for (let i = ringPulses.length - 1; i >= 0; i -= 1) {
       const pulse = ringPulses[i]
       const age = now - pulse.at
@@ -1025,7 +1028,7 @@ export function createView(stage, picture) {
     }
     cullActors()
     const signature = testHooks ? null : frameSignature(camera, meshes.values())
-    const changed = dirty || bursts.length > 0 || signature !== lastSignature
+    const changed = dirty || bursts.length > 0 || ringsMoving || signature !== lastSignature
     if (paintDue(testHooks, now, lastRender, lastInput, changed, held)) {
       const started = performance.now()
       paintFrame()
