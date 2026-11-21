@@ -76,6 +76,33 @@ defmodule LastKeep.Game.WorldTest do
     assert World.open?(5, fx, fy)
   end
 
+  test "flow_dir guides every reachable portal back to the keep around rivers and cliffs" do
+    for seed <- [1, 3, 5, 9, 17] do
+      world = World.generate(seed)
+      assert World.flow_dir(seed, 0, 0) == nil
+      assert World.flow_dir(seed, 20_000, 20_000) == nil
+
+      for poi <- world.pois, poi.kind == :portal do
+        {x, y} =
+          Enum.reduce_while(1..500, {poi.x * 1.0, poi.y * 1.0}, fn _, {cx, cy} ->
+            case World.flow_dir(seed, cx, cy) do
+              {fx, fy} ->
+                nx = cx + fx * 36.0
+                ny = cy + fy * 36.0
+                assert World.open?(seed, nx, ny)
+                {:cont, {nx, ny}}
+
+              nil ->
+                {:halt, {cx, cy}}
+            end
+          end)
+
+        assert {round(x), round(y)} == {0, 0},
+               "seed #{seed} portal #{poi.id} flow stopped at (#{x}, #{y})"
+      end
+    end
+  end
+
   test "the keep disc stays clear" do
     world = World.generate(3)
     near = for {coord, cell} <- cells(world), hypot(coord) <= 400, do: cell

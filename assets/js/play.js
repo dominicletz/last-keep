@@ -364,9 +364,13 @@ function start(code, seat, ui) {
         const reach = self.hero === "mage" || self.hero === "scout" ? 160 : 48
         const gap = Math.hypot(nearest.x - self.x, nearest.y - self.y)
         if (gap > reach) {
-          // Due west has no slide on the keep face, so a chase sits there and the
-          // night walks into the keep. The tangent is the same step as steer.
-          for (const code of keysAround(self.x, self.y, nearest.x, nearest.y)) want.add(code)
+          // Due west has no slide on the keep face, and rivers/cliffs block
+          // direct chases outside the yard, so route through terrainWaypoint.
+          const wp =
+            latest && Number.isInteger(latest.seed)
+              ? terrainWaypoint(latest.seed, latest.attempt || 0, self.x, self.y, nearest.x, nearest.y)
+              : { x: nearest.x, y: nearest.y }
+          for (const code of keysAround(self.x, self.y, wp.x, wp.y)) want.add(code)
         }
       }
       const hero = self && self.hero
@@ -385,7 +389,11 @@ function start(code, seat, ui) {
       const self = game && game.self
       const want = new Set()
       if (self && Math.hypot(self.x, self.y) >= 24) {
-        for (const code of keysToward(-self.x, -self.y)) want.add(code)
+        const wp =
+          latest && Number.isInteger(latest.seed)
+            ? terrainWaypoint(latest.seed, latest.attempt || 0, self.x, self.y, 0, 0)
+            : { x: 0, y: 0 }
+        for (const code of keysAround(self.x, self.y, wp.x, wp.y)) want.add(code)
       }
       for (const code of ["KeyW", "KeyA", "KeyS", "KeyD"]) {
         if (want.has(code)) keys.add(code)

@@ -1714,7 +1714,16 @@ defmodule LastKeep.Game.Sim do
 
   defp chase(state, monster, tx, ty) do
     monster = dash_elite(monster, tx, ty)
-    {dx, dy} = norm(tx - monster.x, ty - monster.y)
+    check_terrain = not Rules.flies_over_walls?(monster.kind)
+
+    {dx, dy, stx, sty} =
+      if check_terrain and tx == 0.0 and ty == 0.0 and hypot(monster.x, monster.y) > 420.0 do
+        flow_heading(state.world.seed, monster.x, monster.y, tx, ty)
+      else
+        {ux, uy} = norm(tx - monster.x, ty - monster.y)
+        {ux, uy, tx, ty}
+      end
+
     speed = monster.speed * slow_mult(monster) * elite_speed(monster)
     step = speed * 0.05
     nx = monster.x + dx * step
@@ -1725,15 +1734,16 @@ defmodule LastKeep.Game.Sim do
       keep_pad: -6.0,
       from: %{x: monster.x, y: monster.y},
       pass_walls: Rules.flies_over_walls?(monster.kind),
-      check_terrain: not Rules.flies_over_walls?(monster.kind)
+      pass_pois: true,
+      check_terrain: check_terrain
     }
 
     cond do
       not body_blocked?(state, nx, ny, monster.r, opts) ->
-        put_entity(state, Map.put(%{monster | x: nx, y: ny}, :skirt_dir, nil))
+        put_entity(state, %{monster | x: nx, y: ny})
 
-      opts.check_terrain and not World.open?(state.world.seed, nx, ny) ->
-        skirt_terrain(state, monster, dx, dy, step, opts)
+      check_terrain and not World.open?(state.world.seed, nx, ny) ->
+        follow_flow(state, monster, step, opts)
 
       not body_blocked?(state, nx, monster.y, monster.r, opts) and abs(nx - monster.x) > 0.2 ->
         put_entity(state, %{monster | x: nx})
@@ -1742,76 +1752,62 @@ defmodule LastKeep.Game.Sim do
         put_entity(state, %{monster | y: ny})
 
       true ->
-        case sidestep(state, monster, tx, ty, dx, dy, step, opts) do
-          {:ok, sx, sy} -> put_entity(state, %{monster | x: sx, y: sy})
-          :blocked -> chew_wall(state, monster)
+        case sidestep(state, monster, stx, sty, dx, dy, step, opts) do
+          {:ok, sx, sy} ->
+            put_entity(state, %{monster | x: sx, y: sy})
+
+          :blocked ->
+            squeeze_or_chew(state, monster, dx, dy, step, opts)
         end
     end
   end
 
-  # When a river or cliff blocks the straight march toward the keep, hold one
-  # bank-follow direction toward the nearest open ford until the straight path
-  # clears, preventing oscillation on riverbanks.
-  defp skirt_terrain(state, monster, dx, dy, step, opts) do
-    px = -dy
-    py = dx
-    seed = state.world.seed
+  defp flow_heading(seed, x, y, tx, ty) do
+    case World.flow_dir(seed, x, y) do
+      {fx, fy} ->
+        {i, j} = World.cell_index(x, y)
+        goal_x = (i + trunc(fx)) * 36.0
+        goal_y = (j + trunc(fy)) * 36.0
+        {ux, uy} = norm(goal_x - x, goal_y - y)
+        {ux, uy, goal_x, goal_y}
 
-    dir =
-      Map.get(monster, :skirt_dir) ||
-        Enum.find_value(1..16, fn cells ->
-          look = cells * 36.0
+      nil ->
+        {ux, uy} = norm(tx - x, ty - y)
+        {ux, uy, tx, ty}
+    end
+  end
 
-          pos_open =
-            World.open?(
-              seed,
-              monster.x + px * look + dx * 72.0,
-              monster.y + py * look + dy * 72.0
-            )
-
-          neg_open =
-            World.open?(
-              seed,
-              monster.x - px * look + dx * 72.0,
-              monster.y - py * look + dy * 72.0
-            )
-
-          cond do
-            pos_open -> 1.0
-            neg_open -> -1.0
-            true -> nil
-          end
-        end) || if(rem(monster.id, 2) == 0, do: 1.0, else: -1.0)
-
-    nx = monster.x + px * dir * step
-    ny = monster.y + py * dir * step
+  defp follow_flow(state, monster, step, opts) do
+    {fx, fy, _gx, _gy} = flow_heading(state.world.seed, monster.x, monster.y, 0.0, 0.0)
+    nx = monster.x + fx * step
+    ny = monster.y + fy * step
 
     cond do
       not body_blocked?(state, nx, ny, monster.r, opts) ->
-        put_entity(state, Map.put(%{monster | x: nx, y: ny}, :skirt_dir, dir))
+        put_entity(state, %{monster | x: nx, y: ny})
 
-      not body_blocked?(
-        state,
-        monster.x - px * dir * step,
-        monster.y - py * dir * step,
-        monster.r,
-        opts
-      ) ->
-        put_entity(
-          state,
-          Map.put(
-            %{
-              monster
-              | x: monster.x - px * dir * step,
-                y: monster.y - py * dir * step
-            },
-            :skirt_dir,
-            -dir
-          )
-        )
+      not body_blocked?(state, nx, monster.y, monster.r, opts) and abs(nx - monster.x) > 0.2 ->
+        put_entity(state, %{monster | x: nx})
+
+      not body_blocked?(state, monster.x, ny, monster.r, opts) and abs(ny - monster.y) > 0.2 ->
+        put_entity(state, %{monster | y: ny})
 
       true ->
-        state
+        squeeze_or_chew(state, monster, fx, fy, step, opts)
+    end
+  end
+
+  # When two monsters deadlock in a narrow ford or corridor, allow squeezing
+  # past another monster at half speed without bypassing walls, heroes, or terrain.
+  defp squeeze_or_chew(state, monster, dx, dy, step, opts) do
+    sq_x = monster.x + dx * step * 0.5
+    sq_y = monster.y + dy * step * 0.5
+    sq_opts = Map.put(opts, :pass_monsters, true)
+
+    if not body_blocked?(state, sq_x, sq_y, monster.r, sq_opts) do
+      put_entity(state, %{monster | x: sq_x, y: sq_y})
+    else
+      chew_wall(state, monster)
     end
   end
 
@@ -2385,6 +2381,7 @@ defmodule LastKeep.Game.Sim do
     pass_heroes = Map.get(opts, :pass_heroes, false)
     pass_monsters = Map.get(opts, :pass_monsters, false)
     pass_walls = Map.get(opts, :pass_walls, false)
+    pass_pois = Map.get(opts, :pass_pois, false)
     check_terrain = Map.get(opts, :check_terrain, false)
     keep_pad = Map.get(opts, :keep_pad, 0.0)
     from = Map.get(opts, :from)
@@ -2399,9 +2396,10 @@ defmodule LastKeep.Game.Sim do
         not (pass_walls and building.kind in [:wall, :stone_wall]) and
           shape_hit?(building, x, y, radius, from)
       end) or
-      Enum.any?(ground_pois(state), fn poi ->
-        shape_hit?(poi, x, y, radius, from)
-      end) or
+      (not pass_pois and
+         Enum.any?(ground_pois(state), fn poi ->
+           shape_hit?(poi, x, y, radius, from)
+         end)) or
       (not pass_heroes and
          Enum.any?(heroes(state), fn hero ->
            hero.alive and hero.id != ignore and
