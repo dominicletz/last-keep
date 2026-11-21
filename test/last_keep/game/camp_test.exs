@@ -1,7 +1,7 @@
 defmodule LastKeep.Game.CampTest do
   use ExUnit.Case, async: true
 
-  alias LastKeep.Game.{Rules, Sim, Snapshot}
+  alias LastKeep.Game.{Rules, Sim, Snapshot, World}
 
   test "a camp spends 8 gold once and the ally is not a seat" do
     state = stand("ada", :warrior)
@@ -92,6 +92,42 @@ defmodule LastKeep.Game.CampTest do
     kinds = Enum.map(snap.pois, & &1.kind)
     refute "merchant" in kinds
     refute "hermit" in kinds
+  end
+
+  test "a camp ally skirts a river to reach the hero" do
+    state = stand("ada", :warrior)
+    seed = state.world.seed
+
+    {rx, ry, sign} =
+      Enum.find_value([1, -1], fn sign ->
+        Enum.find_value(20..90, fn i ->
+          Enum.find_value(-50..50, fn j ->
+            x = sign * i * 36
+            y = j * 36
+
+            if World.biome(seed, x, y) == :river and World.open?(seed, x + sign * 72, y) and
+                 World.open?(seed, x - sign * 180, y) do
+              {x, y, sign}
+            end
+          end)
+        end)
+      end)
+
+    camp = hd(state.world.camps)
+    state = state |> move_player("ada", camp.x, camp.y) |> purse(8) |> Sim.tick()
+    [ally] = vagrants(state)
+    started = rx + sign * 72
+
+    state =
+      state
+      |> move_player("ada", rx - sign * 180, ry)
+      |> move(ally.id, started, ry)
+
+    state = Enum.reduce(1..160, state, fn _, acc -> Sim.tick(acc) end)
+    crossed = entity(state, ally.id)
+
+    assert crossed.x * sign < rx * sign
+    assert World.open?(seed, crossed.x, crossed.y)
   end
 
   test "the ally steps toward the nearest living hero and strikes" do

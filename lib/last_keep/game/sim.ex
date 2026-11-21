@@ -818,12 +818,32 @@ defmodule LastKeep.Game.Sim do
   defp step_toward(state, vagrant, dx, dy) do
     speed = Rules.kit(vagrant.hero).speed * speed_mult(state) * 0.05
     {ux, uy} = norm(dx, dy)
+    ahead_x = vagrant.x + ux * speed
+    ahead_y = vagrant.y + uy * speed
 
-    {nx, ny} =
-      slide(state, vagrant.x, vagrant.y, ux * speed, uy * speed, vagrant.r, %{
-        ignore: vagrant.id,
-        pass_monsters: true
-      })
+    # slide rejects the river and the cliff, and its axis fallback stops when
+    # the bank is perpendicular to the hero. Follow that bank to a ford.
+    {state, nx, ny, skirt_dir} =
+      if World.open?(state.world.seed, ahead_x, ahead_y) do
+        {nx, ny} =
+          slide(state, vagrant.x, vagrant.y, ux * speed, uy * speed, vagrant.r, %{
+            ignore: vagrant.id,
+            pass_monsters: true
+          })
+
+        {state, nx, ny, nil}
+      else
+        state =
+          skirt_terrain(state, vagrant, ux, uy, speed, %{
+            ignore: vagrant.id,
+            pass_monsters: true,
+            check_terrain: true,
+            from: %{x: vagrant.x, y: vagrant.y}
+          })
+
+        moved = state.entities[vagrant.id]
+        {state, moved.x, moved.y, Map.get(moved, :skirt_dir)}
+      end
 
     {nx, ny} = clamp_map(nx, ny, Rules.map_radius())
     sx = nx - vagrant.x
@@ -836,7 +856,7 @@ defmodule LastKeep.Game.Sim do
         :math.atan2(dy, dx)
       end
 
-    put_entity(state, %{vagrant | x: nx, y: ny, facing: facing})
+    put_entity(state, Map.put(%{vagrant | x: nx, y: ny, facing: facing}, :skirt_dir, skirt_dir))
   end
 
   defp face(actor, target) do
