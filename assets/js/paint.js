@@ -49,5 +49,8 @@ export function nextAttackPeak(previous, cooldown, sawSwing) {
 
 export function bodyPixel(r, g, b) {
   if (r > 150 && r > g + 40 && r > b + 20) return true
-  return r < 48 && g < 48 && b < 40
+  if (r < 48 && g < 48 && b < 40) return true
+  // Night low-tier FogExp2(0x322c3c) shifts black outline pixels past b=40 on the
+  // far half of the yard while night grass stays at r>=46, g>=46 and sky at 50,44,60.
+  return r < 45 && g < 42 && b < 54
 }
