@@ -2006,11 +2006,12 @@ defmodule LastKeep.Game.Sim do
 
   defp advance_phase(state), do: state
 
+  # Keep health carries across nights, and a bite or a siege is already inside
+  # this radius. Contact is a monster in the perimeter, or one this wave has hit.
   defp wave_contact?(state) do
-    state.keep.hp < state.keep.max_hp or
-      Enum.any?(monsters(state), fn monster ->
-        monster.hp < monster.max_hp or hypot(monster.x, monster.y) <= 640
-      end)
+    Enum.any?(monsters(state), fn monster ->
+      monster.hp < monster.max_hp or hypot(monster.x, monster.y) <= 640
+    end)
   end
 
   defp start_wave(state) do

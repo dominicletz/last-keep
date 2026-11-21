@@ -1838,8 +1838,19 @@ defmodule LastKeep.Game.SimTest do
     assert {:wave, 0} = far.phase
     assert far.enraged == false
 
+    chipped_keep = %{state.keep | hp: state.keep.hp - 40, max_hp: state.keep.max_hp + 280}
+
+    chipped =
+      %{state | wave: 2, phase: {:wave, 2}, keep: chipped_keep}
+      |> Sim.spawn_monster(%{kind: :goblin, x: 2400.0, y: 0.0, wave: 2})
+      |> Sim.tick()
+      |> Sim.tick()
+
+    assert {:wave, 0} = chipped.phase
+    assert chipped.enraged == false
+
     near =
-      %{state | wave: 2, phase: {:wave, 2}}
+      %{state | wave: 2, phase: {:wave, 2}, keep: chipped_keep}
       |> Sim.spawn_monster(%{kind: :goblin, x: 400.0, y: 0.0, wave: 2})
       |> Sim.tick()
       |> Sim.tick()
