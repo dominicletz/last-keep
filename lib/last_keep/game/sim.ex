@@ -495,7 +495,7 @@ defmodule LastKeep.Game.Sim do
   defp nearest_quarry(quarries, x, y) do
     quarries
     |> Enum.filter(&(&1.stone > 0))
-    |> nearest(x, y, 48)
+    |> nearest_poi(x, y, 48)
   end
 
   defp lay_world(seed) do
@@ -581,7 +581,7 @@ defmodule LastKeep.Game.Sim do
 
   defp wake_camps(state) do
     Enum.reduce(living_heroes(state), state, fn hero, state ->
-      case nearest(state.world.camps, hero.x, hero.y, Rules.chest_reach()) do
+      case nearest_poi(state.world.camps, hero.x, hero.y, Rules.chest_reach()) do
         nil -> state
         camp -> wake_camp(state, camp)
       end
@@ -590,7 +590,7 @@ defmodule LastKeep.Game.Sim do
 
   defp take_shrines(state) do
     Enum.reduce(living_heroes(state), state, fn hero, state ->
-      case nearest(state.world.shrines, hero.x, hero.y, Rules.chest_reach()) do
+      case nearest_poi(state.world.shrines, hero.x, hero.y, Rules.chest_reach()) do
         nil ->
           state
 
@@ -600,6 +600,16 @@ defmodule LastKeep.Game.Sim do
           grant_relic(state)
       end
     end)
+  end
+
+  defp nearest_poi(pois, x, y, reach) do
+    pois
+    |> Enum.filter(fn poi ->
+      hypot(poi.x - x, poi.y - y) <= reach or
+        Footprint.gap(poi.kind, Footprint.variant(poi.kind, poi.id), x - poi.x, y - poi.y) <=
+          reach
+    end)
+    |> closest(fn poi -> hypot(poi.x - x, poi.y - y) end)
   end
 
   defp wake_camp(state, camp) do

@@ -117,6 +117,38 @@ defmodule LastKeep.Game.ExploreTest do
     end
   end
 
+  test "a hero stopped on a camp or shrine footprint wakes it" do
+    camp = nearest(pois(5), :camp)
+
+    state =
+      Sim.new("KEEP01", seed: 5, build_ticks: 400, hold: false)
+      |> then(fn s ->
+        {:ok, s} = Sim.join(s, %{id: "ada", name: "ada", hero: :warrior, connected: true})
+        %{s | resources: %{s.resources | gold: 24}}
+      end)
+      # Outside center radius 36 (hypot 37.07), where the camp footprint blocks the next step
+      |> stand(camp.x + 36.5, camp.y + 6.5)
+
+    woke = Sim.tick(state)
+    assert woke.resources.gold == 16
+    refute Enum.any?(woke.world.camps, &(&1.id == camp.id))
+    assert Enum.any?(woke.entities, fn {_id, entity} -> entity.type == :vagrant end)
+
+    shrine = nearest(pois(5), :shrine)
+
+    shrine_state =
+      Sim.new("KEEP01", seed: 5, build_ticks: 400, hold: false)
+      |> then(fn s ->
+        {:ok, s} = Sim.join(s, %{id: "ada", name: "ada", hero: :warrior, connected: true})
+        s
+      end)
+      |> stand(shrine.x + 38.0, shrine.y)
+
+    taken = Sim.tick(shrine_state)
+    refute Enum.any?(taken.world.shrines, &(&1.id == shrine.id))
+    assert length(taken.relics) == 1
+  end
+
   defp fresh do
     state = Sim.new("KEEP01", seed: 1, build_ticks: 400, hold: false)
     {:ok, state} = Sim.join(state, %{id: "ada", name: "ada", hero: :warrior, connected: true})
