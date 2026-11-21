@@ -667,6 +667,112 @@ defmodule LastKeep.Game.SimTest do
     assert state.players["Ada"].public_id == "p1"
   end
 
+  test "restart does nothing before the keep falls" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 120, hold: false)
+    {:ok, state} = Sim.join(state, player("Ada", :warrior))
+    state = %{state | wave: 2, phase: {:wave, 800}, kills: 5}
+
+    same = Sim.restart(state)
+    assert same.phase == {:wave, 800}
+    assert same.wave == 2
+    assert same.kills == 5
+    refute same.hold
+
+    building = %{state | phase: {:build, 300}}
+    assert Sim.restart(building) == building
+  end
+
+  test "host moves to the next connected player when p1 disconnects" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    {:ok, state} = Sim.join(state, player("bo", :mage))
+
+    assert Sim.host_public_id(state) == "p1"
+    assert Sim.release(state, "bo").hold
+
+    state = Sim.disconnect(state, "ada")
+    assert Sim.host_public_id(state) == "p2"
+
+    snap = Snapshot.render(state)
+    refute Enum.find(snap.players, &(&1.id == "p1")).host
+    assert Enum.find(snap.players, &(&1.id == "p2")).host
+
+    started = Sim.release(state, "bo")
+    refute started.hold
+
+    {:ok, back} = Sim.join(state, %{id: "ada", name: "ada", hero: :warrior, connected: true})
+    assert Sim.host_public_id(back) == "p1"
+  end
+
+  test "monster health scales by six percent per connected hero past two" do
+    assert_in_delta Rules.party_hp_scale(1), 1.0, 1.0e-6
+    assert_in_delta Rules.party_hp_scale(2), 1.0, 1.0e-6
+    assert_in_delta Rules.party_hp_scale(3), 1.06, 1.0e-6
+    assert_in_delta Rules.party_hp_scale(15), 1.78, 1.0e-6
+    assert_in_delta Rules.party_hp_scale(20), 1.78, 1.0e-6
+
+    two =
+      Enum.reduce(1..2, Sim.new("KEEP01", seed: 1), fn n, sim ->
+        {:ok, sim} = Sim.join(sim, player("p#{n}", :warrior))
+        sim
+      end)
+
+    two = Sim.spawn_monster(two, %{kind: :goblin, x: 200, y: 0, wave: 1})
+    assert hd(Sim.monsters(two)).hp == 22
+
+    twelve =
+      Enum.reduce(1..12, Sim.new("KEEP01", seed: 1), fn n, sim ->
+        {:ok, sim} = Sim.join(sim, player("p#{n}", :warrior))
+        sim
+      end)
+
+    twelve = Sim.spawn_monster(twelve, %{kind: :goblin, x: 200, y: 0, wave: 1})
+    assert hd(Sim.monsters(twelve)).hp == round(22 * 1.6)
+
+    # Disconnected players do not inflate monster health.
+    mostly_off =
+      Enum.reduce(3..12, twelve, fn n, sim -> Sim.disconnect(sim, "p#{n}") end)
+      |> Map.put(:entities, Map.reject(twelve.entities, fn {_id, e} -> e.type == :monster end))
+      |> Sim.spawn_monster(%{kind: :goblin, x: 200, y: 0, wave: 1})
+
+    assert hd(Sim.monsters(mostly_off)).hp == 22
+  end
+
+  test "breaking every portal rekindles the farthest outer portal on the next wave" do
+    state = Sim.new("KEEP01", seed: 1, build_ticks: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+
+    farthest =
+      state.world.portals
+      |> Enum.max_by(fn poi -> {poi.x * poi.x + poi.y * poi.y, poi.id} end)
+
+    claimed =
+      state.world.portals
+      |> Enum.map(&LastKeep.Game.World.chunk_coord(&1.x, &1.y))
+      |> MapSet.new()
+
+    state = %{
+      state
+      | wave: 1,
+        phase: {:build, 1},
+        hints: [],
+        world: %{state.world | portals: [], claimed: claimed}
+    }
+
+    state = Sim.tick(state)
+    assert {:wave, _} = state.phase
+    assert state.wave == 2
+    assert [rebuilt] = state.world.portals
+    assert rebuilt.id == farthest.id
+    assert rebuilt.hp == round(Rules.portal_hp() * Rules.hp_scale(2))
+    assert state.world.claimed == claimed
+    assert Sim.monsters(state) != []
+
+    for monster <- Sim.monsters(state) do
+      assert :math.sqrt((monster.x - rebuilt.x) ** 2 + (monster.y - rebuilt.y) ** 2) <= 80
+    end
+  end
+
   test "a living scout reveals the next wave before the last five seconds" do
     hidden = Sim.new("KEEP01", seed: 1, build_ticks: 400)
     snap = Snapshot.render(hidden)
@@ -1554,6 +1660,40 @@ defmodule LastKeep.Game.SimTest do
     assert length(of_kind(state, :field)) == 1
     assert state.resources.wood == 9
     assert length(of_kind(state, :house)) == 4
+  end
+
+  test "a hero at the far keep face can feed the keep" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+
+    # Outside radius 100 (hypot ~116) but within 22 units of the rank-0 keep polygon face
+    far_face = %{ada | x: -82.0, y: -82.0}
+    state = put_hero(state, far_face)
+
+    state = %{
+      state
+      | keep: %{state.keep | hp: 700},
+        resources: %{state.resources | food: 10}
+    }
+
+    fed =
+      state
+      |> push("ada", %{"f" => true})
+      |> Sim.tick()
+
+    assert fed.keep.hp == 750
+    assert fed.resources.food == 5
+
+    # Beyond the keep footprint reach, feeding does nothing
+    out_of_reach =
+      state
+      |> put_hero(%{ada | x: -140.0, y: -140.0})
+      |> push("ada", %{"f" => true})
+      |> Sim.tick()
+
+    assert out_of_reach.keep.hp == 700
+    assert out_of_reach.resources.food == 10
   end
 
   defp approach_and_raise(hero, wood, gold) do

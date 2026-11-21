@@ -20,6 +20,31 @@ defmodule LastKeep.Game.Footprint do
   @block MapSet.new(@table["block"])
   @probes @table["probes"]
 
+  @keys Map.new(@kinds, fn {name, variants} ->
+          {name, variants |> Map.keys() |> Enum.sort()}
+        end)
+
+  @edges Map.new(@kinds, fn {name, variants} ->
+           by_variant =
+             Map.new(variants, fn {variant, row} ->
+               edges =
+                 case row["poly"] do
+                   poly when is_list(poly) and poly != [] ->
+                     pts = Enum.map(poly, fn [u, v] -> {u * 1.0, v * 1.0} end)
+
+                     Enum.zip(pts, tl(pts) ++ [hd(pts)])
+                     |> Enum.map(fn {{ax, ay}, {bx, by}} -> {ax, ay, bx, by} end)
+
+                   _ ->
+                     nil
+                 end
+
+               {variant, edges}
+             end)
+
+           {name, by_variant}
+         end)
+
   def probes, do: @probes
 
   def blocking?(kind) when is_atom(kind), do: MapSet.member?(@block, Atom.to_string(kind))
@@ -28,7 +53,7 @@ defmodule LastKeep.Game.Footprint do
   def variant(kind, id \\ 0)
 
   def variant(kind, id) do
-    keys = keys_of(sheet(kind))
+    keys = Map.get(@keys, sheet(kind), [])
 
     cond do
       keys == [] ->
@@ -48,43 +73,47 @@ defmodule LastKeep.Game.Footprint do
   end
 
   def gap(kind, variant, x, y) do
-    case spec(kind, variant) do
+    case edges_for(kind, variant) do
       nil ->
         1.0e9
 
-      poly ->
+      edges ->
         {u, v} = local(x, y)
-
-        if inside?(u, v, poly) do
-          0.0
-        else
-          edge_gap(u, v, poly)
-        end
+        edges_gap(u, v, edges)
     end
   end
 
   def score(kind, variant, x, y) do
-    case spec(kind, variant) do
+    case edges_for(kind, variant) do
       nil ->
         1.0e9
 
-      _poly ->
+      _edges ->
         {u, v} = local(x, y)
         :math.sqrt(u * u + v * v)
     end
   end
 
   def blocks?(kind, variant, x, y, radius, from \\ nil) do
-    if gap(kind, variant, x, y) >= radius do
-      false
-    else
-      case from do
-        nil ->
-          true
+    case edges_for(kind, variant) do
+      nil ->
+        false
 
-        %{x: fx, y: fy} ->
-          score(kind, variant, x, y) <= score(kind, variant, fx, fy) + 1.0e-4
-      end
+      edges ->
+        {u, v} = local(x, y)
+
+        if edges_gap(u, v, edges) >= radius do
+          false
+        else
+          case from do
+            nil ->
+              true
+
+            %{x: fx, y: fy} ->
+              {fu, fv} = local(fx, fy)
+              :math.sqrt(u * u + v * v) <= :math.sqrt(fu * fu + fv * fv) + 1.0e-4
+          end
+        end
     end
   end
 
@@ -94,46 +123,36 @@ defmodule LastKeep.Game.Footprint do
     Map.get(@alias, kind, kind)
   end
 
-  defp keys_of(name) do
-    case Map.get(@kinds, name) do
-      nil -> []
-      variants -> Map.keys(variants)
-    end
-  end
-
-  defp spec(kind, variant) do
-    name = sheet(kind)
-
-    with variants when is_map(variants) <- Map.get(@kinds, name),
-         row when is_map(row) <- Map.get(variants, to_string(variant)),
-         poly when is_list(poly) and poly != [] <- row["poly"] do
-      Enum.map(poly, fn [u, v] -> {u * 1.0, v * 1.0} end)
-    else
+  defp edges_for(kind, variant) do
+    case Map.get(@edges, sheet(kind)) do
+      variants when is_map(variants) -> Map.get(variants, to_string(variant))
       _ -> nil
     end
   end
 
-  defp inside?(u, v, poly) do
-    poly
-    |> Enum.with_index()
-    |> Enum.all?(fn {{ax, ay}, index} ->
-      {bx, by} = Enum.at(poly, rem(index + 1, length(poly)))
-      (bx - ax) * (v - ay) - (by - ay) * (u - ax) >= -1.0e-6
-    end)
+  defp edges_gap(u, v, edges) do
+    if inside?(u, v, edges), do: 0.0, else: min_edge_gap(u, v, edges, 1.0e9)
+  end
+
+  defp inside?(_u, _v, []), do: true
+
+  defp inside?(u, v, [{ax, ay, bx, by} | rest]) do
+    if (bx - ax) * (v - ay) - (by - ay) * (u - ax) >= -1.0e-6 do
+      inside?(u, v, rest)
+    else
+      false
+    end
+  end
+
+  defp min_edge_gap(_u, _v, [], best), do: best
+
+  defp min_edge_gap(u, v, [{ax, ay, bx, by} | rest], best) do
+    d = segment_gap(u, v, ax, ay, bx, by)
+    min_edge_gap(u, v, rest, if(d < best, do: d, else: best))
   end
 
   defp local(x, y) do
     {x * @ux + y * @uy, x * @vx + y * @vy}
-  end
-
-  defp edge_gap(u, v, poly) do
-    poly
-    |> Enum.with_index()
-    |> Enum.map(fn {{ax, ay}, index} ->
-      {bx, by} = Enum.at(poly, rem(index + 1, length(poly)))
-      segment_gap(u, v, ax, ay, bx, by)
-    end)
-    |> Enum.min()
   end
 
   defp segment_gap(px, py, ax, ay, bx, by) do

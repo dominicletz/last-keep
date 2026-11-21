@@ -84,7 +84,7 @@ Night still enrages living monsters when the wave timer reaches zero. Ambient mo
 
 Wave 1 stays two goblins, slower and softer, at `Rules.spawn_distance/2` for wave 1. Their bearings are the two nearest living portals. If fewer than two portals live, the missing bearings come from the old single angle in `Waves.plan/2`. The count stays 2. The yard test that wants them between 600 and 680 still passes.
 
-From wave 2 on, each monster is placed 40 units toward the origin from a living portal, round-robin over the nearest portals. The first position is within 80 of that door. The total count stays the count `Waves.plan/2` would have built for that wave. A portal at 0 hp is already gone from `state.world.portals`, so the next wave places nothing within 80 of it. If no portal lives, the spawn list is empty, the timer still runs, and an empty field clears the night. The picture does not invent a replacement portal.
+From wave 2 on, each monster is placed 40 units toward the origin from a living portal, round-robin over the nearest portals. The first position is within 80 of that door. The total count stays the count `Waves.plan/2` would have built for that wave. A portal at 0 hp is already gone from `state.world.portals`, so the next wave places nothing within 80 of it while any other portal lives. If every portal has been broken, the next wave rekindles the farthest original portal from the seed with wave-scaled health (`maybe_rekindle_portal`, matching Kingdom Two Crowns' cliff-portal rebuild) while keeping already-claimed chunks held, so an endless run never collapses into empty waves.
 
 Fog is one map for the room. A chunk starts hidden, except the chunks that touch the keep disc. A hero reveals the chunk under their feet and the eight neighbors. A living scout also reveals the ring at Chebyshev distance 2. Hidden points of interest are not in that player's snapshot.
 
@@ -94,7 +94,7 @@ Claimed land is the keep disc, plus any chunk whose portal is dead. A building o
 
 The land does not grow with the party. Portal count, chest count, and chunk count stay on the seed.
 
-Monster health from the wave scales as it does today. For each connected hero past 2, that health also gains 6 percent, and the bonus stops at 15 heroes. Two players see no bonus. Night 1 with two players is still the stock goblin a fireball deletes.
+Monster health from the wave scales as it does today. For each connected hero past 2, that health also gains 6 percent (`Rules.party_hp_scale/1`), and the bonus stops at 15 heroes. Two players see no bonus. Night 1 with two players is still the stock goblin a fireball deletes. Disconnected seats do not count toward the bonus.
 
 Vagrants do not take the seats those players use. The seat cap stays 15, which is `Rules.max_players/0`.
 

@@ -8,12 +8,16 @@ The step a connected page sends restart changes Session and You, or You and Keep
 The step the room closes changes Session, You, Table and Keep at the same time.
 The step you press New keep changes Session and You, or Session, You and Keep, or Session and Keep, at the same time.
 
-## NoRestartBeforeTheFall breaks
-TLC's counterexample is in tlc-NoRestartBeforeTheFall.out. It has 3 steps:
+## NoRestartBeforeTheFall (fixed in P0)
+The original TLC run found a 3-step counterexample in `tlc-NoRestartBeforeTheFall.out` because `GameChannel` forwarded `"restart"` with no phase check:
 0. Session Choosing a hero, You Not in the yard, Table No table, Keep No keep
 1. you sit down: Session Waiting for the host, You On the ring, Table Just the host, Keep Can still rise
 2. the host starts the night: Session Day, You On the ring, Table Just the host, Keep Can still rise
 3. a connected page sends restart: Session Waiting for the host, You On the ring, Table Just the host, Keep Can still rise
+
+**Fix**: `Sim.restart/1` and `Room.handle_cast(:restart, ...)` now only restart when `phase == :over`. Guarded by `restart does nothing before the keep falls` and `a restart push is ignored before the keep falls`.
+
+Host ownership also migrates to the lowest-numbered connected seat (`Sim.host_public_id/1`) when `p1` disconnects so a lobby hold cannot deadlock.
 
 ## Rules that hold
 TypeOK, NoVictoryScreen, RankStops, DownOnlyAfterAFight, OutsideIsEmpty, NoDeadlock, NoNewSeatOnFallen, NoRespawnOnFallen, OnlyTheHostStarts, RaiseOnlyAtTheKeep, RespawnLandsOffTheKeep, FallOnlyFromTheNight

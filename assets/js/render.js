@@ -224,6 +224,13 @@ export function createView(stage, picture) {
     transparent: true,
     depthWrite: false
   })
+  const footprintShadowMat = new THREE.MeshBasicMaterial({
+    color: 0x14100c,
+    transparent: true,
+    opacity: 0.34,
+    depthWrite: false,
+    side: THREE.DoubleSide
+  })
 
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
@@ -493,7 +500,7 @@ export function createView(stage, picture) {
   function footprintMark(kind, variant) {
     const spec = footprintOf(kind, variant)
     if (!spec || !spec.poly) return null
-    const mesh = new THREE.Mesh(footprintGeometry(spec.poly), shadowMat)
+    const mesh = new THREE.Mesh(footprintGeometry(spec.poly), footprintShadowMat)
     mesh.position.y = 0.46
     mesh.renderOrder = 2
     mesh.userData.contact = true

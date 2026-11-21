@@ -1,0 +1,44 @@
+# Kingdom Two Crowns 3D Roadmap
+
+Last Keep takes **Kingdom Two Crowns** as its primary game-design and logic reference, translated into a cooperative 3D/HD-2D multiplayer world (2–15 players).
+
+The core fantasy is: **contemplative daytime frontier expansion + clear diegetic world prompts + racing home at dusk + holding fortified choke points against escalating night threats**, blended with direct action-brawler hero combat (`WASD` + aim + `Q/E/R`).
+
+## Recorded Design Decisions
+
+1. **World scale & day/night frontier loop**:
+   - Keep a real wilderness frontier with tiered portal rings (~3,200–3,600 radius: near, mid, and far portals) rather than a cramped arena or an unreachable 7,200-radius desert.
+   - Lengthen daytime build phases (60–75s) with a host/party **"Start night early"** horn, and give heroes an out-of-combat **daytime sprint / mount pace** so riding out to quarries, shrines, and camps and racing home at dusk feels like Kingdom Two Crowns.
+   - Trigger **Frenzy** relative to **combat contact** (first monster within radius ~600 or engaging a wall/hero), never while slow monsters are still marching from a distant portal.
+   - Breaking a portal claims its chunk and triggers a **retaliation wave**; clearing all six portals rekindles the farthest outer portal on the next night (Kingdom Two Crowns cliff-portal rule) so an endless run never collapses into empty waves.
+
+2. **Passive "drawn swing" (`LK-108`) & Wave 4+ Threats**:
+   - Keep the in-range auto-swing (it matches Kingdom Two Crowns' accessible defense feel and mobile play), optionally tuning passive cadence (~70% vs. active clicks) so active aiming stays strictly stronger.
+   - Make Wave 4+ demand movement, walls, and abilities via Kingdom Two Crowns enemy archetypes:
+     - **Siege / ranged threats** firing from range 240–280 (outside the 200-unit auto-bolt).
+     - **Wall-breakers** (Trolls dealing 2×–3× structural damage to wood walls, making stone walls + Engineer repair vital).
+     - **Wall-bypassing flyers** (Bats flying over walls to dive heroes/keep).
+
+3. **Coherent Radial Terrain**:
+   - Replace per-cell white-noise hashing in `lib/last_keep/game/world.ex` with **seeded coherent 2D noise** producing contiguous pine forests, fertile meadow clearings, and ruin zones, plus **1–2 continuous rivers / cliff ridges** that genuinely block movement (`World.open?/2` respects `cell.blocked`) with **wide walkable fords/bridges** as natural fortification choke points.
+
+4. **Sequenced Milestones**:
+   - **Milestone 1 — P0 Hardening & Hygiene (landed)**:
+     - Guard `restart` to `phase == :over` only (closes TLC `NoRestartBeforeTheFall`).
+     - Auto-migrate host to the lowest-numbered connected player when `p1` disconnects.
+     - Implement `+6%` monster HP scaling per connected hero past 2 (through 15) from [`WORLD.md`](WORLD.md).
+     - Rekindle the farthest outer portal on wave 2+ when all six portals have been destroyed.
+     - Fix local `tsc` leakage in `assets/jsconfig.json` (`skipLibCheck`, `types: []`) and eliminate the esbuild `import.meta` warning in `assets/js/seam_tiles.js`.
+   - **Milestone 2 — P1 Diegetic Clarity (next)**:
+     - Stone sack & explicit Wood vs. Stone wall choice; Spire build icon.
+     - World-pinned desktop `[F] Feed keep (5 food)` prompt near the keep and locked-Meteor tooltip ("Build a Spire").
+     - Client build-ghost parity (`held?`, `meadow`, `overlap`) + right-click cancel + demolish/reclaim.
+     - Actionable Map Table overlay (`LK-106`) showing explored biomes, discovered POIs, claimed chunks, and teammates.
+     - Show live room party roles on the `/r/CODE` join screen.
+   - **Milestone 3 — P2 The 3D Kingdom Frontier (`LK-108` + World)**:
+     - Coherent biomes + blocking rivers/fords, tiered portal rings, daytime sprint + longer day with early-night horn, contact-based Frenzy, Merchant POI, daytime ambient monsters, and 5-player-safe Camps + targetable vagrants.
+     - Wave 4+ KTC threat archetypes (ranged/siege > 200 range, wall-breaker Trolls, wall-hopping Bats, portal retaliation).
+   - **Milestone 4 — P3 Performance & Game Feel**:
+     - Compress/lazy-load the ~17 MB `ground-*.png` tileset and trim legacy base64 data from `app.js`.
+     - Change-driven WebSocket input frames with low-rate heartbeat.
+     - Co-op ground pings, layered SFX, hit-flash/knockback, AoE telegraphs, and post-wave-5 progression sinks.

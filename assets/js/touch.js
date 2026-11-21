@@ -5,7 +5,6 @@ export const STICK_RADIUS = 64
 
 const DEAD = 0.18
 const KEEP_CLEAR = 6
-const FEED_REACH = 100
 const FOOT = { wall: 16, tower: 16, trap: 15, field: 16, forge: 18, mage_tower: 18 }
 
 export function snapGrid(value) {
@@ -90,7 +89,7 @@ function canRaise(scene) {
 }
 
 function canFeed(scene) {
-  return Math.hypot(scene.hero.x, scene.hero.y) < FEED_REACH && (scene.resources?.food ?? 0) >= 5
+  return raiseInRange(scene.hero, scene.town || 0) && (scene.resources?.food ?? 0) >= 5
 }
 
 function legalPlot(scene) {

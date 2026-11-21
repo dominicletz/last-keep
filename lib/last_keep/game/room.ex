@@ -140,9 +140,11 @@ defmodule LastKeep.Game.Room do
     {:noreply, %{state | sim: Sim.release(state.sim, id)}}
   end
 
-  def handle_cast(:restart, state) do
+  def handle_cast(:restart, %{sim: %{phase: :over}} = state) do
     {:noreply, %{state | sim: Sim.restart(state.sim), scored: false}}
   end
+
+  def handle_cast(:restart, state), do: {:noreply, state}
 
   def handle_cast(:parade, state) do
     {:noreply, %{state | sim: Sim.parade(state.sim)}}

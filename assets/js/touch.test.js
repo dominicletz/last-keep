@@ -150,3 +150,25 @@ test("the context button is a legal place, a paid raise, or a feed", () => {
   })
   assert.equal(building.id, "place")
 })
+
+test("a hero at the far keep face gets the feed context button", () => {
+  const farFace = contextAction({
+    hero: { x: -82, y: -82, range: 165 },
+    town: 0,
+    resources: { wood: 0, gold: 0, food: 8 },
+    upgrade: null,
+    armed: null,
+    buildings: []
+  })
+  assert.deepEqual(farFace, { id: "feed" })
+
+  const tooFar = contextAction({
+    hero: { x: -140, y: -140, range: 165 },
+    town: 0,
+    resources: { wood: 0, gold: 0, food: 8 },
+    upgrade: null,
+    armed: null,
+    buildings: []
+  })
+  assert.equal(tooFar, null)
+})
