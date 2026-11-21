@@ -36,10 +36,10 @@ The core fantasy is: **contemplative daytime frontier expansion + clear diegetic
      - Upgraded Map Table cloth (`LK-106`, `assets/js/map_cloth.js`) drawing one distinct colored mark per discovered/claimed/portal chunk.
      - Live room code, wave, and party roles on the `/r/CODE` join screen (`GET /api/rooms/:code`).
      - Fixed start/join keep-vs-hero depth clipping (`LK-128`), replaced legacy 5-bar scenery cutout with `stump_log-sheet.png` (`LK-129`), added dusk/night horizon dimming + sharper `512×512` over `3072` sampling + seam Z-fighting fix + lifted night moonlight (`LK-130`), and gave mobile touch buttons distinct skill glyphs + non-truncating costs (`LK-131`).
-   - **Milestone 3 — P2 The 3D Kingdom Frontier (`LK-108` + World, next)**:
-     - Coherent biomes + blocking rivers/fords, tiered portal rings, daytime sprint + longer day with early-night horn, contact-based Frenzy, Merchant POI, daytime ambient monsters, and 5-player-safe Camps + targetable vagrants.
-     - Wave 4+ KTC threat archetypes (ranged/siege > 200 range, wall-breaker Trolls, wall-hopping Bats, portal retaliation).
-   - **Milestone 4 — P3 Performance & Game Feel**:
+   - **Milestone 3 — P2 The 3D Kingdom Frontier (`LK-108`, `LK-120`, `LK-121`, `LK-122`, landed)**:
+     - Coherent 2D value-noise biomes + genuinely blocking rivers/cliffs with 144-unit walkable fords, monster ford-funneling (`skirt_terrain`), daytime frontier sprint (`1.35×` past radius 300), host early-night horn (`Start night early`), contact-based Frenzy, Merchant POI (`trade_merchant/1` + `merchant-sheet.png`), and 5-player-safe Camps + targetable vagrants.
+     - Wave 4+ KTC threat archetypes (siege bosses/skeletons > 200 auto-bolt reach, `2.5×` wood-wall-breaker Trolls, wall/river-hopping Bats, portal retaliation packs).
+   - **Milestone 4 — P3 Performance & Game Feel (next)**:
      - Compress/lazy-load the ~17 MB `ground-*.png` tileset and trim legacy base64 data from `app.js`.
      - Change-driven WebSocket input frames with low-rate heartbeat.
      - Co-op ground pings, layered SFX, hit-flash/knockback, AoE telegraphs, and post-wave-5 progression sinks.

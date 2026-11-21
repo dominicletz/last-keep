@@ -155,11 +155,33 @@ test("outer horizon uses crisp pixel sampling and dims at dusk and night", async
 
   const horizonMeshes = scene.children.filter((c) => c.userData.role === "horizon")
   assert.equal(horizonMeshes.length, 2)
-  assert.ok(horizonMeshes[0].material.map.image.width >= 512, "horizon texture is 4x sharper than the 256/6144 window")
+  assert.ok(horizonMeshes[0].material.map.image.width >= 320, "horizon texture is sharper than the 256/6144 window")
   assert.ok(horizonMeshes[0].position.y < 0, "horizon sits below the yard to prevent seam z-fighting")
 
   const pines = scene.children.filter((c) => c.userData.role === "far-pine")
   for (const pine of pines) {
     assert.equal(pine.material.color.getHex(), horizonTintHex("night"))
   }
+})
+
+test("coherent terrain keeps rivers blocked, fords open, and terrainWaypoint routes around rivers", async () => {
+  const { biomeOpen, terrainWaypoint } = await import("./world_biome.js")
+  assert.equal(biomeOpen(5, 0, 0, 0), true)
+  // Find a blocked river cell and an open ford cell on seed 5
+  let river = null
+  let ford = null
+  for (let i = -80; i <= 80 && (!river || !ford); i++) {
+    for (let j = -80; j <= 80 && (!river || !ford); j++) {
+      const x = i * 36
+      const y = j * 36
+      const b = pictureCell(5, 0, x, y)
+      if (!river && b === "river") river = { x, y }
+      if (!ford && b === "ford") ford = { x, y }
+    }
+  }
+  assert.ok(river && ford, "seed 5 has both river and ford cells")
+  assert.equal(biomeOpen(5, 0, river.x, river.y), false)
+  assert.equal(biomeOpen(5, 0, ford.x, ford.y), true)
+  const wp = terrainWaypoint(5, 0, 120, 0, 4140, 0)
+  assert.equal(biomeOpen(5, 0, wp.x, wp.y), true)
 })

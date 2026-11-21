@@ -1670,12 +1670,16 @@ defmodule LastKeep.Game.Sim do
       ignore: monster.id,
       keep_pad: -6.0,
       from: %{x: monster.x, y: monster.y},
-      pass_walls: Rules.flies_over_walls?(monster.kind)
+      pass_walls: Rules.flies_over_walls?(monster.kind),
+      check_terrain: not Rules.flies_over_walls?(monster.kind)
     }
 
     cond do
       not body_blocked?(state, nx, ny, monster.r, opts) ->
-        put_entity(state, %{monster | x: nx, y: ny})
+        put_entity(state, Map.put(%{monster | x: nx, y: ny}, :skirt_dir, nil))
+
+      opts.check_terrain and not World.open?(state.world.seed, nx, ny) ->
+        skirt_terrain(state, monster, dx, dy, step, opts)
 
       not body_blocked?(state, nx, monster.y, monster.r, opts) and abs(nx - monster.x) > 0.2 ->
         put_entity(state, %{monster | x: nx})
@@ -1688,6 +1692,72 @@ defmodule LastKeep.Game.Sim do
           {:ok, sx, sy} -> put_entity(state, %{monster | x: sx, y: sy})
           :blocked -> chew_wall(state, monster)
         end
+    end
+  end
+
+  # When a river or cliff blocks the straight march toward the keep, hold one
+  # bank-follow direction toward the nearest open ford until the straight path
+  # clears, preventing oscillation on riverbanks.
+  defp skirt_terrain(state, monster, dx, dy, step, opts) do
+    px = -dy
+    py = dx
+    seed = state.world.seed
+
+    dir =
+      Map.get(monster, :skirt_dir) ||
+        Enum.find_value(1..16, fn cells ->
+          look = cells * 36.0
+
+          pos_open =
+            World.open?(
+              seed,
+              monster.x + px * look + dx * 72.0,
+              monster.y + py * look + dy * 72.0
+            )
+
+          neg_open =
+            World.open?(
+              seed,
+              monster.x - px * look + dx * 72.0,
+              monster.y - py * look + dy * 72.0
+            )
+
+          cond do
+            pos_open -> 1.0
+            neg_open -> -1.0
+            true -> nil
+          end
+        end) || if(rem(monster.id, 2) == 0, do: 1.0, else: -1.0)
+
+    nx = monster.x + px * dir * step
+    ny = monster.y + py * dir * step
+
+    cond do
+      not body_blocked?(state, nx, ny, monster.r, opts) ->
+        put_entity(state, Map.put(%{monster | x: nx, y: ny}, :skirt_dir, dir))
+
+      not body_blocked?(
+        state,
+        monster.x - px * dir * step,
+        monster.y - py * dir * step,
+        monster.r,
+        opts
+      ) ->
+        put_entity(
+          state,
+          Map.put(
+            %{
+              monster
+              | x: monster.x - px * dir * step,
+                y: monster.y - py * dir * step
+            },
+            :skirt_dir,
+            -dir
+          )
+        )
+
+      true ->
+        state
     end
   end
 
@@ -1945,7 +2015,7 @@ defmodule LastKeep.Game.Sim do
     |> spawn_sources(state, wave)
     |> Enum.with_index(1)
     |> Enum.reduce(state, fn {source, i}, state ->
-      {x, y} = place_spawn(source, wave, i)
+      {x, y} = place_spawn(state, source, wave, i)
 
       spawn_monster(state, %{
         kind: group.kind,
@@ -1970,12 +2040,15 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
-  defp place_spawn(angle, 1, i) when is_number(angle) do
+  defp place_spawn(_state, angle, 1, i) when is_number(angle) do
     dist = spawn_ring(1, i)
     {:math.cos(angle) * dist, :math.sin(angle) * dist}
   end
 
-  defp place_spawn({:portal, poi}, _wave, _i), do: step_toward_origin(poi.x, poi.y, 40)
+  defp place_spawn(state, {:portal, poi}, _wave, _i) do
+    {x, y} = step_toward_origin(poi.x, poi.y, 40)
+    if World.open?(state.world.seed, x, y), do: {x, y}, else: {poi.x * 1.0, poi.y * 1.0}
+  end
 
   defp step_toward_origin(x, y, dist) do
     radius = :math.sqrt(x * x + y * y)
@@ -2228,17 +2301,27 @@ defmodule LastKeep.Game.Sim do
     ny = y + dy
 
     cond do
-      World.open?(nx, ny) and not body_blocked?(state, nx, ny, radius, opts) ->
+      terrain_open?(state, nx, ny, opts) and not body_blocked?(state, nx, ny, radius, opts) ->
         {nx, ny}
 
-      World.open?(nx, y) and not body_blocked?(state, nx, y, radius, opts) and abs(dx) > 0.2 ->
+      terrain_open?(state, nx, y, opts) and not body_blocked?(state, nx, y, radius, opts) and
+          abs(dx) > 0.2 ->
         {nx, y}
 
-      World.open?(x, ny) and not body_blocked?(state, x, ny, radius, opts) and abs(dy) > 0.2 ->
+      terrain_open?(state, x, ny, opts) and not body_blocked?(state, x, ny, radius, opts) and
+          abs(dy) > 0.2 ->
         {x, ny}
 
       true ->
         {x, y}
+    end
+  end
+
+  defp terrain_open?(state, x, y, opts) do
+    if Map.get(opts, :pass_terrain, false) do
+      World.open?(x, y)
+    else
+      World.open?(state.world.seed, x, y)
     end
   end
 
@@ -2248,10 +2331,16 @@ defmodule LastKeep.Game.Sim do
     pass_heroes = Map.get(opts, :pass_heroes, false)
     pass_monsters = Map.get(opts, :pass_monsters, false)
     pass_walls = Map.get(opts, :pass_walls, false)
+    check_terrain = Map.get(opts, :check_terrain, false)
     keep_pad = Map.get(opts, :keep_pad, 0.0)
     from = Map.get(opts, :from)
 
-    (not pass_keep and keep_hit?(state, x, y, radius + keep_pad, from)) or
+    terrain_blocked =
+      check_terrain and not World.open?(state.world.seed, x, y) and
+        (from == nil or World.open?(state.world.seed, from.x, from.y))
+
+    terrain_blocked or
+      (not pass_keep and keep_hit?(state, x, y, radius + keep_pad, from)) or
       Enum.any?(blockers(state), fn building ->
         not (pass_walls and building.kind in [:wall, :stone_wall]) and
           shape_hit?(building, x, y, radius, from)

@@ -18,7 +18,7 @@ defmodule LastKeep.Game.ExploreTest do
     refute Enum.any?(state.world.chests, &(&1.id == chest.id))
   end
 
-  test "a hero stops on the skirt and still crosses a river" do
+  test "a hero stops on the skirt and on a river, and crosses a ford" do
     state = fresh() |> stand(7000, 0)
 
     state =
@@ -29,35 +29,66 @@ defmodule LastKeep.Game.ExploreTest do
       end)
 
     ada = hero(state)
-    assert ada.x > 7100
+    assert ada.x > 7000
     assert ada.x < Rules.walk_backstop()
     assert World.open?(ada.x, ada.y)
-    refute World.open?(ada.x + 40, ada.y)
 
+    # Find an open cell immediately west of a blocking river cell on seed 1
     {rx, ry} =
-      Enum.find_value(-50..50, fn i ->
-        Enum.find_value(-50..50, fn j ->
+      Enum.find_value(-80..80, fn i ->
+        Enum.find_value(-80..80, fn j ->
           x = i * 36
           y = j * 36
-
           distance = :math.sqrt(x * x + y * y)
 
-          if World.biome(1, x, y) == :river and distance > 500 and distance < 3000 do
+          if World.biome(1, x, y) == :river and World.open?(1, x - 36, y) and distance > 500 and
+               distance < 3000 do
             {x, y}
           end
         end)
       end)
 
-    state = fresh() |> stand(rx - 40, ry)
-
-    state =
-      Enum.reduce(1..16, state, fn _, state ->
-        state
-        |> Sim.input("ada", %{"mx" => 1, "my" => 0})
-        |> Sim.tick()
+    stopped =
+      fresh()
+      |> stand(rx - 36, ry)
+      |> then(fn s ->
+        Enum.reduce(1..16, s, fn _, acc ->
+          acc
+          |> Sim.input("ada", %{"mx" => 1, "my" => 0})
+          |> Sim.tick()
+        end)
       end)
 
-    assert hero(state).x > rx + 8
+    assert hero(stopped).x < rx - 14
+    assert World.open?(1, hero(stopped).x, hero(stopped).y)
+
+    # Find an open cell immediately west of a walkable ford cell on seed 1
+    {fx, fy} =
+      Enum.find_value(-80..80, fn i ->
+        Enum.find_value(-80..80, fn j ->
+          x = i * 36
+          y = j * 36
+          distance = :math.sqrt(x * x + y * y)
+
+          if World.biome(1, x, y) == :ford and World.open?(1, x - 36, y) and
+               World.open?(1, x + 36, y) and distance > 500 and distance < 3000 do
+            {x, y}
+          end
+        end)
+      end)
+
+    crossed =
+      fresh()
+      |> stand(fx - 36, fy)
+      |> then(fn s ->
+        Enum.reduce(1..20, s, fn _, acc ->
+          acc
+          |> Sim.input("ada", %{"mx" => 1, "my" => 0})
+          |> Sim.tick()
+        end)
+      end)
+
+    assert hero(crossed).x > fx + 8
 
     state = fresh() |> stand(20_000, 0)
     state = state |> Sim.input("ada", %{"mx" => 0, "my" => 0}) |> Sim.tick()
@@ -66,6 +97,41 @@ defmodule LastKeep.Game.ExploreTest do
     assert_in_delta :math.sqrt(parked.x * parked.x + parked.y * parked.y),
                     Rules.walk_backstop(),
                     1
+  end
+
+  test "a monster funnels around a river through a ford while a bat flies over it" do
+    {rx, ry} =
+      Enum.find_value(10..70, fn i ->
+        Enum.find_value(-40..40, fn j ->
+          x = i * 36
+          y = j * 36
+
+          if World.biome(1, x, y) == :river and World.open?(1, x + 72, y) and
+               World.open?(1, x - 72, y) do
+            {x, y}
+          end
+        end)
+      end)
+
+    # Bat flies directly across the river toward the keep
+    bat_state =
+      Sim.new("RIV001", seed: 1, hold: false)
+      |> Sim.spawn_monster(%{kind: :bat, x: rx + 64, y: ry, wave: 3})
+
+    bat_after = Enum.reduce(1..45, bat_state, fn _, acc -> Sim.tick(acc) end)
+    [bat] = Sim.monsters(bat_after)
+    assert bat.x < rx - 20
+
+    # Ground wolf skirts the river bank instead of freezing on the bank
+    wolf_state =
+      Sim.new("RIV002", seed: 1, hold: false)
+      |> Sim.spawn_monster(%{kind: :wolf, x: rx + 64, y: ry, wave: 3})
+
+    wolf_after = Enum.reduce(1..80, wolf_state, fn _, acc -> Sim.tick(acc) end)
+    [wolf] = Sim.monsters(wolf_after)
+    dx = wolf.x - (rx + 64)
+    dy = wolf.y - ry
+    assert :math.sqrt(dx * dx + dy * dy) > 80
   end
 
   test "a hero keeps walking past the old map edge" do
