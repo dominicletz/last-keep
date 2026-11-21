@@ -38,6 +38,7 @@ defmodule LastKeep.Game.Snapshot do
       dirt: Rules.dirt_radius(state.town),
       view_scale: Rules.view_scale(state.town),
       upgrade: upgrade_offer(state),
+      fortify: fortify_offer(state),
       resources: state.resources,
       kills: state.kills,
       score: Sim.score(state),
@@ -208,6 +209,15 @@ defmodule LastKeep.Game.Snapshot do
     else
       cost = Rules.keep_upgrade_cost(town)
       %{rank: town + 1, wood: cost.wood, gold: cost.gold}
+    end
+  end
+
+  defp fortify_offer(%State{town: town, keep: keep}) do
+    if town >= Rules.town_rank_cap() and keep.max_hp < Rules.fortify_cap() do
+      cost = Rules.fortify_cost()
+      %{wood: cost.wood, gold: cost.gold, hp: Rules.fortify_hp()}
+    else
+      nil
     end
   end
 

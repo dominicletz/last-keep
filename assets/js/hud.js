@@ -256,6 +256,17 @@ export function raiseLabel(upgrade) {
   return `Raise the keep  ${upgrade.wood} wood ${upgrade.gold} gold`
 }
 
+export function fortifyLabel(fortify) {
+  if (!fortify) return "The keep is as high as it goes"
+  return `Fortify keep (+${fortify.hp} HP)  ${fortify.wood} wood ${fortify.gold} gold`
+}
+
+export function fortifyReady(fortify, resources, hero, town = 4) {
+  if (!fortify) return false
+  if ((resources?.wood ?? 0) < fortify.wood || (resources?.gold ?? 0) < fortify.gold) return false
+  return raiseInRange(hero, town)
+}
+
 export const RAISE_REACH = 100
 
 export function raiseInRange(hero, town = 0) {

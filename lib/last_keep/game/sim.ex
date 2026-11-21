@@ -128,7 +128,8 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
-  def tick(%State{phase: :over} = state), do: %{state | tick: state.tick + 1, events: []}
+  def tick(%State{phase: :over} = state),
+    do: %{state | tick: state.tick + 1, events: [], unsent: 0}
 
   def tick(%State{} = state) do
     state
@@ -152,6 +153,7 @@ defmodule LastKeep.Game.Sim do
     |> economy()
     |> advance_phase()
     |> respawns()
+    |> seal_events()
   end
 
   def spawn_monster(%State{} = state, attrs) do
@@ -272,6 +274,42 @@ defmodule LastKeep.Game.Sim do
 
   def release(%State{} = state, _id), do: state
 
+  def ping(%State{phase: :over} = state, _id, _x, _y), do: state
+
+  def ping(%State{} = state, id, x, y) do
+    case state.players[id] do
+      %{connected: true} = player ->
+        px = clamp_world(x)
+        py = clamp_world(y)
+
+        event(state, %{
+          type: "ping",
+          x: px,
+          y: py,
+          name: player.name,
+          hero: Atom.to_string(player.hero)
+        })
+
+      _ ->
+        state
+    end
+  end
+
+  def fortify(%State{phase: :over} = state, _id), do: state
+
+  def fortify(%State{} = state, id) do
+    case state.players[id] do
+      %{connected: true, hero_id: hero_id} ->
+        case state.entities[hero_id] do
+          %{alive: true} = hero -> try_fortify(state, hero)
+          _ -> state
+        end
+
+      _ ->
+        state
+    end
+  end
+
   def restart(%State{phase: :over} = state) do
     fresh = new(state.code, seed: System.unique_integer([:positive]))
 
@@ -301,7 +339,15 @@ defmodule LastKeep.Game.Sim do
     Enum.count(state.players, fn {_id, player} -> player.connected end)
   end
 
-  defp bump(state), do: %{state | tick: state.tick + 1, events: []}
+  # The broadcast is the snapshot this tick returns. A ping or a fortify
+  # records its event before that, so the clear keeps those and drops events
+  # the previous snapshot already carried.
+  defp bump(%{events: events, unsent: unsent} = state) do
+    carried = Enum.take(events, unsent)
+    %{state | tick: state.tick + 1, events: carried, unsent: length(carried)}
+  end
+
+  defp seal_events(state), do: %{state | unsent: 0}
 
   defp reconnect(state, id, name, connected) do
     player = state.players[id]
@@ -1024,7 +1070,10 @@ defmodule LastKeep.Game.Sim do
     end)
     |> Enum.reduce(state, fn monster, state ->
       damage = scaled_damage(ability.damage, state, hero.hero, monster)
-      hurt_monster(state, monster.id, damage, Rules.kill_bonus(hero.hero))
+
+      state
+      |> hurt_monster(monster.id, damage, Rules.kill_bonus(hero.hero))
+      |> knockback_monster(monster.id, hero.x, hero.y, 12.0)
     end)
     |> strike_portals(hero, ability)
     |> repair_near(hero, Map.get(ability, :repair, 0))
@@ -1167,7 +1216,10 @@ defmodule LastKeep.Game.Sim do
     end)
     |> Enum.reduce(state, fn monster, state ->
       damage = scaled_damage(ability.damage, state, hero.hero, monster)
-      hurt_monster(state, monster.id, damage, Rules.kill_bonus(hero.hero))
+
+      state
+      |> hurt_monster(monster.id, damage, Rules.kill_bonus(hero.hero))
+      |> knockback_monster(monster.id, hero.x, hero.y, 12.0)
     end)
   end
 
@@ -1417,7 +1469,9 @@ defmodule LastKeep.Game.Sim do
       hypot(monster.x - projectile.x, monster.y - projectile.y) <= projectile.aoe + monster.r
     end)
     |> Enum.reduce(state, fn monster, state ->
-      hurt_monster(state, monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
+      state
+      |> hurt_monster(monster.id, projectile.damage, Rules.kill_bonus(projectile.hero))
+      |> knockback_monster(monster.id, projectile.x, projectile.y, 16.0)
     end)
     |> event(%{type: "boom", x: projectile.x, y: projectile.y})
   end
@@ -2430,6 +2484,70 @@ defmodule LastKeep.Game.Sim do
     end
   end
 
+  defp try_fortify(state, hero) do
+    cost = Rules.fortify_cost()
+
+    cond do
+      state.town < Rules.town_rank_cap() ->
+        refuse(state, hero.x, hero.y, "Raise the keep to rank 4 first")
+
+      state.keep.max_hp >= Rules.fortify_cap() ->
+        refuse(state, hero.x, hero.y, "The keep is fully fortified")
+
+      not near_keep?(state, hero.x, hero.y) ->
+        refuse(state, hero.x, hero.y, "Walk to the keep")
+
+      not afford?(state, cost) ->
+        reason =
+          if state.resources.wood < cost.wood, do: "Not enough wood", else: "Not enough gold"
+
+        refuse(state, hero.x, hero.y, reason)
+
+      true ->
+        keep = state.keep
+        next_max = min(keep.max_hp + Rules.fortify_hp(), Rules.fortify_cap())
+        next_hp = min(keep.hp + Rules.fortify_heal(), next_max)
+
+        state
+        |> pay(cost)
+        |> Map.put(:keep, %{keep | max_hp: next_max, hp: next_hp})
+        |> event(%{type: "fortify", x: 0.0, y: 0.0, amount: Rules.fortify_hp()})
+    end
+  end
+
+  defp knockback_monster(state, id, fx, fy, dist) do
+    case state.entities[id] do
+      %{type: :monster} = monster ->
+        {ux, uy} = norm(monster.x - fx, monster.y - fy)
+
+        if ux == 0.0 and uy == 0.0 do
+          state
+        else
+          # Bosses and trolls resist half the push
+          push = if monster.kind in [:boss, :troll], do: dist * 0.4, else: dist
+          nx = monster.x + ux * push
+          ny = monster.y + uy * push
+
+          opts = %{
+            ignore: monster.id,
+            keep_pad: -6.0,
+            from: %{x: monster.x, y: monster.y},
+            pass_walls: Rules.flies_over_walls?(monster.kind),
+            check_terrain: not Rules.flies_over_walls?(monster.kind)
+          }
+
+          if not body_blocked?(state, nx, ny, monster.r, opts) do
+            put_entity(state, %{monster | x: nx, y: ny})
+          else
+            state
+          end
+        end
+
+      _ ->
+        state
+    end
+  end
+
   defp clamp_map(x, y, radius) do
     dist = hypot(x, y)
 
@@ -2594,7 +2712,8 @@ defmodule LastKeep.Game.Sim do
   defp drop(state, id), do: %{state | entities: Map.delete(state.entities, id)}
 
   defp event(state, ev) do
-    %{state | events: Enum.take([ev | state.events], 24)}
+    events = Enum.take([ev | state.events], 24)
+    %{state | events: events, unsent: min(state.unsent + 1, length(events))}
   end
 
   defp heroes(state), do: for({_id, %{type: :hero} = hero} <- state.entities, do: hero)

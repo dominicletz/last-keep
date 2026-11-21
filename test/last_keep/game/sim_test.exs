@@ -1847,6 +1847,63 @@ defmodule LastKeep.Game.SimTest do
     assert near.enraged == true
   end
 
+  test "a connected player can ping a ground point and melee strikes knock monsters back" do
+    state = Sim.new("PING01", seed: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+
+    pinged = Sim.ping(state, "ada", 420.0, -180.0)
+    assert Enum.any?(pinged.events, &(&1.type == "ping" and &1.name == "ada" and &1.x == 420.0))
+    kept = Sim.tick(pinged)
+    assert Enum.any?(kept.events, &(&1.type == "ping" and &1.name == "ada" and &1.x == 420.0))
+    refute Enum.any?(Sim.tick(kept).events, &(&1.type == "ping"))
+
+    # Melee strike knocks a surviving monster away from the hero
+    hit_state =
+      state
+      |> Sim.spawn_monster(%{kind: :skeleton, x: ada.x + 36.0, y: ada.y, hp: 100, wave: 1})
+      |> push("ada", %{"attack" => true, "ax" => ada.x + 36.0, "ay" => ada.y})
+      |> Sim.tick()
+
+    [pushed] = Sim.monsters(hit_state)
+    assert pushed.x > ada.x + 40.0
+  end
+
+  test "at rank 4, fortifying the keep raises max health and heals without changing upgrade nil" do
+    state = Sim.new("FORT01", seed: 1, hold: false)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+
+    # Below rank 4 fortify is refused and snapshot.fortify is nil
+    assert Snapshot.render(state).fortify == nil
+    refused = Sim.fortify(state, "ada")
+    assert Enum.any?(refused.events, &(&1.type == "deny"))
+
+    rank4 =
+      %{
+        state
+        | town: 4,
+          keep: %{state.keep | hp: 700, max_hp: 900},
+          resources: %{state.resources | wood: 50, gold: 24}
+      }
+      |> put_hero(%{ada | x: 80.0, y: 0.0})
+
+    snap = Snapshot.render(rank4)
+    assert snap.upgrade == nil
+    assert snap.fortify == %{wood: 36, gold: 16, hp: 120}
+
+    fortified = Sim.fortify(rank4, "ada")
+    assert fortified.keep.max_hp == 1020
+    assert fortified.keep.hp == 900
+    assert fortified.resources.wood == 14
+    assert fortified.resources.gold == 8
+    assert Enum.any?(fortified.events, &(&1.type == "fortify" and &1.amount == 120))
+    kept = Sim.tick(fortified)
+    assert kept.keep.max_hp == 1020
+    assert Enum.any?(kept.events, &(&1.type == "fortify" and &1.amount == 120))
+    refute Enum.any?(Sim.tick(kept).events, &(&1.type == "fortify"))
+  end
+
   defp approach_and_raise(hero, wood, gold) do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", hero))

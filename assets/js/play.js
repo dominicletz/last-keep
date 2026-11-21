@@ -5,11 +5,11 @@ import { createView } from "./render"
 import { sceneKey } from "./frame"
 import { bakeMonster, loadMonsterSheets, monsterKinds, monsterParts, monsterSource, releaseMonsterSheets } from "./monsters.js"
 import { loadScores } from "./landing"
-import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
+import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldPushInput, shouldSend, swingFocus } from "./input"
 import { terrainWaypoint } from "./world_biome"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint"
-import { RELIC_SIGN, SEAT_CONTROLS, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, meteorLocked, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, wallUsesStone, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, SEAT_CONTROLS, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, fortifyLabel, fortifyReady, hintBeacons, ignoreFocusClick, meteorLocked, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, wallUsesStone, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 import { mountStart } from "./start"
 
@@ -281,7 +281,7 @@ function start(code, seat, ui) {
     // room applies a frame before the snapshots that follow its reply, so a
     // stop read after this is not the hero still walking on an old frame.
     ack() {
-      const push = send()
+      const push = send(true)
       if (!push) return Promise.resolve(false)
       return new Promise((resolve) => {
         push
@@ -566,9 +566,11 @@ function start(code, seat, ui) {
       pad.place = true
       input.place = true
       fingers.set(event.pointerId, "place")
-    } else if (touchAction?.id === "raise" && touchAction.enabled === false) {
+    } else if ((touchAction?.id === "raise" || touchAction?.id === "fortify") && touchAction.enabled === false) {
       cueRaise()
       return
+    } else if (touchAction?.id === "fortify") {
+      channel.push("fortify", {})
     } else if (touchAction?.id === "raise") {
       pad.raise = true
       input.raise = true
@@ -635,7 +637,10 @@ function start(code, seat, ui) {
         refresh()
       }
     }
-    if (["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "KeyR", "KeyF", "Space"].includes(event.code)) {
+    if (event.code === "KeyG" && !event.repeat && joined && selfId) {
+      channel.push("ping", { x: aim.x, y: aim.y })
+    }
+    if (["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "KeyR", "KeyF", "KeyG", "Space"].includes(event.code)) {
       event.preventDefault()
     }
     send()
@@ -664,15 +669,19 @@ function start(code, seat, ui) {
     }
     if (button.dataset.start !== undefined && !button.disabled) channel.push("start", {})
     if (button.dataset.raise !== undefined && !button.disabled) {
-      input.raise = true
-      send()
-      input.raise = false
+      if (!latest?.upgrade && latest?.fortify) {
+        channel.push("fortify", {})
+      } else {
+        input.raise = true
+        send(true)
+        input.raise = false
+      }
     }
   })
   const raiseHit = ui.hud.querySelector("[data-raise-hit]")
   function cueRaise() {
     const meNow = (latest?.players || []).find((player) => player.id === selfId)
-    const offer = latest?.upgrade
+    const offer = latest?.upgrade || latest?.fortify
     const text = raiseHint(meNow, offer, latest?.town, latest?.resources)
     if (!text) return
     raiseCue = showReason(raiseCue, text, performance.now(), 2200, true)
@@ -688,7 +697,10 @@ function start(code, seat, ui) {
   })
   raiseHit.addEventListener("pointerup", cueRaise)
 
-  function send() {
+  let lastPushedFrame = null
+  let lastPushedAt = -Infinity
+
+  function send(force = false) {
     blurHiddenFocus(document)
     const skill =
       pad.q || pad.e || pad.r || pad.f || keys.has("KeyQ") || keys.has("KeyE") || keys.has("KeyR") || keys.has("KeyF")
@@ -710,10 +722,15 @@ function start(code, seat, ui) {
     if (pad.place) input.place = true
     if (pad.raise) input.raise = true
     input.build = build
-    return channel.push("input", inputFrame(input))
+    const frame = inputFrame(input)
+    const now = performance.now()
+    if (!force && !shouldPushInput(lastPushedFrame, frame, now - lastPushedAt, 250)) return null
+    lastPushedFrame = frame
+    lastPushedAt = now
+    return channel.push("input", frame)
   }
 
-  window.setInterval(send, 50)
+  window.setInterval(() => send(false), 50)
   syncTouchShell()
   window.addEventListener("resize", syncTouchShell)
   window.addEventListener("touchmove", (event) => {
@@ -853,8 +870,13 @@ function start(code, seat, ui) {
     }
     const raise = ui.hud.querySelector("[data-raise]")
     if (raise) {
-      raise.textContent = raiseLabel(snap.upgrade)
-      raise.disabled = !raiseReady(snap.upgrade, snap.resources, me, snap.town)
+      if (!snap.upgrade && snap.fortify) {
+        raise.textContent = fortifyLabel(snap.fortify)
+        raise.disabled = !fortifyReady(snap.fortify, snap.resources, me, snap.town)
+      } else {
+        raise.textContent = raiseLabel(snap.upgrade)
+        raise.disabled = !raiseReady(snap.upgrade, snap.resources, me, snap.town)
+      }
     }
     const start = ui.hud.querySelector("[data-start]")
     const earlyNight =
@@ -887,7 +909,8 @@ function start(code, seat, ui) {
     const armedKind = armed === "wall" && stoneWall ? "stone_wall" : armed
     const cost = armed && me?.costs ? me.costs[armedKind] || me.costs[armed] : null
     const now = performance.now()
-    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, snap.upgrade, snap.town, snap.resources) : ""
+    const raiseOffer = snap.upgrade || snap.fortify
+    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, raiseOffer, snap.town, snap.resources) : ""
     const preview = armed
       ? placementReason(
           { ...me, cost, town: snap.town },
@@ -991,6 +1014,7 @@ function start(code, seat, ui) {
       keepR: snap.keep?.r,
       resources: snap.resources,
       upgrade: snap.upgrade,
+      fortify: snap.fortify,
       armed: build,
       cost: effectiveBuild && me?.costs ? me.costs[effectiveBuild] || me.costs[build] : null,
       buildings: snap.buildings
@@ -1003,7 +1027,14 @@ function start(code, seat, ui) {
     }
     button.hidden = false
     button.setAttribute("aria-disabled", touchAction.enabled === false ? "true" : "false")
-    button.textContent = touchAction.id === "place" ? PLACE_WORD[touchAction.kind] || "Build" : touchAction.id === "raise" ? "Raise" : "Feed"
+    button.textContent =
+      touchAction.id === "place"
+        ? PLACE_WORD[touchAction.kind] || "Build"
+        : touchAction.id === "raise"
+          ? "Raise"
+          : touchAction.id === "fortify"
+            ? "Fortify"
+            : "Feed"
   }
 }
 
@@ -1417,7 +1448,9 @@ function drawFx(ui, snap, fx, seen) {
       ev.type !== "slam" &&
       ev.type !== "deny" &&
       ev.type !== "trade" &&
-      ev.type !== "retaliate"
+      ev.type !== "retaliate" &&
+      ev.type !== "ping" &&
+      ev.type !== "fortify"
     ) {
       continue
     }
@@ -1432,9 +1465,13 @@ function drawFx(ui, snap, fx, seen) {
               ? ev.label || "Traded"
               : ev.type === "retaliate"
                 ? "Retaliation!"
-                : ev.amount == null
-                  ? ""
-                  : String(ev.amount)
+                : ev.type === "ping"
+                  ? `${ev.name || "Ally"}: Here!`
+                  : ev.type === "fortify"
+                    ? `Fortified +${ev.amount || 120} HP`
+                    : ev.amount == null
+                      ? ""
+                      : String(ev.amount)
     if (!text || !Number.isFinite(ev.x) || !Number.isFinite(ev.y)) continue
     const id = nextFx++
     const row = {

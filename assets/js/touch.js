@@ -1,4 +1,4 @@
-import { raiseInRange } from "./hud.js"
+import { fortifyReady, raiseInRange } from "./hud.js"
 import { footprintGap, variantFor } from "./footprint.js"
 
 export const STICK_RADIUS = 64
@@ -73,6 +73,10 @@ export function contextAction(scene) {
   }
   if (scene.upgrade && !raiseInRange(scene.hero, scene.town || 0)) return { id: "raise", enabled: false }
   if (canRaise(scene)) return { id: "raise", enabled: true }
+  if (!scene.upgrade && scene.fortify && !raiseInRange(scene.hero, scene.town || 0)) {
+    return { id: "fortify", enabled: false }
+  }
+  if (canFortify(scene)) return { id: "fortify", enabled: true }
   if (canFeed(scene)) return { id: "feed" }
   return null
 }
@@ -86,6 +90,11 @@ function canRaise(scene) {
   const offer = scene.upgrade
   if (!offer || !raiseInRange(scene.hero, scene.town || 0)) return false
   return (scene.resources?.wood ?? 0) >= offer.wood && (scene.resources?.gold ?? 0) >= offer.gold
+}
+
+function canFortify(scene) {
+  if (scene.upgrade || !scene.fortify) return false
+  return fortifyReady(scene.fortify, scene.resources, scene.hero, scene.town || 0)
 }
 
 function canFeed(scene) {

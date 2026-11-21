@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keepSolid, keysAround, keysToward, retainFocus, seatFromQuery, shouldSend, swingFocus } from "./input.js"
+import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keepSolid, keysAround, keysToward, retainFocus, sameInputFrame, seatFromQuery, shouldPushInput, shouldSend, swingFocus } from "./input.js"
 
 test("an invite with a name and hero is a seat", () => {
   assert.deepEqual(seatFromQuery("?name=LLL&hero=warrior"), { name: "LLL", hero: "warrior" })
@@ -165,4 +165,20 @@ test("a guest behind the keep walks around it to the host", () => {
 test("a guest beside the host holds no keys", () => {
   assert.deepEqual(followKeys({ x: 100, y: 0 }, { x: 120, y: 20 }), [])
   assert.ok(followKeys({ x: 300, y: 0 }, { x: 120, y: 20 }).length > 0)
+})
+
+test("change-driven input pushes immediately on change and throttles idle frames to heartbeat", () => {
+  const idle = inputFrame({ mx: 0, my: 0, ax: 10, ay: 20, attack: false, place: false, raise: false, q: false, e: false, r: false, f: false, build: null })
+  const same = inputFrame({ mx: 0, my: 0, ax: 10, ay: 20, attack: false, place: false, raise: false, q: false, e: false, r: false, f: false, build: null })
+  const moved = inputFrame({ mx: 1, my: 0, ax: 10, ay: 20, attack: false, place: false, raise: false, q: false, e: false, r: false, f: false, build: null })
+  const aimed = inputFrame({ mx: 0, my: 0, ax: 40, ay: 20, attack: false, place: false, raise: false, q: false, e: false, r: false, f: false, build: null })
+
+  assert.equal(sameInputFrame(idle, same), true)
+  assert.equal(sameInputFrame(idle, moved), false)
+  assert.equal(shouldPushInput(null, idle, 0), true)
+  assert.equal(shouldPushInput(idle, same, 50), false)
+  assert.equal(shouldPushInput(idle, same, 200), false)
+  assert.equal(shouldPushInput(idle, same, 250), true)
+  assert.equal(shouldPushInput(idle, moved, 50), true)
+  assert.equal(shouldPushInput(idle, aimed, 50), true)
 })

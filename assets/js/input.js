@@ -99,6 +99,33 @@ export function inputFrame(input) {
   }
 }
 
+export function sameInputFrame(a, b) {
+  if (!a || !b) return false
+  return (
+    a.mx === b.mx &&
+    a.my === b.my &&
+    a.ax === b.ax &&
+    a.ay === b.ay &&
+    a.attack === b.attack &&
+    a.place === b.place &&
+    a.raise === b.raise &&
+    a.q === b.q &&
+    a.e === b.e &&
+    a.r === b.r &&
+    a.f === b.f &&
+    a.build === b.build
+  )
+}
+
+// Change-driven WebSocket input with a 250ms keepalive heartbeat cuts idle
+// client->server frames by ~80% while flushing any key, aim, or click change
+// immediately on the next tick.
+export function shouldPushInput(prevFrame, nextFrame, elapsedMs, heartbeatMs = 250) {
+  if (!prevFrame) return true
+  if (!sameInputFrame(prevFrame, nextFrame)) return true
+  return elapsedMs >= heartbeatMs
+}
+
 // Eight ways the movement keys can point. A short gap means stop: standing
 // on the host is close enough, and holding a key there walks past them.
 const STEP_F = Math.SQRT1_2
