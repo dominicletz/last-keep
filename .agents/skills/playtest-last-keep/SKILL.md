@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Playtest Last Keep
 
-Five specialists play together in one room. They do not split into separate games. Each one may pick a hero. The home page and a bare invite are the dusk yard. The camera sits low and close on the hero, who fills about two fifths of the window, with the keep and the trees behind. On a landscape phone the hero stays left of the class card. The arrows change the class. A stored seat does not show that screen. A hero who is a speck beside the keep, or who is hidden behind the card, is a finding. The report is written from the speciality, not from the hero's role. The browser proof stays `.agents/skills/verify-last-keep/SKILL.md`. This skill does not copy the steps in `e2e/scenarios.js`.
+Five specialists play together in one room. They do not split into separate games. Each one may pick a hero. The home page and a bare invite are the dusk yard. The camera sits low and close on the hero, who fills about two fifths of the window, with the keep and the trees behind. On a landscape phone the hero stays left of the class card. The arrows change the class. A stored seat does not show that screen. A hero who is a speck beside the keep, or who is hidden behind the card, is a finding. The report is written from the speciality, not from the hero's role. The browser proof stays `.agents/skills/verify-last-keep/SKILL.md`. This skill does not copy the steps in `e2e/scenarios.js`. The keep, walls, houses, hell doors, and the quarry, camp, and shrine stop a hero on the painted footprint. Trees and the merchant do not. A hero standing under the keep is a finding.
 
 ## Harness
 

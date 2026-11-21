@@ -1,6 +1,7 @@
 defmodule LastKeep.Game.SimTest do
   use ExUnit.Case, async: true
 
+  alias LastKeep.Game.Footprint
   alias LastKeep.Game.Rules
   alias LastKeep.Game.Sim
   alias LastKeep.Game.Snapshot
@@ -1166,6 +1167,39 @@ defmodule LastKeep.Game.SimTest do
              scout.r + blocked.r - 0.5
   end
 
+  test "a hero cannot walk into the keep floor" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    spawn = hero(state, "ada")
+
+    state =
+      Enum.reduce(1..80, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => -1, "my" => 0})
+        |> Sim.tick()
+      end)
+
+    ada = hero(state, "ada")
+    assert ada.x < spawn.x
+    assert Footprint.gap(:keep, "0", ada.x, ada.y) >= ada.r - 0.5
+
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+    state = put_hero(state, %{ada | x: -200.0, y: -200.0})
+
+    state =
+      Enum.reduce(1..80, state, fn _, state ->
+        state
+        |> Sim.input("ada", %{"mx" => 1, "my" => 1})
+        |> Sim.tick()
+      end)
+
+    ada = hero(state, "ada")
+    assert ada.x > -200.0
+    assert Footprint.gap(:keep, "0", ada.x, ada.y) >= ada.r - 0.5
+  end
+
   test "the keep is solid and a monster bites it from the edge" do
     state = Sim.new("KEEP01", seed: 1)
     {:ok, state} = Sim.join(state, player("ada", :warrior))
@@ -1626,6 +1660,40 @@ defmodule LastKeep.Game.SimTest do
     assert length(of_kind(state, :field)) == 1
     assert state.resources.wood == 9
     assert length(of_kind(state, :house)) == 4
+  end
+
+  test "a hero at the far keep face can feed the keep" do
+    state = Sim.new("KEEP01", seed: 1)
+    {:ok, state} = Sim.join(state, player("ada", :warrior))
+    ada = hero(state, "ada")
+
+    # Outside radius 100 (hypot ~116) but within 22 units of the rank-0 keep polygon face
+    far_face = %{ada | x: -82.0, y: -82.0}
+    state = put_hero(state, far_face)
+
+    state = %{
+      state
+      | keep: %{state.keep | hp: 700},
+        resources: %{state.resources | food: 10}
+    }
+
+    fed =
+      state
+      |> push("ada", %{"f" => true})
+      |> Sim.tick()
+
+    assert fed.keep.hp == 750
+    assert fed.resources.food == 5
+
+    # Beyond the keep footprint reach, feeding does nothing
+    out_of_reach =
+      state
+      |> put_hero(%{ada | x: -140.0, y: -140.0})
+      |> push("ada", %{"f" => true})
+      |> Sim.tick()
+
+    assert out_of_reach.keep.hp == 700
+    assert out_of_reach.resources.food == 10
   end
 
   defp approach_and_raise(hero, wood, gold) do

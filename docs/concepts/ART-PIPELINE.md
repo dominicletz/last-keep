@@ -76,6 +76,21 @@ Building and prop tiles follow the kind rows: wall, tower, trap, field, forge, m
 
 The pixel pass quantizes the 640×400 buffer once per frame. It does not add a shadow map. The perf harness belongs to agent `bc-af503d4f`.
 
+## Footprints
+
+`node script/footprints.mjs` writes `priv/footprints.json`. The simulation and the renderer both read that file. A sheet change is wrong until the script is run again. `assets/js/footprint.test.js` fails when the committed file disagrees with a fresh measure.
+
+The measure uses the rank-0 gameplay camera from the top of this document (field of view 15, half-height 168, eye on (150, 103, 150)). It does not use the gallery's orthographic raster.
+
+1. Take the opaque pixels of one cell. The lowest opaque row is the foot. The pipeline already pins that row at the cell height minus 5.
+2. In the bottom 45% of the opaque figure, the widest row is the left and right corners of the floor.
+3. Project those pixels onto the ground. A camera-facing card moves along camera-up. A vertical card (the hell door) moves along world-up. The ground axes are screen-right and the direction away from the camera.
+4. The diamond center is the ground point of the midpoint of those corners. Half-width is half the distance between the corners. Half-depth is the distance from that center back to the foot. The back corner mirrors the foot through the center. That diamond is the floor the building stands on, including the part the walls cover. A figure that comes out more than twice as deep as it is wide is a row of stakes. Its center row is the first row that reaches 85% of that width, so the shaft is not mirrored into a slab.
+5. The anchor is that center, in sim x and y, when the foot sits at the origin. The sprite or the door is drawn shifted by the opposite vector, so the painted base center sits on the entity.
+6. The collision shape is the convex outline of that diamond plus the left and right opaque pixel of every row from the center row down to the foot. Vertices are dropped while the next one sits within 1.5 units of the chord between its neighbors, and at least six vertices stay. The sim and the renderer both collide and draw the shadow from that polygon. A step that increases distance from the center is walking out, so a body that is already inside can leave.
+
+The keep, walls, houses, towers, the forge, the mage tower, hell doors, and the quarry, camp, and shrine block on that polygon. Trees, fields, traps, chests, and the merchant stay walk-through.
+
 ## The fidelity scorer
 
 The scorer lives in `assets/js/art_score.js`, with `assets/js/art_score.test.js`. It reads an internal frame, top row first, and the concept crop registered to that frame's ink box.

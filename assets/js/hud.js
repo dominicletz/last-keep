@@ -1,3 +1,5 @@
+import { footprintGap, variantFor } from "./footprint.js"
+
 const RELIC = {
   heartwood: "Heartwood raises the keep's health.",
   whetstone: "Whetstone adds 10% attack damage.",
@@ -174,7 +176,7 @@ export function placementReason(me, aim, resources) {
   if (!me || !aim) return ""
   const reach = me.range || 160
   if (Math.hypot(aim.x - me.x, aim.y - me.y) > reach) return "Too far"
-  if (Math.hypot(aim.x, aim.y) <= 90) return "Too close to the keep"
+  if (footprintGap("keep", variantFor("keep", me.town || 0), aim.x, aim.y) < 6) return "Too close to the keep"
   const wood = resources?.wood ?? 0
   const gold = resources?.gold ?? 0
   if (me.cost && wood < me.cost.wood) return "Not enough wood"
@@ -189,20 +191,23 @@ export function raiseLabel(upgrade) {
 
 export const RAISE_REACH = 100
 
-export function raiseInRange(hero) {
+export function raiseInRange(hero, town = 0) {
   const x = Number(hero?.x)
   const y = Number(hero?.y)
-  return Number.isFinite(x) && Number.isFinite(y) && Math.hypot(x, y) < RAISE_REACH
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false
+  if (Math.hypot(x, y) < RAISE_REACH) return true
+  const rank = Number.isFinite(town) ? town : 0
+  return footprintGap("keep", variantFor("keep", rank), x, y) <= 22
 }
 
-export function raiseReady(upgrade, resources, hero) {
+export function raiseReady(upgrade, resources, hero, town = 0) {
   if (!upgrade) return false
   if ((resources?.wood ?? 0) < upgrade.wood || (resources?.gold ?? 0) < upgrade.gold) return false
-  return raiseInRange(hero)
+  return raiseInRange(hero, town)
 }
 
-export function raiseHint(hero, upgrade) {
-  if (!upgrade || raiseInRange(hero)) return ""
+export function raiseHint(hero, upgrade, town = 0) {
+  if (!upgrade || raiseInRange(hero, town)) return ""
   return "Walk to the keep"
 }
 

@@ -8,6 +8,11 @@ if (!process.env.BASE_URL) {
 
 module.exports = defineConfig({
   testDir: "e2e",
+  // The footprint module imports JSON. Babel's transform of that import
+  // breaks the hud clock import the scenarios already use.
+  build: {
+    external: ["**/assets/js/**", "**/priv/**"]
+  },
   testMatch: "**/*.spec.js",
   timeout: 150_000,
   expect: { timeout: 15_000 },

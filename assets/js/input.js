@@ -1,3 +1,5 @@
+import { footprintGap, keepBlocks } from "./footprint.js"
+
 const HEROES = ["warrior", "mage", "scout", "farmer", "engineer"]
 
 export function seatFromQuery(search) {
@@ -125,19 +127,24 @@ export function keysToward(dx, dy, slack = 42) {
   return best.keys
 }
 
-// The keep disc is radius 54 and the hero is radius 14, so a center inside
-// 68 is solid. Steps are one tick at each hero speed, including swiftness.
-// A command counts when every one of those landings is closer to the goal.
-export const KEEP_SOLID = 68
+// The keep is the rank-0 footprint. A hero is radius 14. Steps are one tick
+// at each hero speed, including swiftness. A command counts when every one
+// of those landings is closer to the goal.
 const KEEP_STEPS = [7.1, 7.4, 7.75, 10, 10.8]
-const KEEP_CLEAR = KEEP_SOLID + 4
+const HERO_R = 14
+const KEEP_ROUTE = 126
+
+export function keepSolid(x, y, from) {
+  return keepBlocks(x, y, HERO_R, from || null)
+}
 
 function slideTo(x, y, keys, step) {
   if (!keys || keys.length === 0) return { x, y }
   const move = axes(new Set(keys))
   const dx = move.x * step
   const dy = move.y * step
-  const blocked = (px, py) => Math.hypot(px, py) < KEEP_SOLID
+  const from = { x, y }
+  const blocked = (px, py) => keepSolid(px, py, from)
   if (!blocked(x + dx, y + dy)) return { x: x + dx, y: y + dy }
   if (!blocked(x + dx, y) && Math.abs(dx) > 0.2) return { x: x + dx, y }
   if (!blocked(x, y + dy) && Math.abs(dy) > 0.2) return { x, y: y + dy }
@@ -155,12 +162,13 @@ function keepGains(x, y, keys, goalX, goalY) {
 function lineHitsKeep(x, y, goalX, goalY) {
   const dx = goalX - x
   const dy = goalY - y
-  const len2 = dx * dx + dy * dy
-  if (len2 < 1) return Math.hypot(x, y) < KEEP_CLEAR
-  let t = -(x * dx + y * dy) / len2
-  if (t < 0) t = 0
-  else if (t > 1) t = 1
-  return Math.hypot(x + t * dx, y + t * dy) < KEEP_CLEAR
+  const len = Math.hypot(dx, dy)
+  const steps = Math.max(1, Math.ceil(len / 8))
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps
+    if (footprintGap("keep", "0", x + dx * t, y + dy * t) < 4) return true
+  }
+  return false
 }
 
 // The goal is behind the disc. Walk the shorter tangent. A goal straight
@@ -228,7 +236,7 @@ export function keysAround(x, y, goalX, goalY) {
   if (y > -165 && goalY < -160) keys = ["KeyW", "KeyD"]
   if (!keys) {
     const keep = Math.hypot(x, y)
-    if (keep < 100 && keep > 1) {
+    if (keep < KEEP_ROUTE && keep > 1) {
       const tx = -y / keep
       const ty = x / keep
       const outward = (x * dx + y * dy) / keep
