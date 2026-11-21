@@ -9,7 +9,7 @@ const LOOK = {
   fov: 15,
   day: { ambient: 0xc8c6c2, ambientLevel: 0.35, sun: 0xfff3e4, sunLevel: 1.1, torch: 0, hemi: 0.4 },
   dusk: { ambient: 0xb0a89c, ambientLevel: 0.22, sun: 0xffb060, sunLevel: 1.4, torch: 1600, hemi: 0.25 },
-  night: { ambient: 0x6a6278, ambientLevel: 0.08, sun: 0x000000, sunLevel: 0, torch: 7200, hemi: 0.05 },
+  night: { ambient: 0x6a6278, ambientLevel: 0.16, sun: 0x000000, sunLevel: 0, torch: 7200, hemi: 0.10 },
   sunDir: [90, 200, 30],
   bloomThreshold: 0.72,
   bloomRadius: 6,

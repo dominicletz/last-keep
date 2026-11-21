@@ -4,6 +4,7 @@ import * as THREE from "three"
 import { heroParts } from "./heroes.js"
 import { spriteHeight } from "./pictures.js"
 import { PORTRAIT_FOV, PORTRAIT_STAND, heroMotion, mixPose, portraitFraction, portraitPose, portraitScale } from "./portrait.js"
+import { footprintGap, footprintSeat } from "./footprint.js"
 
 function projectHero(cssW, cssH, kind) {
   const pose = portraitPose({ x: PORTRAIT_STAND.x, z: PORTRAIT_STAND.z }, cssW, cssH)
@@ -80,4 +81,17 @@ test("a class change steps in and the glide meets the gameplay camera", () => {
   const end = mixPose(from, to, 1)
   assert.equal(end.position.x, to.position.x)
   assert.equal(end.look.y, to.look.y)
+})
+
+test("the start preview hero stands clearly in front of the rank-0 keep sprite", () => {
+  const gap = footprintGap("keep", "0", PORTRAIT_STAND.x, PORTRAIT_STAND.z)
+  assert.ok(gap >= 24, `expected hero outside keep footprint, got gap ${gap}`)
+  const pose = portraitPose({ x: PORTRAIT_STAND.x, z: PORTRAIT_STAND.z }, 1280, 800)
+  const seat = footprintSeat("keep", "0")
+  const dirX = pose.position.x - pose.look.x
+  const dirZ = pose.position.z - pose.look.z
+  const len = Math.hypot(dirX, dirZ)
+  // Positive projection means hero is closer to the portrait camera than the keep sprite plane
+  const depthClearance = ((PORTRAIT_STAND.x - seat.x) * dirX + (PORTRAIT_STAND.z - seat.z) * dirZ) / len
+  assert.ok(depthClearance >= 30, `expected >= 30 units in front of keep sprite, got ${depthClearance}`)
 })

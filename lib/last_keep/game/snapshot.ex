@@ -54,6 +54,7 @@ defmodule LastKeep.Game.Snapshot do
       trees: Enum.map(of_type(state, :tree), &tree/1),
       seed: state.world.seed,
       attempt: state.world.attempt,
+      claimed: chunk_list(state.world.claimed),
       chests: Enum.map(state.world.chests, &chest_view/1),
       portals: Enum.map(state.world.portals, &portal_view/1),
       pois: Enum.map(world_pois(state.world), &poi_view/1),
@@ -96,17 +97,36 @@ defmodule LastKeep.Game.Snapshot do
     table = Rules.map_table()
 
     if hypot(hero.x - table.x, hero.y - table.y) < Rules.map_reach() do
-      %{x: table.x, y: table.y, chunks: discovered_chunks(state)}
+      %{
+        x: table.x,
+        y: table.y,
+        chunks: discovered_chunks(state),
+        claimed: chunk_list(state.world.claimed),
+        portals: portal_chunks(state)
+      }
     else
       nil
     end
   end
 
   defp discovered_chunks(state) do
-    state.world.discovered
+    chunk_list(state.world.discovered)
+  end
+
+  defp chunk_list(chunks) do
+    chunks
     |> Enum.filter(&World.chunk_in_bounds?/1)
     |> Enum.map(fn {cx, cy} -> %{cx: cx, cy: cy} end)
     |> Enum.sort_by(&{&1.cy, &1.cx})
+  end
+
+  defp portal_chunks(state) do
+    state.world.portals
+    |> visible(state)
+    |> Enum.filter(&(&1.hp > 0))
+    |> Enum.map(&World.chunk_coord(&1.x, &1.y))
+    |> Enum.uniq()
+    |> chunk_list()
   end
 
   defp land_marks(state, hero) do
@@ -193,10 +213,15 @@ defmodule LastKeep.Game.Snapshot do
   end
 
   defp costs(hero) do
-    Map.new([:wall, :tower, :trap, :field, :forge, :mage_tower], fn kind ->
+    Map.new([:wall, :stone_wall, :tower, :trap, :field, :forge, :mage_tower], fn kind ->
       cost = Rules.cost(kind, hero)
 
-      {Atom.to_string(kind), %{wood: Map.get(cost, :wood, 0), gold: Map.get(cost, :gold, 0)}}
+      {Atom.to_string(kind),
+       %{
+         wood: Map.get(cost, :wood, 0),
+         gold: Map.get(cost, :gold, 0),
+         stone: Map.get(cost, :stone, 0)
+       }}
     end)
   end
 

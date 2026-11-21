@@ -259,7 +259,7 @@ input[type="text"], input:not([type="radio"]) {
   max-width: none;
   pointer-events: none;
 }
-.heart.world-pin { transform: translate(-50%, 10px); max-width: 9rem; }
+.heart.world-pin { transform: translate(-50%, 10px); max-width: none; white-space: nowrap; }
 .roster.world-pin { transform: translate(0, 0); max-width: 11rem; }
 .sacks {
   position: absolute;
@@ -332,7 +332,15 @@ input[type="text"], input:not([type="radio"]) {
 #hud .build:hover { background: transparent; }
 .skill b, .skill small, .build small { position: relative; z-index: 1; }
 .skill small, .build small { display: block; color: var(--gold); font-size: 0.64rem; }
-.build.on, .skill.on { border-bottom-color: var(--gold); }
+.build.on, .skill.on {
+  border-bottom-color: var(--gold);
+  outline: 1px solid var(--gold);
+  outline-offset: 1px;
+  color: #fff4d2;
+  text-shadow: 0 0 6px #e2b15a, 1px 1px 0 #000;
+}
+.skill.locked, #hud .thumb.locked { opacity: 0.55; }
+.skill.locked small, #hud .thumb.locked small { color: var(--muted); }
 .cool {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -542,7 +550,7 @@ html.touch-play .thumb-pad {
 #hud .thumb.r { grid-column: 3; grid-row: 2; }
 #hud .thumb.context { grid-column: 1; grid-row: 2; }
 #hud .thumb:hover { background: #140e12cc; }
-#hud .thumb img {
+#hud .thumb img, #hud .thumb .thumb-glyph {
   display: block;
   width: 100%;
   height: 68%;
@@ -551,6 +559,10 @@ html.touch-play .thumb-pad {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   pointer-events: none;
+}
+#hud .thumb .thumb-glyph {
+  padding: 0.45rem 0.7rem 0.25rem;
+  color: var(--gold);
 }
 #hud .thumb b, #hud .thumb small {
   position: absolute;
@@ -648,6 +660,12 @@ html.touch-play .stick { display: block; }
   text-transform: uppercase;
 }
 .start-card [data-class-role] { color: var(--muted); max-width: 28rem; }
+.start-party {
+  color: var(--gold);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  max-width: 28rem;
+}
 .start-card label, .start-card button, .start-card input { pointer-events: auto; }
 .start-card input {
   background: #140e12cc;

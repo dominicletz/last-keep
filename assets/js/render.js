@@ -15,6 +15,7 @@ import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
 import { GROUND_SPAN, GROUND_TEX, PLAZA_SPAN, PLAZA_TEX, groundPixels, plazaPixels } from "./ground.js"
 import { loadGroundTilesInBrowser, onGroundTiles } from "./seam_tiles.js"
 import { mountPicture, pineVariant } from "./horizon.js"
+import { CLOTH_HEIGHT, CLOTH_WIDTH, layoutMapMarks } from "./map_cloth.js"
 import { masonryBytes, propBytes } from "./tiles.js"
 import { buildingCard, buildingSheet, keepCardDrop, sheetCard as staticCard, spotVariant, staticSheets, stoneRepeat, treeCard, treeSheet, treeVariant, yardCards } from "./yard_cards.js"
 import { groundProblems, groundSpread, moodOf, moodProblems } from "./mood.js"
@@ -165,15 +166,16 @@ export function createView(stage, picture) {
   mapCloth.position.set(0, 13.2, 160)
   mapCloth.visible = false
   mapCloth.userData.role = "map"
-  const clothBoard = new THREE.Mesh(trackGeometry(new THREE.PlaneGeometry(40, 24)), mat(0x6e4b32))
+  const clothBoard = new THREE.Mesh(trackGeometry(new THREE.PlaneGeometry(CLOTH_WIDTH, CLOTH_HEIGHT)), mat(0x523926))
   const clothMarks = new THREE.InstancedMesh(
-    trackGeometry(new THREE.PlaneGeometry(40 / 29, 24 / 29)),
-    mat(0xe6d3a1),
+    trackGeometry(new THREE.PlaneGeometry(1, 1)),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
     29 * 29
   )
   clothMarks.count = 0
   clothMarks.frustumCulled = false
   clothMarks.userData.dummy = new THREE.Object3D()
+  clothMarks.userData.color = new THREE.Color()
   mapCloth.add(clothBoard, clothMarks)
   scene.add(mapCloth)
   const groundBytes = groundPixels("day")
@@ -750,14 +752,17 @@ export function createView(stage, picture) {
     const look = sceneryForest()
     const slots = scenerySlots()
     if (!look.parts.includes("stump") || !look.parts.includes("log") || slots.length === 0) return
-    for (const slot of slots) {
-      const group = sheetCard("scenery", slot.scale, false)
-      group.position.set(slot.x, 0, slot.z)
-      group.traverse((child) => {
-        child.castShadow = false
-        child.receiveShadow = false
-      })
-      scene.add(group)
+    for (const [index, slot] of slots.entries()) {
+      const variant = index % 2 === 0 ? "a" : "b"
+      const art = staticCard("stump_log", variant)
+      const card = new THREE.Sprite(staticMats.stump_log[variant])
+      card.center.set(0.5, art.centerY)
+      card.scale.set(art.w * slot.scale, art.h * slot.scale, 1)
+      card.position.set(slot.x, 0, slot.z)
+      card.castShadow = false
+      card.receiveShadow = false
+      card.userData.role = "scenery"
+      scene.add(card)
     }
   }
 
@@ -1320,7 +1325,7 @@ export function createView(stage, picture) {
         chunks: snap.chunks || [],
         map: snap.map || null,
         land: snap.land || [],
-        table: { x: 0, y: 160, cloth: mapCloth.visible },
+        table: { x: 0, y: 160, cloth: mapCloth.visible, marks: mapCloth.visible ? clothMarks.count : 0 },
         relics: snap.relics || [],
         forge: !!snap.forge,
         mageTower: !!snap.mage_tower,
@@ -2046,24 +2051,24 @@ export function createView(stage, picture) {
       group.visible = false
       return
     }
-    const sig = chunks.map((chunk) => `${chunk.cx},${chunk.cy}`).join("|")
-    if (sig !== marks.userData.sig) {
+    const layout = layoutMapMarks(map)
+    if (layout.sig !== marks.userData.sig) {
       const dummy = marks.userData.dummy
-      let n = 0
-      for (const chunk of chunks) {
-        const px = chunk.cx + 14
-        const py = 14 - chunk.cy
-        if (px < 0 || py < 0 || px > 28 || py > 28) continue
-        dummy.position.set(((px + 0.5) / 29 - 0.5) * 40, (0.5 - (py + 0.5) / 29) * 24, 0.05)
+      const color = marks.userData.color || new THREE.Color()
+      for (let n = 0; n < layout.marks.length; n++) {
+        const mark = layout.marks[n]
+        dummy.position.set(mark.x, mark.y, 0.08)
         dummy.rotation.set(0, 0, 0)
-        dummy.scale.set(1, 1, 1)
+        dummy.scale.set(mark.sx, mark.sy, 1)
         dummy.updateMatrix()
         marks.setMatrixAt(n, dummy.matrix)
-        n += 1
+        color.setHex(mark.color)
+        marks.setColorAt(n, color)
       }
-      marks.count = n
+      marks.count = layout.count
       marks.instanceMatrix.needsUpdate = true
-      marks.userData.sig = sig
+      if (marks.instanceColor) marks.instanceColor.needsUpdate = true
+      marks.userData.sig = layout.sig
     }
     group.visible = true
   }

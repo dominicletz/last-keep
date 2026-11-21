@@ -64,7 +64,12 @@ defmodule LastKeepWeb.PageControllerTest do
     assert body =~ "Join"
 
     conn = get(build_conn(), ~p"/api/rooms/#{code}")
-    assert %{"players" => 1, "phase" => "build"} = json_response(conn, 200)
+
+    assert %{
+             "players" => 1,
+             "phase" => "build",
+             "party" => [%{"name" => "Ada", "hero" => "scout"}]
+           } = json_response(conn, 200)
 
     conn =
       post(build_conn(), ~p"/api/rooms/#{code}/join", %{

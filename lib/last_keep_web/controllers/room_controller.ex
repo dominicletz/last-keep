@@ -39,7 +39,11 @@ defmodule LastKeepWeb.RoomController do
         code: code,
         phase: snap.phase,
         wave: snap.wave,
-        players: length(snap.players)
+        players: length(snap.players),
+        party:
+          Enum.map(snap.players, fn player ->
+            %{name: player.name, hero: player.hero, connected: player.connected}
+          end)
       })
     else
       conn |> put_status(404) |> json(%{error: "not_found"})
