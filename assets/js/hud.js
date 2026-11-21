@@ -32,7 +32,7 @@ export function chromeCount(root) {
   return root.querySelectorAll("[data-chrome]").length
 }
 
-export const waveClock = /^(Frenzy in \d+s|Frenzied\. They are faster)$/
+export const waveClock = /^(Frenzy in \d+s|Frenzy waits|Frenzied\. They are faster)$/
 
 // A place event clears the armed build once per snapshot tick.
 // Refreshing that same snapshot must not cancel the next arm.
@@ -44,9 +44,11 @@ export function consumePlace(snap, seenTick) {
 
 export function clockText(snap) {
   if (!snap || snap.hold) return "Waiting to start"
-  const seconds = Math.ceil((Number(snap.phase_ms) || 0) / 1000)
+  const ms = Number(snap.phase_ms)
+  const seconds = Math.ceil((Number.isFinite(ms) ? ms : 0) / 1000)
   if (snap.phase === "build") return `Night in ${seconds}s`
   if (snap.enraged) return "Frenzied. They are faster"
+  if (seconds <= 0) return "Frenzy waits"
   return `Frenzy in ${seconds}s`
 }
 
