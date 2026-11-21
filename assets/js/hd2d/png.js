@@ -119,8 +119,20 @@ export function writeRgbPng(rgba, width, height) {
 
 export function readRgbaPng(buffer) {
   const decoded = decode(buffer)
-  if (decoded.channels !== 4) throw new Error("png is not rgba")
-  return { rgba: decoded.pixels, width: decoded.width, height: decoded.height }
+  if (decoded.channels === 4) {
+    return { rgba: decoded.pixels, width: decoded.width, height: decoded.height }
+  }
+  if (decoded.channels === 3) {
+    const rgba = new Uint8Array(decoded.width * decoded.height * 4)
+    for (let i = 0, j = 0; i < decoded.pixels.length; i += 3, j += 4) {
+      rgba[j] = decoded.pixels[i]
+      rgba[j + 1] = decoded.pixels[i + 1]
+      rgba[j + 2] = decoded.pixels[i + 2]
+      rgba[j + 3] = 255
+    }
+    return { rgba, width: decoded.width, height: decoded.height }
+  }
+  throw new Error("png is not rgba")
 }
 
 export function readRgbPng(buffer) {

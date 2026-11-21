@@ -43,6 +43,11 @@ defmodule LastKeep.Game.Rules do
     %{wood: 24 + rank * 12, gold: 8 + rank * 6}
   end
 
+  def fortify_cost, do: %{wood: 36, gold: 16}
+  def fortify_hp, do: 120
+  def fortify_heal, do: 200
+  def fortify_cap, do: 3000
+
   def clear_purse(rank) when is_integer(rank) and rank >= 0 and rank < 4 do
     keep_upgrade_cost(rank).gold
   end

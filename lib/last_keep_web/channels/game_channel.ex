@@ -41,6 +41,16 @@ defmodule LastKeepWeb.GameChannel do
     {:reply, :ok, socket}
   end
 
+  def handle_in("ping", %{"x" => x, "y" => y}, socket) when is_number(x) and is_number(y) do
+    Room.ping(socket.assigns.code, socket.assigns.player_id, x, y)
+    {:reply, :ok, socket}
+  end
+
+  def handle_in("fortify", _payload, socket) do
+    Room.fortify(socket.assigns.code, socket.assigns.player_id)
+    {:reply, :ok, socket}
+  end
+
   def handle_in("restart", _payload, socket) do
     Room.restart(socket.assigns.code)
     {:reply, :ok, socket}

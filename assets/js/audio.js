@@ -48,6 +48,10 @@ export function cuesFrom(prev, next) {
   for (const ev of events) {
     if (ev.type === "death") cues.push("kill")
     else if (ev.type === "place") cues.push("build")
+    else if (ev.type === "trade") cues.push("trade")
+    else if (ev.type === "ping") cues.push("ping")
+    else if (ev.type === "retaliate") cues.push("retaliate")
+    else if (ev.type === "fortify") cues.push("fortify")
     else if (ev.type === "slam") cues.push("keep-hit")
     else if (ev.type === "hit") {
       const atKeep = Math.hypot(Number(ev.x) || 0, Number(ev.y) || 0) < 16
@@ -204,7 +208,17 @@ export function createConductor(options) {
     } else if (cue === "hit") noise(0.07, 0.1)
     else if (cue === "kill") blip(150, "square", 0.22, 0.1, 60)
     else if (cue === "build") blip(180, "sine", 0.09, 0.1)
-    else if (cue === "keep-hit") blip(90, "square", 0.28, 0.14, 48)
+    else if (cue === "trade") {
+      blip(660, "triangle", 0.12, 0.08, 880)
+      blip(990, "sine", 0.16, 0.06)
+    } else if (cue === "ping") {
+      blip(740, "sine", 0.14, 0.09, 988)
+    } else if (cue === "retaliate") {
+      blip(130, "sawtooth", 0.36, 0.13, 82)
+    } else if (cue === "fortify") {
+      blip(330, "triangle", 0.24, 0.1, 440)
+      blip(495, "sine", 0.3, 0.08)
+    } else if (cue === "keep-hit") blip(90, "square", 0.28, 0.14, 48)
     else if (cue === "fall") blip(196, "sawtooth", 1.1, 0.12, 42)
   }
 

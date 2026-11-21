@@ -39,7 +39,7 @@ The core fantasy is: **contemplative daytime frontier expansion + clear diegetic
    - **Milestone 3 — P2 The 3D Kingdom Frontier (`LK-108`, `LK-120`, `LK-121`, `LK-122`, landed)**:
      - Coherent 2D value-noise biomes + genuinely blocking rivers/cliffs with 144-unit walkable fords, monster ford-funneling (`skirt_terrain`), daytime frontier sprint (`1.35×` past radius 300), host early-night horn (`Start night early`), contact-based Frenzy, Merchant POI (`trade_merchant/1` + `merchant-sheet.png`), and 5-player-safe Camps + targetable vagrants.
      - Wave 4+ KTC threat archetypes (siege bosses/skeletons > 200 auto-bolt reach, `2.5×` wood-wall-breaker Trolls, wall/river-hopping Bats, portal retaliation packs).
-   - **Milestone 4 — P3 Performance & Game Feel (next)**:
-     - Compress/lazy-load the ~17 MB `ground-*.png` tileset and trim legacy base64 data from `app.js`.
-     - Change-driven WebSocket input frames with low-rate heartbeat.
-     - Co-op ground pings, layered SFX, hit-flash/knockback, AoE telegraphs, and post-wave-5 progression sinks.
+   - **Milestone 4 — P3 Performance & Game Feel (`LK-123`, landed)**:
+     - Losslessly recompressed all 10 `ground-*.png` tiles to 8-bit RGB (`16.48M -> 14.66M`, pixel-identical) and hardened horizon distance fog (`1.35×` / `2.6×` span) + unseen day mist (`0x161c18`).
+     - Switched WebSocket client input to change-driven frames with a 250ms heartbeat (`shouldPushInput`, cutting idle traffic ~80%).
+     - Added shared co-op `[G]` ground pings (`Sim.ping/4`, `"ping"` channel push, golden rally ring + floater), layered SFX cues (`trade`, `ping`, `retaliate`, `fortify`), hit-flash + melee/AoE knockback, Meteor/Slam/Boom AoE ground rings, and post-Rank-4 Keep Fortification (`Sim.fortify/2`).
