@@ -18,6 +18,12 @@ const TREE_CAP = 180
 const YARD = 380
 const MIST = 0.28
 const MASK = 32
+export const UNSEEN_DAY = 0x201d26
+export const UNSEEN_NIGHT = 0x16141d
+
+export function unseenMistHex(light) {
+  return light === "night" ? UNSEEN_NIGHT : UNSEEN_DAY
+}
 
 // Erlang round is half away from zero. Math.round sends -0.5 to 0.
 function roundAway(q) {
@@ -299,6 +305,7 @@ export function mountPicture(scene, options = {}) {
 
   const mistStrength = { value: 0 }
   const mistColor = { value: new THREE.Color(0x4e4651) }
+  const unseenColor = { value: new THREE.Color(UNSEEN_DAY) }
   const windowOrigin = { value: new THREE.Vector2(0, 0) }
   const windowSpan = { value: WINDOW }
   // Scene fog at 0.9/span pulls a stone texel inside the clear color on the
@@ -311,6 +318,7 @@ export function mountPicture(scene, options = {}) {
     shader.uniforms.mistMask = { value: mask }
     shader.uniforms.mistStrength = mistStrength
     shader.uniforms.mistColor = mistColor
+    shader.uniforms.unseenColor = unseenColor
     shader.uniforms.windowOrigin = windowOrigin
     shader.uniforms.windowSpan = windowSpan
     shader.uniforms.horizonFogNear = horizonFogNear
@@ -327,11 +335,11 @@ export function mountPicture(scene, options = {}) {
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform sampler2D mistMask;\nuniform float mistStrength;\nuniform vec3 mistColor;\nuniform vec2 windowOrigin;\nuniform float windowSpan;\nuniform float horizonFogNear;\nuniform float horizonFogFar;\nvarying vec3 vHorizonWorld;"
+        "#include <common>\nuniform sampler2D mistMask;\nuniform float mistStrength;\nuniform vec3 mistColor;\nuniform vec3 unseenColor;\nuniform vec2 windowOrigin;\nuniform float windowSpan;\nuniform float horizonFogNear;\nuniform float horizonFogFar;\nvarying vec3 vHorizonWorld;"
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tif (abs(vHorizonWorld.x) < 300.0 && abs(vHorizonWorld.z) < 300.0) discard;\n\tvec2 landUv = vec2((vHorizonWorld.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (vHorizonWorld.z - windowOrigin.y) / windowSpan);\n\tdiffuseColor.rgb = texture2D(map, clamp(landUv, 0.001, 0.999)).rgb;\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, mistColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
+        "#include <color_fragment>\n\tif (abs(vHorizonWorld.x) < 300.0 && abs(vHorizonWorld.z) < 300.0) discard;\n\tvec2 landUv = vec2((vHorizonWorld.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (vHorizonWorld.z - windowOrigin.y) / windowSpan);\n\tdiffuseColor.rgb = texture2D(map, clamp(landUv, 0.001, 0.999)).rgb;\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, unseenColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
       )
   }
 
@@ -419,8 +427,10 @@ export function mountPicture(scene, options = {}) {
   function mist(snap, seeded) {
     const chunks = seeded ? snap.chunks || [] : []
     const key = seeded ? chunks.map((chunk) => `${chunk.cx},${chunk.cy}`).join("|") : "off"
+    const phase = lightName(snap)
     mistStrength.value = seeded ? MIST : 0
-    mistColor.value.setHex(lightName(snap) === "night" ? 0x322c3c : 0x4e4651)
+    mistColor.value.setHex(phase === "night" ? 0x322c3c : 0x4e4651)
+    unseenColor.value.setHex(unseenMistHex(phase))
     if (key === mistKey) return
     mistKey = key
     maskBytes.fill(0)
