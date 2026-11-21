@@ -55,7 +55,7 @@ defmodule LastKeep.Game.InteractionsTest do
     end
   end
 
-  test "the in-range swing stays and the later nights are planned", %{doc: doc} do
+  test "the in-range swing and wave 4+ siege demand are both implemented", %{doc: doc} do
     swing =
       Enum.find(doc["edges"], fn edge ->
         edge["status"] == "implemented" and edge["rule"] == "def strike_reach"
@@ -65,11 +65,14 @@ defmodule LastKeep.Game.InteractionsTest do
 
     demand =
       Enum.find(doc["edges"], fn edge ->
-        edge["status"] == "planned" and String.contains?(edge["via"], "wave 4")
+        edge["status"] == "implemented" and String.contains?(edge["via"], "wave 4")
       end)
 
     assert demand["from"] == "monsters"
     assert demand["to"] == "warrior"
+    assert demand["rule"] == "def siege_range"
+
+    refute Enum.any?(doc["edges"], &(&1["status"] == "planned"))
   end
 
   test "every edge is implemented in source or marked planned", %{doc: doc, source: source} do

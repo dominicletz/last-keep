@@ -188,8 +188,12 @@ test("mage meteor lock and join party summary read cleanly", () => {
   assert.equal(meteorLocked({ hero: "mage" }, { mage_tower: true }), false)
   assert.equal(meteorLocked({ hero: "warrior" }, { mage_tower: false }), false)
   assert.equal(
-    partyLine({ code: "HNBTA6", wave: 2, party: [{ name: "Ada", hero: "warrior" }, { name: "Lux", hero: "mage" }] }),
+    partyLine({ code: "HNBTA6", wave: 1, shown_wave: 2, party: [{ name: "Ada", hero: "warrior" }, { name: "Lux", hero: "mage" }] }),
     "Keep HNBTA6 · Wave 2 · In keep: Ada (Warrior), Lux (Mage)"
+  )
+  assert.equal(
+    partyLine({ code: "HNBTA6", wave: 2, party: [{ name: "Ada", hero: "warrior" }] }),
+    "Keep HNBTA6 · Wave 2 · In keep: Ada (Warrior)"
   )
   assert.equal(partyLine(null), "")
 })

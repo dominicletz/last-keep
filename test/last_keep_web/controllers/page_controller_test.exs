@@ -68,6 +68,8 @@ defmodule LastKeepWeb.PageControllerTest do
     assert %{
              "players" => 1,
              "phase" => "build",
+             "wave" => 0,
+             "shown_wave" => 1,
              "party" => [%{"name" => "Ada", "hero" => "scout"}]
            } = json_response(conn, 200)
 

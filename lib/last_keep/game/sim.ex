@@ -140,6 +140,7 @@ defmodule LastKeep.Game.Sim do
     |> open_chests()
     |> wake_camps()
     |> take_shrines()
+    |> trade_merchant()
     |> step_vagrants()
     |> gather()
     |> mine()
@@ -256,6 +257,15 @@ defmodule LastKeep.Game.Sim do
 
     case state.players[id] do
       %{public_id: ^host_id} when not is_nil(host_id) -> %{state | hold: false}
+      _ -> state
+    end
+  end
+
+  def release(%State{hold: false, phase: {:build, ticks}} = state, id) when ticks > 160 do
+    host_id = host_public_id(state)
+
+    case state.players[id] do
+      %{public_id: ^host_id} when not is_nil(host_id) -> %{state | phase: {:build, 160}}
       _ -> state
     end
   end
@@ -403,7 +413,7 @@ defmodule LastKeep.Game.Sim do
 
       if player.connected and hero.alive do
         {mx, my} = norm(player.input.mx, player.input.my)
-        speed = Rules.kit(hero.hero).speed * speed_mult(state)
+        speed = Rules.kit(hero.hero).speed * speed_mult(state) * frontier_mult(state, hero)
         dx = mx * speed * 0.05
         dy = my * speed * 0.05
         {x, y} = slide(state, hero.x, hero.y, dx, dy, hero.r, %{ignore: hero.id})
@@ -517,7 +527,11 @@ defmodule LastKeep.Game.Sim do
       camps: grouped[:camp] || [],
       quarries: Enum.map(grouped[:quarry] || [], &Map.put(&1, :stone, Rules.quarry_stone())),
       shrines: grouped[:shrine] || [],
-      merchant: List.first(grouped[:merchant] || []),
+      merchant:
+        case List.first(grouped[:merchant] || []) do
+          nil -> nil
+          poi -> Map.put(poi, :cd, 0)
+        end,
       hermit: List.first(grouped[:hermit] || [])
     }
   end
@@ -602,6 +616,63 @@ defmodule LastKeep.Game.Sim do
     end)
   end
 
+  defp trade_merchant(%{world: %{merchant: nil}} = state), do: state
+
+  defp trade_merchant(%{world: %{merchant: %{cd: cd} = merchant}} = state) when cd > 0 do
+    %{state | world: %{state.world | merchant: %{merchant | cd: cd - 1}}}
+  end
+
+  defp trade_merchant(%{world: %{merchant: merchant}} = state) do
+    near =
+      Enum.any?(living_heroes(state), fn hero ->
+        hypot(merchant.x - hero.x, merchant.y - hero.y) <= Rules.chest_reach()
+      end)
+
+    if not near do
+      state
+    else
+      need_food = state.resources.food < Rules.cap(:food)
+      need_stone = state.resources.stone < Rules.cap(:stone)
+
+      cond do
+        state.resources.gold >= 8 and need_food and need_stone ->
+          state
+          |> pay(%{gold: 8})
+          |> add_resource(:food, 12)
+          |> add_resource(:stone, 12)
+          |> cool_merchant(merchant)
+          |> event(%{
+            type: "trade",
+            x: merchant.x,
+            y: merchant.y,
+            amount: 8,
+            label: "+12 food +12 stone"
+          })
+
+        state.resources.gold >= 4 and need_food ->
+          state
+          |> pay(%{gold: 4})
+          |> add_resource(:food, 12)
+          |> cool_merchant(merchant)
+          |> event(%{type: "trade", x: merchant.x, y: merchant.y, amount: 4, label: "+12 food"})
+
+        state.resources.gold >= 4 and need_stone ->
+          state
+          |> pay(%{gold: 4})
+          |> add_resource(:stone, 12)
+          |> cool_merchant(merchant)
+          |> event(%{type: "trade", x: merchant.x, y: merchant.y, amount: 4, label: "+12 stone"})
+
+        true ->
+          state
+      end
+    end
+  end
+
+  defp cool_merchant(state, merchant) do
+    %{state | world: %{state.world | merchant: %{merchant | cd: 40}}}
+  end
+
   defp nearest_poi(pois, x, y, reach) do
     pois
     |> Enum.filter(fn poi ->
@@ -614,12 +685,13 @@ defmodule LastKeep.Game.Sim do
 
   defp wake_camp(state, camp) do
     open = Rules.heroes() -- Enum.map(state.players, fn {_id, player} -> player.hero end)
+    pool = if open == [], do: Rules.heroes(), else: open
     cost = %{gold: Rules.vagrant_cost()}
 
-    if open == [] or not afford?(state, cost) do
+    if not afford?(state, cost) do
       state
     else
-      role = Enum.at(open, rem(state.world.seed + camp.id, length(open)))
+      role = Enum.at(pool, rem(state.world.seed + camp.id, length(pool)))
       kit = Rules.kit(role)
       camps = Enum.reject(state.world.camps, &(&1.id == camp.id))
       state = %{state | world: %{state.world | camps: camps}}
@@ -810,11 +882,34 @@ defmodule LastKeep.Game.Sim do
         state = %{state | world: %{state.world | portals: portals, claimed: claimed}}
 
         if left <= 0 do
-          event(state, %{type: "death", kind: :portal, x: portal.x, y: portal.y, amount: amount})
+          state =
+            event(state, %{type: "death", kind: :portal, x: portal.x, y: portal.y, amount: amount})
+
+          if state.wave >= 1 do
+            retaliate_portal(state, portal)
+          else
+            state
+          end
         else
           state
         end
     end
+  end
+
+  defp retaliate_portal(state, portal) do
+    offsets = [{:goblin, -28.0, 18.0}, {:goblin, 28.0, 18.0}, {:wolf, 0.0, -28.0}]
+
+    state =
+      Enum.reduce(offsets, state, fn {kind, ox, oy}, acc ->
+        spawn_monster(acc, %{
+          kind: kind,
+          x: portal.x + ox,
+          y: portal.y + oy,
+          wave: max(state.wave, 1)
+        })
+      end)
+
+    event(state, %{type: "retaliate", x: portal.x, y: portal.y})
   end
 
   defp abilities(state) do
@@ -1430,12 +1525,22 @@ defmodule LastKeep.Game.Sim do
       end
 
     dist = if target == :keep, do: keep_gap(state, monster.x, monster.y), else: dist
+    siege = Rules.siege_range(monster.kind, state.wave)
 
     state =
-      if dist <= reach and monster.attack_cd <= 0 do
-        strike(state, monster, target, hero)
-      else
-        chase(state, monster, tx, ty)
+      cond do
+        dist <= reach and monster.attack_cd <= 0 ->
+          strike(state, monster, target, hero)
+
+        not is_nil(siege) and dist <= siege ->
+          if monster.attack_cd <= 0 do
+            siege_strike(state, monster, target, hero)
+          else
+            state
+          end
+
+        true ->
+          chase(state, monster, tx, ty)
       end
 
     case state.entities[monster.id] do
@@ -1458,9 +1563,40 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp aggro_hero(state, monster) do
-    living_heroes(state)
-    |> Enum.filter(fn hero -> hypot(hero.x - monster.x, hero.y - monster.y) <= monster.aggro end)
-    |> closest(fn hero -> hypot(hero.x - monster.x, hero.y - monster.y) end)
+    living_allies(state)
+    |> Enum.filter(fn ally -> hypot(ally.x - monster.x, ally.y - monster.y) <= monster.aggro end)
+    |> closest(fn ally -> hypot(ally.x - monster.x, ally.y - monster.y) end)
+  end
+
+  defp siege_strike(state, %{kind: :boss} = monster, :keep, _hero) do
+    damage = max(round(monster_damage(monster) * 1.35), 1)
+    keep = state.keep
+    hp = max(keep.hp - damage, 0)
+
+    state
+    |> Map.put(:keep, %{keep | hp: hp})
+    |> put_entity(%{monster | attack_cd: bite_cd(monster)})
+    |> event(%{type: "shot", x: monster.x, y: monster.y})
+    |> event(%{type: "slam", x: monster.x, y: monster.y, amount: damage})
+    |> event(%{type: "hit", x: 0.0, y: 0.0, amount: damage})
+  end
+
+  defp siege_strike(state, monster, :keep, _hero) do
+    damage = monster_damage(monster)
+    keep = state.keep
+    hp = max(keep.hp - damage, 0)
+
+    state
+    |> Map.put(:keep, %{keep | hp: hp})
+    |> put_entity(%{monster | attack_cd: bite_cd(monster)})
+    |> event(%{type: "shot", x: monster.x, y: monster.y})
+    |> event(%{type: "hit", x: 0.0, y: 0.0, amount: damage})
+  end
+
+  defp siege_strike(state, monster, :hero, hero) do
+    state
+    |> event(%{type: "shot", x: monster.x, y: monster.y})
+    |> strike(monster, :hero, hero)
   end
 
   defp strike(state, %{kind: :boss} = monster, :keep, _hero) do
@@ -1490,18 +1626,30 @@ defmodule LastKeep.Game.Sim do
     case state.entities[hero.id] do
       %{alive: true} = current ->
         damage = monster_damage(monster)
-        damage = if current.guard > 0, do: round(damage * 0.4), else: damage
+        damage = if Map.get(current, :guard, 0) > 0, do: round(damage * 0.4), else: damage
         hp = current.hp - damage
 
-        current =
-          if hp <= 0 do
-            %{current | hp: 0, alive: false, respawn: respawn_ticks(state)}
-          else
-            %{current | hp: hp}
+        state =
+          cond do
+            hp <= 0 and current.type == :vagrant ->
+              state
+              |> drop(current.id)
+              |> event(%{
+                type: "death",
+                kind: :vagrant,
+                x: current.x,
+                y: current.y,
+                amount: damage
+              })
+
+            hp <= 0 ->
+              put_entity(state, %{current | hp: 0, alive: false, respawn: respawn_ticks(state)})
+
+            true ->
+              put_entity(state, %{current | hp: hp})
           end
 
         state
-        |> put_entity(current)
         |> put_entity(%{monster | attack_cd: bite_cd(monster)})
         |> event(%{type: "hit", x: current.x, y: current.y, amount: damage})
 
@@ -1517,7 +1665,13 @@ defmodule LastKeep.Game.Sim do
     step = speed * 0.05
     nx = monster.x + dx * step
     ny = monster.y + dy * step
-    opts = %{ignore: monster.id, keep_pad: -6.0, from: %{x: monster.x, y: monster.y}}
+
+    opts = %{
+      ignore: monster.id,
+      keep_pad: -6.0,
+      from: %{x: monster.x, y: monster.y},
+      pass_walls: Rules.flies_over_walls?(monster.kind)
+    }
 
     cond do
       not body_blocked?(state, nx, ny, monster.r, opts) ->
@@ -1570,7 +1724,12 @@ defmodule LastKeep.Game.Sim do
         if monster.attack_cd > 0 do
           state
         else
-          damage = monster_damage(monster)
+          damage =
+            max(
+              round(monster_damage(monster) * Rules.wall_breaker_mult(monster.kind, wall.kind)),
+              1
+            )
+
           hp = wall.hp - damage
 
           state =
@@ -1708,8 +1867,15 @@ defmodule LastKeep.Game.Sim do
   defp advance_phase(%{phase: {:build, _}} = state), do: start_wave(state)
 
   defp advance_phase(%{phase: {:wave, ticks}} = state) do
-    state = %{state | phase: {:wave, ticks - 1}}
-    state = if ticks - 1 <= 0, do: enrage(state), else: state
+    next = ticks - 1
+    state = %{state | phase: {:wave, next}}
+
+    state =
+      if next <= 0 and not state.enraged and (wave_contact?(state) or next <= -600) do
+        enrage(state)
+      else
+        state
+      end
 
     if monsters(state) == [] do
       clear_wave(state)
@@ -1719,6 +1885,13 @@ defmodule LastKeep.Game.Sim do
   end
 
   defp advance_phase(state), do: state
+
+  defp wave_contact?(state) do
+    state.keep.hp < state.keep.max_hp or
+      Enum.any?(monsters(state), fn monster ->
+        monster.hp < monster.max_hp or hypot(monster.x, monster.y) <= 640
+      end)
+  end
 
   defp start_wave(state) do
     wave = state.wave + 1
@@ -2002,6 +2175,14 @@ defmodule LastKeep.Game.Sim do
     if :swiftness in state.relics, do: 1.08, else: 1.0
   end
 
+  defp frontier_mult(state, hero) do
+    if match?({:build, _}, state.phase) and monsters(state) == [] and hypot(hero.x, hero.y) > 300 do
+      Rules.frontier_sprint()
+    else
+      1.0
+    end
+  end
+
   defp respawn_ticks(state) do
     base = if match?({:build, _}, state.phase), do: 40, else: 160
     if :banner in state.relics, do: round(base * 0.7), else: base
@@ -2066,12 +2247,14 @@ defmodule LastKeep.Game.Sim do
     pass_keep = Map.get(opts, :pass_keep, false)
     pass_heroes = Map.get(opts, :pass_heroes, false)
     pass_monsters = Map.get(opts, :pass_monsters, false)
+    pass_walls = Map.get(opts, :pass_walls, false)
     keep_pad = Map.get(opts, :keep_pad, 0.0)
     from = Map.get(opts, :from)
 
     (not pass_keep and keep_hit?(state, x, y, radius + keep_pad, from)) or
       Enum.any?(blockers(state), fn building ->
-        shape_hit?(building, x, y, radius, from)
+        not (pass_walls and building.kind in [:wall, :stone_wall]) and
+          shape_hit?(building, x, y, radius, from)
       end) or
       Enum.any?(ground_pois(state), fn poi ->
         shape_hit?(poi, x, y, radius, from)
@@ -2333,6 +2516,12 @@ defmodule LastKeep.Game.Sim do
       (hero.alive and player) && player.connected
     end)
   end
+
+  defp living_vagrants(state) do
+    for {_id, %{type: :vagrant, alive: true} = vagrant} <- state.entities, do: vagrant
+  end
+
+  defp living_allies(state), do: living_heroes(state) ++ living_vagrants(state)
 
   def monsters(%State{} = state),
     do: for({_id, %{type: :monster} = monster} <- state.entities, do: monster)

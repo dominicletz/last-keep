@@ -852,9 +852,15 @@ function start(code, seat, ui) {
       raise.disabled = !raiseReady(snap.upgrade, snap.resources, me, snap.town)
     }
     const start = ui.hud.querySelector("[data-start]")
-    start.hidden = !snap.hold
+    const earlyNight =
+      !snap.hold && snap.phase === "build" && (snap.wave || 0) >= 1 && (snap.phase_ms || 0) > 8000 && !!me?.host
+    start.hidden = !snap.hold && !earlyNight
     start.disabled = !me?.host
-    start.textContent = me?.host ? "Start the night" : "Waiting for the host"
+    start.textContent = snap.hold
+      ? me?.host
+        ? "Start the night"
+        : "Waiting for the host"
+      : "Start night early"
     const placed = consumePlace(snap, placeTick)
     placeTick = placed.seenTick
     if (placed.clear) {
@@ -972,6 +978,8 @@ function start(code, seat, ui) {
   function syncContext(snap, me) {
     const button = ui.hud.querySelector("[data-touch-context]")
     if (!button) return
+    const stoneWall = build === "wall" && wallUsesStone(snap.resources, me?.costs?.stone_wall)
+    const effectiveBuild = stoneWall ? "stone_wall" : build
     touchAction = contextAction({
       hero: me ? { x: me.x, y: me.y, range: me.range } : null,
       town: snap.town,
@@ -979,7 +987,7 @@ function start(code, seat, ui) {
       resources: snap.resources,
       upgrade: snap.upgrade,
       armed: build,
-      cost: build && me?.costs ? me.costs[build] : null,
+      cost: effectiveBuild && me?.costs ? me.costs[effectiveBuild] || me.costs[build] : null,
       buildings: snap.buildings
     })
     if (!touchAction) {
@@ -1397,7 +1405,17 @@ function drawFx(ui, snap, fx, seen) {
   const now = performance.now()
   const layer = ui.hud.querySelector("[data-fx]")
   for (const ev of snap.events || []) {
-    if (ev.type !== "hit" && ev.type !== "death" && ev.type !== "boom" && ev.type !== "slam" && ev.type !== "deny") continue
+    if (
+      ev.type !== "hit" &&
+      ev.type !== "death" &&
+      ev.type !== "boom" &&
+      ev.type !== "slam" &&
+      ev.type !== "deny" &&
+      ev.type !== "trade" &&
+      ev.type !== "retaliate"
+    ) {
+      continue
+    }
     const text =
       ev.type === "death"
         ? "Slain"
@@ -1405,9 +1423,13 @@ function drawFx(ui, snap, fx, seen) {
           ? "Boom"
           : ev.type === "deny"
             ? ev.reason || "Can't"
-            : ev.amount == null
-              ? ""
-              : String(ev.amount)
+            : ev.type === "trade"
+              ? ev.label || "Traded"
+              : ev.type === "retaliate"
+                ? "Retaliation!"
+                : ev.amount == null
+                  ? ""
+                  : String(ev.amount)
     if (!text || !Number.isFinite(ev.x) || !Number.isFinite(ev.y)) continue
     const id = nextFx++
     const row = {

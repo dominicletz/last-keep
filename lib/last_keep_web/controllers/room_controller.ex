@@ -39,6 +39,7 @@ defmodule LastKeepWeb.RoomController do
         code: code,
         phase: snap.phase,
         wave: snap.wave,
+        shown_wave: snap.shown_wave,
         players: length(snap.players),
         party:
           Enum.map(snap.players, fn player ->

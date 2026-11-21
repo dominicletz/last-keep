@@ -8,17 +8,17 @@
     },
     {
       "id": "food",
-      "producers": ["field", "farmer"],
+      "producers": ["field", "farmer", "merchant"],
       "consumers": ["feast", "keep"]
     },
     {
       "id": "gold",
       "producers": ["field", "bounty", "house"],
-      "consumers": ["tower", "forge", "mage_tower", "keep"]
+      "consumers": ["tower", "forge", "mage_tower", "keep", "merchant"]
     },
     {
       "id": "stone",
-      "producers": ["quarry"],
+      "producers": ["quarry", "merchant"],
       "consumers": ["wall"]
     }
   ],
@@ -68,7 +68,7 @@
     {"from": "monsters", "to": "keep", "via": "A monster in reach of the keep bites it. A boss slam hits harder.", "status": "implemented", "rule": "defp strike"},
     {"from": "monsters", "to": "warrior", "via": "A monster that is closer to a hero than to the keep bites the hero.", "status": "implemented", "rule": "defp monster_target"},
     {"from": "monsters", "to": "warrior", "via": "From wave 2, a monster inside strike reach draws that hero's swing.", "status": "implemented", "rule": "def strike_reach"},
-    {"from": "monsters", "to": "warrior", "via": "From wave 4, standing on the join ring is not enough. A step, Q, E, R, a wall, or a raise has to matter.", "status": "planned"},
+    {"from": "monsters", "to": "warrior", "via": "From wave 4, standing on the join ring is not enough. Bosses and skeletons siege outside passive auto-bolt reach, trolls break timber walls 2.5x faster, and bats fly over walls.", "status": "implemented", "rule": "def siege_range"},
     {"from": "goblin", "to": "keep", "via": "A goblin is the wave-1 biter. It is slower and softer on the first night.", "status": "implemented", "rule": "def monster(:goblin)"},
     {"from": "skeleton", "to": "keep", "via": "A skeleton is a tougher biter than a goblin.", "status": "implemented", "rule": "def monster(:skeleton)"},
     {"from": "wolf", "to": "keep", "via": "A wolf is the fast biter from the concept sheet.", "status": "implemented", "rule": "def monster(:wolf)"},
@@ -108,7 +108,7 @@
     {"from": "hermit", "to": "scout", "via": "A hermit reveals the next chunk ring. A living scout already reveals one extra ring.", "status": "implemented", "rule": "defp meet_hermit"},
     {"from": "warrior", "to": "monsters", "via": "Monster health scales by 6 percent per connected hero past 2, capped at 15.", "status": "implemented", "rule": "def party_hp_scale"},
     {"from": "portal", "to": "monsters", "via": "When all six portals have been destroyed, the next wave from wave 2 onward rekindles the farthest outer portal so endless waves continue.", "status": "implemented", "rule": "defp maybe_rekindle_portal"},
-    {"from": "merchant", "to": "food", "via": "The merchant sells food for gold.", "status": "planned"},
-    {"from": "merchant", "to": "stone", "via": "The merchant sells stone for gold.", "status": "planned"}
+    {"from": "merchant", "to": "food", "via": "The merchant trades 4 gold for 12 food when a living hero visits.", "status": "implemented", "rule": "defp trade_merchant"},
+    {"from": "merchant", "to": "stone", "via": "The merchant trades 4 gold for 12 stone when a living hero visits.", "status": "implemented", "rule": "defp trade_merchant"}
   ]
 }

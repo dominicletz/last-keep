@@ -110,7 +110,7 @@ defmodule LastKeep.Game.FogTest do
     refute Enum.any?(seen.pois, &(&1.kind == "merchant"))
   end
 
-  test "the merchant stays in the world and is not sent" do
+  test "the merchant stays hidden in fog and trades gold for food and stone when found" do
     merchant = Enum.find(World.generate(5).pois, &(&1.kind == :merchant))
     refute merchant == nil
 
@@ -118,6 +118,7 @@ defmodule LastKeep.Game.FogTest do
       "MERCHANT"
       |> Sim.new(seed: 5)
       |> join("ada", :farmer)
+      |> Map.put(:resources, %{wood: 40, food: 0, gold: 12, stone: 0})
       |> Sim.tick()
 
     assert state.world.merchant.id == merchant.id
@@ -127,7 +128,7 @@ defmodule LastKeep.Game.FogTest do
     hidden = Snapshot.deliver(state)
     assert hidden.merchant == nil
     refute Enum.any?(hidden.pois, &(&1.kind == "merchant"))
-    assert Snapshot.render(state).merchant == nil
+    assert Snapshot.render(state).merchant.id == merchant.id
 
     found =
       state
@@ -136,13 +137,20 @@ defmodule LastKeep.Game.FogTest do
 
     assert found.world.merchant.x == merchant.x
     assert found.world.merchant.y == merchant.y
-    refute Map.has_key?(found.world, :chunks)
+    assert found.resources.gold == 4
+    assert found.resources.food == 12
+    assert found.resources.stone == 12
+    assert Enum.any?(found.events, &(&1.type == "trade"))
+
+    # Cooldown prevents double-spending on the very next tick
+    next = Sim.tick(found)
+    assert next.resources.gold == 4
 
     seen = Snapshot.deliver(found)
-    assert seen.merchant == nil
+    assert seen.merchant == %{id: merchant.id, x: merchant.x, y: merchant.y}
     refute Enum.any?(seen.pois, &(&1.kind == "merchant"))
     refute Map.has_key?(seen, :hermit)
-    assert Snapshot.render(found).merchant == nil
+    assert Snapshot.render(found).merchant == %{id: merchant.id, x: merchant.x, y: merchant.y}
   end
 
   test "a hero past the last chunk does not discover the void" do
