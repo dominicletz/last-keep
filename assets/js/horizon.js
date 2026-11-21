@@ -3,86 +3,34 @@ import { trackGeometry } from "./meshes.js"
 import { treeCard, treeSheet } from "./yard_cards.js"
 import { groundColor, horizonColor, lightName, ringColor, sunsetColor } from "./scene.js"
 import { onGroundTiles, sampleGroundTile } from "./seam_tiles.js"
+import { phash2, pictureCell, roundAway } from "./world_biome.js"
+
+export { phash2, pictureCell }
 
 const CELL = 36
 const CHUNK = 512
-const RADIUS = 7200
-const KEEP = 400
-const HCONST = 0x9e3779b9
-const HCONST_9 = 0x8ff34781
 const SHADE = 0x2c3416
 const HORIZON_SPAN = 48000
-const HORIZON_TEX = 256
-const WINDOW = 6144
+const HORIZON_TEX = 512
+const WINDOW = 3072
 const TREE_CAP = 180
 const YARD = 380
 const MIST = 0.28
 const MASK = 32
 export const UNSEEN_DAY = 0x201d26
 export const UNSEEN_NIGHT = 0x16141d
+export const HORIZON_TINT = {
+  day: 0xffffff,
+  dusk: 0xc8a484,
+  night: 0x363248
+}
 
 export function unseenMistHex(light) {
   return light === "night" ? UNSEEN_NIGHT : UNSEEN_DAY
 }
 
-// Erlang round is half away from zero. Math.round sends -0.5 to 0.
-function roundAway(q) {
-  if (!Number.isFinite(q)) return 0
-  return q >= 0 ? Math.round(q) : -Math.round(-q)
-}
-
-function u32(n) {
-  return n >>> 0
-}
-
-function mix(a, b, c) {
-  a = u32(a - b)
-  a = u32(a - c)
-  a = u32(a ^ (c >>> 13))
-  b = u32(b - c)
-  b = u32(b - a)
-  b = u32(b ^ (a << 8))
-  c = u32(c - a)
-  c = u32(c - b)
-  c = u32(c ^ (b >>> 13))
-  a = u32(a - b)
-  a = u32(a - c)
-  a = u32(a ^ (c >>> 12))
-  b = u32(b - c)
-  b = u32(b - a)
-  b = u32(b ^ (a << 16))
-  c = u32(c - a)
-  c = u32(c - b)
-  c = u32(c ^ (b >>> 5))
-  a = u32(a - b)
-  a = u32(a - c)
-  a = u32(a ^ (c >>> 3))
-  b = u32(b - c)
-  b = u32(b - a)
-  b = u32(b ^ (a << 10))
-  c = u32(c - a)
-  c = u32(c - b)
-  c = u32(c ^ (b >>> 15))
-  return c
-}
-
-function uintHash(value, hash, prime) {
-  const a = u32(prime + u32(value))
-  const b = u32(prime)
-  return mix(a, b, hash)
-}
-
-// A negative small is mixed twice. The second mix uses the two's-complement bits.
-function sintHash(value, hash) {
-  const y = value | 0
-  if (y < 0) hash = uintHash((-y) >>> 0, hash, HCONST)
-  return uintHash(y >>> 0, hash, HCONST)
-}
-
-export function phash2(values) {
-  let hash = uintHash(values.length, 0, HCONST_9)
-  for (const value of values) hash = sintHash(value, hash)
-  return hash & 0x07ffffff
+export function horizonTintHex(light) {
+  return HORIZON_TINT[light] || HORIZON_TINT.day
 }
 
 // Yard pines and both forest-wall rings. The variant is the hash of the
@@ -91,44 +39,6 @@ export function phash2(values) {
 export function pineVariant(x, z) {
   const variants = treeSheet.variants
   return variants[phash2([Math.round(x), Math.round(z)]) % variants.length]
-}
-
-function inside(i, j) {
-  const x = i * CELL
-  const y = j * CELL
-  const cx = Math.floor(x / CHUNK)
-  const cy = Math.floor(y / CHUNK)
-  if (cx < -14 || cx > 14 || cy < -14 || cy > 14) return false
-  return x * x + y * y <= RADIUS * RADIUS
-}
-
-function discBiome(seed, attempt, i, j) {
-  const x = i * CELL
-  const y = j * CELL
-  if (x * x + y * y <= KEEP * KEEP) return "meadow"
-  const hash = phash2([seed, i, j, attempt])
-  const band = hash % 100
-  if (band <= 7 && hash % 5 === 0) return "ford"
-  if (band <= 7) return "river"
-  if (band <= 13) return "cliff"
-  if (band <= 39) return "pine"
-  if (band <= 51) return "ruins"
-  return "meadow"
-}
-
-function skirtBiome(seed, attempt, i, j) {
-  const band = phash2([seed, i, j, attempt]) % 100
-  if (band <= 40) return "pine"
-  if (band <= 70) return "cliff"
-  if (band <= 88) return "hill"
-  return "mountain"
-}
-
-export function pictureCell(seed, attempt, x, y) {
-  const i = roundAway(x / CELL)
-  const j = roundAway(y / CELL)
-  if (inside(i, j)) return discBiome(seed, attempt, i, j)
-  return skirtBiome(seed, attempt, i, j)
 }
 
 function rgb(hex) {
@@ -190,6 +100,7 @@ function biomeLift(name) {
 }
 
 function landHeight(seed, attempt, x, z) {
+  if (Math.max(Math.abs(x), Math.abs(z)) <= 420) return 0
   let h = 0
   for (const dx of [0, 72, -72]) {
     for (const dz of [0, 72, -72]) h += biomeLift(pictureCell(seed, attempt, x + dx, z + dz))
@@ -306,6 +217,7 @@ export function mountPicture(scene, options = {}) {
   const mistStrength = { value: 0 }
   const mistColor = { value: new THREE.Color(0x4e4651) }
   const unseenColor = { value: new THREE.Color(UNSEEN_DAY) }
+  const phaseTint = { value: new THREE.Color(HORIZON_TINT.day) }
   const windowOrigin = { value: new THREE.Vector2(0, 0) }
   const windowSpan = { value: WINDOW }
   // Scene fog at 0.9/span pulls a stone texel inside the clear color on the
@@ -319,6 +231,7 @@ export function mountPicture(scene, options = {}) {
     shader.uniforms.mistStrength = mistStrength
     shader.uniforms.mistColor = mistColor
     shader.uniforms.unseenColor = unseenColor
+    shader.uniforms.phaseTint = phaseTint
     shader.uniforms.windowOrigin = windowOrigin
     shader.uniforms.windowSpan = windowSpan
     shader.uniforms.horizonFogNear = horizonFogNear
@@ -335,17 +248,17 @@ export function mountPicture(scene, options = {}) {
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform sampler2D mistMask;\nuniform float mistStrength;\nuniform vec3 mistColor;\nuniform vec3 unseenColor;\nuniform vec2 windowOrigin;\nuniform float windowSpan;\nuniform float horizonFogNear;\nuniform float horizonFogFar;\nvarying vec3 vHorizonWorld;"
+        "#include <common>\nuniform sampler2D mistMask;\nuniform float mistStrength;\nuniform vec3 mistColor;\nuniform vec3 unseenColor;\nuniform vec3 phaseTint;\nuniform vec2 windowOrigin;\nuniform float windowSpan;\nuniform float horizonFogNear;\nuniform float horizonFogFar;\nvarying vec3 vHorizonWorld;"
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tif (abs(vHorizonWorld.x) < 300.0 && abs(vHorizonWorld.z) < 300.0) discard;\n\tvec2 landUv = vec2((vHorizonWorld.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (vHorizonWorld.z - windowOrigin.y) / windowSpan);\n\tdiffuseColor.rgb = texture2D(map, clamp(landUv, 0.001, 0.999)).rgb;\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, unseenColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
+        "#include <color_fragment>\n\tif (abs(vHorizonWorld.x) < 300.0 && abs(vHorizonWorld.z) < 300.0) discard;\n\tvec2 landUv = vec2((vHorizonWorld.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (vHorizonWorld.z - windowOrigin.y) / windowSpan);\n\tdiffuseColor.rgb = texture2D(map, clamp(landUv, 0.001, 0.999)).rgb * phaseTint;\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, unseenColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
       )
   }
 
   const horizon = new THREE.Mesh(farGeometry(), material)
   horizon.rotation.x = -Math.PI / 2
-  horizon.position.y = 0.04
+  horizon.position.y = -0.25
   horizon.userData.role = "horizon"
   horizon.frustumCulled = false
   scene.add(horizon)
@@ -361,7 +274,7 @@ export function mountPicture(scene, options = {}) {
   }
   const ridge = new THREE.Mesh(ridgeGeo, material)
   ridge.rotation.x = -Math.PI / 2
-  ridge.position.y = 0.07
+  ridge.position.y = -0.15
   ridge.userData.role = "horizon"
   ridge.frustumCulled = false
   scene.add(ridge)
@@ -415,7 +328,7 @@ export function mountPicture(scene, options = {}) {
     windowOrigin.value.set(ox, oz)
     map.image.data.set(paintWindow(seed, attempt, ox, oz))
     map.needsUpdate = true
-    ridge.position.set(ox, 0.07, oz)
+    ridge.position.set(ox, -0.15, oz)
     for (let i = 0; i < ridgePos.count; i++) {
       const x = ox + ridgeXY[i * 2]
       const z = oz - ridgeXY[i * 2 + 1]
@@ -428,9 +341,12 @@ export function mountPicture(scene, options = {}) {
     const chunks = seeded ? snap.chunks || [] : []
     const key = seeded ? chunks.map((chunk) => `${chunk.cx},${chunk.cy}`).join("|") : "off"
     const phase = lightName(snap)
+    const tintHex = horizonTintHex(phase)
     mistStrength.value = seeded ? MIST : 0
     mistColor.value.setHex(phase === "night" ? 0x322c3c : 0x4e4651)
     unseenColor.value.setHex(unseenMistHex(phase))
+    phaseTint.value.setHex(tintHex)
+    for (const mesh of Object.values(trees)) mesh.material.color.setHex(tintHex)
     if (key === mistKey) return
     mistKey = key
     maskBytes.fill(0)

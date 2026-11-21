@@ -1,4 +1,5 @@
 import { footprintGap, variantFor } from "./footprint.js"
+import { pictureCell } from "./world_biome.js"
 
 const RELIC = {
   heartwood: "Heartwood raises the keep's health.",
@@ -69,13 +70,14 @@ const BUILD_FACE = {
   mage_tower: ["6", "Spire"]
 }
 
-// Crops of variant a. The mage tower has no sheet, so it stays text.
+// Crops of variant a for all six build slots.
 export const BUILD_ICON = {
   wall: "/images/ui/build-wall.png",
   tower: "/images/ui/build-tower.png",
   trap: "/images/ui/build-trap.png",
   field: "/images/ui/build-field.png",
-  forge: "/images/ui/build-forge.png"
+  forge: "/images/ui/build-forge.png",
+  mage_tower: "/images/ui/build-mage_tower.png"
 }
 
 export const SACK_ICON = {
@@ -84,20 +86,37 @@ export const SACK_ICON = {
   gold: "/images/ui/gold.png"
 }
 
-export function buildFace(kind, cost, touch) {
+export function wallUsesStone(resources, stoneCost) {
+  const needWood = Number(stoneCost?.wood) || 4
+  const needStone = Number(stoneCost?.stone) || 8
+  return (Number(resources?.stone) || 0) >= needStone && (Number(resources?.wood) || 0) >= needWood
+}
+
+export function buildFace(kind, cost, touch, opts = null) {
   const row = BUILD_FACE[kind] || ["", "Build"]
-  const title = touch ? row[1] : `${row[0]} ${row[1]}`
+  const label = kind === "wall" && opts?.stoneWall ? "Stone Wall" : row[1]
+  const title = touch ? label : `${row[0]} ${label}`
   const icon = BUILD_ICON[kind] || ""
   if (!cost) return { title, price: "", icon }
+  const wood = Number(cost.wood) || 0
   const gold = Number(cost.gold) || 0
-  const price = `${Number(cost.wood) || 0} wood${gold ? ` ${gold} gold` : ""}`
-  return { title, price, icon }
+  const stone = Number(cost.stone) || 0
+  if (touch) {
+    const parts = [`${wood}w`]
+    if (gold) parts.push(`${gold}g`)
+    if (stone) parts.push(`${stone}s`)
+    return { title, price: parts.join(" "), icon }
+  }
+  const parts = [`${wood} wood`]
+  if (gold) parts.push(`${gold} gold`)
+  if (stone) parts.push(`${stone} stone`)
+  return { title, price: parts.join(" "), icon }
 }
 
 export function sackLine(resources = {}) {
   return ["wood", "food", "gold"].map((key) => ({
     key,
-    text: sackText(key, resources[key]),
+    text: sackText(key, resources[key], resources),
     icon: SACK_ICON[key],
     x: SACK_SPOT[key].x,
     y: SACK_SPOT[key].y
@@ -123,10 +142,14 @@ export function seatSacks(spots, view, boxes, keep, extra) {
   return seated
 }
 
-function sackText(key, value) {
+function sackText(key, value, resources = {}) {
   const count = Number(value) || 0
   const name = `${key[0].toUpperCase()}${key.slice(1)} ${count}`
-  if (key === "food") return `${name}\nFeast 10`
+  if (key === "wood") {
+    const stone = Number(resources?.stone) || 0
+    return stone > 0 ? `${name}\nStone ${stone}` : name
+  }
+  if (key === "food") return `${name}\nFeast 10 · [F] 5`
   return name
 }
 
@@ -172,16 +195,60 @@ export function reasonOpen(entry, now) {
   return !!(entry && entry.text && now < entry.until)
 }
 
-export function placementReason(me, aim, resources) {
+const BUILD_FOOT = { wall: 16, stone_wall: 16, tower: 16, trap: 15, field: 16, forge: 18, mage_tower: 18 }
+
+function snapBuild(value) {
+  const stepped = value / 36
+  const rounded = stepped < 0 ? -Math.round(Math.abs(stepped)) : Math.round(stepped)
+  return rounded * 36
+}
+
+function landHeld(x, y, claimed) {
+  if (Math.hypot(x, y) <= 400) return true
+  if (!Array.isArray(claimed) || claimed.length === 0) return false
+  const cx = Math.floor(x / 512)
+  const cy = Math.floor(y / 512)
+  return claimed.some((chunk) => chunk && chunk.cx === cx && chunk.cy === cy)
+}
+
+export function placementReason(me, aim, resources, world = null) {
   if (!me || !aim) return ""
+  const sx = world ? snapBuild(aim.x) : aim.x
+  const sy = world ? snapBuild(aim.y) : aim.y
   const reach = me.range || 160
-  if (Math.hypot(aim.x - me.x, aim.y - me.y) > reach) return "Too far"
-  if (footprintGap("keep", variantFor("keep", me.town || 0), aim.x, aim.y) < 6) return "Too close to the keep"
+  if (Math.hypot(sx - me.x, sy - me.y) > reach) return "Too far"
+  if (world && !landHeld(sx, sy, world.claimed)) return "The land is not held."
+  if (footprintGap("keep", variantFor("keep", me.town || 0), sx, sy) < 6) return "Too close to the keep"
+  if (world && Array.isArray(world.buildings)) {
+    const foot = BUILD_FOOT[world.kind] || 16
+    const blocked = world.buildings.some((b) => Math.hypot((b.x || 0) - sx, (b.y || 0) - sy) < (b.r || 16) + foot - 6)
+    if (blocked) return "Blocked"
+  }
+  if (world && world.kind === "field" && Number.isInteger(world.seed)) {
+    if (pictureCell(world.seed, world.attempt || 0, sx, sy) !== "meadow") return "Not meadow"
+  }
   const wood = resources?.wood ?? 0
   const gold = resources?.gold ?? 0
-  if (me.cost && wood < me.cost.wood) return "Not enough wood"
-  if (me.cost && gold < me.cost.gold) return "Not enough gold"
+  const stone = resources?.stone ?? 0
+  if (me.cost && wood < (me.cost.wood || 0)) return "Not enough wood"
+  if (me.cost && gold < (me.cost.gold || 0)) return "Not enough gold"
+  if (me.cost && stone < (me.cost.stone || 0)) return "Not enough stone"
   return ""
+}
+
+export function meteorLocked(me, snap) {
+  return me?.hero === "mage" && !snap?.mage_tower
+}
+
+export function partyLine(room) {
+  if (!room || !room.code) return ""
+  const wave = Math.max(1, Number(room.wave) || 1)
+  const members = (room.party || []).map((member) => {
+    const role = member.hero ? member.hero.charAt(0).toUpperCase() + member.hero.slice(1) : ""
+    return role ? `${member.name} (${role})` : member.name
+  })
+  const roster = members.length ? `In keep: ${members.join(", ")}` : "Keep is empty"
+  return `Keep ${room.code} · Wave ${wave} · ${roster}`
 }
 
 export function raiseLabel(upgrade) {
@@ -206,9 +273,14 @@ export function raiseReady(upgrade, resources, hero, town = 0) {
   return raiseInRange(hero, town)
 }
 
-export function raiseHint(hero, upgrade, town = 0) {
-  if (!upgrade || raiseInRange(hero, town)) return ""
-  return "Walk to the keep"
+export function raiseHint(hero, upgrade, town = 0, resources = null) {
+  if (!upgrade) return ""
+  if (!raiseInRange(hero, town)) return "Walk to the keep"
+  if (resources) {
+    if ((resources.gold ?? 0) < upgrade.gold) return `Need ${upgrade.gold} gold`
+    if ((resources.wood ?? 0) < upgrade.wood) return `Need ${upgrade.wood} wood`
+  }
+  return ""
 }
 
 const CALL_GAP = Math.PI / 3.6

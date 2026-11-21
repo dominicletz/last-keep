@@ -6,7 +6,9 @@ const SIDE = 0.46
 const LOOK_Y = 16
 const SWAP_SOURCE = cardSourceHeight
 
-export const PORTRAIT_STAND = { x: 108, z: 28 }
+// Placed clearly in front of the rank-0 keep sprite plane so the keep's base
+// cannot depth-clip through the start/join preview hero.
+export const PORTRAIT_STAND = { x: 152, z: 40 }
 export const ARRIVE_MS = 800
 
 export function portraitScale(cssH) {

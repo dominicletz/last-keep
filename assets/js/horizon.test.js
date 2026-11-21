@@ -139,3 +139,27 @@ test("undiscovered mist darkens mountain rock away from the day sky clear color"
   assert.ok(oldNear / total > 0.3, `expected sky-tinted mist to collapse mountain rock (${oldNear}/${total})`)
   assert.ok(newNear / total < 0.08, `darkened unseen mist should keep mountain rock clear of sky (${newNear}/${total})`)
 })
+
+test("outer horizon uses crisp pixel sampling and dims at dusk and night", async () => {
+  const THREE = await import("three")
+  const { horizonTintHex, mountPicture } = await import("./horizon.js")
+  assert.equal(horizonTintHex("day"), 0xffffff)
+  assert.ok(horizonTintHex("dusk") < 0xffffff)
+  assert.ok(horizonTintHex("night") < horizonTintHex("dusk"))
+
+  const scene = new THREE.Scene()
+  const pic = mountPicture(scene, { loadMap: () => new THREE.Texture() })
+  const camera = new THREE.PerspectiveCamera()
+  camera.position.set(0, 400, 600)
+  pic.sync({ seed: 7, attempt: 0, phase: "wave", hold: false, portals: [] }, camera, 168)
+
+  const horizonMeshes = scene.children.filter((c) => c.userData.role === "horizon")
+  assert.equal(horizonMeshes.length, 2)
+  assert.ok(horizonMeshes[0].material.map.image.width >= 512, "horizon texture is 4x sharper than the 256/6144 window")
+  assert.ok(horizonMeshes[0].position.y < 0, "horizon sits below the yard to prevent seam z-fighting")
+
+  const pines = scene.children.filter((c) => c.userData.role === "far-pine")
+  for (const pine of pines) {
+    assert.equal(pine.material.color.getHex(), horizonTintHex("night"))
+  }
+})

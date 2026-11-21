@@ -109,6 +109,8 @@ test("the index fallback still alternates, and a placed pine is phash2 of x and 
 test("render.js draws the yard trees and the forest wall from the pine sheet, not the old tree card", () => {
   const src = fs.readFileSync(path.join(root, "assets/js/render.js"), "utf8")
   assert.doesNotMatch(src, /sheetCard\("tree"/)
+  assert.doesNotMatch(src, /sheetCard\("scenery"/)
+  assert.match(src, /staticMats\.stump_log\[variant\]/)
   assert.match(src, /sync\("tree", snap\.trees \|\| \[\], \(row\) => treeSprite\(1, pineVariant\(row\.x, row\.y\)\)\)/)
   assert.match(src, /treeSprite\(slot\.scale, pineVariant\(slot\.x, slot\.z\)\)/)
   assert.match(src, /keep\.scale\.y = 1/)

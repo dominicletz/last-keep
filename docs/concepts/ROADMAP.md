@@ -29,13 +29,14 @@ The core fantasy is: **contemplative daytime frontier expansion + clear diegetic
      - Implement `+6%` monster HP scaling per connected hero past 2 (through 15) from [`WORLD.md`](WORLD.md).
      - Rekindle the farthest outer portal on wave 2+ when all six portals have been destroyed.
      - Fix local `tsc` leakage in `assets/jsconfig.json` (`skipLibCheck`, `types: []`) and eliminate the esbuild `import.meta` warning in `assets/js/seam_tiles.js`.
-   - **Milestone 2 — P1 Diegetic Clarity (next)**:
-     - Stone sack & explicit Wood vs. Stone wall choice; Spire build icon.
-     - World-pinned desktop `[F] Feed keep (5 food)` prompt near the keep and locked-Meteor tooltip ("Build a Spire").
-     - Client build-ghost parity (`held?`, `meadow`, `overlap`) + right-click cancel + demolish/reclaim.
-     - Actionable Map Table overlay (`LK-106`) showing explored biomes, discovered POIs, claimed chunks, and teammates.
-     - Show live room party roles on the `/r/CODE` join screen.
-   - **Milestone 3 — P2 The 3D Kingdom Frontier (`LK-108` + World)**:
+   - **Milestone 2 — P1 Diegetic Clarity & Playtest Visual Fixes (landed)**:
+     - Stone shown on the Wood sack when stone > 0 & explicit `Stone Wall` button label/cost when stone covers `Sim.wall_offer/2`; Spire build icon (`priv/static/images/ui/build-mage_tower.png`).
+     - Food sack advertises `[F] 5` beside `Feast 10`; `raiseHint` explains missing gold/wood near the keep; locked-Meteor styling + `"Build a Spire to unlock Meteor"` toast for Mage `R`.
+     - Client build-ghost parity (`held?`, `meadow`, `overlap`) + right-click cancel + highlighted active build slot.
+     - Upgraded Map Table cloth (`LK-106`, `assets/js/map_cloth.js`) drawing one distinct colored mark per discovered/claimed/portal chunk.
+     - Live room code, wave, and party roles on the `/r/CODE` join screen (`GET /api/rooms/:code`).
+     - Fixed start/join keep-vs-hero depth clipping (`LK-128`), replaced legacy 5-bar scenery cutout with `stump_log-sheet.png` (`LK-129`), added dusk/night horizon dimming + sharper `512×512` over `3072` sampling + seam Z-fighting fix + lifted night moonlight (`LK-130`), and gave mobile touch buttons distinct skill glyphs + non-truncating costs (`LK-131`).
+   - **Milestone 3 — P2 The 3D Kingdom Frontier (`LK-108` + World, next)**:
      - Coherent biomes + blocking rivers/fords, tiered portal rings, daytime sprint + longer day with early-night horn, contact-based Frenzy, Merchant POI, daytime ambient monsters, and 5-player-safe Camps + targetable vagrants.
      - Wave 4+ KTC threat archetypes (ranged/siege > 200 range, wall-breaker Trolls, wall-hopping Bats, portal retaliation).
    - **Milestone 4 — P3 Performance & Game Feel**:

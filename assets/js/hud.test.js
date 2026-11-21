@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, nextLine, parkCall, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, waveAnchor, waveClock, waveLabel } from "./hud.js"
+import { CAPTION_GLASS, CHROME_BUDGET, KEEP_SIGN, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, callRect, chromeCount, clockText, consumePlace, edgeCalls, hintBeacon, hintBeacons, ignoreFocusClick, meteorLocked, nextLine, parkCall, parkRect, partyLine, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, rangeRingState, reasonOpen, rectsOverlap, rosterAnchor, sackLine, seatCaptions, seatPhoneHud, seatPin, seatSacks, showReason, spreadCalls, visiblePin, wallUsesStone, waveAnchor, waveClock, waveLabel } from "./hud.js"
 
 test("a place event clears the armed build once per tick", () => {
   const snap = { tick: 5, events: [{ type: "place" }] }
@@ -43,6 +43,32 @@ test("an illegal wall explains itself", () => {
   assert.equal(placementReason(me, { x: 400, y: 0 }, { wood: 48, gold: 0 }), "Too far")
   assert.equal(placementReason(me, { x: 160, y: 0 }, { wood: 2, gold: 0 }), "Not enough wood")
   assert.equal(placementReason(me, { x: 160, y: 0 }, { wood: 48, gold: 0 }), "")
+
+  // Client build-ghost parity: unheld land, building overlap, and non-meadow fields
+  const farHero = { x: 500, y: 0, range: 165, cost: { wood: 8, gold: 0 } }
+  assert.equal(
+    placementReason(farHero, { x: 540, y: 0 }, { wood: 48, gold: 0 }, { kind: "wall", claimed: [], buildings: [] }),
+    "The land is not held."
+  )
+  assert.equal(
+    placementReason(farHero, { x: 540, y: 0 }, { wood: 48, gold: 0 }, { kind: "wall", claimed: [{ cx: 1, cy: 0 }], buildings: [] }),
+    ""
+  )
+  assert.equal(
+    placementReason(me, { x: 180, y: 0 }, { wood: 48, gold: 0 }, { kind: "wall", claimed: [], buildings: [{ x: 180, y: 0, r: 16 }] }),
+    "Blocked"
+  )
+  // Seed 5 cell (432, 0) is pine, so a field placed there is rejected on the ghost
+  const fieldHero = { x: 396, y: 0, range: 165, cost: { wood: 4, gold: 0 } }
+  assert.equal(
+    placementReason(
+      fieldHero,
+      { x: 432, y: 0 },
+      { wood: 48, gold: 0 },
+      { kind: "field", claimed: [{ cx: 0, cy: 0 }], buildings: [], seed: 5, attempt: 0 }
+    ),
+    "Not meadow"
+  )
 })
 
 test("an invalid placement reason fades instead of sticking", () => {
@@ -82,6 +108,9 @@ test("a disabled raise away from the keep says to walk there", () => {
   assert.equal(raiseHint({ x: 120, y: 0 }, offer), "Walk to the keep")
   assert.equal(raiseHint({ x: 40, y: 0 }, offer), "")
   assert.equal(raiseHint({ x: 80, y: 0 }, offer), "")
+  assert.equal(raiseHint({ x: 80, y: 0 }, offer, 0, { wood: 48, gold: 0 }), "Need 8 gold")
+  assert.equal(raiseHint({ x: 80, y: 0 }, offer, 0, { wood: 10, gold: 10 }), "Need 24 wood")
+  assert.equal(raiseHint({ x: 80, y: 0 }, offer, 0, { wood: 24, gold: 8 }), "")
   assert.equal(raiseHint({ x: -122, y: -252 }, null), "")
 })
 
@@ -121,20 +150,48 @@ test("the glass keeps ten controls after the sacks leave it", () => {
 test("a touch build drops the digit and a desktop build keeps it", () => {
   assert.deepEqual(buildFace("wall", { wood: 8, gold: 0 }, true), {
     title: "Wall",
-    price: "8 wood",
+    price: "8w",
     icon: "/images/ui/build-wall.png"
+  })
+  assert.deepEqual(buildFace("tower", { wood: 24, gold: 8 }, true), {
+    title: "Tower",
+    price: "24w 8g",
+    icon: "/images/ui/build-tower.png"
   })
   assert.deepEqual(buildFace("mage_tower", { wood: 18, gold: 30 }, false), {
     title: "6 Spire",
     price: "18 wood 30 gold",
-    icon: ""
+    icon: "/images/ui/build-mage_tower.png"
   })
+  assert.deepEqual(buildFace("wall", { wood: 4, gold: 0, stone: 8 }, false, { stoneWall: true }), {
+    title: "1 Stone Wall",
+    price: "4 wood 8 stone",
+    icon: "/images/ui/build-wall.png"
+  })
+  assert.deepEqual(buildFace("wall", { wood: 4, gold: 0, stone: 8 }, true, { stoneWall: true }), {
+    title: "Stone Wall",
+    price: "4w 8s",
+    icon: "/images/ui/build-wall.png"
+  })
+  assert.equal(wallUsesStone({ wood: 4, stone: 8 }, { wood: 4, stone: 8 }), true)
+  assert.equal(wallUsesStone({ wood: 40, stone: 4 }, { wood: 4, stone: 8 }), false)
   assert.equal(buildFace("forge", null, true).title, "Forge")
   assert.equal(buildFace("forge", null, true).price, "")
   assert.equal(buildFace("forge", null, true).icon, "/images/ui/build-forge.png")
-  for (const kind of ["wall", "tower", "trap", "field", "forge"]) {
+  for (const kind of ["wall", "tower", "trap", "field", "forge", "mage_tower"]) {
     assert.match(buildFace(kind, null, false).icon, new RegExp(`/images/ui/build-${kind}\\.png`))
   }
+})
+
+test("mage meteor lock and join party summary read cleanly", () => {
+  assert.equal(meteorLocked({ hero: "mage" }, { mage_tower: false }), true)
+  assert.equal(meteorLocked({ hero: "mage" }, { mage_tower: true }), false)
+  assert.equal(meteorLocked({ hero: "warrior" }, { mage_tower: false }), false)
+  assert.equal(
+    partyLine({ code: "HNBTA6", wave: 2, party: [{ name: "Ada", hero: "warrior" }, { name: "Lux", hero: "mage" }] }),
+    "Keep HNBTA6 · Wave 2 · In keep: Ada (Warrior), Lux (Mage)"
+  )
+  assert.equal(partyLine(null), "")
 })
 
 test("piled sacks on a phone separate, and clear sacks stay where they were", () => {
@@ -166,7 +223,7 @@ test("piled sacks on a phone separate, and clear sacks stay where they were", ()
 
 test("wood, food, and gold each sit in their own sack", () => {
   const marks = sackLine({ wood: 40, food: 12, gold: 3 })
-  assert.deepEqual(marks.map((mark) => mark.text), ["Wood 40", "Food 12\nFeast 10", "Gold 3"])
+  assert.deepEqual(marks.map((mark) => mark.text), ["Wood 40", "Food 12\nFeast 10 · [F] 5", "Gold 3"])
   assert.deepEqual(marks.map((mark) => mark.icon), [
     "/images/ui/wood.png",
     "/images/ui/food.png",
@@ -179,7 +236,11 @@ test("wood, food, and gold each sit in their own sack", () => {
   ])
   assert.match(marks[1].text, /Food 12/)
   assert.match(marks[1].text, /Feast 10/)
+  assert.match(marks[1].text, /\[F\] 5/)
   assert.equal(new Set(marks.map((mark) => `${mark.x},${mark.y}`)).size, 3)
+
+  const withStone = sackLine({ wood: 40, stone: 12, food: 12, gold: 3 })
+  assert.equal(withStone[0].text, "Wood 40\nStone 12")
 })
 
 test("a hinted pack stands on its approach bearing", () => {

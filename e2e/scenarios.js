@@ -2814,7 +2814,7 @@ async function readTheMap(browser) {
       })
   })
   expect(report.cloth).toBe(true)
-  expect(report.table).toEqual({ x: 0, y: 160, cloth: true })
+  expect(report.table).toEqual({ x: 0, y: 160, cloth: true, marks: report.explored })
   expect(report.explored).toBeGreaterThan(0)
   expect(report.terrain).toBeLessThanOrEqual(25)
   expect(report.hidden).toBe(0)

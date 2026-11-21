@@ -8,7 +8,7 @@ import { loadScores } from "./landing"
 import { axes, blurHiddenFocus, focusedAfterBlur, followKeys, inputFrame, isTypingTarget, keysAround, keysToward, seatFromQuery, shouldSend, swingFocus } from "./input"
 import { combineAxes, contextAction, padSlot, stickOffset, stickVector, touchCapable, turnPrompt, viewportContent } from "./touch"
 import { absorbShots, nextAttackPeak, partyPositions, seatList, swingSeen } from "./paint"
-import { RELIC_SIGN, SEAT_CONTROLS, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, waveAnchor, waveLabel } from "./hud"
+import { RELIC_SIGN, SEAT_CONTROLS, controlsLook, hudLayoutKey, seatedLook, rectMemo, bonusCopy, buildFace, callAnchor, captionCap, clockText, consumePlace, edgeCalls, hintBeacons, ignoreFocusClick, meteorLocked, nextLine, parkRect, pinRect, placementReason, raiseHint, raiseLabel, raiseReady, reasonOpen, rosterAnchor, sackLine, seatCaptions, seatPin, seatSacks, showReason, spreadCalls, wallUsesStone, waveAnchor, waveLabel } from "./hud"
 import { createConductor } from "./audio"
 import { mountStart } from "./start"
 
@@ -51,6 +51,7 @@ export function bootPlay(code) {
       stage,
       form: join,
       mode: "join",
+      code,
       onAccept: (pick) => enter(code, { token: tokenFor(code), name: pick.name, hero: pick.hero }, ui)
     })
   }
@@ -154,6 +155,7 @@ function ensureMenu(code, ui, seat) {
     stage: ui.stage,
     form: ui.join,
     mode: "join",
+    code,
     name: seat && seat.name,
     hero: seat && seat.hero,
     onAccept: (pick) => enter(code, { token: tokenFor(code), name: pick.name, hero: pick.hero }, ui)
@@ -494,6 +496,11 @@ function start(code, seat, ui) {
     if (finger(event)) return
     const focusing = ignoreFocusClick(focused)
     focused = true
+    if (event.button === 2 && build) {
+      build = null
+      refresh()
+      return
+    }
     if (event.button !== 0) return
     look(event)
     if (build) refresh()
@@ -539,6 +546,14 @@ function start(code, seat, ui) {
     event.preventDefault()
     event.stopPropagation()
     if (button.dataset.touch) {
+      if (button.dataset.touch === "r") {
+        const meNow = (latest?.players || []).find((player) => player.id === selfId)
+        if (meteorLocked(meNow, latest)) {
+          reasonEntry = showReason(reasonEntry, "Build a Spire to unlock Meteor", performance.now(), 2200, true)
+          refresh()
+          return
+        }
+      }
       pad[button.dataset.touch] = true
       fingers.set(event.pointerId, button.dataset.touch)
     } else if (touchAction?.id === "place") {
@@ -608,6 +623,13 @@ function start(code, seat, ui) {
       build = null
       refresh()
     }
+    if (event.code === "KeyR" && !event.repeat) {
+      const meNow = (latest?.players || []).find((player) => player.id === selfId)
+      if (meteorLocked(meNow, latest)) {
+        reasonEntry = showReason(reasonEntry, "Build a Spire to unlock Meteor", performance.now(), 2200, true)
+        refresh()
+      }
+    }
     if (["KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "KeyR", "KeyF", "Space"].includes(event.code)) {
       event.preventDefault()
     }
@@ -646,7 +668,7 @@ function start(code, seat, ui) {
   function cueRaise() {
     const meNow = (latest?.players || []).find((player) => player.id === selfId)
     const offer = latest?.upgrade
-    const text = raiseHint(meNow, offer, latest?.town)
+    const text = raiseHint(meNow, offer, latest?.town, latest?.resources)
     if (!text) return
     raiseCue = showReason(raiseCue, text, performance.now(), 2200, true)
     refresh()
@@ -799,19 +821,25 @@ function start(code, seat, ui) {
     if (me) {
       heart.style.width = `${Math.max(0, (me.hp / me.max) * 100)}%`
       hp.textContent = me.alive ? `${me.name}  ${me.hp} / ${me.max}` : `${me.name}  Down`
+      const lockedR = meteorLocked(me, snap)
       for (const key of ["attack", "q", "e", "r"]) {
-        const node = ui.hud.querySelector(`[data-skill="${key}"] .cool`)
+        const slotEl = ui.hud.querySelector(`[data-skill="${key}"]`)
+        const node = slotEl.querySelector(".cool")
         const left = me.cds[key]
         const max = me.cd_max[key] || 1
         const height = left > 0 ? `${Math.min(100, (left / max) * 100)}%` : "0%"
         node.style.height = height
+        const locked = key === "r" && lockedR
+        slotEl.classList.toggle("locked", locked)
         const caption = ui.hud.querySelector(`[data-skill-name="${key}"]`)
         const seconds = left > 0 ? ` ${Math.ceil(left / 1000)}s` : ""
-        caption.textContent = `${names[key]}${seconds}`
+        caption.textContent = locked ? `${names[key]} · Spire` : `${names[key]}${seconds}`
+        const thumbBtn = ui.hud.querySelector(`[data-touch="${key}"]`)
+        if (thumbBtn) thumbBtn.classList.toggle("locked", locked)
         const thumbCool = ui.hud.querySelector(`[data-touch-cool="${key}"]`)
         const thumbName = ui.hud.querySelector(`[data-touch-name="${key}"]`)
         if (thumbCool) thumbCool.style.height = height
-        if (thumbName) thumbName.textContent = `${names[key]}${seconds}`
+        if (thumbName) thumbName.textContent = locked ? "Need Spire" : `${names[key]}${seconds}`
       }
       const portrait = `/images/portraits/${me.hero}.png`
       ui.hud.querySelectorAll("[data-touch-portrait]").forEach((img) => {
@@ -833,18 +861,30 @@ function start(code, seat, ui) {
       build = null
       armed = null
     }
+    const stoneWall = wallUsesStone(snap.resources, me?.costs?.stone_wall)
     ui.hud.querySelectorAll("[data-build]").forEach((button) => {
       const kind = button.dataset.build
-      const cost = me?.costs?.[kind]
-      const face = buildFace(kind, cost, document.documentElement.classList.contains("touch-play"))
+      const effectiveKind = kind === "wall" && stoneWall ? "stone_wall" : kind
+      const cost = me?.costs?.[effectiveKind] || me?.costs?.[kind]
+      const face = buildFace(kind, cost, document.documentElement.classList.contains("touch-play"), {
+        stoneWall: kind === "wall" && stoneWall
+      })
       const html = `${faceHtml(face)}<small>${escapeHtml(face.price)}</small>`
       if (button.innerHTML !== html) button.innerHTML = html
       button.classList.toggle("on", kind === armed)
     })
-    const cost = armed && me?.costs ? me.costs[armed] : null
+    const armedKind = armed === "wall" && stoneWall ? "stone_wall" : armed
+    const cost = armed && me?.costs ? me.costs[armedKind] || me.costs[armed] : null
     const now = performance.now()
-    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, snap.upgrade, snap.town) : ""
-    const preview = armed ? placementReason({ ...me, cost, town: snap.town }, aim, snap.resources) : raiseNote
+    const raiseNote = raiseHover || reasonOpen(raiseCue, now) ? raiseHint(me, snap.upgrade, snap.town, snap.resources) : ""
+    const preview = armed
+      ? placementReason(
+          { ...me, cost, town: snap.town },
+          aim,
+          snap.resources,
+          { kind: armedKind, claimed: snap.claimed, buildings: snap.buildings, seed: snap.seed, attempt: snap.attempt }
+        )
+      : raiseNote
     const denied = (snap.events || []).find((ev) => ev.type === "deny" && ev.reason)
     if (denied) reasonEntry = showReason(reasonEntry, denied.reason, now, 2200, true)
     else reasonEntry = showReason(reasonEntry, preview, now)
@@ -997,10 +1037,20 @@ function hudMarkup() {
   `
 }
 
+const TOUCH_GLYPH = {
+  q: '<svg class="thumb-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square" aria-hidden="true"><path d="M5 12h12M13 6l6 6-6 6"/></svg>',
+  e: '<svg class="thumb-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg>',
+  r: '<svg class="thumb-glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="square" aria-hidden="true"><path d="M12 3l2.6 5.6L21 9.5l-4.5 4.2 1.2 6.3L12 17l-5.7 3 1.2-6.3L3 9.5l6.4-.9z"/></svg>'
+}
+
 function thumbMarkup() {
   const slots = ["q", "attack", "e", "r"]
     .map((slot) => {
-      return `<button type="button" class="thumb ${slot}" data-touch="${slot}"><img data-touch-portrait alt="" draggable="false" src="/images/portraits/warrior.png" /><small data-touch-name="${slot}"></small><span class="cool" data-touch-cool="${slot}"></span></button>`
+      const art =
+        slot === "attack"
+          ? `<img data-touch-portrait alt="" draggable="false" src="/images/portraits/warrior.png" />`
+          : TOUCH_GLYPH[slot]
+      return `<button type="button" class="thumb ${slot}" data-touch="${slot}">${art}<small data-touch-name="${slot}"></small><span class="cool" data-touch-cool="${slot}"></span></button>`
     })
     .join("")
   return `<div class="thumb-pad" data-touch-pad hidden>${slots}<button type="button" class="thumb context" data-touch-context hidden></button></div><div class="stick" data-stick hidden><div class="stick-knob" data-stick-knob></div></div>`

@@ -23,6 +23,7 @@ defmodule LastKeepWeb.StartScreen do
       <button type="button" data-class="prev" aria-label="Previous class">‹</button>
       <button type="button" data-class="next" aria-label="Next class">›</button>
       <div class="start-card">
+        <p :if={@mode == "join"} class="start-party" data-room-party hidden></p>
         <p data-class-name>Warrior</p>
         <p data-class-role>Melee and shield. Chops faster. Kills pay gold.</p>
         <label>

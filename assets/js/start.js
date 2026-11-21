@@ -3,9 +3,10 @@ import { holdMonsterSheets, releaseMonsterSheets } from "./monsters.js"
 import { createView } from "./render"
 import { heroKinds, heroLine } from "./heroes.js"
 import { heroMotion, PORTRAIT_STAND, portraitPose } from "./portrait.js"
+import { partyLine } from "./hud.js"
 import { acceptWord, classFromKey, menuEnv, stepClass } from "./start_pick.js"
 
-export function mountStart({ stage, form, mode, name, hero, onAccept }) {
+export function mountStart({ stage, form, mode, code, name, hero, onAccept }) {
   const kinds = heroKinds()
   let index = Math.max(0, kinds.indexOf(hero || storedHero() || "warrior"))
   let view = null
@@ -23,6 +24,7 @@ export function mountStart({ stage, form, mode, name, hero, onAccept }) {
   form.hidden = false
   document.documentElement.classList.add("playing")
   show(kinds[index])
+  if (mode === "join" && code) loadRoomParty(form, code, () => alive)
 
   const onKey = (event) => {
     if (form.hidden) return
@@ -217,6 +219,21 @@ function storedHero() {
 
 function title(kind) {
   return kind ? kind.charAt(0).toUpperCase() + kind.slice(1) : ""
+}
+
+function loadRoomParty(form, code, stillAlive) {
+  const node = form.querySelector("[data-room-party]")
+  if (!node || typeof fetch !== "function") return
+  fetch(`/api/rooms/${encodeURIComponent(code)}`)
+    .then((res) => (res.ok ? res.json() : null))
+    .then((room) => {
+      if (!stillAlive() || !room) return
+      const line = partyLine(room)
+      if (!line) return
+      node.textContent = line
+      node.hidden = false
+    })
+    .catch(() => {})
 }
 
 function deviceEnv() {
