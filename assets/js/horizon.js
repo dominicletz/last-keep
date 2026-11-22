@@ -110,13 +110,29 @@ function landHeight(seed, attempt, x, z) {
 
 function paintWindow(seed, attempt, originX, originZ) {
   const rgba = new Uint8Array(HORIZON_TEX * HORIZON_TEX * 4)
+  // Cache biome lookups per 36-unit cell across the 4608 window (~130x130 cells
+  // instead of 320x320 texels) to eliminate chunk-crossing frame hitches while
+  // keeping every texel byte-identical.
+  const minCellX = roundAway((originX - WINDOW / 2) / CELL) - 1
+  const minCellZ = roundAway((originZ - WINDOW / 2) / CELL) - 1
+  const cellSpan = Math.ceil(WINDOW / CELL) + 4
+  const biomes = new Array(cellSpan * cellSpan)
   for (let iy = 0; iy < HORIZON_TEX; iy++) {
+    const v = (iy + 0.5) / HORIZON_TEX
+    const worldZ = originZ - (v - 0.5) * WINDOW
+    const cz = roundAway(worldZ / CELL) - minCellZ
+    const rowOff = cz * cellSpan
     for (let ix = 0; ix < HORIZON_TEX; ix++) {
       const u = (ix + 0.5) / HORIZON_TEX
-      const v = (iy + 0.5) / HORIZON_TEX
       const worldX = originX + (u - 0.5) * WINDOW
-      const worldZ = originZ - (v - 0.5) * WINDOW
-      const [r, g, b] = biomeColor(pictureCell(seed, attempt, worldX, worldZ), worldX, worldZ)
+      const cx = roundAway(worldX / CELL) - minCellX
+      const slot = rowOff + cx
+      let biome = biomes[slot]
+      if (biome === undefined) {
+        biome = pictureCell(seed, attempt, worldX, worldZ)
+        biomes[slot] = biome
+      }
+      const [r, g, b] = biomeColor(biome, worldX, worldZ)
       const o = (iy * HORIZON_TEX + ix) * 4
       rgba[o] = r
       rgba[o + 1] = g

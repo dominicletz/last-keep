@@ -86,6 +86,23 @@ export function lightName(snap) {
   return "day"
 }
 
+export const OBJECT_TINT = {
+  day: 0xdad8d0,
+  dusk: 0xc8a484,
+  night: 0x686888
+}
+
+export const MONSTER_TINT = {
+  day: 0xeceae4,
+  dusk: 0xdcbca0,
+  night: 0x8c88a8
+}
+
+export function objectTintHex(clock, kind = "world") {
+  const table = kind === "monster" ? MONSTER_TINT : OBJECT_TINT
+  return table[clock] || table.day
+}
+
 export function lightLevel(name) {
   const rig = cycleLight[name] || cycleLight.day
   return rig.hemisphere + rig.ambientLevel + rig.sunLevel

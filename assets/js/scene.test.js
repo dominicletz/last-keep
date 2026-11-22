@@ -12,6 +12,7 @@ import {
   litGround,
   litPool,
   maskedStats,
+  objectTintHex,
   ownedNear,
   patchStats,
   sampleMinPixels,
@@ -136,4 +137,19 @@ test("the plaza is round grass with a stone curb", () => {
   assert.equal(plazaColor, 0x5c642f)
   assert.equal(plazaColor, groundColor)
   assert.equal(ringColor, 0x4b3c33)
+})
+
+test("objectTintHex softens daytime contrast and dims world objects across dusk and night", () => {
+  const luma = (hex) => 0.299 * ((hex >> 16) & 255) + 0.587 * ((hex >> 8) & 255) + 0.114 * (hex & 255)
+  const day = objectTintHex("day")
+  const dusk = objectTintHex("dusk")
+  const night = objectTintHex("night")
+  assert.ok(luma(day) < 255 && luma(day) >= 200, `day luma ${luma(day)}`)
+  assert.ok(luma(dusk) < luma(day), `dusk ${luma(dusk)} < day ${luma(day)}`)
+  assert.ok(luma(night) < luma(dusk), `night ${luma(night)} < dusk ${luma(dusk)}`)
+  assert.ok(((dusk >> 16) & 255) > (dusk & 255), "dusk tint warms red over blue")
+  assert.ok((night & 255) > ((night >> 16) & 255), "night tint cools blue over red")
+  const monsterNight = objectTintHex("night", "monster")
+  assert.ok(luma(monsterNight) > luma(night), "monsters stay readable above night scenery")
+  assert.ok(luma(monsterNight) < luma(objectTintHex("day", "monster")), "monsters dim at night")
 })
