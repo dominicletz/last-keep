@@ -1864,7 +1864,10 @@ async function phoneClear(browser) {
     { timeout: 10_000, polling: 100 }
   )
   const here = await page.evaluate(() => window.__lastKeep.self)
-  await steer(page, { x: here.x, y: -210 }, (state) => state.alive && state.y < -180, 20_000, "south of the houses")
+  // Stay inside the r=740 clear ring while stepping south of the houses so a
+  // random-seed cliff past (-700, -180) cannot pin a straight south walk.
+  const southX = Math.max(-560, Math.min(560, here.x))
+  await steer(page, { x: southX, y: -210 }, (state) => state.alive && state.y < -180, 20_000, "south of the houses")
   const packX = await page.evaluate(() => {
     const goblins = (window.__lastKeep.monsters || []).filter((row) => row.kind === "goblin")
     return goblins.reduce((sum, row) => sum + row.x, 0) / goblins.length
