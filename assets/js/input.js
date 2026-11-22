@@ -260,7 +260,7 @@ export function keysAround(x, y, goalX, goalY) {
   const dx = goalX - x
   const dy = goalY - y
   let keys = null
-  if (y > -165 && goalY < -160) keys = ["KeyW", "KeyD"]
+  if (Math.abs(x) < 200 && y > -165 && y < 220 && goalY < -160) keys = ["KeyW", "KeyD"]
   if (!keys) {
     const keep = Math.hypot(x, y)
     if (keep < KEEP_ROUTE && keep > 1) {

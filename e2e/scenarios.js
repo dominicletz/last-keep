@@ -2574,6 +2574,12 @@ async function sixSeatMatch(browser) {
           const slot = troughs.get(row.shownWave) || { min: row.heap }
           if (row.heap != null) slot.min = slot.min == null ? row.heap : Math.min(slot.min, row.heap)
           troughs.set(row.shownWave, slot)
+          if (builds.has(row.shownWave)) {
+            const horn = page.locator("[data-start]")
+            if (await horn.isVisible().catch(() => false)) {
+              await horn.click().catch(() => null)
+            }
+          }
         }
       }
       const early =

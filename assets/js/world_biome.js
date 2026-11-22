@@ -217,12 +217,15 @@ export function terrainWaypoint(seed, attempt, x, y, goalX, goalY) {
     bestIdx = 0
   }
   const limit = Math.min(path.length - 1, bestIdx + 24)
-  let target = path[Math.min(path.length - 1, bestIdx + 2)]
+  let target = path[Math.min(path.length - 1, bestIdx + 1)]
   for (let k = limit; k > bestIdx; k--) {
     if (lineOpen(seed, attempt, x, y, path[k].x, path[k].y)) {
       target = path[k]
       break
     }
+  }
+  if (bestDist > 10 && !lineOpen(seed, attempt, x, y, target.x, target.y)) {
+    target = path[bestIdx]
   }
   return target
 }

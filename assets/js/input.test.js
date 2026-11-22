@@ -125,6 +125,8 @@ test("the keep face slides instead of holding due west", () => {
   assert.deepEqual(keysAround(0, -100, 40, -400), ["KeyW", "KeyD"])
   assert.deepEqual(keysAround(200, 0, -400, 0), ["KeyA", "KeyW"])
   assert.ok(keysAround(0, 200, 0, 230).length > 0)
+  // Far from the keep, keysAround must follow the waypoint vector instead of forcing due north.
+  assert.deepEqual(keysAround(-2069.3, 56.6, -2592, -252), ["KeyW"])
 })
 
 test("held diagonals stay unit length", () => {

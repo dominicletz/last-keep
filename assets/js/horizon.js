@@ -15,9 +15,9 @@ const HORIZON_TEX = 320
 const WINDOW = 4608
 const TREE_CAP = 180
 const YARD = 380
-const MIST = 0.28
+const MIST = 0.8
 const MASK = 32
-export const UNSEEN_DAY = 0x161c18
+export const UNSEEN_DAY = 0x0a160c
 export const UNSEEN_NIGHT = 0x16141d
 export const HORIZON_TINT = {
   day: 0xffffff,
@@ -222,8 +222,8 @@ export function mountPicture(scene, options = {}) {
   const windowSpan = { value: WINDOW }
   // Scene fog at 0.9/span pulls a stone texel inside the clear color on the
   // ground the lower 45% of the frame still shows. This fade starts past that.
-  const horizonFogNear = { value: 1720 }
-  const horizonFogFar = { value: 3320 }
+  const horizonFogNear = { value: 2105 }
+  const horizonFogFar = { value: 3828 }
   const material = new THREE.MeshBasicMaterial({ map, color: 0xffffff, fog: false })
   material.customProgramCacheKey = () => "horizon-skirt"
   material.onBeforeCompile = (shader) => {
@@ -392,8 +392,8 @@ export function mountPicture(scene, options = {}) {
       paint(seed, attempt, camera)
       mist(snap || {}, seeded)
       const span = (halfH || 168) / Math.tan(THREE.MathUtils.degToRad(7.5))
-      horizonFogNear.value = span * 1.35
-      horizonFogFar.value = span * 2.6
+      horizonFogNear.value = span * 1.65
+      horizonFogFar.value = span * 3.0
       if (camera) placeTrees(camera, seed, attempt, halfH || 168)
     }
   }
