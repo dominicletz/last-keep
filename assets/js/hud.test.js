@@ -253,6 +253,8 @@ test("wood, food, and gold each sit in their own sack", () => {
 
   const withStone = sackLine({ wood: 40, stone: 12, food: 12, gold: 3 })
   assert.equal(withStone[0].text, "Wood 40\nStone 12")
+  const touchMarks = sackLine({ wood: 40, food: 12, gold: 3 }, true)
+  assert.equal(touchMarks[1].text, "Food 12\nFeast 10")
 })
 
 test("a hinted pack stands on its approach bearing", () => {

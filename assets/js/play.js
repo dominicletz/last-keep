@@ -1119,7 +1119,8 @@ function sackHtml(mark) {
 
 function drawSacks(stock, resources) {
   if (!stock) return
-  const marks = sackLine(resources)
+  const touch = document.documentElement.classList.contains("touch-play")
+  const marks = sackLine(resources, touch)
   const html = marks.map(sackHtml).join("")
   if (stock.dataset.drawn !== html) {
     stock.innerHTML = html
@@ -1183,7 +1184,8 @@ function styleShown(ui, node) {
 
 function drawWorld(ui, snap, selfId) {
   const stock = ui.hud.querySelector("[data-stock]")
-  const marks = sackLine(snap.resources)
+  const touch = document.documentElement.classList.contains("touch-play")
+  const marks = sackLine(snap.resources, touch)
   const nodes = marks.map((mark) => stock?.querySelector(`[data-sack="${mark.key}"]`))
   const hudBox = hudRect(ui)
   const boxes = nodes.map((node) => ({ width: node?.offsetWidth || 0, height: node?.offsetHeight || 0 }))
