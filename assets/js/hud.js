@@ -113,10 +113,10 @@ export function buildFace(kind, cost, touch, opts = null) {
   return { title, price: parts.join(" "), icon }
 }
 
-export function sackLine(resources = {}) {
+export function sackLine(resources = {}, touch = false) {
   return ["wood", "food", "gold"].map((key) => ({
     key,
-    text: sackText(key, resources[key], resources),
+    text: sackText(key, resources[key], resources, touch),
     icon: SACK_ICON[key],
     x: SACK_SPOT[key].x,
     y: SACK_SPOT[key].y
@@ -142,14 +142,14 @@ export function seatSacks(spots, view, boxes, keep, extra) {
   return seated
 }
 
-function sackText(key, value, resources = {}) {
+function sackText(key, value, resources = {}, touch = false) {
   const count = Number(value) || 0
   const name = `${key[0].toUpperCase()}${key.slice(1)} ${count}`
   if (key === "wood") {
     const stone = Number(resources?.stone) || 0
     return stone > 0 ? `${name}\nStone ${stone}` : name
   }
-  if (key === "food") return `${name}\nFeast 10 · [F] 5`
+  if (key === "food") return touch ? `${name}\nFeast 10` : `${name}\nFeast 10 · [F] 5`
   return name
 }
 
