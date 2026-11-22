@@ -1557,6 +1557,15 @@ async function assertFarCaptions(page) {
       }
     })
   }
+  let bestX = Infinity
+  let westSince = Date.now()
+  let westSpin = 0
+  const westHeadings = [
+    ["KeyA", "KeyW"],
+    ["KeyA"],
+    ["KeyW"],
+    ["KeyS", "KeyA"]
+  ]
   await walkUntil(page, {
     timeout: 20_000,
     label: "west caption",
@@ -1566,8 +1575,22 @@ async function assertFarCaptions(page) {
         const self = window.__lastKeep.self
         return self ? { x: self.x, y: self.y } : null
       })
-      // Due west from the east yard meets a house. Step south of that ring, then west.
-      await holdCodes(current, me && me.y > -180 ? ["KeyW", "KeyD"] : ["KeyA", "KeyW"])
+      if (me && me.y > -180 && westSpin === 0) {
+        // Due west from the east yard meets a house. Step south of that ring, then west.
+        await holdCodes(current, ["KeyW", "KeyD"])
+        return me
+      }
+      if (me) {
+        if (me.x < bestX - 4) {
+          bestX = me.x
+          westSince = Date.now()
+          westSpin = 0
+        } else if (Date.now() - westSince > 700) {
+          westSpin = (westSpin + 1) % westHeadings.length
+          westSince = Date.now()
+        }
+      }
+      await holdCodes(current, westHeadings[westSpin])
       return me
     }
   })
