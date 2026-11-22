@@ -108,8 +108,8 @@ defmodule LastKeep.Game.WorldTest do
 
     for seed <- [1, 3, 5, 9, 17] do
       world = World.generate(seed)
-      camp = hd(world.camps)
-      portal = hd(world.portals)
+      camp = Enum.find(world.pois, &(&1.kind == :camp))
+      portal = Enum.find(world.pois, &(&1.kind == :portal))
 
       for {from, to} <- [{{camp.x, camp.y}, {0.0, 0.0}}, {{0.0, 0.0}, {portal.x, portal.y}}] do
         {fx, fy} = from
