@@ -1,7 +1,7 @@
 defmodule LastKeep.Game.CampTest do
   use ExUnit.Case, async: true
 
-  alias LastKeep.Game.{Rules, Sim, Snapshot}
+  alias LastKeep.Game.{Rules, Sim, Snapshot, World}
 
   test "a camp spends 8 gold once and the ally is not a seat" do
     state = stand("ada", :warrior)
@@ -182,6 +182,36 @@ defmodule LastKeep.Game.CampTest do
     assert portal_hp(state, portal.id) < before
   end
 
+  test "a camp ally navigates around a river in either direction to reach the hero" do
+    state = stand("ada", :warrior)
+    seed = state.world.seed
+    {rx, ry, sign} = river_crossing(seed)
+
+    camp = hd(state.world.camps)
+    state = state |> move_player("ada", camp.x, camp.y) |> purse(8) |> Sim.tick()
+    [ally] = vagrants(state)
+
+    inward =
+      state
+      |> move_player("ada", rx - sign * 180, ry)
+      |> move(ally.id, rx + sign * 72, ry)
+      |> tick_many(200)
+
+    crossed_in = entity(inward, ally.id)
+    assert crossed_in.x * sign < rx * sign
+    assert World.open?(seed, crossed_in.x, crossed_in.y)
+
+    outward =
+      state
+      |> move_player("ada", rx + sign * 180, ry)
+      |> move(ally.id, rx - sign * 72, ry)
+      |> tick_many(200)
+
+    crossed_out = entity(outward, ally.id)
+    assert crossed_out.x * sign > rx * sign
+    assert World.open?(seed, crossed_out.x, crossed_out.y)
+  end
+
   defp stand(id, hero) do
     party([{id, hero}])
   end
@@ -217,6 +247,34 @@ defmodule LastKeep.Game.CampTest do
 
   defp portal_hp(state, id) do
     Enum.find(state.world.portals, &(&1.id == id)).hp
+  end
+
+  defp river_crossing(seed) do
+    Enum.find_value([1, -1], fn sign ->
+      Enum.find_value(20..90, fn i ->
+        Enum.find_value(-50..50, fn j ->
+          x = sign * i * 36
+          y = j * 36
+
+          if river_crossing?(seed, x, y, sign) do
+            {x, y, sign}
+          end
+        end)
+      end)
+    end)
+  end
+
+  defp river_crossing?(seed, x, y, sign) do
+    spots = [x + sign * 72, x - sign * 180, x - sign * 72, x + sign * 180]
+    World.biome(seed, x, y) == :river and Enum.all?(spots, &reachable_open?(seed, &1, y))
+  end
+
+  defp reachable_open?(seed, x, y) do
+    World.open?(seed, x, y) and World.flow_dir(seed, x, y) != nil
+  end
+
+  defp tick_many(state, n) do
+    Enum.reduce(1..n, state, fn _, acc -> Sim.tick(acc) end)
   end
 
   defp newest_monster(state) do

@@ -856,20 +856,26 @@ defmodule LastKeep.Game.Sim do
         if hypot(dx, dy) <= 48 do
           put_entity(state, face(vagrant, hero))
         else
-          step_toward(state, vagrant, dx, dy)
+          step_toward(state, vagrant, hero.x, hero.y)
         end
     end
   end
 
-  defp step_toward(state, vagrant, dx, dy) do
+  defp step_toward(state, vagrant, tx, ty) do
     speed = Rules.kit(vagrant.hero).speed * speed_mult(state) * 0.05
-    {ux, uy} = norm(dx, dy)
+    {gx, gy} = World.nav_target(state.world.seed, vagrant.x, vagrant.y, tx, ty)
+    {ux, uy} = norm(gx - vagrant.x, gy - vagrant.y)
+    opts = %{ignore: vagrant.id, pass_monsters: true}
+
+    {nx, ny} = slide(state, vagrant.x, vagrant.y, ux * speed, uy * speed, vagrant.r, opts)
 
     {nx, ny} =
-      slide(state, vagrant.x, vagrant.y, ux * speed, uy * speed, vagrant.r, %{
-        ignore: vagrant.id,
-        pass_monsters: true
-      })
+      if hypot(nx - vagrant.x, ny - vagrant.y) <= 1.0e-6 do
+        {fx, fy, _fx2, _fy2} = flow_heading(state.world.seed, vagrant.x, vagrant.y, tx, ty)
+        slide(state, vagrant.x, vagrant.y, fx * speed, fy * speed, vagrant.r, opts)
+      else
+        {nx, ny}
+      end
 
     {nx, ny} = clamp_map(nx, ny, Rules.map_radius())
     sx = nx - vagrant.x
@@ -879,7 +885,7 @@ defmodule LastKeep.Game.Sim do
       if hypot(sx, sy) > 1.0e-6 do
         :math.atan2(sy, sx)
       else
-        :math.atan2(dy, dx)
+        :math.atan2(ty - vagrant.y, tx - vagrant.x)
       end
 
     put_entity(state, %{vagrant | x: nx, y: ny, facing: facing})

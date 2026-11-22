@@ -103,6 +103,41 @@ defmodule LastKeep.Game.WorldTest do
     end
   end
 
+  test "nav_target routes directly on open ground and around rivers in both directions" do
+    assert World.nav_target(5, 100.0, 0.0, 260.0, 40.0) == {260.0, 40.0}
+
+    for seed <- [1, 3, 5, 9, 17] do
+      world = World.generate(seed)
+      camp = hd(world.camps)
+      portal = hd(world.portals)
+
+      for {from, to} <- [{{camp.x, camp.y}, {0.0, 0.0}}, {{0.0, 0.0}, {portal.x, portal.y}}] do
+        {fx, fy} = from
+        {tx, ty} = to
+
+        {x, y} =
+          Enum.reduce_while(1..600, {fx * 1.0, fy * 1.0}, fn _, {cx, cy} ->
+            if hypot({tx - cx, ty - cy}) <= 24.0 do
+              {:halt, {cx, cy}}
+            else
+              {gx, gy} = World.nav_target(seed, cx, cy, tx, ty)
+              dx = gx - cx
+              dy = gy - cy
+              dist = hypot({dx, dy})
+              step = min(14.0, dist)
+              nx = if dist > 1.0e-6, do: cx + dx / dist * step, else: cx
+              ny = if dist > 1.0e-6, do: cy + dy / dist * step, else: cy
+              assert World.open?(seed, nx, ny)
+              {:cont, {nx, ny}}
+            end
+          end)
+
+        assert hypot({tx - x, ty - y}) <= 24.0,
+               "seed #{seed} nav_target stopped at (#{x}, #{y}) heading to (#{tx}, #{ty})"
+      end
+    end
+  end
+
   test "the keep disc stays clear" do
     world = World.generate(3)
     near = for {coord, cell} <- cells(world), hypot(coord) <= 400, do: cell
