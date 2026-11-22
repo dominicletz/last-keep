@@ -2,11 +2,11 @@ import { footprintGap, variantFor } from "./footprint.js"
 import { pictureCell } from "./world_biome.js"
 
 const RELIC = {
-  heartwood: "Heartwood raises the keep's health.",
-  whetstone: "Whetstone adds 10% attack damage.",
-  swiftness: "Swiftness makes heroes 8% faster.",
-  banner: "Banner brings a downed hero back sooner.",
-  granary: "Granary makes fields feed more."
+  heartwood: "Heartwood +HP",
+  whetstone: "Whetstone +10%",
+  swiftness: "Swiftness +8%",
+  banner: "Banner revive",
+  granary: "Granary +food"
 }
 
 const PLURAL = { goblin: "goblins", wolf: "wolves", troll: "trolls", bat: "bats", boss: "bosses" }
@@ -624,12 +624,8 @@ function clamp(value, min, max) {
 
 export function bonusCopy(snap) {
   return {
-    forge: snap?.forge
-      ? "Forge is lit. Attacks deal 15% more."
-      : "Forge adds 15% damage while it stands.",
-    spire: snap?.mage_tower
-      ? "Spire is lit. Mages deal more and recover faster."
-      : "Spire makes mages deal more and recover faster.",
+    forge: snap?.forge ? "Forge is lit +15%" : "Forge +15%",
+    spire: snap?.mage_tower ? "Spire lit · recover faster" : "Spire · recover faster",
     relics: (snap?.relics || []).map((name) => RELIC[name] || name)
   }
 }

@@ -36,6 +36,7 @@ import {
   lightName,
   lumaOf,
   maskedStats,
+  objectTintHex,
   ownedNear,
   patchStats,
   plazaColor,
@@ -418,6 +419,27 @@ export function createView(stage, picture) {
   rangeRing.visible = false
   scene.add(rangeRing)
   const heroRim = new THREE.MeshBasicMaterial({ color: 0x140c0a, side: THREE.BackSide })
+  const heroTorch = new THREE.PointLight(0xffb454, 0, 210, 1.8)
+  heroTorch.castShadow = false
+  scene.add(heroTorch)
+  const heroAuraGeo = trackGeometry(new THREE.PlaneGeometry(130, 130))
+  heroAuraGeo.userData.pooled = true
+  const heroAuraMat = new THREE.MeshBasicMaterial({
+    map: heroAuraTexture(),
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false
+  })
+  const heroAura = new THREE.Mesh(heroAuraGeo, heroAuraMat)
+  heroAura.rotation.x = -Math.PI / 2
+  heroAura.position.y = 0.52
+  heroAura.renderOrder = 2
+  heroAura.visible = false
+  heroAura.userData.role = "aura"
+  scene.add(heroAura)
+  let lastTintClock = null
+  let fittedKey = null
   let bearer = { x: 0, z: 0, range: 160 }
   const raycaster = new THREE.Raycaster()
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
@@ -460,6 +482,62 @@ export function createView(stage, picture) {
   const cardFacing = new THREE.Vector3()
 
   const forestLook = forestState()
+
+  function heroAuraTexture() {
+    const canvas = document.createElement("canvas")
+    canvas.width = 64
+    canvas.height = 64
+    const ctx = canvas.getContext("2d")
+    const glow = ctx.createRadialGradient(32, 32, 2, 32, 32, 32)
+    glow.addColorStop(0, "rgba(255, 198, 112, 0.85)")
+    glow.addColorStop(0.4, "rgba(244, 152, 64, 0.36)")
+    glow.addColorStop(1, "rgba(244, 152, 64, 0)")
+    ctx.fillStyle = glow
+    ctx.fillRect(0, 0, 64, 64)
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }
+
+  function applyPhaseTint(clock) {
+    if (clock === lastTintClock) return
+    lastTintClock = clock
+    const worldHex = objectTintHex(clock, "world")
+    for (const variants of Object.values(staticMats)) {
+      for (const material of Object.values(variants)) material.color.setHex(worldHex)
+    }
+    for (const variants of Object.values(flatMats)) {
+      for (const material of Object.values(variants)) material.color.setHex(worldHex)
+    }
+    for (const material of Object.values(sheetMats)) {
+      if (material && material.color) material.color.setHex(worldHex)
+    }
+    for (const deer of deerPool) {
+      if (deer.material && deer.material.color) deer.material.color.setHex(worldHex)
+    }
+  }
+
+  function updateHeroTorch(now) {
+    const heroMesh = heroKey ? meshes.get(heroKey) : null
+    const hx = heroMesh ? heroMesh.position.x : bearer.x
+    const hz = heroMesh ? heroMesh.position.z : bearer.z
+    heroTorch.position.set(hx, 26, hz)
+    heroAura.position.set(hx, 0.52, hz)
+    if (liveLight === "night") {
+      const flicker = 0.94 + 0.06 * Math.sin(now * 0.011) * Math.cos(now * 0.017)
+      heroTorch.intensity = 3800 * flicker
+      heroAura.visible = true
+      heroAuraMat.opacity = 0.4 * flicker
+    } else if (liveLight === "dusk") {
+      heroTorch.intensity = 950
+      heroAura.visible = true
+      heroAuraMat.opacity = 0.2
+    } else {
+      heroTorch.intensity = 0
+      heroAura.visible = false
+      heroAuraMat.opacity = 0
+    }
+  }
 
   function contactTexture() {
     const canvas = document.createElement("canvas")
@@ -677,7 +755,11 @@ export function createView(stage, picture) {
       if (!deerPool[n]) {
         const mesh = new THREE.Mesh(
           deerGeometry,
-          new THREE.MeshBasicMaterial({ alphaTest: 0.4, transparent: true })
+          new THREE.MeshBasicMaterial({
+            color: objectTintHex(liveLight, "world"),
+            alphaTest: 0.4,
+            transparent: true
+          })
         )
         mesh.castShadow = false
         mesh.receiveShadow = false
@@ -1023,6 +1105,7 @@ export function createView(stage, picture) {
       }
     }
     const heroMesh = heroKey ? meshes.get(heroKey) : null
+    updateHeroTorch(now)
     if (heroMesh && window.__lastKeep) {
       window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
     }
@@ -1039,8 +1122,10 @@ export function createView(stage, picture) {
     } else if (testHooks) {
       publishPerf(null)
     }
-    const gap = paintGap(performance.now() - now)
-    if (gap) yieldPaintUntil = performance.now() + gap
+    if (testHooks) {
+      const gap = paintGap(performance.now() - now)
+      if (gap) yieldPaintUntil = performance.now() + gap
+    }
     requestAnimationFrame(frame)
   }
 
@@ -1073,7 +1158,7 @@ export function createView(stage, picture) {
     },
     queue(snap, selfId) {
       pending = { snap, selfId }
-      placeCamera(snap, selfId)
+      if (testHooks) placeCamera(snap, selfId)
       nudge(snap, selfId)
     },
     stop() {
@@ -1174,6 +1259,8 @@ export function createView(stage, picture) {
       picture.dress({ grounds: [yard, plazaWear, pathNS, pathEW], keep, stoneMat, heroes, monsters: monsterCards })
       dissolveYardEdge(yard)
       picture.light(name, { scene, sun, ambient, hemi: sky, torch: keep.userData.torch })
+      applyPhaseTint(name)
+      updateHeroTorch(performance.now())
 
       liveMonsters = snap.monsters || []
 
@@ -1376,6 +1463,11 @@ export function createView(stage, picture) {
           plazaSides,
           path: true,
           bestiary: ["goblin", "skeleton", "wolf", "troll", "bat", "boss"]
+        },
+        heroTorch: {
+          active: heroTorch.intensity > 0,
+          intensity: Math.round(heroTorch.intensity),
+          auraVisible: heroAura.visible
         },
         forestLook,
         rendered: heroMesh ? { x: heroMesh.position.x, z: heroMesh.position.z } : null,
@@ -2259,7 +2351,12 @@ export function createView(stage, picture) {
     if (Number.isFinite(mesh.userData.fade) && card.material) card.material.opacity = mesh.userData.fade
     if (card.material && card.material.color) {
       const flashed = Number.isFinite(mesh.userData.flashUntil) && performance.now() < mesh.userData.flashUntil
-      card.material.color.setHex(flashed ? 0xffc8a4 : 0xffffff)
+      const role = mesh.userData.role
+      const baseHex =
+        role === "monster" || role === "vagrant" || role === "merchant"
+          ? objectTintHex(liveLight, "monster")
+          : 0xffffff
+      card.material.color.setHex(flashed ? 0xffc8a4 : baseHex)
     }
     const frame = sheetRow(picture, anim, performance.now())
     // A 4-frame sheet has no death row. sheetRow still returns walk when death is 0.
@@ -2491,6 +2588,9 @@ export function createView(stage, picture) {
       const rect = stage.getBoundingClientRect()
       stageSize = { w: rect.width || stage.clientWidth || 480, h: rect.height || stage.clientHeight || 270 }
     }
+    const key = `${stageSize.w}x${stageSize.h}:${townRank}`
+    if (key === fittedKey) return
+    fittedKey = key
     viewFrame = picture.fit(renderer, camera, stageSize.w, stageSize.h, townRank)
   }
 
@@ -2502,6 +2602,7 @@ export function createView(stage, picture) {
   // menu draws again only when its hero sheets load.
   function onResize() {
     stageSize = null
+    fittedKey = null
     dirty = true
     applyFrame()
     if (lastSeat) seatCamera(lastSeat.snap, lastSeat.me)

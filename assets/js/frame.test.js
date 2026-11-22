@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import * as THREE from "three"
-import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, drawDue, frameFor, frameSignature, ghostLook, hooksWanted, idleDrawMs, inputWindowMs, keepAliveMs, paintDue, paintGap, pixelSize, sceneKey, slowPaintGapMs, snapshotDue } from "./frame.js"
+import { activeDrawMs, cameraFocus, cameraFollow, cameraLift, cameraTetherFar, cameraTetherNear, drawDue, frameFor, frameSignature, ghostLook, hooksWanted, idleDrawMs, inputWindowMs, keepAliveMs, paintDue, paintGap, pixelSize, sceneKey, slowPaintGapMs, snapshotDue } from "./frame.js"
 import { heroSignature } from "./heroes.js"
 import { viewScale } from "./town.js"
 
@@ -278,4 +278,24 @@ test("the build ghost asks for a paint only when it or its ring changes", () => 
   assert.notEqual(ghostLook("wall", 5, 5, true, bearer), ghostLook("wall", 6, 5, true, bearer))
   assert.notEqual(ghostLook("wall", 5, 5, true, bearer), ghostLook("wall", 5, 5, false, bearer))
   assert.notEqual(ghostLook("wall", 5, 5, true, bearer), ghostLook("wall", 5, 5, true, { ...bearer, x: 1 }))
+})
+
+test("cameraFocus stays tethered near the keep and follows 1:1 once far away", () => {
+  assert.equal(cameraTetherNear, 240)
+  assert.equal(cameraTetherFar, 520)
+  const near = cameraFocus(120, -60)
+  assert.equal(near.x, 120 * cameraFollow)
+  assert.equal(near.z, -60 * cameraFollow)
+  const mid = cameraFocus(380, 0)
+  assert.ok(mid.x > 380 * cameraFollow && mid.x < 380, `mid.x ${mid.x}`)
+  const far = cameraFocus(900, -400)
+  assert.equal(far.x, 900)
+  assert.equal(far.z, -400)
+})
+
+test("sceneKey returns a memoized key for the same snapshot object", () => {
+  const snap = { tick: 1, phase: "build", players: [{ id: "p1", x: 10, y: 20 }], keep: { hp: 900 } }
+  const first = sceneKey(snap)
+  const second = sceneKey(snap)
+  assert.equal(first, second)
 })

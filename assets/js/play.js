@@ -940,8 +940,8 @@ function start(code, seat, ui) {
     ui.hud.querySelector("[data-forge]").textContent = copy.forge
     ui.hud.querySelector("[data-spire]").textContent = copy.spire
     ui.hud.querySelector("[data-relics]").textContent = copy.relics.length
-      ? copy.relics.join(" ")
-      : "A boss drops one relic."
+      ? copy.relics.join(" · ")
+      : "Relics: 0"
     const roster = ui.hud.querySelector("[data-roster]")
     const rosterHtml = (snap.players || [])
       .map((player) => {

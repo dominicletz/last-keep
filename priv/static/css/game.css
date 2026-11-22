@@ -236,20 +236,24 @@ input[type="text"], input:not([type="radio"]) {
 .chip {
   display: flex;
   flex-wrap: nowrap;
-  gap: 0.08rem 0.7rem;
+  gap: 0.08rem 0.55rem;
   align-items: baseline;
-  font-size: 0.82rem;
-  line-height: 1.25;
+  font-size: 0.74rem;
+  line-height: 1.2;
   white-space: nowrap;
 }
 .chip > div:not([hidden]) { display: inline; }
 .chip > [data-build-reason]:not([hidden]) { flex-basis: 100%; }
 .chip b { color: var(--gold); }
 .bonuses {
-  max-width: 42rem;
-  font-size: 0.68rem;
-  line-height: 1.35;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.08rem 0.65rem;
+  max-width: 34rem;
+  font-size: 0.60rem;
+  line-height: 1.2;
   color: var(--muted);
+  opacity: 0.74;
 }
 .tally { color: var(--gold); font-size: 0.88rem; }
 .world-pin {
@@ -259,8 +263,8 @@ input[type="text"], input:not([type="radio"]) {
   max-width: none;
   pointer-events: none;
 }
-.heart.world-pin { transform: translate(-50%, 10px); max-width: none; white-space: nowrap; }
-.roster.world-pin { transform: translate(0, 0); max-width: 11rem; }
+.heart.world-pin { transform: translate(-50%, 10px); max-width: none; white-space: nowrap; font-size: 0.72rem; }
+.roster.world-pin { transform: translate(0, 0); max-width: 9.5rem; }
 .sacks {
   position: absolute;
   left: 0;
@@ -275,15 +279,15 @@ input[type="text"], input:not([type="radio"]) {
 .sack {
   position: absolute;
   transform: translate(-50%, -100%);
-  width: 4.2rem;
+  width: 4.0rem;
   box-sizing: border-box;
-  padding: 0 0.15rem 0.15rem;
+  padding: 0 0.12rem 0.12rem;
   text-align: center;
   color: #f6e6c4;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  line-height: 1.15;
+  line-height: 1.12;
   white-space: pre-line;
   text-shadow: 1px 1px 0 #1a1008;
   background: transparent;
@@ -295,18 +299,19 @@ input[type="text"], input:not([type="radio"]) {
   image-rendering: pixelated;
   pointer-events: none;
 }
-.sack img { width: 24px; height: 24px; }
+.sack img { width: 22px; height: 22px; }
 #hud .build img { width: 28px; height: 28px; }
-.hint-arrow.beacon { color: #f0d090; }
+.hint-arrow.beacon { color: #f0d090; font-size: 0.66rem; opacity: 0.82; }
 .roster {
   flex-direction: column;
   align-items: stretch;
   align-self: start;
   min-width: 0;
-  gap: 0.12rem;
-  font-size: 0.78rem;
+  gap: 0.1rem;
+  font-size: 0.68rem;
+  opacity: 0.86;
 }
-.roster .who { display: flex; justify-content: space-between; gap: 0.55rem; font-size: 0.78rem; text-transform: none; }
+.roster .who { display: flex; justify-content: space-between; gap: 0.45rem; font-size: 0.68rem; text-transform: none; }
 .roster .who span:first-child { text-transform: none; font-weight: 700; }
 .roster .who.off { opacity: 0.45; }
 .roster .who.me { outline: 2px solid var(--gold); outline-offset: 1px; }

@@ -14,7 +14,7 @@ const LOOK = {
   bloomThreshold: 0.72,
   bloomRadius: 6,
   highlightCap: 0.92,
-  focusBand: 0.04,
+  focusBand: 0.14,
   fogFloorY: 0,
   fogCeilingY: 36,
   fogMixCap: 0.38,
@@ -86,8 +86,8 @@ export function snapHeroCard(plane, camera, bufferHeight) {
 
 // Distance carries the mist. Height only deepens it on the ground, and the ramp starts past the focal plane so the keep and the heroes stay clear.
 const FOG = { height: 0.78, near: 1.05, far: 1.42 }
-const COC_MAX_PX = 16
-const COC_REACH = 0.12
+const COC_MAX_PX = 4.5
+const COC_REACH = 0.3
 const RESTORE_PX = 0.5
 const FLAME = new Set([0xeea821, 0xf5751e])
 const LUMA = [0.2126, 0.7152, 0.0722]
@@ -277,6 +277,7 @@ function dofFragment() {
     uniform sampler2D tColor;
     uniform sampler2D tDepth;
     uniform vec2 resolution;
+    uniform vec2 fullResolution;
     uniform mat4 inverseProjection;
     uniform mat4 inverseView;
     uniform vec3 eye;
@@ -286,9 +287,13 @@ function dofFragment() {
     ${cocGlsl()}
     void main() {
       vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
-      vec2 texel = 1.0 / resolution;
       vec3 world = worldFromDepth(uv, texture2D(tDepth, uv).r);
       float radius = cocPixels(distance(world, eye), span);
+      if (radius < ${glslFloat(RESTORE_PX)}) {
+        gl_FragColor = vec4(texture2D(tColor, uv).rgb, 1.0);
+        return;
+      }
+      vec2 texel = 1.0 / fullResolution;
       vec3 sum = vec3(0.0);
       ${taps.join("\n      ")}
       gl_FragColor = vec4(sum / ${glslFloat(disk.length)}, 1.0);
@@ -312,11 +317,15 @@ function restoreFragment() {
     ${cocGlsl()}
     void main() {
       vec2 uv = (floor(gl_FragCoord.xy) + 0.5) / resolution;
+      vec3 sharp = texture2D(tSharp, uv).rgb;
       vec3 world = worldFromDepth(uv, texture2D(tDepth, uv).r);
       float radius = cocPixels(distance(world, eye), span);
-      vec3 sharp = texture2D(tSharp, uv).rgb;
+      if (radius < ${glslFloat(RESTORE_PX)}) {
+        gl_FragColor = vec4(sharp, 1.0);
+        return;
+      }
       vec3 soft = texture2D(tBlur, uv).rgb;
-      float blend = smoothstep(${glslFloat(RESTORE_PX)}, 3.0, radius);
+      float blend = smoothstep(${glslFloat(RESTORE_PX)}, 2.5, radius);
       gl_FragColor = vec4(mix(sharp, soft, blend), 1.0);
     }
   `
@@ -804,7 +813,8 @@ function createHdPicture(env) {
     // The tent filter interpolates the glow. Scene, graded, and restore stay nearest so the in-focus restore copies texels.
     const bloom = linearTarget(halfW, halfH, null, THREE.LinearFilter, colorType)
     const graded = linearTarget(width, height, null, THREE.NearestFilter, colorType)
-    const blurred = linearTarget(width, height, null, THREE.NearestFilter, colorType)
+    // Half-resolution DoF cuts disk-blur fragment work 4x while keeping soft edges.
+    const blurred = linearTarget(halfW, halfH, null, THREE.LinearFilter, colorType)
     const shown = linearTarget(width, height, null, THREE.NearestFilter, colorType)
     const view = viewUniforms(depth)
     const fog = passMaterial(fogFragment(), {
@@ -824,6 +834,8 @@ function createHdPicture(env) {
     })
     const dof = passMaterial(dofFragment(), {
       ...view,
+      resolution: { value: halfSize },
+      fullResolution: { value: fullSize },
       tColor: { value: graded.texture }
     })
     const restore = passMaterial(restoreFragment(), {
@@ -849,7 +861,7 @@ function createHdPicture(env) {
     chain.scene.setSize(width, height)
     chain.fogged.setSize(width, height)
     chain.graded.setSize(width, height)
-    chain.blurred.setSize(width, height)
+    chain.blurred.setSize(halfW, halfH)
     chain.shown.setSize(width, height)
     chain.bloom.setSize(halfW, halfH)
     const depth = chain.scene.depthTexture
@@ -1070,6 +1082,7 @@ function createHdPicture(env) {
       const look = new THREE.Vector3(focus.x, cameraLift, focus.z)
       const home = look.clone().addScaledVector(dir, span)
       const blend = snap && snap.portrait ? 0 : view && Number.isFinite(view.blend) ? Math.min(1, Math.max(0, view.blend)) : 1
+      const wasArriving = arriving
       arriving = blend < 1
       if (blend < 1) {
         const hero = (view && view.hero) || { x: focus.x, z: focus.z }
@@ -1085,6 +1098,12 @@ function createHdPicture(env) {
         camera.lookAt(pose.look.x, pose.look.y, pose.look.z)
         camera.updateProjectionMatrix()
       } else {
+        if (wasArriving || camera.fov !== LOOK.fov) {
+          camera.fov = LOOK.fov
+          camera.near = span * 0.15
+          camera.far = span * 2.5
+          camera.updateProjectionMatrix()
+        }
         camera.position.copy(home)
         camera.lookAt(look)
       }

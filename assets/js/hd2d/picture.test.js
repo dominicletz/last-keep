@@ -715,15 +715,17 @@ test("height fog stays off the focal plane and only softens the distance", () =>
   assert.ok(fogMix(36, span * 4, span) < fogMix(0, span * 4, span))
 })
 
-test("the circle of confusion is zero at the focus distance", () => {
+test("the circle of confusion is zero across the wider focus band and stays subtle", () => {
   const span = 168 / Math.tan((7.5 * Math.PI) / 180)
   assert.equal(circleOfConfusion(span, span), 0)
-  const farther = span * (1 + 0.04) + 1
-  const nearer = span * (1 - 0.04) - 1
+  assert.equal(circleOfConfusion(span * 1.1, span), 0)
+  assert.equal(circleOfConfusion(span * 0.9, span), 0)
+  const farther = span * (1 + 0.14) + 1
+  const nearer = span * (1 - 0.14) - 1
   assert.ok(circleOfConfusion(farther, span) > 0)
   assert.ok(circleOfConfusion(nearer, span) > 0)
-  assert.ok(circleOfConfusion(span * 10, span) <= 16)
-  assert.ok(circleOfConfusion(span * 1.2, span) > 4)
+  assert.ok(circleOfConfusion(span * 10, span) <= 4.5)
+  assert.ok(circleOfConfusion(span * 1.35, span) > 1.5)
   assert.ok(circleOfConfusion(span * 10, span) > circleOfConfusion(farther, span))
 })
 

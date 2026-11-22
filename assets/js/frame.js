@@ -36,10 +36,25 @@ export function frameFor(cssWidth, cssHeight, rank = 0) {
   }
 }
 
-// Follow most of the way out. 0.22 left a hero on the spawn ring standing on
-// a bat outside the frame. Following all the way hides a goblin on the far
-// side of the keep from a hero who is still on the join ring.
+// Follow most of the way out near the keep so the castle and nearby yard stay
+// framed. Once the hero moves past the yard, release the castle tether smoothly
+// into 1:1 follow so the camera moves with the character across the frontier.
 export const cameraFollow = 0.72
+export const cameraTetherNear = 240
+export const cameraTetherFar = 520
+
+export function cameraFocus(x, y) {
+  const hx = Number(x) || 0
+  const hy = Number(y) || 0
+  const dist = Math.hypot(hx, hy)
+  let follow = cameraFollow
+  if (dist > cameraTetherNear) {
+    const t = Math.min(1, (dist - cameraTetherNear) / (cameraTetherFar - cameraTetherNear))
+    const smooth = t * t * (3 - 2 * t)
+    follow = cameraFollow + (1 - cameraFollow) * smooth
+  }
+  return { x: hx * follow, z: hy * follow }
+}
 
 // The third join-ring seat stands behind the host. A look point on the ground
 // leaves that hero above the frame. 32 puts the tallest mesh, the mage, inside
@@ -65,12 +80,6 @@ export function paintGap(submitMs) {
 export function drawDue(now, lastRender, lastInput) {
   const gap = now - lastInput < inputWindowMs ? activeDrawMs : idleDrawMs
   return now - lastRender >= gap
-}
-
-export function cameraFocus(x, y) {
-  const hx = Number(x) || 0
-  const hy = Number(y) || 0
-  return { x: hx * cameraFollow, z: hy * cameraFollow }
 }
 
 // Test hooks are the window.__lastKeep record, the per-frame geometry census,
@@ -162,9 +171,19 @@ export function frameSignature(camera, meshes) {
 // events become bursts the frame signature already sees.
 const TICKING = new Set(["tick", "phase_ms", "cds", "events", "score", "kills", "waves_survived"])
 
+const sceneKeyCache = new WeakMap()
+
 // A draw repaints only when this key moved. Two snapshots with equal keys
 // differ in nothing the scene shows; actors that move change the signature.
+// Memoized per snapshot object so render.js and play.js do not stringify twice.
 export function sceneKey(snap) {
+  if (snap && typeof snap === "object") {
+    const cached = sceneKeyCache.get(snap)
+    if (cached !== undefined) return cached
+    const built = JSON.stringify(snap, (key, value) => (TICKING.has(key) ? undefined : value))
+    sceneKeyCache.set(snap, built)
+    return built
+  }
   return JSON.stringify(snap, (key, value) => (TICKING.has(key) ? undefined : value))
 }
 

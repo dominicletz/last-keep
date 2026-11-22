@@ -780,6 +780,10 @@ async function twoPlayerNight(browser) {
 
   await expect(page.locator("[data-start]")).toHaveText("Start the night")
   await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
+  const dayTorch = await page.evaluate(() => window.__lastKeep.heroTorch)
+  expect(dayTorch).toBeTruthy()
+  expect(dayTorch.active).toBe(false)
+  expect(dayTorch.auraVisible).toBe(false)
   const notes = blankNotes()
   // Close on the warrior before the goblins do. An idle mage on the far
   // side of the ring is dead by the time both of them reach this camera,
@@ -829,6 +833,11 @@ async function twoPlayerNight(browser) {
   expect(Number.isFinite(nightGround.pools)).toBe(true)
   expect(Number.isFinite(nightGround.cap)).toBe(true)
   expect(Number.isFinite(nightGround.halo)).toBe(true)
+  const nightTorch = await page.evaluate(() => window.__lastKeep.heroTorch)
+  expect(nightTorch).toBeTruthy()
+  expect(nightTorch.active).toBe(true)
+  expect(nightTorch.intensity).toBeGreaterThan(0)
+  expect(nightTorch.auraVisible).toBe(true)
   await assertNightAudio(page)
   await hintsClearTheRoster(page)
   // A stock goblin has 22 hp and the fireball deals 30. Casting first removes
@@ -3177,6 +3186,10 @@ async function liveSmoke(browser) {
   await expect(friend.locator("[data-roster]")).toContainText("Bob")
   await expect(page.locator("[data-start]")).toHaveText("Start the night")
   await expect(friend.locator("[data-start]")).toHaveText("Waiting for the host")
+  const dayTorch = await page.evaluate(() => window.__lastKeep.heroTorch)
+  expect(dayTorch).toBeTruthy()
+  expect(dayTorch.active).toBe(false)
+  expect(dayTorch.auraVisible).toBe(false)
 
   await page.bringToFront()
   const from = await page.evaluate(() => ({ x: window.__lastKeep.self.x, y: window.__lastKeep.self.y }))
