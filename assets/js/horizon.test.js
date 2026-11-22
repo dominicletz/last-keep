@@ -184,4 +184,8 @@ test("coherent terrain keeps rivers blocked, fords open, and terrainWaypoint rou
   assert.equal(biomeOpen(5, 0, ford.x, ford.y), true)
   const wp = terrainWaypoint(5, 0, 120, 0, 4140, 0)
   assert.equal(biomeOpen(5, 0, wp.x, wp.y), true)
+  // Beside the seed-5 cliff edge (-2069.3, 56.6), terrainWaypoint must not cut north into {-57, 1}.
+  const cliffWp = terrainWaypoint(5, 0, -2069.3, 56.6, -3852, -3384)
+  assert.equal(biomeOpen(5, 0, cliffWp.x, cliffWp.y), true)
+  assert.ok(cliffWp.y >= 54 || cliffWp.x < -2070, `waypoint should clear cliff south edge: ${JSON.stringify(cliffWp)}`)
 })
