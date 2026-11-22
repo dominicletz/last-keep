@@ -15,9 +15,9 @@ const HORIZON_TEX = 320
 const WINDOW = 4608
 const TREE_CAP = 180
 const YARD = 380
-const MIST = 0.45
+const MIST = 0.8
 const MASK = 32
-export const UNSEEN_DAY = 0x0e1810
+export const UNSEEN_DAY = 0x0a160c
 export const UNSEEN_NIGHT = 0x16141d
 export const HORIZON_TINT = {
   day: 0xffffff,
