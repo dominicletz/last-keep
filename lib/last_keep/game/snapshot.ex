@@ -326,7 +326,9 @@ defmodule LastKeep.Game.Snapshot do
         id: projectile.id,
         kind: Atom.to_string(projectile.kind),
         x: round1(projectile.x),
-        y: round1(projectile.y)
+        y: round1(projectile.y),
+        vx: round1(projectile.vx * 0.05),
+        vy: round1(projectile.vy * 0.05)
       }
     end)
   end

@@ -8,6 +8,8 @@ export function present(snap) {
       facing: row.facing,
       hp: row.hp,
       max: row.max,
+      cds: row.cds,
+      alive: row.alive !== false,
       preview: row.preview === true,
       opacity: Number.isFinite(row.opacity) ? row.opacity : 1
     })),
@@ -17,8 +19,10 @@ export function present(snap) {
       x: row.x,
       y: row.y,
       facing: Number.isFinite(row.facing) ? row.facing : Math.atan2(row.x, row.y),
+      hasFacing: Number.isFinite(row.facing),
       hp: row.hp,
       max: row.max,
+      attack_cd: row.attack_cd || 0,
       elite: row.elite || null
     })),
     vagrants: list(snap?.vagrants, (row) => ({
@@ -27,6 +31,7 @@ export function present(snap) {
       x: row.x,
       y: row.y,
       facing: Number.isFinite(row.facing) ? row.facing : Math.atan2(row.x, row.y),
+      hasFacing: Number.isFinite(row.facing),
       hp: row.hp,
       max: row.max,
       alive: row.alive !== false

@@ -915,8 +915,10 @@ async function movementIsInterpolated(page) {
     }
   })
   expect(rows.length).toBeGreaterThan(5)
+  const first = rows[0]
   const last = rows[rows.length - 1]
   expect(last.travel).toBeGreaterThan(20)
+  expect(Math.hypot(last.focusX - first.focusX, last.focusZ - first.focusZ)).toBeGreaterThan(10)
   expect(rows.some((row) => row.open)).toBe(true)
   const wave = await page.locator(".chip").boundingBox()
   const view = page.viewportSize()
