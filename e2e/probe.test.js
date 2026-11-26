@@ -125,6 +125,15 @@ test("a discovered chest may raise the settled count", () => {
   leaked.merchant = 1
   leaked.census.byRole.merchant = 1
   assert.equal(settledHolds(seat(764, 1, 1), leaked), false)
+  assert.match(source, /vagrants: \(game\.vagrants \|\| \[\]\)\.length/)
+  const ally = seat(767, 1, 1)
+  ally.vagrants = 1
+  ally.census.byRole.vagrant = 3
+  assert.equal(settledHolds(seat(764, 1, 1), ally), true)
+  const leakedAlly = seat(768, 1, 1)
+  leakedAlly.vagrants = 1
+  leakedAlly.census.byRole.vagrant = 3
+  assert.equal(settledHolds(seat(764, 1, 1), leakedAlly), false)
 })
 
 test("scripted walks wait on the server position", () => {
