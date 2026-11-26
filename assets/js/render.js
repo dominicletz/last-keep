@@ -8,7 +8,7 @@ import { geometryCensus, giveBurst, releaseGeometries, takeBurst, trackGeometry 
 import { arrowFrame, fireFrame, shotArt, shotScale, SHOT_URL } from "./shots.js"
 import { BURST_CELL, BURST_FRAMES, BURST_MS, BURST_SHEET, burstFrame, burstRow } from "./bursts.js"
 import { pixelStep, snapWorld } from "./art_score.js"
-import { nextTrack, poseAt, stepYaw } from "./motion"
+import { blendMs, nextTrack, poseAt, stepYaw } from "./motion"
 import { deadTreeSlots, DEAD_TREE_CAP, floraSlots, ruinSlots, RUIN_CAP } from "./flora.js"
 import { deerAt, deerSheetUrl, deerSlots, DEER_SHEET } from "./wildlife.js"
 import { forestWallSlots, sceneryForest, scenerySlots } from "./scenery"
@@ -456,6 +456,7 @@ export function createView(stage, picture) {
   // The snapshot and player the camera was last seated for. fit() resets the
   // lens to the world view, so a refit outside draw() seats the camera again.
   let lastSeat = null
+  let lastWorldSyncSnap = null
   applyFrame()
   window.addEventListener("resize", onResize)
   const stageWatch = typeof ResizeObserver === "function" ? new ResizeObserver(() => onResize()) : null
@@ -474,6 +475,7 @@ export function createView(stage, picture) {
   let deerSource = null
   let deerTick = 0
   let deerTickAt = performance.now()
+  let deerSnapTick = -1
   const deerLayout = monsterSheetPicture(DEER_SHEET)
   const deerGeometry = sheetCardGeometry(DEER_SHEET.cell, DEER_SHEET.footRow)
   const deerPos = new THREE.Vector3()
@@ -781,8 +783,20 @@ export function createView(stage, picture) {
   }
 
   function noteDeerClock(snap) {
-    deerTick = snap && Number.isFinite(snap.tick) ? snap.tick : 0
-    deerTickAt = performance.now()
+    if (!snap || !Number.isFinite(snap.tick) || snap.tick === deerSnapTick) return
+    const nextTick = snap.tick
+    const now = performance.now()
+    const local = deerTick + (now - deerTickAt) / 50
+    const drift = nextTick - local
+    if (deerSnapTick < 0 || nextTick === 0 || Math.abs(drift) > 2) {
+      deerTick = nextTick
+      deerTickAt = now
+    } else {
+      const target = Math.max(local, local + drift * 0.25)
+      deerTick = nextTick
+      deerTickAt = now - (target - nextTick) * 50
+    }
+    deerSnapTick = nextTick
   }
 
   function stepDeer(now) {
@@ -919,12 +933,14 @@ export function createView(stage, picture) {
         mesh.userData.preview = !!row.preview
         mesh.userData.fade = Number.isFinite(row.opacity) ? row.opacity : 1
       }
-      remember(key, row.x, row.y)
+      remember(key, row.x, row.y, row.vx, row.vy)
       if (kind === "shot") {
         mesh.userData.vx = row.vx || 0
         mesh.userData.vy = row.vy || 0
       }
-      aimFacing(mesh, row.facing)
+      if (kind === "hero" || row.hasFacing || !Number.isFinite(mesh.userData.yawTarget)) {
+        aimFacing(mesh, row.facing)
+      }
       if (kind === "hero") notePose(mesh, row.cds?.attack || 0, row.alive === false)
       if (kind === "monster") notePose(mesh, row.attack_cd || 0, false)
       placeMesh(key, mesh)
@@ -1066,7 +1082,13 @@ export function createView(stage, picture) {
       viewApi.draw(pending.snap, pending.selfId)
       drawnTick = pending.snap.tick
     }
-    if (pending && (window.__lastKeepArrive || boundLook())) placeCamera(pending.snap, pending.selfId)
+    const heroTrack = heroKey ? tracks.get(heroKey) : null
+    const heroBlending = !!(
+      heroTrack &&
+      (heroTrack.fromX !== heroTrack.toX || heroTrack.fromZ !== heroTrack.toZ) &&
+      now <= heroTrack.at + blendMs + 32
+    )
+    if (pending && (window.__lastKeepArrive || boundLook() || heroBlending)) placeCamera(pending.snap, pending.selfId)
     for (const [, mesh] of meshes) stepFacing(mesh)
     for (const [key, mesh] of meshes) placeMesh(key, mesh)
     stepDeer(deerMillis())
@@ -1105,6 +1127,10 @@ export function createView(stage, picture) {
       }
     }
     const heroMesh = heroKey ? meshes.get(heroKey) : null
+    if (heroMesh) {
+      bearer = { x: heroMesh.position.x, z: heroMesh.position.z, range: bearer.range }
+      if (rangeRing.visible) rangeRing.position.set(bearer.x, 0.45, bearer.z)
+    }
     updateHeroTorch(now)
     if (heroMesh && window.__lastKeep) {
       window.__lastKeep.rendered = { x: heroMesh.position.x, z: heroMesh.position.z }
@@ -1223,6 +1249,7 @@ export function createView(stage, picture) {
       applyFrame()
       const zoom = zoomFor(snap)
       const me = (snap.players || []).find((player) => player.id === selfId) || snap.players?.[0]
+      if (me && Number.isFinite(me.x) && Number.isFinite(me.y)) remember(`hero:${me.id}`, me.x, me.y)
       seatCamera(snap, me)
       const yardScale = zoom.dirt / 150
       plaza.scale.setScalar(yardScale)
@@ -1571,6 +1598,20 @@ export function createView(stage, picture) {
       if (!meshes.has(`monster:${row.id}`)) continue
       remember(`monster:${row.id}`, row.x, row.y)
     }
+    for (const row of snap.vagrants || []) {
+      if (!meshes.has(`vagrant:${row.id}`)) continue
+      remember(`vagrant:${row.id}`, row.x, row.y)
+    }
+    if (snap.merchant && meshes.has(`merchant:${snap.merchant.id}`)) {
+      remember(`merchant:${snap.merchant.id}`, snap.merchant.x, snap.merchant.y)
+    }
+    for (const row of snap.projectiles || []) {
+      const shot = meshes.get(`shot:${row.id}`)
+      if (!shot) continue
+      remember(`shot:${row.id}`, row.x, row.y, row.vx, row.vy)
+      shot.userData.vx = row.vx || shot.userData.vx || 0
+      shot.userData.vy = row.vy || shot.userData.vy || 0
+    }
   }
 
   function arriveBlend() {
@@ -1611,11 +1652,12 @@ export function createView(stage, picture) {
   function seatCamera(snap, me) {
     lastSeat = { snap, me }
     const portrait = !!snap.portrait
+    const posed = !portrait && me && tracks.has(`hero:${me.id}`) ? smoothed(`hero:${me.id}`) : null
     const hero = portrait
       ? { x: PORTRAIT_STAND.x, z: PORTRAIT_STAND.z }
-      : { x: me?.x || 0, z: me?.y || 0 }
+      : { x: posed ? posed.x : me?.x || 0, z: posed ? posed.z : me?.y || 0 }
     const bound = portrait ? null : boundLook()
-    const anchor = portrait ? hero : bound || cameraFocus(me?.x, me?.y)
+    const anchor = portrait ? hero : bound || cameraFocus(hero.x, hero.z)
     const step = worldStep()
     focus.set(snapWorld(anchor.x, step), 0, snapWorld(anchor.z, step))
     const dist = zoomFor(snap).camera
@@ -1625,12 +1667,15 @@ export function createView(stage, picture) {
       cssW: viewFrame.bufferWidth,
       cssH: viewFrame.bufferHeight
     })
-    land.sync(snap, camera, viewFrame.halfH)
-    placeFlora(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
-    placeRuins(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
-    placeDeadTrees(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
-    placeDeer(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
-    noteDeerClock(snap)
+    if (snap !== lastWorldSyncSnap || bound) {
+      lastWorldSyncSnap = snap
+      land.sync(snap, camera, viewFrame.halfH)
+      placeFlora(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+      placeRuins(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+      placeDeadTrees(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+      placeDeer(Number.isInteger(snap && snap.seed) ? snap.seed : 1, Number.isInteger(snap && snap.seed) ? snap.attempt || 0 : 0)
+      noteDeerClock(snap)
+    }
   }
 
   function placeCamera(snap, selfId) {
@@ -2070,7 +2115,7 @@ export function createView(stage, picture) {
     const sz = self.y
     const open = step > 0.4 && step < 14 && age >= 0 && age < 45
     const travel = origin ? Math.hypot(sx - origin.x, sz - origin.y) : 0
-    return { step, age, sx, sz, open, travel }
+    return { step, age, sx, sz, open, travel, focusX: focus.x, focusZ: focus.z }
   }
 
   function pictureGrade() {
@@ -2108,9 +2153,9 @@ export function createView(stage, picture) {
     return { max, above, field }
   }
 
-  function remember(key, x, z) {
+  function remember(key, x, z, vx = 0, vz = 0) {
     const prev = tracks.get(key)
-    tracks.set(key, nextTrack(prev, x, z, performance.now()))
+    tracks.set(key, nextTrack(prev, x, z, performance.now(), undefined, vx, vz))
   }
 
   function aimFacing(mesh, facing) {

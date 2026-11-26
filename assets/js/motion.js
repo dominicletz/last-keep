@@ -26,11 +26,34 @@ export function poseAt(track, now, duration = blendMs) {
   }
 }
 
-export function nextTrack(prev, x, z, now) {
+const walkStepCap = 13.8
+
+export function nextTrack(prev, x, z, now, duration = blendMs, vx = 0, vz = 0) {
   if (prev && prev.toX === x && prev.toZ === z) return prev
+  if (!prev) {
+    const dx = Number.isFinite(vx) ? vx : 0
+    const dz = Number.isFinite(vz) ? vz : 0
+    return {
+      fromX: x - dx,
+      fromZ: z - dz,
+      toX: x,
+      toZ: z,
+      at: now
+    }
+  }
+  const here = poseAt(prev, now, duration)
+  let fromX = here.x
+  let fromZ = here.z
+  const rawStep = Math.hypot(x - prev.toX, z - prev.toZ)
+  const span = Math.hypot(x - fromX, z - fromZ)
+  if (rawStep < 14 && span > walkStepCap) {
+    const scale = walkStepCap / span
+    fromX = x - (x - fromX) * scale
+    fromZ = z - (z - fromZ) * scale
+  }
   return {
-    fromX: prev ? prev.toX : x,
-    fromZ: prev ? prev.toZ : z,
+    fromX,
+    fromZ,
     toX: x,
     toZ: z,
     at: now

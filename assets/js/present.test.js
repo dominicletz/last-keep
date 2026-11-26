@@ -58,3 +58,27 @@ test("a vagrant with a bad position is not drawn", () => {
   const view = present({ vagrants: [{ id: 1, hero: "mage", x: 10, y: null }] })
   assert.deepEqual(view.vagrants, [])
 })
+
+test("present preserves hero cooldowns, life state, monster attack cooldown, and explicit facing flags", () => {
+  const view = present({
+    players: [{ id: "p1", hero: "warrior", x: 10, y: 20, facing: 0.5, hp: 0, max: 150, cds: { attack: 320 }, alive: false }],
+    monsters: [
+      { id: 1, kind: "goblin", x: 100, y: 20, hp: 28, max: 28, attack_cd: 180 },
+      { id: 2, kind: "wolf", x: 80, y: -10, facing: 1.25, hp: 40, max: 40 }
+    ],
+    vagrants: [
+      { id: 3, hero: "scout", x: 50, y: 15, hp: 70, max: 100 },
+      { id: 4, hero: "mage", x: -30, y: 25, facing: -0.5, hp: 70, max: 100 }
+    ]
+  })
+  assert.deepEqual(view.heroes[0].cds, { attack: 320 })
+  assert.equal(view.heroes[0].alive, false)
+  assert.equal(view.monsters[0].hasFacing, false)
+  assert.equal(view.monsters[0].attack_cd, 180)
+  assert.equal(view.monsters[1].hasFacing, true)
+  assert.equal(view.monsters[1].facing, 1.25)
+  assert.equal(view.monsters[1].attack_cd, 0)
+  assert.equal(view.vagrants[0].hasFacing, false)
+  assert.equal(view.vagrants[1].hasFacing, true)
+  assert.equal(view.vagrants[1].facing, -0.5)
+})

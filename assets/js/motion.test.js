@@ -52,3 +52,31 @@ test("a second snapshot at the same point does not restart the blend", () => {
   assert.equal(again, moved)
   assert.ok(poseAt(again, 1122).x < 10)
 })
+
+test("a snapshot arriving mid-blend re-anchors at the current interpolated pose without a jump", () => {
+  const first = nextTrack(null, 0, 0, 1000)
+  const moving = nextTrack(first, 8, 0, 1000)
+  const midBefore = poseAt(moving, 1025)
+  assert.deepEqual(midBefore, { x: 4, z: 0 })
+  const reanchored = nextTrack(moving, 16, 0, 1025)
+  const midAfter = poseAt(reanchored, 1025)
+  assert.deepEqual(midAfter, midBefore)
+  assert.deepEqual(poseAt(reanchored, 1050), { x: 10, z: 0 })
+  assert.deepEqual(poseAt(reanchored, 1075), { x: 16, z: 0 })
+})
+
+test("a newly spawned track with velocity interpolates across its first tick", () => {
+  const shot = nextTrack(null, 120, 40, 2000, undefined, 18, -6)
+  assert.deepEqual(poseAt(shot, 2000), { x: 102, z: 46 })
+  assert.deepEqual(poseAt(shot, 2025), { x: 111, z: 43 })
+  assert.deepEqual(poseAt(shot, 2050), { x: 120, z: 40 })
+})
+
+test("coalesced walk bursts keep the re-anchored track step below 14", () => {
+  let track = nextTrack(null, 0, 0, 1000)
+  track = nextTrack(track, 9, 0, 1000)
+  track = nextTrack(track, 18, 0, 1005)
+  const step = Math.hypot(track.toX - track.fromX, track.toZ - track.fromZ)
+  assert.ok(step > 0.4)
+  assert.ok(step < 14)
+})

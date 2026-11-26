@@ -120,7 +120,13 @@ defmodule LastKeep.Game.SimTest do
         "ay" => monster.y
       })
 
-    state = Enum.reduce(1..15, state, fn _, state -> Sim.tick(state) end)
+    state = Sim.tick(state)
+    [shot] = Snapshot.render(state).projectiles
+    assert shot.kind == "bolt"
+    assert shot.vx > 0
+    assert shot.vy == 0.0
+
+    state = Enum.reduce(1..14, state, fn _, state -> Sim.tick(state) end)
     [hurt] = Sim.monsters(state)
     assert hurt.hp < monster.hp
   end
