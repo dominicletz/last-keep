@@ -1,6 +1,7 @@
 import { pixelStep } from "./art_score.js"
+import { SHEET_TEXEL } from "./hd2d/picture.js"
 import { grassAt } from "./tiles.js"
-import { sampleGroundTile } from "./seam_tiles.js"
+import { groundTile, sampleGroundTile } from "./seam_tiles.js"
 
 // Grass, path, pine shade, stone, and the sunset band. Hexes are the STYLE.md tokens.
 // The base is the yard-grass tile (it passed seamHolds). The buffer stays on
@@ -60,6 +61,8 @@ function hash(x, y) {
 
 function paint(phase, size, span) {
   const rgba = new Uint8Array(size * size * 4)
+  const dayYard = phase === "day" && span > PLAZA_SPAN
+  const meadowTile = dayYard ? groundTile("meadow") : null
   for (let iy = 0; iy < size; iy++) {
     for (let ix = 0; ix < size; ix++) {
       const u = (ix + 0.5) / size
@@ -92,7 +95,7 @@ function paint(phase, size, span) {
       // wider than the plaza and takes the tile by day. Dusk and night keep
       // grassAt: the day tile under the scout at (160, 0) at night measures
       // contrast 28.72, under the floor of 29. The live mesh is the day paint.
-      const tiled = phase === "day" && span > PLAZA_SPAN ? sampleGroundTile("yard", worldX, worldZ) : null
+      const tiled = dayYard ? sampleGroundTile("yard", worldX, worldZ) : null
       let color = tiled || grassAt(ix + jigX, iy + jigY, phase)
       // The dirt tile replaces the flat stone fleck. A missing tile keeps STONE.
       // Pebbles stay the course colour. The path band below is still PATH.
@@ -109,15 +112,39 @@ function paint(phase, size, span) {
       if (pathBand < 12 + n * 14 && along < span * 0.46) color = mix(PATH, color, pathBand / 30)
       if (radius > 34 && radius < 82 && n > 0.35) color = mix(PATH, color, (radius - 34) / 70)
       if (radius < 48) color = mix(SHADE, color, 0.25 + (radius / 48) * 0.75)
-      if (radius > 300) {
+      let r = color[0]
+      let g = color[1]
+      let b = color[2]
+      if (dayYard && radius > 285) {
+        const edge = radius >= 335 ? 1 : (radius - 285) / 50
+        let mr = 0x5c
+        let mg = 0x64
+        let mb = 0x2f
+        if (meadowTile) {
+          const px = Math.floor(worldX / SHEET_TEXEL)
+          const pz = Math.floor(worldZ / SHEET_TEXEL)
+          const mx = ((px % meadowTile.width) + meadowTile.width) % meadowTile.width
+          const my = ((pz % meadowTile.height) + meadowTile.height) % meadowTile.height
+          const mo = (my * meadowTile.width + mx) * 4
+          mr = Math.min(Math.round(meadowTile.rgba[mo] + (0x5c - meadowTile.rgba[mo]) * 0.38), 108)
+          mg = Math.min(Math.round(meadowTile.rgba[mo + 1] + (0x64 - meadowTile.rgba[mo + 1]) * 0.38), 116)
+          mb = Math.max(Math.round(meadowTile.rgba[mo + 2] + (0x2f - meadowTile.rgba[mo + 2]) * 0.38), 32)
+        }
+        r = Math.round(r + (mr - r) * edge)
+        g = Math.round(g + (mg - g) * edge)
+        b = Math.round(b + (mb - b) * edge)
+      } else if (radius > 300) {
         const edge = Math.min(1, (radius - 300) / 70)
-        if (phase === "dusk") color = mix(color, SUNSET, 0.2 + edge * 0.6)
-        else color = mix(color, SHADE, 0.15 + edge * 0.4)
+        const target = phase === "dusk" ? SUNSET : SHADE
+        const k = phase === "dusk" ? 0.2 + edge * 0.6 : 0.15 + edge * 0.4
+        r = Math.round(r + (target[0] - r) * k)
+        g = Math.round(g + (target[1] - g) * k)
+        b = Math.round(b + (target[2] - b) * k)
       }
       const offset = (iy * size + ix) * 4
-      rgba[offset] = color[0]
-      rgba[offset + 1] = color[1]
-      rgba[offset + 2] = color[2]
+      rgba[offset] = r
+      rgba[offset + 1] = g
+      rgba[offset + 2] = b
       rgba[offset + 3] = 255
     }
   }

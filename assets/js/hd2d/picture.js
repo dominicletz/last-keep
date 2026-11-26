@@ -1180,7 +1180,7 @@ function createHdPicture(env) {
           renderer.info.autoReset = false
           renderer.info.reset()
           if (scene.background && scene.background.isColor) lowFog.color.copy(scene.background)
-          lowFog.density = span > 1 ? 0.9 / span : 0
+          lowFog.density = span > 1 ? 0.32 / span : 0
           if (scene.fog !== lowFog) scene.fog = lowFog
           renderer.setRenderTarget(null)
           renderer.clear(true, true, true)

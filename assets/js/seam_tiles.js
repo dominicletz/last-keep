@@ -33,6 +33,10 @@ export function installGroundTiles(next) {
   for (const fn of waiters) fn()
 }
 
+export function groundTile(name) {
+  return tiles[name] || null
+}
+
 export function sampleGroundTile(name, worldX, worldZ) {
   const tile = tiles[name]
   if (!tile) return null
