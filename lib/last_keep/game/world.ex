@@ -55,21 +55,111 @@ defmodule LastKeep.Game.World do
       flow ->
         {i, j} = cell_index(x, y)
 
-        if abs(i) > @span or abs(j) > @span do
-          nil
-        else
-          case :binary.at(flow, slot(i, j) - 1) do
-            1 -> {1.0, 0.0}
-            2 -> {-1.0, 0.0}
-            3 -> {0.0, 1.0}
-            4 -> {0.0, -1.0}
-            5 -> {1.0, 1.0}
-            6 -> {-1.0, 1.0}
-            7 -> {1.0, -1.0}
-            8 -> {-1.0, -1.0}
-            _ -> nil
-          end
+        case flow_step(flow, i, j) do
+          {di, dj} -> {di * 1.0, dj * 1.0}
+          nil -> nil
         end
+    end
+  end
+
+  # Next unobstructed terrain waypoint from (x, y) toward (tx, ty) using the
+  # cached BFS flow tree: straight line when clear, otherwise the closest
+  # visible cell on the target's keep-bound flow chain, falling back to flow_dir.
+  def nav_target(seed, x, y, tx, ty) when is_integer(seed) do
+    generate(seed)
+
+    case Process.get(flow_key(seed)) do
+      nil ->
+        {tx * 1.0, ty * 1.0}
+
+      flow ->
+        if flow_line_open?(flow, x, y, tx, ty) do
+          {tx * 1.0, ty * 1.0}
+        else
+          {vi, vj} = cell_index(x, y)
+          {ti, tj} = cell_index(tx, ty)
+          nav_along_flow(flow, x, y, vi, vj, ti, tj, tx, ty)
+        end
+    end
+  end
+
+  defp nav_along_flow(flow, x, y, vi, vj, ti, tj, tx, ty) do
+    case first_visible_on_chain(flow, x, y, vi, vj, ti, tj, 500) do
+      {ci, cj} ->
+        {ci * @cell * 1.0, cj * @cell * 1.0}
+
+      nil ->
+        case flow_step(flow, vi, vj) do
+          {di, dj} -> {(vi + di) * @cell * 1.0, (vj + dj) * @cell * 1.0}
+          nil -> {tx * 1.0, ty * 1.0}
+        end
+    end
+  end
+
+  defp first_visible_on_chain(_flow, _x, _y, _vi, _vj, _i, _j, 0), do: nil
+
+  defp first_visible_on_chain(flow, x, y, vi, vj, i, j, limit) do
+    cond do
+      i == vi and j == vj ->
+        nil
+
+      flow_line_open?(flow, x, y, i * @cell * 1.0, j * @cell * 1.0) ->
+        {i, j}
+
+      true ->
+        case flow_step(flow, i, j) do
+          {di, dj} -> first_visible_on_chain(flow, x, y, vi, vj, i + di, j + dj, limit - 1)
+          nil -> nil
+        end
+    end
+  end
+
+  defp flow_line_open?(flow, x1, y1, x2, y2) do
+    dx = x2 - x1
+    dy = y2 - y1
+    dist = :math.sqrt(dx * dx + dy * dy)
+    steps = max(1, ceil(dist / 18.0))
+    {i0, j0} = cell_index(x1, y1)
+    flow_open?(flow, i0, j0) and flow_line_walk(flow, x1, y1, dx, dy, steps, 1, i0, j0)
+  end
+
+  defp flow_line_walk(_flow, _x1, _y1, _dx, _dy, steps, k, _pi, _pj) when k > steps, do: true
+
+  defp flow_line_walk(flow, x1, y1, dx, dy, steps, k, pi, pj) do
+    t = k / steps
+    {i, j} = cell_index(x1 + dx * t, y1 + dy * t)
+
+    if flow_open?(flow, i, j) and corner_open?(flow, i, j, pi, pj) do
+      flow_line_walk(flow, x1, y1, dx, dy, steps, k + 1, i, j)
+    else
+      false
+    end
+  end
+
+  defp corner_open?(_flow, i, _j, i, _pj), do: true
+  defp corner_open?(_flow, _i, j, _pi, j), do: true
+
+  defp corner_open?(flow, i, j, pi, pj) do
+    flow_open?(flow, i, pj) and flow_open?(flow, pi, j)
+  end
+
+  defp flow_open?(_flow, 0, 0), do: true
+  defp flow_open?(_flow, i, j) when abs(i) > @span or abs(j) > @span, do: false
+  defp flow_open?(flow, i, j), do: :binary.at(flow, slot(i, j) - 1) != 0
+
+  defp flow_step(_flow, i, j) when abs(i) > @span or abs(j) > @span, do: nil
+
+  defp flow_step(flow, i, j) do
+    case :binary.at(flow, slot(i, j) - 1) do
+      1 -> {1, 0}
+      2 -> {-1, 0}
+      3 -> {0, 1}
+      4 -> {0, -1}
+      5 -> {1, 1}
+      6 -> {-1, 1}
+      7 -> {1, -1}
+      8 -> {-1, -1}
+      _ -> nil
     end
   end
 
