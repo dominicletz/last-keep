@@ -2,7 +2,7 @@ import * as THREE from "three"
 import { trackGeometry } from "./meshes.js"
 import { treeCard, treeSheet } from "./yard_cards.js"
 import { groundColor, horizonColor, lightName, ringColor, sunsetColor } from "./scene.js"
-import { onGroundTiles, sampleGroundTile } from "./seam_tiles.js"
+import { groundTile, onGroundTiles, sampleGroundTile } from "./seam_tiles.js"
 import { phash2, pictureCell, roundAway } from "./world_biome.js"
 
 export { phash2, pictureCell }
@@ -17,12 +17,25 @@ const TREE_CAP = 180
 const YARD = 380
 const MIST = 0.8
 const MASK = 32
+const ATLAS_CELL = 256
+const ATLAS_COLS = 4
+const ATLAS_ROWS = 2
+const ATLAS_W = ATLAS_CELL * ATLAS_COLS
+const ATLAS_H = ATLAS_CELL * ATLAS_ROWS
+const BIOMES = ["meadow", "pine", "ruins", "cliff", "river", "ford", "hill", "mountain"]
+const BIOME_ID = Object.fromEntries(BIOMES.map((name, index) => [name, index]))
+
 export const UNSEEN_DAY = 0x0a160c
 export const UNSEEN_NIGHT = 0x16141d
 export const HORIZON_TINT = {
   day: 0xffffff,
   dusk: 0xc8a484,
   night: 0x363248
+}
+const GROUND_SHADE = {
+  day: [0.46, 0.44, 0.38],
+  dusk: [0.74, 0.64, 0.52],
+  night: [0.95, 0.95, 1.0]
 }
 
 export function unseenMistHex(light) {
@@ -91,6 +104,116 @@ export function biomeColor(name, worldX = 0, worldZ = 0) {
   return rgb(groundColor)
 }
 
+const ATLAS_TONE = {
+  meadow: [0x5c, 0x64, 0x2f, 0.38, 108, 116, 32],
+  pine: [0x2c, 0x36, 0x18, 0.54, 255, 255, 0],
+  ruins: [0x56, 0x4a, 0x42, 0.24, 255, 255, 0],
+  cliff: [0x38, 0x30, 0x2c, 0.34, 255, 255, 0],
+  ford: [0x68, 0x56, 0x3e, 0.16, 255, 255, 0]
+}
+
+function paintBiomeAtlas(dest) {
+  const margin = 32
+  const weights = new Float32Array(margin)
+  for (let i = 0; i < margin; i++) {
+    const t = (i + 1) / (margin + 1)
+    weights[i] = t * t * (3 - 2 * t)
+  }
+  const tmp = new Uint8Array(ATLAS_CELL * (ATLAS_CELL + margin) * 3)
+  for (let id = 0; id < BIOMES.length; id++) {
+    const name = BIOMES[id]
+    const col = id % ATLAS_COLS
+    const row = (id / ATLAS_COLS) | 0
+    const ox = col * ATLAS_CELL
+    const oy = row * ATLAS_CELL
+    const tile = groundTile(name) || (name === "ford" ? groundTile("meadow") : null)
+    const tone = ATLAS_TONE[name]
+    if (!tile) {
+      let [r, g, b] = biomeColor(name)
+      if (tone) {
+        const k = tone[3]
+        r = Math.min(Math.round(r + (tone[0] - r) * k), tone[4])
+        g = Math.min(Math.round(g + (tone[1] - g) * k), tone[5])
+        b = Math.max(Math.round(b + (tone[2] - b) * k), tone[6])
+      }
+      for (let ty = 0; ty < ATLAS_CELL; ty++) {
+        let o = ((oy + ty) * ATLAS_W + ox) * 4
+        for (let tx = 0; tx < ATLAS_CELL; tx++) {
+          dest[o] = r
+          dest[o + 1] = g
+          dest[o + 2] = b
+          dest[o + 3] = 255
+          o += 4
+        }
+      }
+      continue
+    }
+    const src = tile.rgba
+    const sw = tile.width
+    const sh = tile.height
+    const interior = name === "ruins" || name === "cliff"
+    const tr = tone ? tone[0] : 0
+    const tg = tone ? tone[1] : 0
+    const tb = tone ? tone[2] : 0
+    const tk = tone ? tone[3] : 0
+    const rMax = tone ? tone[4] : 255
+    const gMax = tone ? tone[5] : 255
+    const bMin = tone ? tone[6] : 0
+    const rows = ATLAS_CELL + margin
+    for (let uY = 0; uY < rows; uY++) {
+      const sy = interior ? (192 + (((uY + margin) * 2 + 1) & 639)) % sh : (((uY + margin) * 3 + 64) & 1023) % sh
+      const rowBase = sy * sw
+      const outRow = uY * ATLAS_CELL * 3
+      for (let tx = 0; tx < ATLAS_CELL; tx++) {
+        const sx = interior ? (192 + (((tx + margin) * 2 + 1) & 639)) % sw : (((tx + margin) * 3 + 64) & 1023) % sw
+        const so = (rowBase + sx) * 4
+        let r = src[so]
+        let g = src[so + 1]
+        let b = src[so + 2]
+        if (tx < margin) {
+          const tx2 = tx + ATLAS_CELL + margin
+          const sx2 = interior ? (192 + ((tx2 * 2 + 1) & 639)) % sw : ((tx2 * 3 + 64) & 1023) % sw
+          const so2 = (rowBase + sx2) * 4
+          const w = weights[tx]
+          r = src[so2] + (r - src[so2]) * w
+          g = src[so2 + 1] + (g - src[so2 + 1]) * w
+          b = src[so2 + 2] + (b - src[so2 + 2]) * w
+        }
+        if (tone) {
+          r = Math.min(r + (tr - r) * tk, rMax)
+          g = Math.min(g + (tg - g) * tk, gMax)
+          b = Math.max(b + (tb - b) * tk, bMin)
+        }
+        const to = outRow + tx * 3
+        tmp[to] = Math.round(r)
+        tmp[to + 1] = Math.round(g)
+        tmp[to + 2] = Math.round(b)
+      }
+    }
+    for (let ty = 0; ty < ATLAS_CELL; ty++) {
+      const inRow = ty * ATLAS_CELL * 3
+      const tailRow = (ty + ATLAS_CELL) * ATLAS_CELL * 3
+      const w = ty < margin ? weights[ty] : 1
+      let o = ((oy + ty) * ATLAS_W + ox) * 4
+      for (let tx = 0; tx < ATLAS_CELL; tx++) {
+        const i = inRow + tx * 3
+        if (ty < margin) {
+          const j = tailRow + tx * 3
+          dest[o] = Math.round(tmp[j] + (tmp[i] - tmp[j]) * w)
+          dest[o + 1] = Math.round(tmp[j + 1] + (tmp[i + 1] - tmp[j + 1]) * w)
+          dest[o + 2] = Math.round(tmp[j + 2] + (tmp[i + 2] - tmp[j + 2]) * w)
+        } else {
+          dest[o] = tmp[i]
+          dest[o + 1] = tmp[i + 1]
+          dest[o + 2] = tmp[i + 2]
+        }
+        dest[o + 3] = 255
+        o += 4
+      }
+    }
+  }
+}
+
 function biomeLift(name) {
   if (name === "mountain") return 120
   if (name === "hill") return 56
@@ -110,13 +233,12 @@ function landHeight(seed, attempt, x, z) {
 
 function paintWindow(seed, attempt, originX, originZ) {
   const rgba = new Uint8Array(HORIZON_TEX * HORIZON_TEX * 4)
-  // Cache biome lookups per 36-unit cell across the 4608 window (~130x130 cells
-  // instead of 320x320 texels) to eliminate chunk-crossing frame hitches while
-  // keeping every texel byte-identical.
+  // Cache biome IDs per 36-unit cell across the 4608 window (~130x130 cells
+  // instead of 320x320 texels); the shader reads biome RGB from tileAtlas.
   const minCellX = roundAway((originX - WINDOW / 2) / CELL) - 1
   const minCellZ = roundAway((originZ - WINDOW / 2) / CELL) - 1
   const cellSpan = Math.ceil(WINDOW / CELL) + 4
-  const biomes = new Array(cellSpan * cellSpan)
+  const ids = new Int8Array(cellSpan * cellSpan).fill(-1)
   for (let iy = 0; iy < HORIZON_TEX; iy++) {
     const v = (iy + 0.5) / HORIZON_TEX
     const worldZ = originZ - (v - 0.5) * WINDOW
@@ -127,17 +249,12 @@ function paintWindow(seed, attempt, originX, originZ) {
       const worldX = originX + (u - 0.5) * WINDOW
       const cx = roundAway(worldX / CELL) - minCellX
       const slot = rowOff + cx
-      let biome = biomes[slot]
-      if (biome === undefined) {
-        biome = pictureCell(seed, attempt, worldX, worldZ)
-        biomes[slot] = biome
+      let id = ids[slot]
+      if (id < 0) {
+        id = BIOME_ID[pictureCell(seed, attempt, worldX, worldZ)] ?? 0
+        ids[slot] = id
       }
-      const [r, g, b] = biomeColor(biome, worldX, worldZ)
-      const o = (iy * HORIZON_TEX + ix) * 4
-      rgba[o] = r
-      rgba[o + 1] = g
-      rgba[o + 2] = b
-      rgba[o + 3] = 255
+      rgba[(iy * HORIZON_TEX + ix) * 4 + 3] = id * 32 + 16
     }
   }
   return rgba
@@ -176,14 +293,12 @@ export function farPines(seed, attempt, camX, camZ, reach) {
 
 export const FAR_PINE_CAP = TREE_CAP
 
-// The yard tile already covers ±380. Shading the horizon under that square
-// doubled the ground fill on the software rasterizer and pushed the night
-// smoke past its cap. The hole stops at 300 so the stippled yard edge still
-// has land under it. Local Y becomes world -Z after the same -90° rotation
-// the old plane used.
+// The yard tile covers ±380 and fades radially from 316 to 364. Stopping the
+// inner cutout at 210 (diagonal 297 < 316) guarantees horizon terrain sits
+// under the full circular yard edge without doubling fill under the plaza.
 function farGeometry() {
   const outer = HORIZON_SPAN / 2
-  const inner = 300
+  const inner = 210
   const positions = []
   const push = (x, y, z) => positions.push(x, y, z)
   const quad = (x0, y0, x1, y1) => {
@@ -214,10 +329,22 @@ export function mountPicture(scene, options = {}) {
   const bytes = paintWindow(1, 0, 0, 0)
   const map = new THREE.DataTexture(bytes, HORIZON_TEX, HORIZON_TEX)
   map.colorSpace = THREE.SRGBColorSpace
-  map.magFilter = THREE.LinearFilter
-  map.minFilter = THREE.LinearFilter
+  map.magFilter = THREE.NearestFilter
+  map.minFilter = THREE.NearestFilter
   map.flipY = false
   map.needsUpdate = true
+
+  const atlasBytes = new Uint8Array(ATLAS_W * ATLAS_H * 4)
+  paintBiomeAtlas(atlasBytes)
+  const tileAtlas = new THREE.DataTexture(atlasBytes, ATLAS_W, ATLAS_H)
+  tileAtlas.colorSpace = THREE.SRGBColorSpace
+  tileAtlas.magFilter = THREE.NearestFilter
+  tileAtlas.minFilter = THREE.NearestFilter
+  tileAtlas.wrapS = THREE.ClampToEdgeWrapping
+  tileAtlas.wrapT = THREE.ClampToEdgeWrapping
+  tileAtlas.generateMipmaps = false
+  tileAtlas.flipY = false
+  tileAtlas.needsUpdate = true
 
   const maskBytes = new Uint8Array(MASK * MASK * 4)
   const mask = new THREE.DataTexture(maskBytes, MASK, MASK)
@@ -234,6 +361,7 @@ export function mountPicture(scene, options = {}) {
   const mistColor = { value: new THREE.Color(0x4e4651) }
   const unseenColor = { value: new THREE.Color(UNSEEN_DAY) }
   const phaseTint = { value: new THREE.Color(HORIZON_TINT.day) }
+  const groundShade = { value: new THREE.Vector3(...GROUND_SHADE.day) }
   const windowOrigin = { value: new THREE.Vector2(0, 0) }
   const windowSpan = { value: WINDOW }
   // Scene fog at 0.9/span pulls a stone texel inside the clear color on the
@@ -241,13 +369,15 @@ export function mountPicture(scene, options = {}) {
   const horizonFogNear = { value: 2105 }
   const horizonFogFar = { value: 3828 }
   const material = new THREE.MeshBasicMaterial({ map, color: 0xffffff, fog: false })
-  material.customProgramCacheKey = () => "horizon-skirt"
+  material.customProgramCacheKey = () => "horizon-skirt-hd2d"
   material.onBeforeCompile = (shader) => {
+    shader.uniforms.tileAtlas = { value: tileAtlas }
     shader.uniforms.mistMask = { value: mask }
     shader.uniforms.mistStrength = mistStrength
     shader.uniforms.mistColor = mistColor
     shader.uniforms.unseenColor = unseenColor
     shader.uniforms.phaseTint = phaseTint
+    shader.uniforms.groundShade = groundShade
     shader.uniforms.windowOrigin = windowOrigin
     shader.uniforms.windowSpan = windowSpan
     shader.uniforms.horizonFogNear = horizonFogNear
@@ -263,12 +393,83 @@ export function mountPicture(scene, options = {}) {
       )
     shader.fragmentShader = shader.fragmentShader
       .replace(
-        "#include <common>",
-        "#include <common>\nuniform sampler2D mistMask;\nuniform float mistStrength;\nuniform vec3 mistColor;\nuniform vec3 unseenColor;\nuniform vec3 phaseTint;\nuniform vec2 windowOrigin;\nuniform float windowSpan;\nuniform float horizonFogNear;\nuniform float horizonFogFar;\nvarying vec3 vHorizonWorld;"
+        "#include <map_pars_fragment>",
+        `#include <map_pars_fragment>
+uniform sampler2D tileAtlas;
+uniform sampler2D mistMask;
+uniform float mistStrength;
+uniform vec3 mistColor;
+uniform vec3 unseenColor;
+uniform vec3 phaseTint;
+uniform vec3 groundShade;
+uniform vec2 windowOrigin;
+uniform float windowSpan;
+uniform float horizonFogNear;
+uniform float horizonFogFar;
+varying vec3 vHorizonWorld;
+
+vec2 horizonUvFor(vec2 worldXz) {
+  return clamp(vec2((worldXz.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (worldXz.y - windowOrigin.y) / windowSpan), 0.001, 0.999);
+}
+
+float biomeIdAt(vec2 worldXz) {
+  return floor(texture2D(map, horizonUvFor(worldXz)).a * 8.0 + 0.01);
+}
+
+vec3 sampleAtlasTile(float biomeId, vec2 gridPos) {
+  float id = clamp(floor(biomeId + 0.5), 0.0, 7.0);
+  float col = mod(id, 4.0);
+  float row = floor(id / 4.0);
+  vec2 local = mod(gridPos, 256.0) + 0.5;
+  vec2 uv = (vec2(col, row) * 256.0 + local) / vec2(1024.0, 512.0);
+  return texture2D(tileAtlas, uv).rgb;
+}`
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tif (abs(vHorizonWorld.x) < 300.0 && abs(vHorizonWorld.z) < 300.0) discard;\n\tvec2 landUv = vec2((vHorizonWorld.x - windowOrigin.x) / windowSpan + 0.5, 0.5 - (vHorizonWorld.z - windowOrigin.y) / windowSpan);\n\tdiffuseColor.rgb = texture2D(map, clamp(landUv, 0.001, 0.999)).rgb * phaseTint;\n\tvec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;\n\tfloat known = texture2D(mistMask, mistUv).r;\n\tdiffuseColor.rgb = mix(mix(diffuseColor.rgb, unseenColor, mistStrength), diffuseColor.rgb, known);\n\tfloat fogD = length(vHorizonWorld - cameraPosition);\n\tfloat fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);"
+        `#include <color_fragment>
+	if (abs(vHorizonWorld.x) < 210.0 && abs(vHorizonWorld.z) < 210.0) discard;
+	vec2 gridPos = floor(vHorizonWorld.xz / 0.84);
+	vec2 pixelWorld = (gridPos + 0.5) * 0.84;
+	float r2 = dot(pixelWorld, pixelWorld);
+	vec3 tileRgb;
+	if (r2 < 135424.0) {
+		tileRgb = sampleAtlasTile(0.0, gridPos);
+	} else {
+		float keepBlend = smoothstep(368.0, 430.0, sqrt(r2));
+		vec2 warped = pixelWorld + vec2(
+			sin(pixelWorld.y * 0.052 + pixelWorld.x * 0.019),
+			cos(pixelWorld.x * 0.052 - pixelWorld.y * 0.019)
+		) * (8.5 * keepBlend);
+		vec2 cellIdx = floor(warped / 36.0);
+		vec2 cellFrac = warped / 36.0 - cellIdx;
+		vec2 c00 = cellIdx * 36.0;
+		float b00 = biomeIdAt(c00);
+		float b10 = biomeIdAt(c00 + vec2(36.0, 0.0));
+		float b01 = biomeIdAt(c00 + vec2(0.0, 36.0));
+		float b11 = biomeIdAt(c00 + vec2(36.0, 36.0));
+		if (b00 == b10 && b00 == b01 && b00 == b11) {
+			tileRgb = sampleAtlasTile(b00, gridPos);
+		} else {
+			float tuft = fract(sin(dot(gridPos, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
+			vec2 bw = smoothstep(0.14, 0.86, cellFrac + tuft * 0.24);
+			vec3 s00 = sampleAtlasTile(b00, gridPos);
+			vec3 s10 = b10 == b00 ? s00 : sampleAtlasTile(b10, gridPos);
+			vec3 s01 = b01 == b00 ? s00 : (b01 == b10 ? s10 : sampleAtlasTile(b01, gridPos));
+			vec3 s11 = b11 == b00 ? s00 : (b11 == b10 ? s10 : (b11 == b01 ? s01 : sampleAtlasTile(b11, gridPos)));
+			tileRgb = mix(mix(s00, s10, bw.x), mix(s01, s11, bw.x), bw.y);
+		}
+	}
+	float swell = 0.94 + 0.06 * sin(pixelWorld.x * 0.015 + pixelWorld.y * 0.011);
+	diffuseColor.rgb = tileRgb * swell * phaseTint * groundShade;
+	if (mistStrength > 0.0) {
+		vec2 mistUv = (vHorizonWorld.xz / 512.0 + 16.0) / 32.0;
+		float known = texture2D(mistMask, mistUv).r;
+		diffuseColor.rgb = mix(mix(diffuseColor.rgb, unseenColor, mistStrength), diffuseColor.rgb, known);
+	}
+	float fogD = length(vHorizonWorld - cameraPosition);
+	float fogF = smoothstep(horizonFogNear, horizonFogFar, fogD);
+	diffuseColor.rgb = mix(diffuseColor.rgb, mistColor, fogF);`
       )
   }
 
@@ -324,7 +525,8 @@ export function mountPicture(scene, options = {}) {
   let mistKey = ""
   let treeKey = ""
   onGroundTiles(() => {
-    windowKey = ""
+    paintBiomeAtlas(atlasBytes)
+    tileAtlas.needsUpdate = true
   })
 
   function paint(seed, attempt, camera) {
@@ -358,10 +560,12 @@ export function mountPicture(scene, options = {}) {
     const key = seeded ? chunks.map((chunk) => `${chunk.cx},${chunk.cy}`).join("|") : "off"
     const phase = lightName(snap)
     const tintHex = horizonTintHex(phase)
+    const shade = GROUND_SHADE[phase] || GROUND_SHADE.day
     mistStrength.value = seeded ? MIST : 0
     mistColor.value.setHex(phase === "night" ? 0x322c3c : 0x4e4651)
     unseenColor.value.setHex(unseenMistHex(phase))
     phaseTint.value.setHex(tintHex)
+    groundShade.value.set(shade[0], shade[1], shade[2])
     for (const mesh of Object.values(trees)) mesh.material.color.setHex(tintHex)
     if (key === mistKey) return
     mistKey = key

@@ -155,8 +155,30 @@ test("outer horizon uses crisp pixel sampling and dims at dusk and night", async
 
   const horizonMeshes = scene.children.filter((c) => c.userData.role === "horizon")
   assert.equal(horizonMeshes.length, 2)
-  assert.ok(horizonMeshes[0].material.map.image.width >= 320, "horizon texture is sharper than the 256/6144 window")
+  const map = horizonMeshes[0].material.map
+  assert.ok(map.image.width >= 320, "horizon texture is sharper than the 256/6144 window")
+  assert.equal(map.magFilter, THREE.NearestFilter)
+  assert.equal(map.minFilter, THREE.NearestFilter)
   assert.ok(horizonMeshes[0].position.y < 0, "horizon sits below the yard to prevent seam z-fighting")
+
+  const alphas = new Set()
+  for (let i = 3; i < map.image.data.length; i += 4) alphas.add(map.image.data[i])
+  assert.ok(alphas.size >= 4, "window map encodes distinct biome ids in alpha")
+
+  const shader = {
+    uniforms: {},
+    vertexShader: "#include <common>\n#include <project_vertex>",
+    fragmentShader: "#include <common>\n#include <map_pars_fragment>\n#include <color_fragment>"
+  }
+  horizonMeshes[0].material.onBeforeCompile(shader)
+  assert.ok(shader.uniforms.tileAtlas?.value, "shader binds tileAtlas")
+  assert.equal(shader.uniforms.tileAtlas.value.image.width, 1024)
+  assert.equal(shader.uniforms.tileAtlas.value.image.height, 512)
+  assert.equal(shader.uniforms.tileAtlas.value.magFilter, THREE.NearestFilter)
+  assert.ok(
+    shader.fragmentShader.indexOf("#include <map_pars_fragment>") < shader.fragmentShader.indexOf("texture2D(map,"),
+    "biomeIdAt references map only after map_pars_fragment declares it"
+  )
 
   const pines = scene.children.filter((c) => c.userData.role === "far-pine")
   for (const pine of pines) {
