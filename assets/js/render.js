@@ -207,7 +207,7 @@ export function createView(stage, picture) {
     new THREE.MeshBasicMaterial({ map: plazaMap, color: 0xffffff })
   )
   plazaWear.rotation.x = -Math.PI / 2
-  plazaWear.position.y = 0.24
+  plazaWear.position.y = 0.04
   scene.add(plazaWear)
   onGroundTiles(() => {
     const next = groundPixels("day")
@@ -237,7 +237,7 @@ export function createView(stage, picture) {
 
   const plaza = new THREE.Mesh(new THREE.CircleGeometry(150, plazaSides), mat(plazaColor))
   plaza.rotation.x = -Math.PI / 2
-  plaza.position.y = 0.2
+  plaza.position.y = 0.02
   plaza.receiveShadow = false
   plaza.layers.enable(1)
   const ring = new THREE.Mesh(new THREE.RingGeometry(154, 164, plazaSides), mat(ringColor))
@@ -359,13 +359,13 @@ export function createView(stage, picture) {
     new THREE.MeshBasicMaterial({ map: pathNSMap, color: 0xffffff })
   )
   pathNS.rotation.x = -Math.PI / 2
-  pathNS.position.y = 0.5
+  pathNS.position.y = 0.06
   const pathEW = new THREE.Mesh(
     new THREE.PlaneGeometry(280, 18),
     new THREE.MeshBasicMaterial({ map: pathEWMap, color: 0xffffff })
   )
   pathEW.rotation.x = -Math.PI / 2
-  pathEW.position.y = 0.48
+  pathEW.position.y = 0.05
   scene.add(pathNS, pathEW)
 
   forest()
@@ -1253,6 +1253,7 @@ export function createView(stage, picture) {
       seatCamera(snap, me)
       const yardScale = zoom.dirt / 150
       plaza.scale.setScalar(yardScale)
+      plazaWear.scale.setScalar(yardScale)
       ring.scale.setScalar(yardScale)
       const pathSpan = yardScale
       pathNS.scale.set(1, pathSpan, 1)
@@ -1632,11 +1633,11 @@ export function createView(stage, picture) {
     const material = mesh.material
     if (!material || material.userData.yardEdge) return
     material.userData.yardEdge = true
-    material.customProgramCacheKey = () => "yard-edge"
+    material.customProgramCacheKey = () => "yard-edge-radial"
     material.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
         "#include <dithering_fragment>",
-        "float yardMargin = 0.5 - max(abs(vMapUv.x - 0.5), abs(vMapUv.y - 0.5));\n\tfloat yardBand = 1.0 - smoothstep(0.0, 0.1, yardMargin);\n\tfloat yardDither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);\n\tif (yardDither < yardBand) discard;\n\t#include <dithering_fragment>"
+        "vec2 yardOff = (vMapUv - vec2(0.5)) * 760.0;\n\tfloat yardAng = atan(yardOff.y, yardOff.x);\n\tfloat yardWave = sin(yardAng * 12.0) * 5.0 + cos(yardAng * 20.0) * 3.0;\n\tfloat yardR = length(yardOff) + yardWave;\n\tfloat yardBand = smoothstep(316.0, 364.0, yardR);\n\tvec2 yardGrid = floor(vMapUv * 905.0);\n\tfloat yardDither = fract(sin(dot(yardGrid, vec2(12.9898, 78.233))) * 43758.5453);\n\tif (yardR > 364.0 || yardDither < yardBand) discard;\n\t#include <dithering_fragment>"
       )
     }
     material.needsUpdate = true
