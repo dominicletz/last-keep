@@ -2453,6 +2453,7 @@ async function readMatch(page) {
       chests: (game.chests || []).length,
       portals: (game.portals || []).length,
       merchant: game.merchant ? 1 : 0,
+      vagrants: (game.vagrants || []).length,
       p95: null,
       paints: perf.paints || [],
       maxStep: perf.maxStep || 0,

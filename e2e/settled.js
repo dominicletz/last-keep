@@ -11,10 +11,11 @@ function settledHolds(first, later) {
     if (roleCount(sample, "chest") !== sample.chests) return false
     if (roleCount(sample, "portal") !== sample.portals) return false
     if (roleCount(sample, "merchant") !== (sample.merchant || 0)) return false
+    if (roleCount(sample, "vagrant") !== (sample.vagrants || 0) * 3) return false
   }
   const extra =
-    later.chests + later.portals + (later.merchant || 0) -
-    (first.chests + first.portals + (first.merchant || 0))
+    later.chests + later.portals + (later.merchant || 0) + (later.vagrants || 0) * 3 -
+    (first.chests + first.portals + (first.merchant || 0) + (first.vagrants || 0) * 3)
   const delta = later.census.settled - first.census.settled
   return delta <= extra
 }
